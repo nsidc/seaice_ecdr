@@ -14,18 +14,8 @@ from numpy.testing import assert_almost_equal, assert_equal
 from numpy.typing import NDArray
 
 from pm_icecon.cdr import amsr2_cdr as pmi_amsr2_cdr
-#from seaice_ecdr.initial_daily_ecdr import amsr2_cdr as ide_amsr2_cdr
 from seaice_ecdr.initial_daily_ecdr import compute_initial_daily_ecdr_dataset as compute_idecdr_ds
 
-
-""" None of this seems to work
-# Ignore warnings about numpy header size changes
-import warnings
-warnings.filterwarnings("ignore", message="numpy.dtype size changed")
-warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
-warnings.filterwarnings("ignore", message="numpy.ndarray size changed")
-warnings.filterwarnings("ignore", message="numpy.ndarray size changed, may indicate binary incompatibility. Expected 16 from C header, got 96 from PyObject")
-"""
 
 def test_testing_initial_daily_ecdr_generation():
     """ Test that this integration test is being performed """
