@@ -245,13 +245,13 @@ def compute_initial_daily_ecdr_dataset(
         land_flag_value=DEFAULT_FLAG_VALUES.land,
     )
 
-    # Simple conc array only dataset creation
-    #ecdr_conc_ds = xr.Dataset({'conc': (('y', 'x'), conc)})
-
     # Initialize geo-referenced xarray Dataset
-    ecdr_conc_ds = get_dataset_for_gridid('psn12.5', date)
-
-    ecdr_conc_ds.to_netcdf('ecdr_conc_ds_init.nc')
+    if hemisphere == 'north' and resolution == '12':
+        ecdr_conc_ds = get_dataset_for_gridid('psn12.5', date)
+    elif hemisphere == 'south' and resolution == '12':
+        ecdr_conc_ds = get_dataset_for_gridid('pss12.5', date)
+    else:
+        xwm(f'Could not determine gridid from:\n  {hemisphere} and {resolution}')  # noqa
 
     ecdr_conc_ds['conc'] = (
         ('time', 'y', 'x'),
@@ -262,8 +262,6 @@ def compute_initial_daily_ecdr_dataset(
         },
         {'zlib': True,},
     )
-
-    ecdr_conc_ds.to_netcdf('ecdr_conc_ds_new.nc')
 
     return ecdr_conc_ds
 
