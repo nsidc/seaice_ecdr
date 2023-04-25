@@ -29,6 +29,8 @@ from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_icecon.util import date_range, standard_output_filename
 
+from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
+
 
 def xwm(m='exiting in xwm()'):
     raise SystemExit(m)
@@ -243,7 +245,25 @@ def compute_initial_daily_ecdr_dataset(
         land_flag_value=DEFAULT_FLAG_VALUES.land,
     )
 
-    ecdr_conc_ds = xr.Dataset({'conc': (('y', 'x'), conc)})
+    # Simple conc array only dataset creation
+    #ecdr_conc_ds = xr.Dataset({'conc': (('y', 'x'), conc)})
+
+    # Initialize geo-referenced xarray Dataset
+    ecdr_conc_ds = get_dataset_for_gridid('psn12.5', date)
+
+    ecdr_conc_ds.to_netcdf('ecdr_conc_ds_init.nc')
+
+    ecdr_conc_ds['conc'] = (
+        ('time', 'y', 'x'),
+        np.expand_dims(conc, axis=0),
+        {
+            '_FillValue': 255,
+            'grid_mapping': 'crs',
+        },
+        {'zlib': True,},
+    )
+
+    ecdr_conc_ds.to_netcdf('ecdr_conc_ds_new.nc')
 
     return ecdr_conc_ds
 

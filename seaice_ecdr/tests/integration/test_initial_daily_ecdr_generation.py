@@ -82,6 +82,6 @@ def test_seaice_idecdr_and_pmicecon_conc_identical(sample_pmicecon_dataset, samp
     pmi_conc_field = np.array(pmicecon_conc_ds.variables['conc'])
 
     ide_conc_ds = sample_idecdr_dataset
-    ide_conc_field = np.array(ide_conc_ds.variables['conc'])
+    ide_conc_field = np.squeeze(np.array(ide_conc_ds.variables['conc']))
 
     assert_equal(pmi_conc_field, ide_conc_field)

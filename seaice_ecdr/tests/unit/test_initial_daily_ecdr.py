@@ -37,3 +37,8 @@ def sample_idecdr_dataset():
 def test_seaice_idecdr_is_Dataset(sample_idecdr_dataset):
     """ Test that pm_icecon yields a 'conc' field """
     assert type(sample_idecdr_dataset) == type(xr.Dataset())
+
+
+def test_seaice_idecdr_has_crs(sample_idecdr_dataset):
+    """ Test that pm_icecon yields a 'conc' field """
+    assert 'crs' in sample_idecdr_dataset.variables
