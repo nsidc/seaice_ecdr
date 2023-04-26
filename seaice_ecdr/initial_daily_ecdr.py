@@ -17,6 +17,7 @@ from loguru import logger
 
 import pm_icecon.bt.compute_bt_ic as bt
 import pm_icecon.bt.params.amsr2 as bt_amsr2_params
+import pm_icecon.bt.bt_params as pmi_bt_params
 import pm_icecon.nt.compute_nt_ic as nt
 import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 from pm_icecon._types import Hemisphere
@@ -36,7 +37,49 @@ def xwm(m='exiting in xwm()'):
     raise SystemExit(m)
 
 
-def cdr(
+def cdr_bootstrap(
+    date: dt.date,
+    tb_v37: npt.NDArray,
+    tb_h37: npt.NDArray,
+    tb_v19: npt.NDArray,
+    tb_v22: npt.NDArray,
+    bt_params: BootstrapParams,
+    bt_tb_mask,
+    bt_weather_mask, 
+):
+    bt_conc = bt.bootstrap_for_cdr(
+        tb_v37=tb_v37,
+        tb_h37=tb_h37,
+        tb_v19=tb_v19,
+        params=bt_params,
+        tb_mask=bt_tb_mask,
+        weather_mask=bt_weather_mask,
+    )
+
+    return bt_conc
+
+
+def cdr_nasateam(
+    date: dt.date,
+    tb_h19: npt.NDArray,
+    tb_v37: npt.NDArray,
+    tb_v19: npt.NDArray,
+    nt_tiepoints: NasateamTiePoints,
+) -> npt.NDArray:
+    # Compute the NASA Team conc field
+    # Note that concentrations from nasateam may be >100%
+    nt_pr_1919 = nt.compute_ratio(tb_v19, tb_h19)
+    nt_gr_3719 = nt.compute_ratio(tb_v37, tb_v19)
+    nt_conc = nt.calc_nasateam_conc(
+        pr_1919=nt_pr_1919,
+        gr_3719=nt_gr_3719,
+        tiepoints=nt_tiepoints,
+    )
+
+    return nt_conc
+
+
+def calculate_cdr_conc(
     date: dt.date,
     tb_h19: npt.NDArray,
     tb_v37: npt.NDArray,
@@ -76,23 +119,26 @@ def cdr(
         date=date,
         weather_filter_seasons=bt_params.weather_filter_seasons,
     )
-    bt_conc = bt.bootstrap_for_cdr(
-        tb_v37=tb_v37,
-        tb_h37=tb_h37,
-        tb_v19=tb_v19,
-        params=bt_params,
-        tb_mask=bt_tb_mask,
-        weather_mask=bt_weather_mask,
+
+    bt_conc = cdr_bootstrap(
+        date,
+        tb_v37,
+        tb_h37,
+        tb_v19,
+        tb_v22,
+        bt_params,
+        bt_tb_mask,
+        bt_weather_mask,
     )
 
     # Next, get nasateam conc. Note that concentrations from nasateam may be
     # >100%.
-    nt_pr_1919 = nt.compute_ratio(tb_v19, tb_h19)
-    nt_gr_3719 = nt.compute_ratio(tb_v37, tb_v19)
-    nt_conc = nt.calc_nasateam_conc(
-        pr_1919=nt_pr_1919,
-        gr_3719=nt_gr_3719,
-        tiepoints=nt_tiepoints,
+    nt_conc = cdr_nasateam(
+        date,
+        tb_h19,
+        tb_v37,
+        tb_v19,
+        nt_tiepoints,
     )
 
     # Now calculate CDR SIC
@@ -104,6 +150,7 @@ def cdr(
     # Apply masks
     # Get Nasateam weather filter
     nt_gr_2219 = nt.compute_ratio(tb_v22, tb_v19)
+    nt_gr_3719 = nt.compute_ratio(tb_v37, tb_v19)
     nt_weather_mask = nt.get_weather_filter_mask(
         gr_2219=nt_gr_2219,
         gr_3719=nt_gr_3719,
@@ -209,41 +256,6 @@ def compute_initial_daily_ecdr_dataset(
 ) -> xr.Dataset:
     """Create xarray dataset containing the first pass of daily enhanced CDR"""
     # Note: at first, this is simply a copy of amsr2_cdr
-    # Get AMSR2 TBs
-    xr_tbs = get_au_si_tbs(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-    bt_params = bt_amsr2_params.get_amsr2_params(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-
-    nt_params = nt_amsr2_params.get_amsr2_params(
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-
-    # finally, compute the CDR.
-    conc = cdr(
-        date=date,
-        tb_h19=spatial_interp_tbs(xr_tbs['h18'].data),
-        tb_v37=spatial_interp_tbs(xr_tbs['v36'].data),
-        tb_h37=spatial_interp_tbs(xr_tbs['h36'].data),
-        tb_v19=spatial_interp_tbs(xr_tbs['v18'].data),
-        tb_v22=spatial_interp_tbs(xr_tbs['v23'].data),
-        bt_params=bt_params,
-        nt_tiepoints=nt_params.tiepoints,
-        nt_gradient_thresholds=nt_params.gradient_thresholds,
-        # TODO: this is the same as the bootstrap mask!
-        nt_invalid_ice_mask=bt_params.invalid_ice_mask,
-        nt_minic=nt_params.minic,
-        nt_shoremap=nt_params.shoremap,
-        missing_flag_value=DEFAULT_FLAG_VALUES.missing,
-        land_flag_value=DEFAULT_FLAG_VALUES.land,
-    )
 
     # Initialize geo-referenced xarray Dataset
     if hemisphere == 'north' and resolution == '12':
@@ -252,6 +264,55 @@ def compute_initial_daily_ecdr_dataset(
         ecdr_conc_ds = get_dataset_for_gridid('pss12.5', date)
     else:
         xwm(f'Could not determine gridid from:\n  {hemisphere} and {resolution}')  # noqa
+
+    # Get AMSR2 TBs
+    xr_tbs = get_au_si_tbs(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    bt_params_orig = bt_amsr2_params.get_amsr2_params(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    bt_params = pmi_bt_params.get_bootstrap_params(
+        date=date,
+        satellite='amsr2',
+        gridid='psn12.5',
+    )
+    bt_fields = pmi_bt_params.get_bootstrap_fields(
+        date=date,
+        satellite='amsr2',
+        gridid='psn12.5',
+    )
+    pmicecon_bt_params = pmi_bt_params.convert_to_pmicecon_bt_params(hemisphere, bt_params, bt_fields)
+
+    nt_params = nt_amsr2_params.get_amsr2_params(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    # finally, compute the CDR.
+    conc = calculate_cdr_conc(
+        date=date,
+        tb_h19=spatial_interp_tbs(xr_tbs['h18'].data),
+        tb_v37=spatial_interp_tbs(xr_tbs['v36'].data),
+        tb_h37=spatial_interp_tbs(xr_tbs['h36'].data),
+        tb_v19=spatial_interp_tbs(xr_tbs['v18'].data),
+        tb_v22=spatial_interp_tbs(xr_tbs['v23'].data),
+        bt_params=pmicecon_bt_params,
+        nt_tiepoints=nt_params.tiepoints,
+        nt_gradient_thresholds=nt_params.gradient_thresholds,
+        # TODO: this is the same as the bootstrap mask!
+        nt_invalid_ice_mask=pmicecon_bt_params.invalid_ice_mask,
+        nt_minic=nt_params.minic,
+        nt_shoremap=nt_params.shoremap,
+        missing_flag_value=DEFAULT_FLAG_VALUES.missing,
+        land_flag_value=DEFAULT_FLAG_VALUES.land,
+    )
 
     ecdr_conc_ds['conc'] = (
         ('time', 'y', 'x'),

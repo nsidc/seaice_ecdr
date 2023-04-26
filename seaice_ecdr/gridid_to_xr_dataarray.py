@@ -17,6 +17,34 @@ def xwm(m='exiting in xwm()'):
     raise SystemExit(m)
 
 
+def get_gridid_hemisphere(gridid):
+    # Return the hemisphere of the gridid
+    if 'psn' in gridid:
+        return 'north'
+    elif 'e2n' in gridid:
+        return 'north'
+    elif 'pss' in gridid:
+        return 'south'
+    elif 'e2s' in gridid:
+        return 'south'
+    else:
+        raise ValueError(f'Could not find hemisphere for gridid: {gridid}')
+
+
+def get_gridid_resolution(gridid):
+    # Return the hemisphere of the gridid
+    if '3.125' in gridid:
+        return '3.125'
+    elif '6.25' in gridid:
+        return '6.25'
+    elif '12.5' in gridid:
+        return '12.5'
+    elif '25' in gridid:
+        return '25'
+    else:
+        raise ValueError(f'Could not find resolution for gridid: {gridid}')
+
+
 def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
     """
     Return xarray dataset with appropriate geolocation dataarrays:
