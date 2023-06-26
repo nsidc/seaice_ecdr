@@ -84,4 +84,10 @@ def test_seaice_idecdr_and_pmicecon_conc_identical(sample_pmicecon_dataset, samp
     ide_conc_ds = sample_idecdr_dataset
     ide_conc_field = np.squeeze(np.array(ide_conc_ds.variables['conc']))
 
-    assert_equal(pmi_conc_field, ide_conc_field)
+    # We know that the original conc field has zeros where TBs were not
+    # available, so only check where idecdr is not nan
+    indexes_to_check = ~np.isnan(ide_conc_field)
+    assert_equal(
+        pmi_conc_field[indexes_to_check],
+        ide_conc_field[indexes_to_check],
+    )

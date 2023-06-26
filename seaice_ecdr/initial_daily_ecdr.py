@@ -79,6 +79,39 @@ def cdr_nasateam(
     return nt_conc
 
 
+def get_bt_tb_mask(
+    tb_v37,
+    tb_h37,
+    tb_v19,
+    tb_v22,
+    mintb,
+    maxtb,
+    tb_data_mask_function,
+):
+
+    bt_tb_mask = tb_data_mask_function(
+        tbs=(
+            tb_v37,
+            tb_h37,
+            tb_v19,
+            tb_v22,
+        ),
+        min_tb=mintb,
+        max_tb=maxtb,
+    )
+
+    try:
+        assert tb_v37.shape == tb_h37.shape
+        assert tb_v37.shape == tb_v22.shape
+        assert tb_v37.shape == tb_v19.shape
+        # assert tb_v37.shape == bt_params.land_mask.shape
+        assert tb_v37.shape == bt_tb_mask.shape
+    except AssertionError as e:
+        raise ValueError(f'Mismatched shape error in get_bt_tb_mask\n{e}')
+
+    return bt_tb_mask
+
+
 def calculate_cdr_conc(
     date: dt.date,
     tb_h19: npt.NDArray,
@@ -96,16 +129,17 @@ def calculate_cdr_conc(
     land_flag_value,
 ) -> npt.NDArray:
     """Run the CDR algorithm."""
+
     # First, get bootstrap conc.
-    bt_tb_mask = bt.tb_data_mask(
-        tbs=(
-            tb_v37,
-            tb_h37,
-            tb_v19,
-            tb_v22,
-        ),
-        min_tb=bt_params.mintb,
-        max_tb=bt_params.maxtb,
+
+    bt_tb_mask = get_bt_tb_mask(
+        tb_v37=tb_v37,
+        tb_h37=tb_h37,
+        tb_v19=tb_v19,
+        tb_v22=tb_v22,
+        mintb=bt_params.mintb,
+        maxtb=bt_params.maxtb,
+        tb_data_mask_function=bt.tb_data_mask,
     )
 
     bt_weather_mask = bt.get_weather_mask(
@@ -119,6 +153,8 @@ def calculate_cdr_conc(
         date=date,
         weather_filter_seasons=bt_params.weather_filter_seasons,
     )
+
+    bt_invalid_ice_mask = bt_params.invalid_ice_mask
 
     bt_conc = cdr_bootstrap(
         date,
@@ -144,6 +180,7 @@ def calculate_cdr_conc(
     # Now calculate CDR SIC
     is_bt_seaice = (bt_conc > 0) & (bt_conc <= 100)
     use_nt_values = (nt_conc > bt_conc) & is_bt_seaice
+    # Note: Here, values without sea ice (because no TBs) have val np.nan
     cdr_conc = bt_conc.copy()
     cdr_conc[use_nt_values] = nt_conc[use_nt_values]
 
@@ -159,12 +196,12 @@ def calculate_cdr_conc(
     )
     # Apply weather filters and invalid ice masks
     # TODO: can we just use a single invalid ice mask?
+    # Note: We do not want to set zero sic where we have no TBs
     set_to_zero_sic = (
         nt_weather_mask
         | bt_weather_mask
         | nt_invalid_ice_mask
         | bt_params.invalid_ice_mask
-        | bt_tb_mask
     )
     cdr_conc[set_to_zero_sic] = 0
 
@@ -257,13 +294,17 @@ def compute_initial_daily_ecdr_dataset(
     """Create xarray dataset containing the first pass of daily enhanced CDR"""
     # Note: at first, this is simply a copy of amsr2_cdr
 
-    # Initialize geo-referenced xarray Dataset
+    # Set the gridid
     if hemisphere == 'north' and resolution == '12':
-        ecdr_conc_ds = get_dataset_for_gridid('psn12.5', date)
+        gridid = 'psn12.5'
     elif hemisphere == 'south' and resolution == '12':
-        ecdr_conc_ds = get_dataset_for_gridid('pss12.5', date)
+        gridid = 'pss12.5'
     else:
-        xwm(f'Could not determine gridid from:\n  {hemisphere} and {resolution}')  # noqa
+        xwm(f'Could not determine gridid from:\n'
+            f'{hemisphere} and {resolution}')
+
+    # Initialize geo-referenced xarray Dataset
+    ecdr_conc_ds = get_dataset_for_gridid(gridid, date)
 
     # Get AMSR2 TBs
     xr_tbs = get_au_si_tbs(
@@ -281,14 +322,15 @@ def compute_initial_daily_ecdr_dataset(
     bt_params = pmi_bt_params.get_bootstrap_params(
         date=date,
         satellite='amsr2',
-        gridid='psn12.5',
+        gridid=gridid,
     )
     bt_fields = pmi_bt_params.get_bootstrap_fields(
         date=date,
         satellite='amsr2',
-        gridid='psn12.5',
+        gridid=gridid,
     )
-    pmicecon_bt_params = pmi_bt_params.convert_to_pmicecon_bt_params(hemisphere, bt_params, bt_fields)
+    pmicecon_bt_params = pmi_bt_params.convert_to_pmicecon_bt_params(
+            hemisphere, bt_params, bt_fields)
 
     nt_params = nt_amsr2_params.get_amsr2_params(
         hemisphere=hemisphere,
