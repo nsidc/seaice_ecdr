@@ -6,16 +6,17 @@ Tests of the initial daily ECDR product
 
 import datetime as dt
 from pathlib import Path
-import pytest
-from loguru import logger
 
 import numpy as np
+import pytest
 import xarray as xr
+from loguru import logger
 from numpy.testing import assert_almost_equal, assert_equal
 from numpy.typing import NDArray
-
 from pm_icecon.cdr import amsr2_cdr as pmi_amsr2_cdr
-from seaice_ecdr.initial_daily_ecdr import compute_initial_daily_ecdr_dataset as compute_idecdr_ds
+
+from seaice_ecdr.initial_daily_ecdr import \
+    compute_initial_daily_ecdr_dataset as compute_idecdr_ds
 
 
 @pytest.fixture(scope='session')

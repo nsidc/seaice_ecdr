@@ -6,19 +6,19 @@ amsr2_cdr results
 """
 
 import datetime as dt
-from pathlib import Path
-import pytest
-from loguru import logger
-
 import sys
+from pathlib import Path
+
 import numpy as np
+import pytest
 import xarray as xr
+from loguru import logger
 from numpy.testing import assert_almost_equal, assert_equal
 from numpy.typing import NDArray
-
 from pm_icecon.cdr import amsr2_cdr as pmi_amsr2_cdr
-from seaice_ecdr.initial_daily_ecdr import compute_initial_daily_ecdr_dataset as compute_idecdr_ds
 
+from seaice_ecdr.initial_daily_ecdr import \
+    compute_initial_daily_ecdr_dataset as compute_idecdr_ds
 
 # Set the default minimum log notification to Warning
 logger.remove(0)  # Removes previous logger info

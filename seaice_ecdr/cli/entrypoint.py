@@ -1,9 +1,9 @@
 import click
-
 from pm_icecon.bt.cli import cli as bt_cli
-from seaice_ecdr.pm_cdr import cli as pm_cdr_cli
 from pm_icecon.cdr import cli as cdr_cli
 from pm_icecon.nt.cli import cli as nt_cli
+
+from seaice_ecdr.pm_cdr import cli as pm_cdr_cli
 
 
 @click.group()
@@ -20,6 +20,7 @@ cli.add_command(ecdr_cli)
 
 if __name__ == '__main__':
     from pm_icecon.cli.entrypoint import cli
+
     # from seaice_ecdr.cli.entrypoint import cli_ecdr
 
     cli()

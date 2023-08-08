@@ -6,9 +6,10 @@ a given NSIDC gridid
 """
 
 
+import datetime as dt
+
 import numpy as np
 import xarray as xr
-import datetime as dt
 from loguru import logger
 
 
