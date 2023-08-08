@@ -45,7 +45,7 @@ def cdr_bootstrap(
     tb_v22: npt.NDArray,
     bt_params: BootstrapParams,
     bt_tb_mask,
-    bt_weather_mask, 
+    bt_weather_mask,
 ):
     bt_conc = bt.bootstrap_for_cdr(
         tb_v37=tb_v37,
