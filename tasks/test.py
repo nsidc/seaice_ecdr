@@ -1,3 +1,4 @@
+"""Task to run tests for this package."""
 from invoke import task
 
 from .util import PROJECT_DIR, print_and_run
@@ -7,7 +8,7 @@ from .util import PROJECT_DIR, print_and_run
 def lint(ctx):
     """Run flake8 linting."""
     print_and_run(
-        f'flake8 --exclude {PROJECT_DIR}/nt_tiepoint_generation {PROJECT_DIR}'
+        f'flake8 --max-line-length 88 --exclude {PROJECT_DIR}/nt_tiepoint_generation {PROJECT_DIR}'  # noqa
     )
 
 

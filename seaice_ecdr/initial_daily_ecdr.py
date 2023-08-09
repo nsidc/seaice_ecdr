@@ -1,8 +1,8 @@
-"""
-Create the initial daily ECDR file
-Initially based on pm_icecon's "pm_cdr.py" routines
+"""Create the initial daily ECDR file.
 
+Initially based on pm_icecon's 'pm_cdr.py' routines
 """
+
 import datetime as dt
 import sys
 import traceback
@@ -32,10 +32,6 @@ from pm_icecon.util import date_range, standard_output_filename
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
 
 
-def xwm(m="exiting in xwm()"):
-    raise SystemExit(m)
-
-
 def cdr_bootstrap(
     date: dt.date,
     tb_v37: npt.NDArray,
@@ -46,6 +42,7 @@ def cdr_bootstrap(
     bt_tb_mask,
     bt_weather_mask,
 ):
+    """Generate the raw bootstrap concentration field."""
     bt_conc = bt.bootstrap_for_cdr(
         tb_v37=tb_v37,
         tb_h37=tb_h37,
@@ -65,6 +62,7 @@ def cdr_nasateam(
     tb_v19: npt.NDArray,
     nt_tiepoints: NasateamTiePoints,
 ) -> npt.NDArray:
+    """Generate the raw NASA Team concentration field."""
     # Compute the NASA Team conc field
     # Note that concentrations from nasateam may be >100%
     nt_pr_1919 = nt.compute_ratio(tb_v19, tb_h19)
@@ -87,7 +85,7 @@ def get_bt_tb_mask(
     maxtb,
     tb_data_mask_function,
 ):
-
+    """Determine TB mask per Bootstrap algorithm's criteria."""
     bt_tb_mask = tb_data_mask_function(
         tbs=(
             tb_v37,
@@ -106,7 +104,7 @@ def get_bt_tb_mask(
         # assert tb_v37.shape == bt_params.land_mask.shape
         assert tb_v37.shape == bt_tb_mask.shape
     except AssertionError as e:
-        raise ValueError(f"Mismatched shape error in get_bt_tb_mask\n{e}")
+        raise ValueError(f'Mismatched shape error in get_bt_tb_mask\n{e}')
 
     return bt_tb_mask
 
@@ -128,9 +126,7 @@ def calculate_cdr_conc(
     land_flag_value,
 ) -> npt.NDArray:
     """Run the CDR algorithm."""
-
     # First, get bootstrap conc.
-
     bt_tb_mask = get_bt_tb_mask(
         tb_v37=tb_v37,
         tb_h37=tb_h37,
@@ -153,7 +149,7 @@ def calculate_cdr_conc(
         weather_filter_seasons=bt_params.weather_filter_seasons,
     )
 
-    bt_invalid_ice_mask = bt_params.invalid_ice_mask
+    # bt_invalid_ice_mask = bt_params.invalid_ice_mask
 
     bt_conc = cdr_bootstrap(
         date,
@@ -190,8 +186,8 @@ def calculate_cdr_conc(
     nt_weather_mask = nt.get_weather_filter_mask(
         gr_2219=nt_gr_2219,
         gr_3719=nt_gr_3719,
-        gr_2219_threshold=nt_gradient_thresholds["2219"],
-        gr_3719_threshold=nt_gradient_thresholds["3719"],
+        gr_2219_threshold=nt_gradient_thresholds['2219'],
+        gr_3719_threshold=nt_gradient_thresholds['3719'],
     )
     # Apply weather filters and invalid ice masks
     # TODO: can we just use a single invalid ice mask?
@@ -205,10 +201,12 @@ def calculate_cdr_conc(
     cdr_conc[set_to_zero_sic] = 0
 
     # Apply land spillover corrections
-    # TODO: eventually, we want each of these routines to return a e.g., delta
-    #   that can be applied to the input concentration instead of returning a new
-    #   conc. Then we would have a seprate algorithm for choosing how to apply
+    # TODO: eventually, we want each of these routines to return a e.g.,
+    #   delta that can be applied to the input concentration
+    #   instead of returning a new conc. Then we would have a
+    #   seprate algorithm for choosing how to apply
     #   multiple spillover deltas to a given conc field.
+
     # nasateam first:
     cdr_conc = nt.apply_nt_spillover(
         conc=cdr_conc,
@@ -263,11 +261,11 @@ def amsr2_cdr(
     # finally, compute the CDR.
     conc = cdr(
         date=date,
-        tb_h19=spatial_interp_tbs(xr_tbs["h18"].data),
-        tb_v37=spatial_interp_tbs(xr_tbs["v36"].data),
-        tb_h37=spatial_interp_tbs(xr_tbs["h36"].data),
-        tb_v19=spatial_interp_tbs(xr_tbs["v18"].data),
-        tb_v22=spatial_interp_tbs(xr_tbs["v23"].data),
+        tb_h19=spatial_interp_tbs(xr_tbs['h18'].data),
+        tb_v37=spatial_interp_tbs(xr_tbs['v36'].data),
+        tb_h37=spatial_interp_tbs(xr_tbs['h36'].data),
+        tb_v19=spatial_interp_tbs(xr_tbs['v18'].data),
+        tb_v22=spatial_interp_tbs(xr_tbs['v23'].data),
         bt_params=bt_params,
         nt_tiepoints=nt_params.tiepoints,
         nt_gradient_thresholds=nt_params.gradient_thresholds,
@@ -279,7 +277,7 @@ def amsr2_cdr(
         land_flag_value=DEFAULT_FLAG_VALUES.land,
     )
 
-    cdr_conc_ds = xr.Dataset({"conc": (("y", "x"), conc)})
+    cdr_conc_ds = xr.Dataset({'conc': (('y', 'x'), conc)})
 
     return cdr_conc_ds
 
@@ -290,16 +288,19 @@ def compute_initial_daily_ecdr_dataset(
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
 ) -> xr.Dataset:
-    """Create xarray dataset containing the first pass of daily enhanced CDR"""
+    """Create xr dataset containing the first pass of daily enhanced CDR."""
     # Note: at first, this is simply a copy of amsr2_cdr
 
     # Set the gridid
-    if hemisphere == "north" and resolution == "12":
-        gridid = "psn12.5"
-    elif hemisphere == "south" and resolution == "12":
-        gridid = "pss12.5"
+    if hemisphere == 'north' and resolution == '12':
+        gridid = 'psn12.5'
+    elif hemisphere == 'south' and resolution == '12':
+        gridid = 'pss12.5'
     else:
-        xwm(f"Could not determine gridid from:\n" f"{hemisphere} and {resolution}")
+        raise RuntimeError(
+            f'Could not determine gridid from:\n'
+            f'{hemisphere} and {resolution}'
+        )
 
     # Initialize geo-referenced xarray Dataset
     ecdr_conc_ds = get_dataset_for_gridid(gridid, date)
@@ -311,20 +312,22 @@ def compute_initial_daily_ecdr_dataset(
         resolution=resolution,
     )
 
+    """
     bt_params_orig = bt_amsr2_params.get_amsr2_params(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
     )
+    """
 
     bt_params = pmi_bt_params.get_bootstrap_params(
         date=date,
-        satellite="amsr2",
+        satellite='amsr2',
         gridid=gridid,
     )
     bt_fields = pmi_bt_params.get_bootstrap_fields(
         date=date,
-        satellite="amsr2",
+        satellite='amsr2',
         gridid=gridid,
     )
     pmicecon_bt_params = pmi_bt_params.convert_to_pmicecon_bt_params(
@@ -339,11 +342,11 @@ def compute_initial_daily_ecdr_dataset(
     # finally, compute the CDR.
     conc = calculate_cdr_conc(
         date=date,
-        tb_h19=spatial_interp_tbs(xr_tbs["h18"].data),
-        tb_v37=spatial_interp_tbs(xr_tbs["v36"].data),
-        tb_h37=spatial_interp_tbs(xr_tbs["h36"].data),
-        tb_v19=spatial_interp_tbs(xr_tbs["v18"].data),
-        tb_v22=spatial_interp_tbs(xr_tbs["v23"].data),
+        tb_h19=spatial_interp_tbs(xr_tbs['h18'].data),
+        tb_v37=spatial_interp_tbs(xr_tbs['v36'].data),
+        tb_h37=spatial_interp_tbs(xr_tbs['h36'].data),
+        tb_v19=spatial_interp_tbs(xr_tbs['v18'].data),
+        tb_v22=spatial_interp_tbs(xr_tbs['v23'].data),
         bt_params=pmicecon_bt_params,
         nt_tiepoints=nt_params.tiepoints,
         nt_gradient_thresholds=nt_params.gradient_thresholds,
@@ -355,15 +358,15 @@ def compute_initial_daily_ecdr_dataset(
         land_flag_value=DEFAULT_FLAG_VALUES.land,
     )
 
-    ecdr_conc_ds["conc"] = (
-        ("time", "y", "x"),
+    ecdr_conc_ds['conc'] = (
+        ('time', 'y', 'x'),
         np.expand_dims(conc, axis=0),
         {
-            "_FillValue": 255,
-            "grid_mapping": "crs",
+            '_FillValue': 255,
+            'grid_mapping': 'crs',
         },
         {
-            "zlib": True,
+            'zlib': True,
         },
     )
 
@@ -377,8 +380,10 @@ def create_initial_daily_ecdr_netcdf(
     resolution: AU_SI_RESOLUTIONS,
     output_dir: Path,
 ) -> None:
+    """Create netcdf file of ide data set."""
     logger.info(
-        f"Creating initial daily ECDR netCDF file for:\n {date=}, {hemisphere=}, {resolution=}"
+        'Creating initial daily ECDR netCDF file for:\n'
+        f'{date=}, {hemisphere=}, {resolution=}'
     )
 
     # Initialize xr ds container, including georeferencing coords, dimensions
@@ -397,7 +402,8 @@ def make_cdr_netcdf(
     resolution: AU_SI_RESOLUTIONS,
     output_dir: Path,
 ) -> None:
-    logger.info(f"Creating CDR for {date=}, {hemisphere=}, {resolution=}")
+    """Create the cdr netCDF file."""
+    logger.info(f'Creating CDR for {date=}, {hemisphere=}, {resolution=}')
     conc_ds = amsr2_cdr(
         date=date,
         hemisphere=hemisphere,
@@ -407,16 +413,16 @@ def make_cdr_netcdf(
     output_fn = standard_output_filename(
         hemisphere=hemisphere,
         date=date,
-        sat="u2",
-        algorithm="cdr",
-        resolution=f"{resolution}km",
+        sat='u2',
+        algorithm='cdr',
+        resolution=f'{resolution}km',
     )
     output_path = output_dir / output_fn
     conc_ds.to_netcdf(
         output_path,
-        encoding={"conc": {"zlib": True}},
+        encoding={'conc': {'zlib': True}},
     )
-    logger.info(f"Wrote AMSR2 CDR concentration field: {output_path}")
+    logger.info(f'Wrote AMSR2 CDR concentration field: {output_path}')
 
 
 def create_cdr_for_date_range(
@@ -427,6 +433,7 @@ def create_cdr_for_date_range(
     resolution: AU_SI_RESOLUTIONS,
     output_dir: Path,
 ) -> None:
+    """Generate the initial daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
         try:
             make_cdr_netcdf(
@@ -437,39 +444,40 @@ def create_cdr_for_date_range(
             )
         except Exception:
             logger.error(
-                f"Failed to create NetCDF for {hemisphere=}, {date=}, {resolution=}."
+                'Failed to create NetCDF for '
+                f'{hemisphere=}, {date=}, {resolution=}.'
             )
             err_filename = standard_output_filename(
                 hemisphere=hemisphere,
                 date=date,
-                sat="u2",
-                algorithm="cdr",
-                resolution=f"{resolution}km",
+                sat='u2',
+                algorithm='cdr',
+                resolution=f'{resolution}km',
             )
-            err_filename += ".error"
-            logger.info(f"Writing error info to {err_filename}")
-            with open(output_dir / err_filename, "w") as f:
+            err_filename += '.error'
+            logger.info(f'Writing error info to {err_filename}')
+            with open(output_dir / err_filename, 'w') as f:
                 traceback.print_exc(file=f)
                 traceback.print_exc(file=sys.stdout)
 
 
-@click.command(name="idecdr")
+@click.command(name='idecdr')
 @click.option(
-    "-d",
-    "--date",
+    '-d',
+    '--date',
     required=True,
-    type=click.DateTime(formats=("%Y-%m-%d",)),
+    type=click.DateTime(formats=('%Y-%m-%d',)),
     callback=datetime_to_date,
 )
 @click.option(
-    "-h",
-    "--hemisphere",
+    '-h',
+    '--hemisphere',
     required=True,
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "-o",
-    "--output-dir",
+    '-o',
+    '--output-dir',
     required=True,
     type=click.Path(
         exists=True,
@@ -481,8 +489,8 @@ def create_cdr_for_date_range(
     ),
 )
 @click.option(
-    "-r",
-    "--resolution",
+    '-r',
+    '--resolution',
     required=True,
     type=click.Choice(get_args(AU_SI_RESOLUTIONS)),
 )
@@ -504,25 +512,29 @@ def cli(
 
 
 def parse_cmdline_iedcdr_params():
+    """extract info from command line call of initial_daily_ecdr.py."""
     import sys
 
-    print(f"cmdline args: {sys.argv}")
-    xwm("in parse_cmdline_iedcdr_params")
+    print(f'cmdline args: {sys.argv}')
+    raise RuntimeError('in parse_cmdline_iedcdr_params')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     # vvvv MODIFY THESE PARAMETERS AS NEEDED vvvv
-    start_date, end_date, gridid, tb_source, output_dir = parse_cmdline_iedcdr_params()
+    start_date, end_date, gridid, tb_source, output_dir = \
+        parse_cmdline_iedcdr_params()
+
     create_idecdr_for_date_range(
-        start_date=date,
-        end_date=date,
+        start_date=start_date,
+        end_date=end_date,
         gridid=gridid,
         tb_source=tb_source,
         output_dir=output_dir,
     )
     start_date = dt.date(2012, 7, 2)
     end_date = dt.date(2021, 2, 11)
-    resolution: ECDR_ = "12"
+    # resolution: ECDR_ = '12'
+    resolution = '12'
     output_dir = CDR_DATA_DIR
     # ^^^^ MODIFY THESE PARAMETERS AS NEEDED ^^^^
     for hemisphere in get_args(Hemisphere):

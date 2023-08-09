@@ -1,3 +1,4 @@
+"""util.py  cli routines common to seaice_ecdr."""
 import datetime as dt
 
 
