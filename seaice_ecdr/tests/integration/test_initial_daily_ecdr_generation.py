@@ -17,8 +17,9 @@ from numpy.testing import assert_almost_equal, assert_equal
 from numpy.typing import NDArray
 from pm_icecon.cdr import amsr2_cdr as pmi_amsr2_cdr
 
-from seaice_ecdr.initial_daily_ecdr import \
-    compute_initial_daily_ecdr_dataset as compute_idecdr_ds
+from seaice_ecdr.initial_daily_ecdr import (
+    compute_initial_daily_ecdr_dataset as compute_idecdr_ds,
+)
 
 # Set the default minimum log notification to Warning
 logger.remove(0)  # Removes previous logger info
@@ -58,25 +59,30 @@ def sample_idecdr_dataset():
 
 
 def test_testing_initial_daily_ecdr_generation():
-    """ Test that this integration test is being performed """
+    """Test that this integration test is being performed"""
     assert True
 
 
 def test_pmicecon_fixture(sample_pmicecon_dataset):
-    """ Test that pm_icecon yields a 'conc' field """
+    """Test that pm_icecon yields a 'conc' field"""
     assert type(sample_pmicecon_dataset) == type(xr.Dataset())
 
 
 def test_pmicecon_conc_generation(sample_pmicecon_dataset):
-    """ Test that pm_icecon yields a 'conc' field """
-    #pmicecon_conc_ds = sample_pmicecon_dataset
+    """Test that pm_icecon yields a 'conc' field"""
+    # pmicecon_conc_ds = sample_pmicecon_dataset
 
     pmicecon_conc_varname = 'conc'
-    assert type(sample_pmicecon_dataset.variables[pmicecon_conc_varname]) == xr.core.variable.Variable
+    assert (
+        type(sample_pmicecon_dataset.variables[pmicecon_conc_varname])
+        == xr.core.variable.Variable
+    )
 
 
-def test_seaice_idecdr_and_pmicecon_conc_identical(sample_pmicecon_dataset, sample_idecdr_dataset):
-    """ Test that pm_icecon yields a 'conc' field """
+def test_seaice_idecdr_and_pmicecon_conc_identical(
+    sample_pmicecon_dataset, sample_idecdr_dataset
+):
+    """Test that pm_icecon yields a 'conc' field"""
 
     pmicecon_conc_ds = sample_pmicecon_dataset
     pmi_conc_field = np.array(pmicecon_conc_ds.variables['conc'])

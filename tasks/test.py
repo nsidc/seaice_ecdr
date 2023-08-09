@@ -27,7 +27,7 @@ def typecheck(ctx):
 def formatcheck(ctx):
     """Check that the code conforms to formatting standards."""
     print_and_run(f'isort --check-only {PROJECT_DIR}')
-    print_and_run(f'black --check {PROJECT_DIR}')
+    print_and_run(f'black -S --check {PROJECT_DIR}')
 
     print('🎉🙈 Format check passed.')
 

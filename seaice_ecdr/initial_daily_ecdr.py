@@ -299,8 +299,7 @@ def compute_initial_daily_ecdr_dataset(
     elif hemisphere == 'south' and resolution == '12':
         gridid = 'pss12.5'
     else:
-        xwm(f'Could not determine gridid from:\n'
-            f'{hemisphere} and {resolution}')
+        xwm(f'Could not determine gridid from:\n' f'{hemisphere} and {resolution}')
 
     # Initialize geo-referenced xarray Dataset
     ecdr_conc_ds = get_dataset_for_gridid(gridid, date)
@@ -329,7 +328,8 @@ def compute_initial_daily_ecdr_dataset(
         gridid=gridid,
     )
     pmicecon_bt_params = pmi_bt_params.convert_to_pmicecon_bt_params(
-            hemisphere, bt_params, bt_fields)
+        hemisphere, bt_params, bt_fields
+    )
 
     nt_params = nt_amsr2_params.get_amsr2_params(
         hemisphere=hemisphere,
@@ -362,7 +362,9 @@ def compute_initial_daily_ecdr_dataset(
             '_FillValue': 255,
             'grid_mapping': 'crs',
         },
-        {'zlib': True,},
+        {
+            'zlib': True,
+        },
     )
 
     return ecdr_conc_ds
@@ -375,7 +377,9 @@ def create_initial_daily_ecdr_netcdf(
     resolution: AU_SI_RESOLUTIONS,
     output_dir: Path,
 ) -> None:
-    logger.info(f'Creating initial daily ECDR netCDF file for:\n {date=}, {hemisphere=}, {resolution=}')
+    logger.info(
+        f'Creating initial daily ECDR netCDF file for:\n {date=}, {hemisphere=}, {resolution=}'
+    )
 
     # Initialize xr ds container, including georeferencing coords, dimensions
     # Compute raw bt_conc dataarray
@@ -501,14 +505,14 @@ def cli(
 
 def parse_cmdline_iedcdr_params():
     import sys
+
     print(f'cmdline args: {sys.argv}')
     xwm('in parse_cmdline_iedcdr_params')
 
 
 if __name__ == '__main__':
     # vvvv MODIFY THESE PARAMETERS AS NEEDED vvvv
-    start_date, end_date, gridid, tb_source, output_dir = \
-        parse_cmdline_iedcdr_params()
+    start_date, end_date, gridid, tb_source, output_dir = parse_cmdline_iedcdr_params()
     create_idecdr_for_date_range(
         start_date=date,
         end_date=date,
