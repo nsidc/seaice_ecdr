@@ -19,6 +19,7 @@ import pm_icecon.nt.compute_nt_ic as nt
 import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import xarray as xr
 from loguru import logger
+from pm_cdr import cdr
 from pm_icecon._types import Hemisphere
 from pm_icecon.cli.util import datetime_to_date
 from pm_icecon.config.models.bt import BootstrapParams
@@ -298,8 +299,7 @@ def compute_initial_daily_ecdr_dataset(
         gridid = 'pss12.5'
     else:
         raise RuntimeError(
-            f'Could not determine gridid from:\n'
-            f'{hemisphere} and {resolution}'
+            f'Could not determine gridid from:\n' f'{hemisphere} and {resolution}'
         )
 
     # Initialize geo-referenced xarray Dataset
@@ -425,7 +425,7 @@ def make_cdr_netcdf(
     logger.info(f'Wrote AMSR2 CDR concentration field: {output_path}')
 
 
-def create_cdr_for_date_range(
+def create_idecdr_for_date_range(
     *,
     hemisphere: Hemisphere,
     start_date: dt.date,
@@ -444,8 +444,7 @@ def create_cdr_for_date_range(
             )
         except Exception:
             logger.error(
-                'Failed to create NetCDF for '
-                f'{hemisphere=}, {date=}, {resolution=}.'
+                'Failed to create NetCDF for ' f'{hemisphere=}, {date=}, {resolution=}.'
             )
             err_filename = standard_output_filename(
                 hemisphere=hemisphere,
@@ -512,7 +511,7 @@ def cli(
 
 
 def parse_cmdline_iedcdr_params():
-    """extract info from command line call of initial_daily_ecdr.py."""
+    """Extract info from command line call of initial_daily_ecdr.py."""
     import sys
 
     print(f'cmdline args: {sys.argv}')
@@ -521,8 +520,7 @@ def parse_cmdline_iedcdr_params():
 
 if __name__ == '__main__':
     # vvvv MODIFY THESE PARAMETERS AS NEEDED vvvv
-    start_date, end_date, gridid, tb_source, output_dir = \
-        parse_cmdline_iedcdr_params()
+    start_date, end_date, gridid, tb_source, output_dir = parse_cmdline_iedcdr_params()
 
     create_idecdr_for_date_range(
         start_date=start_date,
@@ -538,7 +536,7 @@ if __name__ == '__main__':
     output_dir = CDR_DATA_DIR
     # ^^^^ MODIFY THESE PARAMETERS AS NEEDED ^^^^
     for hemisphere in get_args(Hemisphere):
-        create_cdr_for_date_range(
+        create_idecdr_for_date_range(
             start_date=start_date,
             end_date=end_date,
             hemisphere=hemisphere,

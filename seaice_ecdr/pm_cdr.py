@@ -256,8 +256,7 @@ def create_cdr_for_date_range(
             )
         except Exception:
             logger.error(
-                'Failed to create NetCDF for'
-                f'{hemisphere=}, {date=}, {resolution=}.'
+                'Failed to create NetCDF for' f'{hemisphere=}, {date=}, {resolution=}.'
             )
             err_filename = standard_output_filename(
                 hemisphere=hemisphere,

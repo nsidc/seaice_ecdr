@@ -136,7 +136,9 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
         crs_attrs[
             'crs_wkt'
         ] = 'PROJCS["unnamed",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9108"]],AUTHORITY["EPSG","4326"]],PROJECTION["Cylindrical_Equal_Area"],PARAMETER["standard_parallel_1",30],PARAMETER["central_meridian",0],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["Meter",1],AUTHORITY["epsg","6933"]]'  # noqa
-        crs_attrs['GeoTransform'] = '-17367530.44 {res_tkm} 0 6756820.2 0 -{res_tkm}'  # noqa
+        crs_attrs[
+            'GeoTransform'
+        ] = '-17367530.44 {res_tkm} 0 6756820.2 0 -{res_tkm}'  # noqa
 
     elif gridid[:2] == 'e2':
         xleft = -9000000.0
@@ -337,8 +339,7 @@ if __name__ == '__main__':
         # Generate random data
         # field = np.random.randn(1, ydim, xdim)
         field = np.zeros((1, ydim, xdim))
-        yvals, xvals = \
-            np.meshgrid(ds.variables['x'].data, ds.variables['y'].data)
+        yvals, xvals = np.meshgrid(ds.variables['x'].data, ds.variables['y'].data)
         field[0, :, :] = xvals[:, :] + yvals[:, :]
 
         ds['sample_field'] = (
