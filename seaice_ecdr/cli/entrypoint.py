@@ -18,7 +18,7 @@ cli.add_command(cdr_cli)
 cli.add_command(ecdr_cli)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from pm_icecon.cli.entrypoint import cli
 
     # from seaice_ecdr.cli.entrypoint import cli_ecdr

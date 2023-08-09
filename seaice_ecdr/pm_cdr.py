@@ -109,8 +109,8 @@ def cdr(
     nt_weather_mask = nt.get_weather_filter_mask(
         gr_2219=nt_gr_2219,
         gr_3719=nt_gr_3719,
-        gr_2219_threshold=nt_gradient_thresholds['2219'],
-        gr_3719_threshold=nt_gradient_thresholds['3719'],
+        gr_2219_threshold=nt_gradient_thresholds["2219"],
+        gr_3719_threshold=nt_gradient_thresholds["3719"],
     )
     # Apply weather filters and invalid ice masks
     # TODO: can we just use a single invalid ice mask?
@@ -182,11 +182,11 @@ def amsr2_cdr(
     # finally, compute the CDR.
     conc = cdr(
         date=date,
-        tb_h19=spatial_interp_tbs(xr_tbs['h18'].data),
-        tb_v37=spatial_interp_tbs(xr_tbs['v36'].data),
-        tb_h37=spatial_interp_tbs(xr_tbs['h36'].data),
-        tb_v19=spatial_interp_tbs(xr_tbs['v18'].data),
-        tb_v22=spatial_interp_tbs(xr_tbs['v23'].data),
+        tb_h19=spatial_interp_tbs(xr_tbs["h18"].data),
+        tb_v37=spatial_interp_tbs(xr_tbs["v36"].data),
+        tb_h37=spatial_interp_tbs(xr_tbs["h36"].data),
+        tb_v19=spatial_interp_tbs(xr_tbs["v18"].data),
+        tb_v22=spatial_interp_tbs(xr_tbs["v23"].data),
         bt_params=bt_params,
         nt_tiepoints=nt_params.tiepoints,
         nt_gradient_thresholds=nt_params.gradient_thresholds,
@@ -198,7 +198,7 @@ def amsr2_cdr(
         land_flag_value=DEFAULT_FLAG_VALUES.land,
     )
 
-    cdr_conc_ds = xr.Dataset({'conc': (('y', 'x'), conc)})
+    cdr_conc_ds = xr.Dataset({"conc": (("y", "x"), conc)})
 
     return cdr_conc_ds
 
@@ -210,7 +210,7 @@ def make_cdr_netcdf(
     resolution: AU_SI_RESOLUTIONS,
     output_dir: Path,
 ) -> None:
-    logger.info(f'Creating CDR for {date=}, {hemisphere=}, {resolution=}')
+    logger.info(f"Creating CDR for {date=}, {hemisphere=}, {resolution=}")
     conc_ds = amsr2_cdr(
         date=date,
         hemisphere=hemisphere,
@@ -220,16 +220,16 @@ def make_cdr_netcdf(
     output_fn = standard_output_filename(
         hemisphere=hemisphere,
         date=date,
-        sat='u2',
-        algorithm='cdr',
-        resolution=f'{resolution}km',
+        sat="u2",
+        algorithm="cdr",
+        resolution=f"{resolution}km",
     )
     output_path = output_dir / output_fn
     conc_ds.to_netcdf(
         output_path,
-        encoding={'conc': {'zlib': True}},
+        encoding={"conc": {"zlib": True}},
     )
-    logger.info(f'Wrote AMSR2 CDR concentration field: {output_path}')
+    logger.info(f"Wrote AMSR2 CDR concentration field: {output_path}")
 
 
 def create_cdr_for_date_range(
@@ -250,39 +250,39 @@ def create_cdr_for_date_range(
             )
         except Exception:
             logger.error(
-                f'Failed to create NetCDF for {hemisphere=}, {date=}, {resolution=}.'
+                f"Failed to create NetCDF for {hemisphere=}, {date=}, {resolution=}."
             )
             err_filename = standard_output_filename(
                 hemisphere=hemisphere,
                 date=date,
-                sat='u2',
-                algorithm='cdr',
-                resolution=f'{resolution}km',
+                sat="u2",
+                algorithm="cdr",
+                resolution=f"{resolution}km",
             )
-            err_filename += '.error'
-            logger.info(f'Writing error info to {err_filename}')
-            with open(output_dir / err_filename, 'w') as f:
+            err_filename += ".error"
+            logger.info(f"Writing error info to {err_filename}")
+            with open(output_dir / err_filename, "w") as f:
                 traceback.print_exc(file=f)
                 traceback.print_exc(file=sys.stdout)
 
 
-@click.command(name='cdr')
+@click.command(name="cdr")
 @click.option(
-    '-d',
-    '--date',
+    "-d",
+    "--date",
     required=True,
-    type=click.DateTime(formats=('%Y-%m-%d',)),
+    type=click.DateTime(formats=("%Y-%m-%d",)),
     callback=datetime_to_date,
 )
 @click.option(
-    '-h',
-    '--hemisphere',
+    "-h",
+    "--hemisphere",
     required=True,
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    '-o',
-    '--output-dir',
+    "-o",
+    "--output-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -294,8 +294,8 @@ def create_cdr_for_date_range(
     ),
 )
 @click.option(
-    '-r',
-    '--resolution',
+    "-r",
+    "--resolution",
     required=True,
     type=click.Choice(get_args(AU_SI_RESOLUTIONS)),
 )
@@ -316,11 +316,11 @@ def cli(
     )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # vvvv MODIFY THESE PARAMETERS AS NEEDED vvvv
     start_date = dt.date(2012, 7, 2)
     end_date = dt.date(2021, 2, 11)
-    resolution: AU_SI_RESOLUTIONS = '12'
+    resolution: AU_SI_RESOLUTIONS = "12"
     output_dir = CDR_DATA_DIR
     # ^^^^ MODIFY THESE PARAMETERS AS NEEDED ^^^^
     for hemisphere in get_args(Hemisphere):
