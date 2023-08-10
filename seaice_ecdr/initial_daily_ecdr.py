@@ -124,7 +124,6 @@ def calculate_cdr_conc(
     nt_minic: npt.NDArray,
     nt_shoremap: npt.NDArray,
     missing_flag_value,
-    land_flag_value,
 ) -> npt.NDArray:
     """Run the CDR algorithm."""
     # First, get bootstrap conc.
@@ -275,7 +274,6 @@ def amsr2_cdr(
         nt_minic=nt_params.minic,
         nt_shoremap=nt_params.shoremap,
         missing_flag_value=DEFAULT_FLAG_VALUES.missing,
-        land_flag_value=DEFAULT_FLAG_VALUES.land,
     )
 
     cdr_conc_ds = xr.Dataset({'conc': (('y', 'x'), conc)})
@@ -355,7 +353,6 @@ def compute_initial_daily_ecdr_dataset(
         nt_minic=nt_params.minic,
         nt_shoremap=nt_params.shoremap,
         missing_flag_value=DEFAULT_FLAG_VALUES.missing,
-        land_flag_value=DEFAULT_FLAG_VALUES.land,
     )
 
     ecdr_conc_ds['conc'] = (
@@ -373,6 +370,7 @@ def compute_initial_daily_ecdr_dataset(
     return ecdr_conc_ds
 
 
+''' This is the code we are working on...
 def create_initial_daily_ecdr_netcdf(
     *,
     date: dt.date,
@@ -393,6 +391,7 @@ def create_initial_daily_ecdr_netcdf(
     # Add appropriate global metadata
     # Determine output filename
     # Return output filename
+'''
 
 
 def make_cdr_netcdf(

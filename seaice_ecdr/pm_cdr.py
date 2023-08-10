@@ -54,7 +54,6 @@ def cdr(
     nt_minic: npt.NDArray,
     nt_shoremap: npt.NDArray,
     missing_flag_value,
-    land_flag_value,
 ) -> npt.NDArray:
     """Run the CDR algorithm."""
     # First, get bootstrap conc.
