@@ -68,7 +68,7 @@ def test_testing_initial_daily_ecdr_generation():
 def test_pmicecon_fixture(sample_pmicecon_dataset):
     """Test that pm_icecon yields a 'conc' field."""
     # assert type(sample_pmicecon_dataset) == type(xr.Dataset())
-    assert isinstance(sample_pmicecon_dataset, xr.Dataset())
+    assert isinstance(sample_pmicecon_dataset, type(xr.Dataset()))
 
 
 def test_pmicecon_conc_generation(sample_pmicecon_dataset):
@@ -95,7 +95,12 @@ def test_seaice_idecdr_and_pmicecon_conc_identical(
     # We know that the original conc field has zeros where TBs were not
     # available, so only check where idecdr is not nan
     indexes_to_check = ~np.isnan(ide_conc_field)
-    assert_equal(
-        pmi_conc_field[indexes_to_check],
-        ide_conc_field[indexes_to_check],
-    )
+    try:
+        assert_equal(
+            pmi_conc_field[indexes_to_check],
+            ide_conc_field[indexes_to_check],
+        )
+    except AssertionError as e:
+        pmi_conc_field.tofile('pmi_conc_field.dat')
+        ide_conc_field.tofile('ide_conc_field.dat')
+        raise e

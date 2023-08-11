@@ -19,7 +19,7 @@ import pm_icecon.nt.compute_nt_ic as nt
 import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import xarray as xr
 from loguru import logger
-from pm_cdr import cdr
+from seaice_ecdr.pm_cdr import cdr
 from pm_icecon._types import Hemisphere
 from pm_icecon.cli.util import datetime_to_date
 from pm_icecon.config.models.bt import BootstrapParams

@@ -55,8 +55,8 @@ def test_seaice_idecdr_is_Dataset(
     """Test that pm_icecon yields a 'conc' field."""
     # assert type(sample_idecdr_dataset_nh) == type(xr.Dataset())
     # assert type(sample_idecdr_dataset_sh) == type(xr.Dataset())
-    assert isinstance(sample_idecdr_dataset_nh, xr.Dataset())
-    assert isinstance(sample_idecdr_dataset_sh, xr.Dataset())
+    assert isinstance(sample_idecdr_dataset_nh, type(xr.Dataset()))
+    assert isinstance(sample_idecdr_dataset_sh, type(xr.Dataset()))
 
 
 def test_seaice_idecdr_has_crs(
