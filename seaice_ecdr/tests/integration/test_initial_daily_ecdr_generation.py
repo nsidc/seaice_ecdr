@@ -95,12 +95,7 @@ def test_seaice_idecdr_and_pmicecon_conc_identical(
     # We know that the original conc field has zeros where TBs were not
     # available, so only check where idecdr is not nan
     indexes_to_check = ~np.isnan(ide_conc_field)
-    try:
-        assert_equal(
-            pmi_conc_field[indexes_to_check],
-            ide_conc_field[indexes_to_check],
-        )
-    except AssertionError as e:
-        pmi_conc_field.tofile('pmi_conc_field.dat')
-        ide_conc_field.tofile('ide_conc_field.dat')
-        raise e
+    assert_equal(
+        pmi_conc_field[indexes_to_check],
+        ide_conc_field[indexes_to_check],
+    )
