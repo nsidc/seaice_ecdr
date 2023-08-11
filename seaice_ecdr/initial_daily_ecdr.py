@@ -40,6 +40,10 @@ from pm_icecon.util import date_range, standard_output_filename
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
 
 
+def xwm(m='exiting in xwm()'):
+    raise SystemExit(m)
+
+
 def cdr_bootstrap(
     date: dt.date,
     tb_v37: npt.NDArray,
@@ -286,53 +290,6 @@ def calculate_cdr_conc(
     return cdr_conc
 
 
-def amsr2_cdr(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
-) -> xr.Dataset:
-    """Create a CDR-like concentration field from AMSR2 data."""
-    # Get AMSR2 TBs
-    xr_tbs = get_au_si_tbs(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-    bt_params = bt_amsr2_params.get_amsr2_params(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-
-    nt_params = nt_amsr2_params.get_amsr2_params(
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-
-    # finally, compute the CDR.
-    conc = cdr(
-        date=date,
-        tb_h19=spatial_interp_tbs(xr_tbs['h18'].data),
-        tb_v37=spatial_interp_tbs(xr_tbs['v36'].data),
-        tb_h37=spatial_interp_tbs(xr_tbs['h36'].data),
-        tb_v19=spatial_interp_tbs(xr_tbs['v18'].data),
-        tb_v22=spatial_interp_tbs(xr_tbs['v23'].data),
-        bt_params=bt_params,
-        nt_tiepoints=nt_params.tiepoints,
-        nt_gradient_thresholds=nt_params.gradient_thresholds,
-        # TODO: this is the same as the bootstrap mask!
-        nt_invalid_ice_mask=bt_params.invalid_ice_mask,
-        nt_minic=nt_params.minic,
-        nt_shoremap=nt_params.shoremap,
-        missing_flag_value=DEFAULT_FLAG_VALUES.missing,
-    )
-
-    cdr_conc_ds = xr.Dataset({'conc': (('y', 'x'), conc)})
-
-    return cdr_conc_ds
-
-
 def compute_initial_daily_ecdr_dataset(
     *,
     date: dt.date,
@@ -353,14 +310,88 @@ def compute_initial_daily_ecdr_dataset(
         )
 
     # Initialize geo-referenced xarray Dataset
-    ecdr_conc_ds = get_dataset_for_gridid(gridid, date)
+    ecdr_ide_ds = get_dataset_for_gridid(gridid, date)
 
-    # Get AMSR2 TBs
+    # Set initial global attributes
+    ecdr_ide_ds.attrs['description'] = 'Initial daily cdr conc file'
+
+    file_date = \
+        dt.date(1970, 1, 1) \
+        + dt.timedelta(days=int(ecdr_ide_ds.variables["time"].data))
+    ecdr_ide_ds.attrs['time_coverage_start'] = \
+        str(dt.datetime(file_date.year, file_date.month, file_date.day, 0, 0, 0))
+    ecdr_ide_ds.attrs['time_coverage_end'] = \
+        str(dt.datetime(file_date.year, file_date.month, file_date.day, 23, 59, 59))
+
+    # Get AU_SI TBs
     xr_tbs = get_au_si_tbs(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
     )
+
+    # Move TBs to ecdr_ds
+    for tbname in ('h18', 'v18', 'v23', 'h36', 'v36'):
+        tb_varname = f'{tbname}_day'
+        tbdata = xr_tbs.variables[tbname].data
+        freq = tbname[1:]
+        pol = tbname[:1]
+        tb_longname = f'Daily TB {freq}{pol} from AU_SI{resolution}'
+        tb_units = 'K'
+        ecdr_ide_ds[tb_varname] = (
+            ('y', 'x'),
+            tbdata,
+            {
+                '_FillValue': 0,
+                'grid_mapping': 'crs',
+                'standard_name': 'brightness_temperature',
+                'long_name': tb_longname,
+                'units': tb_units,
+                'valid_range': [np.float64(10.0), np.float64(350.0)],
+            },
+            {
+                'zlib': True,
+            },
+        )
+
+    # Spatially interpolate the brightness temperatures
+    for tbname in ('h18', 'v18', 'v23', 'h36', 'v36'):
+        tb_day_name = f'{tbname}_day'
+        tb_si_varname = f'{tb_day_name}_si'
+        tb_si_data = spatial_interp_tbs(ecdr_ide_ds[tb_day_name].data)
+        freq = tbname[1:]
+        pol = tbname[:1]
+        tb_si_longname = f'Spatially interpolated {ecdr_ide_ds[tb_day_name].long_name}'
+        tb_units = 'K'
+        ecdr_ide_ds[tb_si_varname] = (
+            ('y', 'x'),
+            tb_si_data,
+            {
+                '_FillValue': 0,
+                'grid_mapping': 'crs',
+                'standard_name': 'brightness_temperature',
+                'long_name': tb_si_longname,
+                'units': tb_units,
+                'valid_range': [np.float64(10.0), np.float64(350.0)],
+            },
+            {
+                'zlib': True,
+            },
+        )
+
+    """
+    print(f'xr_tbs:\n{xr_tbs}')
+    h18 = xr_tbs.variables["h18"]
+    print(f'h18: {h18}')
+    print(f'h18.min(): {h18.data.min()}')
+    h18.data.tofile('h18.dat')
+    print(f'Wrote: h18.dat')
+    raise xwm('Printed xr_tbs...')
+    """
+    xr_tbs = None
+    
+
+    # Generate spatially_interpolated TB fields
 
     bt_params = pmi_bt_params.get_bootstrap_params(
         date=date,
@@ -385,11 +416,11 @@ def compute_initial_daily_ecdr_dataset(
     # finally, compute the CDR.
     conc = calculate_cdr_conc(
         date=date,
-        tb_h19=spatial_interp_tbs(xr_tbs['h18'].data),
-        tb_v37=spatial_interp_tbs(xr_tbs['v36'].data),
-        tb_h37=spatial_interp_tbs(xr_tbs['h36'].data),
-        tb_v19=spatial_interp_tbs(xr_tbs['v18'].data),
-        tb_v22=spatial_interp_tbs(xr_tbs['v23'].data),
+        tb_h19=ecdr_ide_ds['h18_day_si'].data,
+        tb_v37=ecdr_ide_ds['v36_day_si'].data,
+        tb_h37=ecdr_ide_ds['h36_day_si'].data,
+        tb_v19=ecdr_ide_ds['v18_day_si'].data,
+        tb_v22=ecdr_ide_ds['v23_day_si'].data,
         bt_params=pmicecon_bt_params,
         nt_tiepoints=nt_params.tiepoints,
         nt_gradient_thresholds=nt_params.gradient_thresholds,
@@ -400,19 +431,21 @@ def compute_initial_daily_ecdr_dataset(
         missing_flag_value=DEFAULT_FLAG_VALUES.missing,
     )
 
-    ecdr_conc_ds['conc'] = (
+    ecdr_ide_ds['conc'] = (
         ('time', 'y', 'x'),
         np.expand_dims(conc, axis=0),
         {
             '_FillValue': 255,
             'grid_mapping': 'crs',
+            'standard_name': 'sea_ice_area_fraction',
+            'long_name': 'Sea ice concentration',
         },
         {
             'zlib': True,
         },
     )
 
-    return ecdr_conc_ds
+    return ecdr_ide_ds
 
 
 ''' This is the code we are working on...
