@@ -98,14 +98,25 @@ def cdr_bootstrap(
         ad_line_offset=ad_line_offset,
     )
 
+    wtp_37v, wtp_37h = wtp_set_37v37h
+    wtp_19v = wtp_set_37v19v[1]
+    itp_37v, itp_37h = bt_params.vh37_params.ice_tie_point_set
+    itp_19v = bt_params.v1937_params.ice_tie_point_set[1]
+
     bt_conc = bt.calc_bootstrap_conc(
         tb_v37=tb_v37,
         tb_h37=tb_h37,
         tb_v19=tb_v19,
-        wtp_set_37v37h=wtp_set_37v37h,
-        wtp_set_37v19v=wtp_set_37v19v,
-        itp_set_37v37h=bt_params.vh37_params.ice_tie_point_set,
-        itp_set_37v19v=bt_params.v1937_params.ice_tie_point_set,
+        #wtp_set_37v37h=wtp_set_37v37h,
+        #wtp_set_37v19v=wtp_set_37v19v,
+        #itp_set_37v37h=bt_params.vh37_params.ice_tie_point_set,
+        #itp_set_37v19v=bt_params.v1937_params.ice_tie_point_set,
+        wtp_37v=wtp_37v,
+        wtp_37h=wtp_37h,
+        wtp_19v=wtp_19v,
+        itp_37v=itp_37v,
+        itp_37h=itp_37h,
+        itp_19v=itp_19v,
         line_37v37h=line_37v37h,
         line_37v19v=line_37v19v,
         ad_line_offset=ad_line_offset,
