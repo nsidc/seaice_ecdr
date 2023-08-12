@@ -55,6 +55,66 @@ def cdr_bootstrap(
     bt_weather_mask,
 ):
     """Generate the raw bootstrap concentration field."""
+    # Prepare the Bootstrap coefficients...
+    line_37v37h = bt.get_linfit(
+        land_mask=bt_params.land_mask,
+        tb_mask=bt_tb_mask,
+        tbx=tb_v37,
+        tby=tb_h37,
+        lnline=bt_params.vh37_params.lnline,
+        add=bt_params.add1,
+        weather_mask=bt_weather_mask,
+    )
+
+    wtp_set_37v37h = bt.get_water_tiepoint_set(
+        wtp_set_default=bt_params.vh37_params.water_tie_point_set,
+        weather_mask=bt_weather_mask,
+        tbx=tb_v37,
+        tby=tb_h37,
+    )
+
+    wtp_set_37v19v = bt.get_water_tiepoint_set(
+        wtp_set_default=bt_params.v1937_params.water_tie_point_set,
+        weather_mask=bt_weather_mask,
+        tbx=tb_v37,
+        tby=tb_v19,
+    )
+
+    ad_line_offset = bt.get_adj_ad_line_offset(
+        wtp_set=wtp_set_37v37h,
+        line_37v37h=line_37v37h,
+    )
+
+    line_37v19v = bt.get_linfit(
+        land_mask=bt_params.land_mask,
+        tb_mask=bt_tb_mask,
+        tbx=tb_v37,
+        tby=tb_v19,
+        lnline=bt_params.v1937_params.lnline,
+        add=bt_params.add2,
+        weather_mask=bt_weather_mask,
+        tba=tb_h37,
+        iceline=line_37v37h,
+        ad_line_offset=ad_line_offset,
+    )
+
+    bt_conc = bt.calc_bootstrap_conc(
+        tb_v37=tb_v37,
+        tb_h37=tb_h37,
+        tb_v19=tb_v19,
+        wtp_set_37v37h=wtp_set_37v37h,
+        wtp_set_37v19v=wtp_set_37v19v,
+        itp_set_37v37h=bt_params.vh37_params.ice_tie_point_set,
+        itp_set_37v19v=bt_params.v1937_params.ice_tie_point_set,
+        line_37v37h=line_37v37h,
+        line_37v19v=line_37v19v,
+        ad_line_offset=ad_line_offset,
+        maxic_frac=bt_params.maxic,
+        missing_flag_value=DEFAULT_FLAG_VALUES.missing,
+    )
+
+
+    """ original
     bt_conc = bt.bootstrap_for_cdr(
         tb_v37=tb_v37,
         tb_h37=tb_h37,
@@ -63,6 +123,7 @@ def cdr_bootstrap(
         tb_mask=bt_tb_mask,
         weather_mask=bt_weather_mask,
     )
+    """
 
     return bt_conc
 
@@ -379,25 +440,16 @@ def compute_initial_daily_ecdr_dataset(
             },
         )
 
-    """
-    print(f'xr_tbs:\n{xr_tbs}')
-    h18 = xr_tbs.variables["h18"]
-    print(f'h18: {h18}')
-    print(f'h18.min(): {h18.data.min()}')
-    h18.data.tofile('h18.dat')
-    print(f'Wrote: h18.dat')
-    raise xwm('Printed xr_tbs...')
-    """
-    xr_tbs = None
-    
-
-    # Generate spatially_interpolated TB fields
-
     bt_params = pmi_bt_params.get_bootstrap_params(
         date=date,
         satellite='amsr2',
         gridid=gridid,
     )
+    print(f'bt_params:\n{bt_params}')
+    print(f'bt_params type:\n{type(bt_params)}')
+    for key in bt_params.keys():
+        print(f'bt_param {key}: {bt_params[key]}')
+    # xwm()
 
     bt_fields = pmi_bt_params.get_bootstrap_fields(
         date=date,
