@@ -50,9 +50,6 @@ def cdr_bootstrap(
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
     tb_v22: npt.NDArray,
-    #bt_params: BootstrapParams,
-    bt_tb_mask,
-    bt_weather_mask,
     bt_coefs,
     bt_fields,
 ):
@@ -131,7 +128,6 @@ def get_bt_tb_mask(
         assert tb_v37.shape == tb_h37.shape
         assert tb_v37.shape == tb_v22.shape
         assert tb_v37.shape == tb_v19.shape
-        # assert tb_v37.shape == bt_params.land_mask.shape
         assert tb_v37.shape == bt_tb_mask.shape
     except AssertionError as e:
         raise ValueError(f'Mismatched shape error in get_bt_tb_mask\n{e}')
@@ -146,7 +142,6 @@ def calculate_cdr_conc(
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
     tb_v22: npt.NDArray,
-    #bt_params: BootstrapParams,
     nt_tiepoints: NasateamTiePoints,
     nt_gradient_thresholds: NasateamGradientRatioThresholds,
     nt_invalid_ice_mask: npt.NDArray[np.bool_],
@@ -155,6 +150,8 @@ def calculate_cdr_conc(
     missing_flag_value,
     bt_coefs,
     bt_fields,
+    nt_coefs,
+    nt_fields,
 ) -> npt.NDArray:
     """Run the CDR algorithm."""
     # First, get bootstrap conc.
@@ -167,9 +164,6 @@ def calculate_cdr_conc(
         tb_h37,
         tb_v19,
         tb_v22,
-        #bt_params,
-        bt_fields['bt_tb_mask'],
-        bt_weather_mask,
         bt_coefs,
         bt_fields,
     )
@@ -201,17 +195,7 @@ def calculate_cdr_conc(
         gr_2219_threshold=nt_gradient_thresholds['2219'],
         gr_3719_threshold=nt_gradient_thresholds['3719'],
     )
-    # Apply weather filters and invalid ice masks
-    # TODO: can we just use a single invalid ice mask?
-    # Note: We do not want to set zero sic where we have no TBs
-    '''
-    set_to_zero_sic = (
-        nt_weather_mask
-        | bt_weather_mask
-        | nt_invalid_ice_mask
-        | bt_params.invalid_ice_mask
-    )
-    '''
+
     set_to_zero_sic = (
         nt_weather_mask
         | bt_weather_mask
@@ -279,8 +263,10 @@ def calculate_cdr_conc(
         cdr_conc = bt.coastal_fix(
             conc=cdr_conc,
             missing_flag_value=missing_flag_value,
-            land_mask=bt_params.land_mask,
-            minic=bt_params.minic,
+            #land_mask=bt_params.land_mask,
+            #minic=bt_params.minic,
+            land_mask=bt_fields['land_mask'],
+            minic=bt_coefs['minic'],
         )
     # Fill the NH pole hole
     if cdr_conc.shape == (896, 608):
@@ -399,16 +385,19 @@ def compute_initial_daily_ecdr_dataset(
         gridid=gridid,
     )
 
-    '''
-    pmicecon_bt_params = pmi_bt_params.convert_to_pmicecon_bt_params(
-        hemisphere, bt_coefs_init, bt_fields
-    )
-    '''
-
     nt_params = nt_amsr2_params.get_amsr2_params(
         hemisphere=hemisphere,
         resolution=resolution,
     )
+    print(f'nt_params:\n{nt_params}')
+    nt_coefs = {}
+    nt_coefs['nt_tiepoints'] = nt_params.tiepoints
+    nt_coefs['nt_gradient_thresholds'] = nt_params.gradient_thresholds
+
+    nt_fields = {}
+    nt_fields['invalid_ice_mask'] = bt_fields['invalid_ice_mask']
+    nt_fields['shoremap'] = nt_params.shoremap
+    nt_fields['minic'] = nt_params.minic
 
     bt_fields['bt_tb_mask'] = bt_tb_mask = get_bt_tb_mask(
         tb_v37=ecdr_ide_ds['v36_day_si'].data,
@@ -510,17 +499,21 @@ def compute_initial_daily_ecdr_dataset(
         tb_h37=ecdr_ide_ds['h36_day_si'].data,
         tb_v19=ecdr_ide_ds['v18_day_si'].data,
         tb_v22=ecdr_ide_ds['v23_day_si'].data,
-        #bt_params=pmicecon_bt_params,
-        nt_tiepoints=nt_params.tiepoints,
-        nt_gradient_thresholds=nt_params.gradient_thresholds,
-        # TODO: this is the same as the bootstrap mask!
-        #nt_invalid_ice_mask=pmicecon_bt_params.invalid_ice_mask,
-        nt_invalid_ice_mask=bt_fields['invalid_ice_mask'],
-        nt_minic=nt_params.minic,
-        nt_shoremap=nt_params.shoremap,
+        #nt_tiepoints=nt_params.tiepoints,
+        #nt_gradient_thresholds=nt_params.gradient_thresholds,
+        #nt_invalid_ice_mask=bt_fields['invalid_ice_mask'],
+        #nt_minic=nt_params.minic,
+        #nt_shoremap=nt_params.shoremap,
+        nt_tiepoints=nt_coefs['nt_tiepoints'],
+        nt_gradient_thresholds=nt_coefs['nt_gradient_thresholds'],
+        nt_invalid_ice_mask=nt_fields['invalid_ice_mask'],
+        nt_minic=nt_fields['minic'],
+        nt_shoremap=nt_fields['shoremap'],
         missing_flag_value=DEFAULT_FLAG_VALUES.missing,
         bt_coefs=bt_coefs,
         bt_fields=bt_fields,
+        nt_coefs=nt_coefs,
+        nt_fields=nt_fields,
     )
 
     ecdr_ide_ds['conc'] = (
