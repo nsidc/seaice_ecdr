@@ -57,58 +57,13 @@ def cdr_bootstrap(
     bt_fields,
 ):
     """Generate the raw bootstrap concentration field."""
-    # Prepare the Bootstrap coefficients...
-    line_37v37h = bt.get_linfit(
-        land_mask=bt_fields['land_mask'],
-        tb_mask=bt_tb_mask,
-        tbx=tb_v37,
-        tby=tb_h37,
-        lnline=bt_coefs['vh37_lnline'],
-        add=bt_coefs['add1'],
-        weather_mask=bt_weather_mask,
-    )
-    print(f'line_37v37h: {line_37v37h}')
+    wtp_37v = bt_coefs['bt_wtp_v37']
+    wtp_37h = bt_coefs['bt_wtp_h37']
+    wtp_19v = bt_coefs['bt_wtp_v19']
 
-    wtp_set_37v37h = bt.get_water_tiepoint_set(
-        wtp_set_default=bt_params.vh37_params.water_tie_point_set,
-        weather_mask=bt_weather_mask,
-        tbx=tb_v37,
-        tby=tb_h37,
-    )
-    print(f'wtp_set_37v37h: {wtp_set_37v37h}')
-
-    wtp_set_37v19v = bt.get_water_tiepoint_set(
-        wtp_set_default=bt_params.v1937_params.water_tie_point_set,
-        weather_mask=bt_weather_mask,
-        tbx=tb_v37,
-        tby=tb_v19,
-    )
-    print(f'wtp_set_37v19v: {wtp_set_37v19v}')
-
-    ad_line_offset = bt.get_adj_ad_line_offset(
-        wtp_set=wtp_set_37v37h,
-        line_37v37h=line_37v37h,
-    )
-    print(f'ad_line_offset: {ad_line_offset}')
-
-    line_37v19v = bt.get_linfit(
-        land_mask=bt_params.land_mask,
-        tb_mask=bt_tb_mask,
-        tbx=tb_v37,
-        tby=tb_v19,
-        lnline=bt_params.v1937_params.lnline,
-        add=bt_params.add2,
-        weather_mask=bt_weather_mask,
-        tba=tb_h37,
-        iceline=line_37v37h,
-        ad_line_offset=ad_line_offset,
-    )
-    print(f'line_37v19v: {line_37v19v}')
-
-    wtp_37v, wtp_37h = wtp_set_37v37h
-    wtp_19v = wtp_set_37v19v[1]
-    itp_37v, itp_37h = bt_params.vh37_params.ice_tie_point_set
-    itp_19v = bt_params.v1937_params.ice_tie_point_set[1]
+    itp_37v = bt_coefs['bt_itp_v37']
+    itp_37h = bt_coefs['bt_itp_h37']
+    itp_19v = bt_coefs['bt_itp_v19']
 
     bt_conc = bt.calc_bootstrap_conc(
         tb_v37=tb_v37,
@@ -120,24 +75,12 @@ def cdr_bootstrap(
         itp_37v=itp_37v,
         itp_37h=itp_37h,
         itp_19v=itp_19v,
-        line_37v37h=line_37v37h,
-        line_37v19v=line_37v19v,
-        ad_line_offset=ad_line_offset,
-        maxic_frac=bt_params.maxic,
+        line_37v37h=bt_coefs['vh37_lnline'],
+        line_37v19v=bt_coefs['v1937_lnline'],
+        ad_line_offset=bt_coefs['ad_line_offset'],
+        maxic_frac=bt_coefs['maxic'],
         missing_flag_value=DEFAULT_FLAG_VALUES.missing,
     )
-
-
-    """ original
-    bt_conc = bt.bootstrap_for_cdr(
-        tb_v37=tb_v37,
-        tb_h37=tb_h37,
-        tb_v19=tb_v19,
-        params=bt_params,
-        tb_mask=bt_tb_mask,
-        weather_mask=bt_weather_mask,
-    )
-    """
 
     return bt_conc
 
@@ -447,13 +390,7 @@ def compute_initial_daily_ecdr_dataset(
         satellite='amsr2',
         gridid=gridid,
     )
-    print(f'bt_coefs_init:\n{bt_coefs_init}')
-    print(f'bt_coefs_init type:\n{type(bt_coefs_init)}')
-    for key in bt_coefs_init.keys():
-        print(f'bt_coefs_init {key}: {bt_coefs_init[key]}')
 
-    for field in bt_fields.keys():
-        print(f'bt_field: {field}  {type(bt_fields[field])}')
     pmicecon_bt_params = pmi_bt_params.convert_to_pmicecon_bt_params(
         hemisphere, bt_coefs_init, bt_fields
     )
@@ -491,6 +428,89 @@ def compute_initial_daily_ecdr_dataset(
         wxlimt=bt_coefs_init['wxlimt'],
     )
 
+    # Update the Bootstrap coefficients...
+    bt_coefs_to_update = (
+        'line_37v37h',
+        'wtp_37v',
+        'wtp_37h',
+        'wtp_19v',
+        'ad_line_offset',
+        'line_37v19v',
+    )
+
+    bt_coefs = bt_coefs_init.copy()
+    for coef in bt_coefs_to_update:
+        bt_coefs.pop(coef, None)
+
+    # TODO: rename 'vh37_lnline' to 'line_37v37h' or similar
+    bt_coefs['vh37_lnline'] = bt.get_linfit(
+        land_mask=bt_fields['land_mask'],
+        #tb_mask=bt_tb_mask,
+        tb_mask=bt_fields['bt_tb_mask'],
+        #tbx=tb_v37,
+        #tby=tb_h37,
+        tbx=ecdr_ide_ds['v36_day_si'].data,
+        tby=ecdr_ide_ds['h36_day_si'].data,
+        # Note that the initial value of this line is used
+        lnline=bt_coefs_init['vh37_lnline'],
+        add=bt_coefs['add1'],
+        #weather_mask=bt_weather_mask,
+        weather_mask=bt_fields['bt_weather_mask'],
+    )
+
+    bt_coefs['wtp_set_37v37h'] = bt.get_water_tiepoint_set(
+        #wtp_set_default=bt_params.vh37_params.water_tie_point_set,
+        wtp_set_default=pmicecon_bt_params.vh37_params.water_tie_point_set,
+        weather_mask=bt_fields['bt_weather_mask'],
+        #tbx=tb_v37,
+        #tby=tb_h37,
+        tbx=ecdr_ide_ds['v36_day_si'].data,
+        tby=ecdr_ide_ds['h36_day_si'].data,
+    )
+
+    bt_coefs['wtp_set_37v19v'] = bt.get_water_tiepoint_set(
+        #wtp_set_default=bt_params.v1937_params.water_tie_point_set,
+        wtp_set_default=pmicecon_bt_params.v1937_params.water_tie_point_set,
+        weather_mask=bt_fields['bt_weather_mask'],
+        #tbx=tb_v37,
+        #tby=tb_v19,
+        tbx=ecdr_ide_ds['v36_day_si'].data,
+        tby=ecdr_ide_ds['v18_day_si'].data,
+    )
+
+    bt_coefs['bt_wtp_v37'] = bt_coefs['wtp_set_37v37h'][0]
+    bt_coefs['bt_wtp_h37'] = bt_coefs['wtp_set_37v37h'][1]
+    bt_coefs['bt_wtp_v19'] = bt_coefs['wtp_set_37v19v'][1]
+
+    bt_coefs['ad_line_offset'] = bt.get_adj_ad_line_offset(
+        wtp_set=bt_coefs['wtp_set_37v37h'],
+        #line_37v37h=line_37v37h,
+        line_37v37h=bt_coefs['vh37_lnline']
+    )
+
+    bt_coefs['v1937_lnline'] = bt.get_linfit(
+        #land_mask=bt_params.land_mask,
+        #tb_mask=bt_tb_mask,
+        land_mask=bt_fields['land_mask'],
+        tb_mask=bt_fields['bt_tb_mask'],
+
+        #tbx=tb_v37,
+        #tby=tb_v19,
+        tbx=ecdr_ide_ds['v36_day_si'].data,
+        tby=ecdr_ide_ds['v18_day_si'].data,
+
+        #lnline=bt_params.v1937_params.lnline,
+        lnline=bt_coefs_init['v1937_lnline'],
+        add=bt_coefs['add2'],
+        weather_mask=bt_fields['bt_weather_mask'],
+
+        #tba=tb_h37,
+        tba=ecdr_ide_ds['h36_day_si'].data,
+        #iceline=line_37v37h,
+        iceline=bt_coefs['vh37_lnline'],
+        ad_line_offset=bt_coefs['ad_line_offset'],
+    )
+
     # finally, compute the CDR.
     conc = calculate_cdr_conc(
         date=date,
@@ -507,7 +527,7 @@ def compute_initial_daily_ecdr_dataset(
         nt_minic=nt_params.minic,
         nt_shoremap=nt_params.shoremap,
         missing_flag_value=DEFAULT_FLAG_VALUES.missing,
-        bt_coefs=bt_coefs_init,
+        bt_coefs=bt_coefs,
         bt_fields=bt_fields,
     )
 
