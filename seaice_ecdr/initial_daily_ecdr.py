@@ -142,11 +142,11 @@ def calculate_cdr_conc(
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
     tb_v22: npt.NDArray,
-    nt_tiepoints: NasateamTiePoints,
-    nt_gradient_thresholds: NasateamGradientRatioThresholds,
-    nt_invalid_ice_mask: npt.NDArray[np.bool_],
-    nt_minic: npt.NDArray,
-    nt_shoremap: npt.NDArray,
+    #nt_tiepoints: NasateamTiePoints,
+    #nt_gradient_thresholds: NasateamGradientRatioThresholds,
+    #nt_invalid_ice_mask: npt.NDArray[np.bool_],
+    #nt_minic: npt.NDArray,
+    #nt_shoremap: npt.NDArray,
     missing_flag_value,
     bt_coefs,
     bt_fields,
@@ -154,10 +154,18 @@ def calculate_cdr_conc(
     nt_fields,
 ) -> npt.NDArray:
     """Run the CDR algorithm."""
-    # First, get bootstrap conc.
+    # Copy dictionary items to local variables
     bt_tb_mask = bt_fields['bt_tb_mask']
     bt_weather_mask = bt_fields['bt_weather_mask']
 
+    nt_tiepoints = nt_coefs['nt_tiepoints']
+    nt_gradient_thresholds = nt_coefs['nt_gradient_thresholds']
+
+    nt_invalid_ice_mask = nt_fields['invalid_ice_mask']
+    nt_minic = nt_fields['minic']
+    nt_shoremap = nt_fields['shoremap']
+
+    # First, get bootstrap conc.
     bt_conc = cdr_bootstrap(
         date,
         tb_v37,
@@ -503,11 +511,11 @@ def compute_initial_daily_ecdr_dataset(
         tb_h37=ecdr_ide_ds['h36_day_si'].data,
         tb_v19=ecdr_ide_ds['v18_day_si'].data,
         tb_v22=ecdr_ide_ds['v23_day_si'].data,
-        nt_tiepoints=nt_coefs['nt_tiepoints'],
-        nt_gradient_thresholds=nt_coefs['nt_gradient_thresholds'],
-        nt_invalid_ice_mask=nt_fields['invalid_ice_mask'],
-        nt_minic=nt_fields['minic'],
-        nt_shoremap=nt_fields['shoremap'],
+        #nt_tiepoints=nt_coefs['nt_tiepoints'],
+        #nt_gradient_thresholds=nt_coefs['nt_gradient_thresholds'],
+        #nt_invalid_ice_mask=nt_fields['invalid_ice_mask'],
+        #nt_minic=nt_fields['minic'],
+        #nt_shoremap=nt_fields['shoremap'],
         missing_flag_value=DEFAULT_FLAG_VALUES.missing,
         bt_coefs=bt_coefs,
         bt_fields=bt_fields,
