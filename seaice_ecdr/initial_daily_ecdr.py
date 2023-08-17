@@ -431,9 +431,9 @@ def compute_initial_daily_ecdr_dataset(
     # Update the Bootstrap coefficients...
     bt_coefs_to_update = (
         'line_37v37h',
-        'wtp_37v',
-        'wtp_37h',
-        'wtp_19v',
+        'bt_wtp_v37',
+        'bt_wtp_h37',
+        'bt_wtp_v19',
         'ad_line_offset',
         'line_37v19v',
     )
@@ -442,71 +442,52 @@ def compute_initial_daily_ecdr_dataset(
     for coef in bt_coefs_to_update:
         bt_coefs.pop(coef, None)
 
-    # TODO: rename 'vh37_lnline' to 'line_37v37h' or similar
     bt_coefs['vh37_lnline'] = bt.get_linfit(
         land_mask=bt_fields['land_mask'],
-        #tb_mask=bt_tb_mask,
         tb_mask=bt_fields['bt_tb_mask'],
-        #tbx=tb_v37,
-        #tby=tb_h37,
         tbx=ecdr_ide_ds['v36_day_si'].data,
         tby=ecdr_ide_ds['h36_day_si'].data,
-        # Note that the initial value of this line is used
         lnline=bt_coefs_init['vh37_lnline'],
         add=bt_coefs['add1'],
-        #weather_mask=bt_weather_mask,
         weather_mask=bt_fields['bt_weather_mask'],
     )
 
-    bt_coefs['wtp_set_37v37h'] = bt.get_water_tiepoint_set(
-        #wtp_set_default=bt_params.vh37_params.water_tie_point_set,
-        wtp_set_default=pmicecon_bt_params.vh37_params.water_tie_point_set,
+    bt_coefs['bt_wtp_v37'] = bt.calculate_water_tiepoint(
+        wtp_init=bt_coefs_init['bt_wtp_v37'],
         weather_mask=bt_fields['bt_weather_mask'],
-        #tbx=tb_v37,
-        #tby=tb_h37,
-        tbx=ecdr_ide_ds['v36_day_si'].data,
-        tby=ecdr_ide_ds['h36_day_si'].data,
+        tb=ecdr_ide_ds['v36_day_si'].data,
     )
 
-    bt_coefs['wtp_set_37v19v'] = bt.get_water_tiepoint_set(
-        #wtp_set_default=bt_params.v1937_params.water_tie_point_set,
-        wtp_set_default=pmicecon_bt_params.v1937_params.water_tie_point_set,
+    bt_coefs['bt_wtp_h37'] = bt.calculate_water_tiepoint(
+        wtp_init=bt_coefs_init['bt_wtp_h37'],
         weather_mask=bt_fields['bt_weather_mask'],
-        #tbx=tb_v37,
-        #tby=tb_v19,
-        tbx=ecdr_ide_ds['v36_day_si'].data,
-        tby=ecdr_ide_ds['v18_day_si'].data,
+        tb=ecdr_ide_ds['h36_day_si'].data,
     )
 
-    bt_coefs['bt_wtp_v37'] = bt_coefs['wtp_set_37v37h'][0]
-    bt_coefs['bt_wtp_h37'] = bt_coefs['wtp_set_37v37h'][1]
-    bt_coefs['bt_wtp_v19'] = bt_coefs['wtp_set_37v19v'][1]
+    bt_coefs['bt_wtp_v19'] = bt.calculate_water_tiepoint(
+        wtp_init=bt_coefs_init['bt_wtp_v19'],
+        weather_mask=bt_fields['bt_weather_mask'],
+        tb=ecdr_ide_ds['v18_day_si'].data,
+    )
 
-    bt_coefs['ad_line_offset'] = bt.get_adj_ad_line_offset(
-        wtp_set=bt_coefs['wtp_set_37v37h'],
-        #line_37v37h=line_37v37h,
+    bt_coefs['ad_line_offset'] = bt.get_adj_ad_line_offset_v2(
+        wtp_x=bt_coefs['bt_wtp_v37'],
+        wtp_y=bt_coefs['bt_wtp_h37'],
         line_37v37h=bt_coefs['vh37_lnline']
     )
 
     bt_coefs['v1937_lnline'] = bt.get_linfit(
-        #land_mask=bt_params.land_mask,
-        #tb_mask=bt_tb_mask,
         land_mask=bt_fields['land_mask'],
         tb_mask=bt_fields['bt_tb_mask'],
 
-        #tbx=tb_v37,
-        #tby=tb_v19,
         tbx=ecdr_ide_ds['v36_day_si'].data,
         tby=ecdr_ide_ds['v18_day_si'].data,
 
-        #lnline=bt_params.v1937_params.lnline,
         lnline=bt_coefs_init['v1937_lnline'],
         add=bt_coefs['add2'],
         weather_mask=bt_fields['bt_weather_mask'],
 
-        #tba=tb_h37,
         tba=ecdr_ide_ds['h36_day_si'].data,
-        #iceline=line_37v37h,
         iceline=bt_coefs['vh37_lnline'],
         ad_line_offset=bt_coefs['ad_line_offset'],
     )
