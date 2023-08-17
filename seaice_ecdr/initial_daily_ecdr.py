@@ -379,6 +379,10 @@ def compute_initial_daily_ecdr_dataset(
         satellite='amsr2',
         gridid=gridid,
     )
+
+    # Add the function that generates the bt_tb_mask to bt_coefs
+    bt_coefs_init['bt_tb_data_mask_function'] = bt.tb_data_mask
+
     bt_fields = pmi_bt_params.get_bootstrap_fields(
         date=date,
         satellite='amsr2',
@@ -399,7 +403,6 @@ def compute_initial_daily_ecdr_dataset(
     nt_fields['shoremap'] = nt_params.shoremap
     nt_fields['minic'] = nt_params.minic
 
-    # bt_fields['bt_tb_mask'] = bt_tb_mask = get_bt_tb_mask(
     bt_fields['bt_tb_mask'] = get_bt_tb_mask(
         tb_v37=ecdr_ide_ds['v36_day_si'].data,
         tb_h37=ecdr_ide_ds['h36_day_si'].data,
@@ -409,7 +412,7 @@ def compute_initial_daily_ecdr_dataset(
         mintb=bt_coefs_init['mintb'],
         maxtb=bt_coefs_init['maxtb'],
 
-        tb_data_mask_function=bt.tb_data_mask,
+        tb_data_mask_function=bt_coefs_init['bt_tb_data_mask_function'],
     )
 
     # Compute the weather mask
@@ -420,7 +423,6 @@ def compute_initial_daily_ecdr_dataset(
         v19=ecdr_ide_ds['v18_day_si'].data,
 
         land_mask=bt_fields['land_mask'],
-        #tb_mask=bt_tb_mask,
         tb_mask=bt_fields['bt_tb_mask'],
         ln1=bt_coefs_init['vh37_lnline'],
         date=date,
