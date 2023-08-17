@@ -385,11 +385,11 @@ def compute_initial_daily_ecdr_dataset(
         gridid=gridid,
     )
 
+    # Determine the NT fields and coefficients
     nt_params = nt_amsr2_params.get_amsr2_params(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    print(f'nt_params:\n{nt_params}')
     nt_coefs = {}
     nt_coefs['nt_tiepoints'] = nt_params.tiepoints
     nt_coefs['nt_gradient_thresholds'] = nt_params.gradient_thresholds
@@ -399,7 +399,8 @@ def compute_initial_daily_ecdr_dataset(
     nt_fields['shoremap'] = nt_params.shoremap
     nt_fields['minic'] = nt_params.minic
 
-    bt_fields['bt_tb_mask'] = bt_tb_mask = get_bt_tb_mask(
+    # bt_fields['bt_tb_mask'] = bt_tb_mask = get_bt_tb_mask(
+    bt_fields['bt_tb_mask'] = get_bt_tb_mask(
         tb_v37=ecdr_ide_ds['v36_day_si'].data,
         tb_h37=ecdr_ide_ds['h36_day_si'].data,
         tb_v19=ecdr_ide_ds['v18_day_si'].data,
@@ -419,7 +420,8 @@ def compute_initial_daily_ecdr_dataset(
         v19=ecdr_ide_ds['v18_day_si'].data,
 
         land_mask=bt_fields['land_mask'],
-        tb_mask=bt_tb_mask,
+        #tb_mask=bt_tb_mask,
+        tb_mask=bt_fields['bt_tb_mask'],
         ln1=bt_coefs_init['vh37_lnline'],
         date=date,
         wintrc=bt_coefs_init['wintrc'],
@@ -499,11 +501,6 @@ def compute_initial_daily_ecdr_dataset(
         tb_h37=ecdr_ide_ds['h36_day_si'].data,
         tb_v19=ecdr_ide_ds['v18_day_si'].data,
         tb_v22=ecdr_ide_ds['v23_day_si'].data,
-        #nt_tiepoints=nt_params.tiepoints,
-        #nt_gradient_thresholds=nt_params.gradient_thresholds,
-        #nt_invalid_ice_mask=bt_fields['invalid_ice_mask'],
-        #nt_minic=nt_params.minic,
-        #nt_shoremap=nt_params.shoremap,
         nt_tiepoints=nt_coefs['nt_tiepoints'],
         nt_gradient_thresholds=nt_coefs['nt_gradient_thresholds'],
         nt_invalid_ice_mask=nt_fields['invalid_ice_mask'],
