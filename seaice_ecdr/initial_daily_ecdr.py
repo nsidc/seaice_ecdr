@@ -50,7 +50,7 @@ def cdr_bootstrap(
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
     tb_v22: npt.NDArray,
-    bt_params: BootstrapParams,
+    #bt_params: BootstrapParams,
     bt_tb_mask,
     bt_weather_mask,
     bt_coefs,
@@ -146,7 +146,7 @@ def calculate_cdr_conc(
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
     tb_v22: npt.NDArray,
-    bt_params: BootstrapParams,
+    #bt_params: BootstrapParams,
     nt_tiepoints: NasateamTiePoints,
     nt_gradient_thresholds: NasateamGradientRatioThresholds,
     nt_invalid_ice_mask: npt.NDArray[np.bool_],
@@ -167,7 +167,7 @@ def calculate_cdr_conc(
         tb_h37,
         tb_v19,
         tb_v22,
-        bt_params,
+        #bt_params,
         bt_fields['bt_tb_mask'],
         bt_weather_mask,
         bt_coefs,
@@ -204,11 +204,19 @@ def calculate_cdr_conc(
     # Apply weather filters and invalid ice masks
     # TODO: can we just use a single invalid ice mask?
     # Note: We do not want to set zero sic where we have no TBs
+    '''
     set_to_zero_sic = (
         nt_weather_mask
         | bt_weather_mask
         | nt_invalid_ice_mask
         | bt_params.invalid_ice_mask
+    )
+    '''
+    set_to_zero_sic = (
+        nt_weather_mask
+        | bt_weather_mask
+        | nt_invalid_ice_mask
+        | bt_fields['invalid_ice_mask']
     )
     cdr_conc[set_to_zero_sic] = 0
 
@@ -391,9 +399,11 @@ def compute_initial_daily_ecdr_dataset(
         gridid=gridid,
     )
 
+    '''
     pmicecon_bt_params = pmi_bt_params.convert_to_pmicecon_bt_params(
         hemisphere, bt_coefs_init, bt_fields
     )
+    '''
 
     nt_params = nt_amsr2_params.get_amsr2_params(
         hemisphere=hemisphere,
@@ -500,11 +510,12 @@ def compute_initial_daily_ecdr_dataset(
         tb_h37=ecdr_ide_ds['h36_day_si'].data,
         tb_v19=ecdr_ide_ds['v18_day_si'].data,
         tb_v22=ecdr_ide_ds['v23_day_si'].data,
-        bt_params=pmicecon_bt_params,
+        #bt_params=pmicecon_bt_params,
         nt_tiepoints=nt_params.tiepoints,
         nt_gradient_thresholds=nt_params.gradient_thresholds,
         # TODO: this is the same as the bootstrap mask!
-        nt_invalid_ice_mask=pmicecon_bt_params.invalid_ice_mask,
+        #nt_invalid_ice_mask=pmicecon_bt_params.invalid_ice_mask,
+        nt_invalid_ice_mask=bt_fields['invalid_ice_mask'],
         nt_minic=nt_params.minic,
         nt_shoremap=nt_params.shoremap,
         missing_flag_value=DEFAULT_FLAG_VALUES.missing,
