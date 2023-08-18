@@ -142,11 +142,6 @@ def calculate_cdr_conc(
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
     tb_v22: npt.NDArray,
-    #nt_tiepoints: NasateamTiePoints,
-    #nt_gradient_thresholds: NasateamGradientRatioThresholds,
-    #nt_invalid_ice_mask: npt.NDArray[np.bool_],
-    #nt_minic: npt.NDArray,
-    #nt_shoremap: npt.NDArray,
     missing_flag_value,
     bt_coefs,
     bt_fields,
@@ -154,17 +149,6 @@ def calculate_cdr_conc(
     nt_fields,
 ) -> npt.NDArray:
     """Run the CDR algorithm."""
-    # Copy dictionary items to local variables
-    bt_tb_mask = bt_fields['bt_tb_mask']
-    bt_weather_mask = bt_fields['bt_weather_mask']
-
-    nt_tiepoints = nt_coefs['nt_tiepoints']
-    nt_gradient_thresholds = nt_coefs['nt_gradient_thresholds']
-
-    nt_invalid_ice_mask = nt_fields['invalid_ice_mask']
-    nt_minic = nt_fields['minic']
-    nt_shoremap = nt_fields['shoremap']
-
     # First, get bootstrap conc.
     bt_conc = cdr_bootstrap(
         date,
@@ -183,7 +167,7 @@ def calculate_cdr_conc(
         tb_h19,
         tb_v37,
         tb_v19,
-        nt_tiepoints,
+        nt_coefs['nt_tiepoints'],
     )
 
     # Now calculate CDR SIC
@@ -197,17 +181,17 @@ def calculate_cdr_conc(
     # Get Nasateam weather filter
     nt_gr_2219 = nt.compute_ratio(tb_v22, tb_v19)
     nt_gr_3719 = nt.compute_ratio(tb_v37, tb_v19)
-    nt_weather_mask = nt.get_weather_filter_mask(
+    nt_fields['nt_weather_mask'] = nt.get_weather_filter_mask(
         gr_2219=nt_gr_2219,
         gr_3719=nt_gr_3719,
-        gr_2219_threshold=nt_gradient_thresholds['2219'],
-        gr_3719_threshold=nt_gradient_thresholds['3719'],
+        gr_2219_threshold=nt_coefs['nt_gradient_thresholds']['2219'],
+        gr_3719_threshold=nt_coefs['nt_gradient_thresholds']['3719'],
     )
 
     set_to_zero_sic = (
-        nt_weather_mask
-        | bt_weather_mask
-        | nt_invalid_ice_mask
+        nt_fields['nt_weather_mask']
+        | bt_fields['bt_weather_mask']
+        | nt_fields['invalid_ice_mask']
         | bt_fields['invalid_ice_mask']
     )
     cdr_conc[set_to_zero_sic] = 0
@@ -263,16 +247,14 @@ def calculate_cdr_conc(
         logger.info('Applying NASA TEAM land spillover technique...')
         cdr_conc = nt.apply_nt_spillover(
             conc=cdr_conc,
-            shoremap=nt_shoremap,
-            minic=nt_minic,
+            shoremap=nt_fields['shoremap'],
+            minic=nt_fields['minic'],
         )
         # then bootstrap:
         logger.info('Applying Bootstrap land spillover technique...')
         cdr_conc = bt.coastal_fix(
             conc=cdr_conc,
             missing_flag_value=missing_flag_value,
-            #land_mask=bt_params.land_mask,
-            #minic=bt_params.minic,
             land_mask=bt_fields['land_mask'],
             minic=bt_coefs['minic'],
         )
@@ -283,7 +265,7 @@ def calculate_cdr_conc(
     # Apply land flag value and clamp max conc to 100.
     # TODO: extract this func from nt and allow override of flag values
     cdr_conc = nt._clamp_conc_and_set_flags(
-        shoremap=nt_shoremap,
+        shoremap=nt_fields['shoremap'],
         conc=cdr_conc,
     )
 
@@ -504,6 +486,11 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     # finally, compute the CDR.
+    # HERE, probably need cdr_attrs like:
+    #   gridid
+    #   missing_flag_value
+    #   date
+    # Also, snould the ields be xarray DataArrays
     conc = calculate_cdr_conc(
         date=date,
         tb_h19=ecdr_ide_ds['h18_day_si'].data,
@@ -511,11 +498,6 @@ def compute_initial_daily_ecdr_dataset(
         tb_h37=ecdr_ide_ds['h36_day_si'].data,
         tb_v19=ecdr_ide_ds['v18_day_si'].data,
         tb_v22=ecdr_ide_ds['v23_day_si'].data,
-        #nt_tiepoints=nt_coefs['nt_tiepoints'],
-        #nt_gradient_thresholds=nt_coefs['nt_gradient_thresholds'],
-        #nt_invalid_ice_mask=nt_fields['invalid_ice_mask'],
-        #nt_minic=nt_fields['minic'],
-        #nt_shoremap=nt_fields['shoremap'],
         missing_flag_value=DEFAULT_FLAG_VALUES.missing,
         bt_coefs=bt_coefs,
         bt_fields=bt_fields,
