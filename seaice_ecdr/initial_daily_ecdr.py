@@ -376,9 +376,9 @@ def compute_initial_daily_ecdr_dataset(
         {
             '_FillValue': 0,
             'grid_mapping': 'crs',
-            'standard_name': 'surface mask',
-            'long_name': 'NT shoremap',
-            'comment': 'Mask indicating land-adjacency of ocean pixels',
+            'standard_name': 'sea_ice_area_fraction',
+            'long_name': 'Minimum ice concentration over observation period',
+            'comment': 'Map indicating minimum observed ice concentration',
             'units': 1,
         },
         {
@@ -417,14 +417,12 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     # Compute the BT weather mask
-    #cdr_fields['bt_weather_mask'] = bt.get_weather_mask_v2(
     bt_weather_mask = bt.get_weather_mask_v2(
         v37=ecdr_ide_ds['v36_day_si'].data,
         h37=ecdr_ide_ds['h36_day_si'].data,
         v22=ecdr_ide_ds['v23_day_si'].data,
         v19=ecdr_ide_ds['v18_day_si'].data,
 
-        #land_mask=cdr_fields['land_mask'],
         land_mask=ecdr_ide_ds['land_mask'].data,
         tb_mask=ecdr_ide_ds['invalid_tb_mask'],
         ln1=bt_coefs_init['vh37_lnline'],
@@ -531,34 +529,44 @@ def compute_initial_daily_ecdr_dataset(
         missing_flag_value=DEFAULT_FLAG_VALUES.missing,
         bt_coefs=bt_coefs,
         nt_coefs=nt_coefs,
-        #cdr_fields=cdr_fields,
-        #invalid_ice_mask=ecdr_ide_ds['invalid_ice_mask'].data,
     )
 
     # Apply masks
     # Get Nasateam weather filter
     nt_gr_2219 = nt.compute_ratio(
-        #tb_v22,
-        #tb_v19,
         ecdr_ide_ds['v23_day_si'].data,
         ecdr_ide_ds['v18_day_si'].data,
     )
     nt_gr_3719 = nt.compute_ratio(
-        #tb_v37,
-        #tb_v19,
         ecdr_ide_ds['v36_day_si'].data,
         ecdr_ide_ds['v18_day_si'].data,
     )
-    cdr_fields['nt_weather_mask'] = nt.get_weather_filter_mask(
+    nt_weather_mask = nt.get_weather_filter_mask(
         gr_2219=nt_gr_2219,
         gr_3719=nt_gr_3719,
         gr_2219_threshold=nt_coefs['nt_gradient_thresholds']['2219'],
         gr_3719_threshold=nt_coefs['nt_gradient_thresholds']['3719'],
     )
 
+    ecdr_ide_ds['nt_weather_mask'] = (
+        ('y', 'x'),
+        nt_weather_mask,
+        {
+            '_FillValue': 0,
+            'grid_mapping': 'crs',
+            'standard_name': 'weather_binary_mask',
+            'long_name': 'Map of weather masquerading as sea ice per NT',
+            'comment': 'Mask indicating pixels with erroneously detected sea ice because of weather per NT ',
+            'units': 1,
+        },
+        {
+            'zlib': True,
+        },
+    )
+
     set_to_zero_sic = (
-        cdr_fields['nt_weather_mask']
-        | ecdr_ide_ds['bt_weather_mask']
+        ecdr_ide_ds['nt_weather_mask'].data
+        | ecdr_ide_ds['bt_weather_mask'].data
         | ecdr_ide_ds['invalid_ice_mask'].data
     )
 
