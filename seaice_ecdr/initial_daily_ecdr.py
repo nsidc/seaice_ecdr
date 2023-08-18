@@ -51,7 +51,6 @@ def cdr_bootstrap(
     tb_v19: npt.NDArray,
     tb_v22: npt.NDArray,
     bt_coefs,
-    bt_fields,
 ):
     """Generate the raw bootstrap concentration field."""
     wtp_37v = bt_coefs['bt_wtp_v37']
@@ -144,9 +143,8 @@ def calculate_cdr_conc(
     tb_v22: npt.NDArray,
     missing_flag_value,
     bt_coefs,
-    bt_fields,
     nt_coefs,
-    nt_fields,
+    cdr_fields,
 ) -> npt.NDArray:
     """Run the CDR algorithm."""
     # First, get bootstrap conc.
@@ -157,7 +155,6 @@ def calculate_cdr_conc(
         tb_v19,
         tb_v22,
         bt_coefs,
-        bt_fields,
     )
 
     # Next, get nasateam conc. Note that concentrations from nasateam may be
@@ -181,7 +178,7 @@ def calculate_cdr_conc(
     # Get Nasateam weather filter
     nt_gr_2219 = nt.compute_ratio(tb_v22, tb_v19)
     nt_gr_3719 = nt.compute_ratio(tb_v37, tb_v19)
-    nt_fields['nt_weather_mask'] = nt.get_weather_filter_mask(
+    cdr_fields['nt_weather_mask'] = nt.get_weather_filter_mask(
         gr_2219=nt_gr_2219,
         gr_3719=nt_gr_3719,
         gr_2219_threshold=nt_coefs['nt_gradient_thresholds']['2219'],
@@ -189,10 +186,9 @@ def calculate_cdr_conc(
     )
 
     set_to_zero_sic = (
-        nt_fields['nt_weather_mask']
-        | bt_fields['bt_weather_mask']
-        | nt_fields['invalid_ice_mask']
-        | bt_fields['invalid_ice_mask']
+        cdr_fields['nt_weather_mask']
+        | cdr_fields['bt_weather_mask']
+        | cdr_fields['invalid_ice_mask']
     )
     cdr_conc[set_to_zero_sic] = 0
 
@@ -247,15 +243,15 @@ def calculate_cdr_conc(
         logger.info('Applying NASA TEAM land spillover technique...')
         cdr_conc = nt.apply_nt_spillover(
             conc=cdr_conc,
-            shoremap=nt_fields['shoremap'],
-            minic=nt_fields['minic'],
+            shoremap=cdr_fields['shoremap'],
+            minic=cdr_fields['minic'],
         )
         # then bootstrap:
         logger.info('Applying Bootstrap land spillover technique...')
         cdr_conc = bt.coastal_fix(
             conc=cdr_conc,
             missing_flag_value=missing_flag_value,
-            land_mask=bt_fields['land_mask'],
+            land_mask=cdr_fields['land_mask'],
             minic=bt_coefs['minic'],
         )
     # Fill the NH pole hole
@@ -265,7 +261,7 @@ def calculate_cdr_conc(
     # Apply land flag value and clamp max conc to 100.
     # TODO: extract this func from nt and allow override of flag values
     cdr_conc = nt._clamp_conc_and_set_flags(
-        shoremap=nt_fields['shoremap'],
+        shoremap=cdr_fields['shoremap'],
         conc=cdr_conc,
     )
 
@@ -373,7 +369,7 @@ def compute_initial_daily_ecdr_dataset(
     # Add the function that generates the bt_tb_mask to bt_coefs
     bt_coefs_init['bt_tb_data_mask_function'] = bt.tb_data_mask
 
-    bt_fields = pmi_bt_params.get_bootstrap_fields(
+    cdr_fields = pmi_bt_params.get_bootstrap_fields(
         date=date,
         satellite='amsr2',
         gridid=gridid,
@@ -388,12 +384,10 @@ def compute_initial_daily_ecdr_dataset(
     nt_coefs['nt_tiepoints'] = nt_params.tiepoints
     nt_coefs['nt_gradient_thresholds'] = nt_params.gradient_thresholds
 
-    nt_fields = {}
-    nt_fields['invalid_ice_mask'] = bt_fields['invalid_ice_mask']
-    nt_fields['shoremap'] = nt_params.shoremap
-    nt_fields['minic'] = nt_params.minic
+    cdr_fields['shoremap'] = nt_params.shoremap
+    cdr_fields['minic'] = nt_params.minic
 
-    bt_fields['bt_tb_mask'] = get_bt_tb_mask(
+    cdr_fields['bt_tb_mask'] = get_bt_tb_mask(
         tb_v37=ecdr_ide_ds['v36_day_si'].data,
         tb_h37=ecdr_ide_ds['h36_day_si'].data,
         tb_v19=ecdr_ide_ds['v18_day_si'].data,
@@ -406,14 +400,14 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     # Compute the weather mask
-    bt_fields['bt_weather_mask'] = bt.get_weather_mask_v2(
+    cdr_fields['bt_weather_mask'] = bt.get_weather_mask_v2(
         v37=ecdr_ide_ds['v36_day_si'].data,
         h37=ecdr_ide_ds['h36_day_si'].data,
         v22=ecdr_ide_ds['v23_day_si'].data,
         v19=ecdr_ide_ds['v18_day_si'].data,
 
-        land_mask=bt_fields['land_mask'],
-        tb_mask=bt_fields['bt_tb_mask'],
+        land_mask=cdr_fields['land_mask'],
+        tb_mask=cdr_fields['bt_tb_mask'],
         ln1=bt_coefs_init['vh37_lnline'],
         date=date,
         wintrc=bt_coefs_init['wintrc'],
@@ -436,30 +430,30 @@ def compute_initial_daily_ecdr_dataset(
         bt_coefs.pop(coef, None)
 
     bt_coefs['vh37_lnline'] = bt.get_linfit(
-        land_mask=bt_fields['land_mask'],
-        tb_mask=bt_fields['bt_tb_mask'],
+        land_mask=cdr_fields['land_mask'],
+        tb_mask=cdr_fields['bt_tb_mask'],
         tbx=ecdr_ide_ds['v36_day_si'].data,
         tby=ecdr_ide_ds['h36_day_si'].data,
         lnline=bt_coefs_init['vh37_lnline'],
         add=bt_coefs['add1'],
-        weather_mask=bt_fields['bt_weather_mask'],
+        weather_mask=cdr_fields['bt_weather_mask'],
     )
 
     bt_coefs['bt_wtp_v37'] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init['bt_wtp_v37'],
-        weather_mask=bt_fields['bt_weather_mask'],
+        weather_mask=cdr_fields['bt_weather_mask'],
         tb=ecdr_ide_ds['v36_day_si'].data,
     )
 
     bt_coefs['bt_wtp_h37'] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init['bt_wtp_h37'],
-        weather_mask=bt_fields['bt_weather_mask'],
+        weather_mask=cdr_fields['bt_weather_mask'],
         tb=ecdr_ide_ds['h36_day_si'].data,
     )
 
     bt_coefs['bt_wtp_v19'] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init['bt_wtp_v19'],
-        weather_mask=bt_fields['bt_weather_mask'],
+        weather_mask=cdr_fields['bt_weather_mask'],
         tb=ecdr_ide_ds['v18_day_si'].data,
     )
 
@@ -470,15 +464,15 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     bt_coefs['v1937_lnline'] = bt.get_linfit(
-        land_mask=bt_fields['land_mask'],
-        tb_mask=bt_fields['bt_tb_mask'],
+        land_mask=cdr_fields['land_mask'],
+        tb_mask=cdr_fields['bt_tb_mask'],
 
         tbx=ecdr_ide_ds['v36_day_si'].data,
         tby=ecdr_ide_ds['v18_day_si'].data,
 
         lnline=bt_coefs_init['v1937_lnline'],
         add=bt_coefs['add2'],
-        weather_mask=bt_fields['bt_weather_mask'],
+        weather_mask=cdr_fields['bt_weather_mask'],
 
         tba=ecdr_ide_ds['h36_day_si'].data,
         iceline=bt_coefs['vh37_lnline'],
@@ -491,6 +485,7 @@ def compute_initial_daily_ecdr_dataset(
     #   missing_flag_value
     #   date
     # Also, snould the ields be xarray DataArrays
+
     conc = calculate_cdr_conc(
         date=date,
         tb_h19=ecdr_ide_ds['h18_day_si'].data,
@@ -500,9 +495,8 @@ def compute_initial_daily_ecdr_dataset(
         tb_v22=ecdr_ide_ds['v23_day_si'].data,
         missing_flag_value=DEFAULT_FLAG_VALUES.missing,
         bt_coefs=bt_coefs,
-        bt_fields=bt_fields,
         nt_coefs=nt_coefs,
-        nt_fields=nt_fields,
+        cdr_fields=cdr_fields,
     )
 
     ecdr_ide_ds['conc'] = (
