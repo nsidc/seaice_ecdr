@@ -144,10 +144,6 @@ def calculate_cdr_conc_raw(
     missing_flag_value,
     bt_coefs,
     nt_coefs,
-    #cdr_fields,
-    #bt_weather_mask: npt.NDArray,
-    #nt_weather_mask: npt.NDArray,
-    #invalid_ice_mask: npt.NDArray,
 ) -> npt.NDArray:
     """Run the CDR algorithm."""
     # First, get bootstrap conc.
@@ -327,6 +323,26 @@ def compute_initial_daily_ecdr_dataset(
         },
     )
 
+    # Encode pole_mask
+    # TODO: I think this is currently unused
+    # ...but it should be coordinated with pole hole filling routines below
+    if bt_fields['pole_mask'] is not None:
+        ecdr_ide_ds['pole_mask'] = (
+            ('y', 'x'),
+            bt_fields['pole_mask'],
+            {
+                '_FillValue': 0,
+                'grid_mapping': 'crs',
+                'standard_name': 'pole_binary_mask',
+                'long_name': 'pole mask',
+                'comment': 'Mask indicating where pole hole might be',
+                'units': 1,
+            },
+            {
+                'zlib': True,
+            },
+        )
+
     # Determine the NT fields and coefficients
     nt_params = nt_amsr2_params.get_amsr2_params(
         hemisphere=hemisphere,
@@ -336,10 +352,43 @@ def compute_initial_daily_ecdr_dataset(
     nt_coefs['nt_tiepoints'] = nt_params.tiepoints
     nt_coefs['nt_gradient_thresholds'] = nt_params.gradient_thresholds
 
-    cdr_fields['shoremap'] = nt_params.shoremap
-    cdr_fields['minic'] = nt_params.minic
+    # Encode NT shoremap field
+    ecdr_ide_ds['shoremap'] = (
+        ('y', 'x'),
+        nt_params.shoremap,
+        {
+            '_FillValue': 0,
+            'grid_mapping': 'crs',
+            'standard_name': 'surface mask',
+            'long_name': 'NT shoremap',
+            'comment': 'Mask indicating land-adjacency of ocean pixels',
+            'units': 1,
+        },
+        {
+            'zlib': True,
+        },
+    )
 
-    cdr_fields['bt_tb_mask'] = get_bt_tb_mask(
+    # Encode NT minic field
+    ecdr_ide_ds['NT_icecon_min'] = (
+        ('y', 'x'),
+        nt_params.minic,
+        {
+            '_FillValue': 0,
+            'grid_mapping': 'crs',
+            'standard_name': 'surface mask',
+            'long_name': 'NT shoremap',
+            'comment': 'Mask indicating land-adjacency of ocean pixels',
+            'units': 1,
+        },
+        {
+            'zlib': True,
+        },
+    )
+
+
+    # Compute the invalid TB mask
+    invalid_tb_mask = get_bt_tb_mask(
         tb_v37=ecdr_ide_ds['v36_day_si'].data,
         tb_h37=ecdr_ide_ds['h36_day_si'].data,
         tb_v19=ecdr_ide_ds['v18_day_si'].data,
@@ -351,8 +400,25 @@ def compute_initial_daily_ecdr_dataset(
         tb_data_mask_function=bt_coefs_init['bt_tb_data_mask_function'],
     )
 
-    # Compute the weather mask
-    cdr_fields['bt_weather_mask'] = bt.get_weather_mask_v2(
+    ecdr_ide_ds['invalid_tb_mask'] = (
+        ('y', 'x'),
+        invalid_tb_mask,
+        {
+            '_FillValue': 0,
+            'grid_mapping': 'crs',
+            'standard_name': 'invalid_tb_binary_mask',
+            'long_name': 'Map of Invalid TBs',
+            'comment': 'Mask indicating pixels with invalid TBs',
+            'units': 1,
+        },
+        {
+            'zlib': True,
+        },
+    )
+
+    # Compute the BT weather mask
+    #cdr_fields['bt_weather_mask'] = bt.get_weather_mask_v2(
+    bt_weather_mask = bt.get_weather_mask_v2(
         v37=ecdr_ide_ds['v36_day_si'].data,
         h37=ecdr_ide_ds['h36_day_si'].data,
         v22=ecdr_ide_ds['v23_day_si'].data,
@@ -360,12 +426,28 @@ def compute_initial_daily_ecdr_dataset(
 
         #land_mask=cdr_fields['land_mask'],
         land_mask=ecdr_ide_ds['land_mask'].data,
-        tb_mask=cdr_fields['bt_tb_mask'],
+        tb_mask=ecdr_ide_ds['invalid_tb_mask'],
         ln1=bt_coefs_init['vh37_lnline'],
         date=date,
         wintrc=bt_coefs_init['wintrc'],
         wslope=bt_coefs_init['wslope'],
         wxlimt=bt_coefs_init['wxlimt'],
+    )
+
+    ecdr_ide_ds['bt_weather_mask'] = (
+        ('y', 'x'),
+        bt_weather_mask.data,
+        {
+            '_FillValue': 0,
+            'grid_mapping': 'crs',
+            'standard_name': 'bt_weather_binary_mask',
+            'long_name': 'Map of weather masquerading as sea ice per BT',
+            'comment': 'Mask indicating pixels with erroneously detected sea ice because of weather per BT ',
+            'units': 1,
+        },
+        {
+            'zlib': True,
+        },
     )
 
     # Update the Bootstrap coefficients...
@@ -384,29 +466,29 @@ def compute_initial_daily_ecdr_dataset(
 
     bt_coefs['vh37_lnline'] = bt.get_linfit(
         land_mask=ecdr_ide_ds['land_mask'].data,
-        tb_mask=cdr_fields['bt_tb_mask'],
+        tb_mask=ecdr_ide_ds['invalid_tb_mask'],
         tbx=ecdr_ide_ds['v36_day_si'].data,
         tby=ecdr_ide_ds['h36_day_si'].data,
         lnline=bt_coefs_init['vh37_lnline'],
         add=bt_coefs['add1'],
-        weather_mask=cdr_fields['bt_weather_mask'],
+        weather_mask=ecdr_ide_ds['bt_weather_mask'],
     )
 
     bt_coefs['bt_wtp_v37'] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init['bt_wtp_v37'],
-        weather_mask=cdr_fields['bt_weather_mask'],
+        weather_mask=ecdr_ide_ds['bt_weather_mask'],
         tb=ecdr_ide_ds['v36_day_si'].data,
     )
 
     bt_coefs['bt_wtp_h37'] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init['bt_wtp_h37'],
-        weather_mask=cdr_fields['bt_weather_mask'],
+        weather_mask=ecdr_ide_ds['bt_weather_mask'],
         tb=ecdr_ide_ds['h36_day_si'].data,
     )
 
     bt_coefs['bt_wtp_v19'] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init['bt_wtp_v19'],
-        weather_mask=cdr_fields['bt_weather_mask'],
+        weather_mask=ecdr_ide_ds['bt_weather_mask'],
         tb=ecdr_ide_ds['v18_day_si'].data,
     )
 
@@ -418,14 +500,14 @@ def compute_initial_daily_ecdr_dataset(
 
     bt_coefs['v1937_lnline'] = bt.get_linfit(
         land_mask=ecdr_ide_ds['land_mask'].data,
-        tb_mask=cdr_fields['bt_tb_mask'],
+        tb_mask=ecdr_ide_ds['invalid_tb_mask'],
 
         tbx=ecdr_ide_ds['v36_day_si'].data,
         tby=ecdr_ide_ds['v18_day_si'].data,
 
         lnline=bt_coefs_init['v1937_lnline'],
         add=bt_coefs['add2'],
-        weather_mask=cdr_fields['bt_weather_mask'],
+        weather_mask=ecdr_ide_ds['bt_weather_mask'],
 
         tba=ecdr_ide_ds['h36_day_si'].data,
         iceline=bt_coefs['vh37_lnline'],
@@ -476,8 +558,7 @@ def compute_initial_daily_ecdr_dataset(
 
     set_to_zero_sic = (
         cdr_fields['nt_weather_mask']
-        | cdr_fields['bt_weather_mask']
-        | cdr_fields['bt_weather_mask']
+        | ecdr_ide_ds['bt_weather_mask']
         | ecdr_ide_ds['invalid_ice_mask'].data
     )
 
@@ -532,12 +613,13 @@ def compute_initial_daily_ecdr_dataset(
                 'Could not determine hemisphere from tb shape: {tb_h19.shape}'
             )
     else:
+        # TODO: Fix minic means field for NT and float for BT (!)
         # nasateam first:
         logger.info('Applying NASA TEAM land spillover technique...')
         cdr_conc = nt.apply_nt_spillover(
             conc=cdr_conc,
-            shoremap=cdr_fields['shoremap'],
-            minic=cdr_fields['minic'],
+            shoremap=ecdr_ide_ds['shoremap'],
+            minic=ecdr_ide_ds['NT_icecon_min'],
         )
         # then bootstrap:
         logger.info('Applying Bootstrap land spillover technique...')
@@ -547,6 +629,7 @@ def compute_initial_daily_ecdr_dataset(
             land_mask=ecdr_ide_ds['land_mask'].data,
             minic=bt_coefs['minic'],
         )
+
     # Fill the NH pole hole
     if cdr_conc.shape == (896, 608):
         cdr_conc = fill_pole_hole(cdr_conc)
@@ -554,7 +637,7 @@ def compute_initial_daily_ecdr_dataset(
     # Apply land flag value and clamp max conc to 100.
     # TODO: extract this func from nt and allow override of flag values
     cdr_conc = nt._clamp_conc_and_set_flags(
-        shoremap=cdr_fields['shoremap'],
+        shoremap=ecdr_ide_ds['shoremap'],
         conc=cdr_conc,
     )
 
