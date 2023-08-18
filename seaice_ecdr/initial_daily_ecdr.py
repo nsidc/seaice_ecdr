@@ -51,6 +51,7 @@ def cdr_bootstrap(
     tb_v19: npt.NDArray,
     tb_v22: npt.NDArray,
     bt_coefs,
+    missing_flag_value: float,
 ):
     """Generate the raw bootstrap concentration field."""
     wtp_37v = bt_coefs['bt_wtp_v37']
@@ -75,7 +76,7 @@ def cdr_bootstrap(
         line_37v19v=bt_coefs['v1937_lnline'],
         ad_line_offset=bt_coefs['ad_line_offset'],
         maxic_frac=bt_coefs['maxic'],
-        missing_flag_value=DEFAULT_FLAG_VALUES.missing,
+        missing_flag_value=missing_flag_value,
     )
 
     return bt_conc
@@ -141,9 +142,9 @@ def calculate_cdr_conc_raw(
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
     tb_v22: npt.NDArray,
-    missing_flag_value,
     bt_coefs,
     nt_coefs,
+    missing_flag_value,
 ) -> npt.NDArray:
     """Run the CDR algorithm."""
     # First, get bootstrap conc.
@@ -154,6 +155,7 @@ def calculate_cdr_conc_raw(
         tb_v19,
         tb_v22,
         bt_coefs,
+        missing_flag_value,
     )
 
     # Next, get nasateam conc. Note that concentrations from nasateam may be
@@ -200,6 +202,12 @@ def compute_initial_daily_ecdr_dataset(
 
     # Set initial global attributes
     ecdr_ide_ds.attrs['description'] = 'Initial daily cdr conc file'
+
+    # Note: these attributes should probably go with 
+    #       a variable named "CDR_parameters" or similar
+    ecdr_ide_ds.attrs['gridid'] = gridid
+    ecdr_ide_ds.attrs['date'] = date.strftime('%Y-%m-%d')
+    ecdr_ide_ds.attrs['missing_value'] = DEFAULT_FLAG_VALUES.missing
 
     file_date = \
         dt.date(1970, 1, 1) \
@@ -274,19 +282,12 @@ def compute_initial_daily_ecdr_dataset(
     # Add the function that generates the bt_tb_mask to bt_coefs
     bt_coefs_init['bt_tb_data_mask_function'] = bt.tb_data_mask
 
-    # TODO: changet this to bt_fields, then assign to ecdr_ide_ds
+    # Get the bootstrap fields and assign them to ide_ds DataArrays
     bt_fields = pmi_bt_params.get_bootstrap_fields(
         date=date,
         satellite='amsr2',
         gridid=gridid,
     )
-    cdr_fields = {key: value for key, value in bt_fields.items()}
-
-    print(f'cdr_fields keys: {cdr_fields.keys()}')
-    # pmi_bt_params.get_bootstrap_fields yields:
-    #  invalid_ice_mask
-    #  land_mask
-    #  pole_mask
 
     # Encode invalid_ice_mask
     ecdr_ide_ds['invalid_ice_mask'] = (
@@ -513,12 +514,6 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     # finally, compute the CDR.
-    # HERE, probably need cdr_attrs like:
-    #   gridid
-    #   missing_flag_value
-    #   date
-    # Also, snould the ields be xarray DataArrays
-
     cdr_conc_raw = calculate_cdr_conc_raw(
         date=date,
         tb_h19=ecdr_ide_ds['h18_day_si'].data,
@@ -526,9 +521,9 @@ def compute_initial_daily_ecdr_dataset(
         tb_h37=ecdr_ide_ds['h36_day_si'].data,
         tb_v19=ecdr_ide_ds['v18_day_si'].data,
         tb_v22=ecdr_ide_ds['v23_day_si'].data,
-        missing_flag_value=DEFAULT_FLAG_VALUES.missing,
         bt_coefs=bt_coefs,
         nt_coefs=nt_coefs,
+        missing_flag_value=ecdr_ide_ds.attrs['missing_value'],
     )
 
     # Apply masks
@@ -633,7 +628,7 @@ def compute_initial_daily_ecdr_dataset(
         logger.info('Applying Bootstrap land spillover technique...')
         cdr_conc = bt.coastal_fix(
             conc=cdr_conc,
-            missing_flag_value=missing_flag_value,
+            missing_flag_value=ecdr_ide_ds.attrs['missing_value'],
             land_mask=ecdr_ide_ds['land_mask'].data,
             minic=bt_coefs['minic'],
         )
