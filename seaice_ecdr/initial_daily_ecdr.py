@@ -291,6 +291,8 @@ def compute_initial_daily_ecdr_dataset(
     #  invalid_ice_mask
     #  land_mask
     #  pole_mask
+
+    # Encode invalid_ice_mask
     ecdr_ide_ds['invalid_ice_mask'] = (
         ('y', 'x'),
         bt_fields['invalid_ice_mask'],
@@ -302,6 +304,23 @@ def compute_initial_daily_ecdr_dataset(
             'comment': 'Mask indicating where seaice will not exist on this day based on climatology',
             'units': 1,
             'valid_range': [0, 1],
+        },
+        {
+            'zlib': True,
+        },
+    )
+
+    # Encode land_mask
+    ecdr_ide_ds['land_mask'] = (
+        ('y', 'x'),
+        bt_fields['land_mask'],
+        {
+            '_FillValue': 0,
+            'grid_mapping': 'crs',
+            'standard_name': 'land_binary_mask',
+            'long_name': 'land mask',
+            'comment': 'Mask indicating where land is',
+            'units': 1,
         },
         {
             'zlib': True,
@@ -339,7 +358,8 @@ def compute_initial_daily_ecdr_dataset(
         v22=ecdr_ide_ds['v23_day_si'].data,
         v19=ecdr_ide_ds['v18_day_si'].data,
 
-        land_mask=cdr_fields['land_mask'],
+        #land_mask=cdr_fields['land_mask'],
+        land_mask=ecdr_ide_ds['land_mask'].data,
         tb_mask=cdr_fields['bt_tb_mask'],
         ln1=bt_coefs_init['vh37_lnline'],
         date=date,
@@ -363,7 +383,7 @@ def compute_initial_daily_ecdr_dataset(
         bt_coefs.pop(coef, None)
 
     bt_coefs['vh37_lnline'] = bt.get_linfit(
-        land_mask=cdr_fields['land_mask'],
+        land_mask=ecdr_ide_ds['land_mask'].data,
         tb_mask=cdr_fields['bt_tb_mask'],
         tbx=ecdr_ide_ds['v36_day_si'].data,
         tby=ecdr_ide_ds['h36_day_si'].data,
@@ -397,7 +417,7 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     bt_coefs['v1937_lnline'] = bt.get_linfit(
-        land_mask=cdr_fields['land_mask'],
+        land_mask=ecdr_ide_ds['land_mask'].data,
         tb_mask=cdr_fields['bt_tb_mask'],
 
         tbx=ecdr_ide_ds['v36_day_si'].data,
@@ -524,7 +544,7 @@ def compute_initial_daily_ecdr_dataset(
         cdr_conc = bt.coastal_fix(
             conc=cdr_conc,
             missing_flag_value=missing_flag_value,
-            land_mask=cdr_fields['land_mask'],
+            land_mask=ecdr_ide_ds['land_mask'].data,
             minic=bt_coefs['minic'],
         )
     # Fill the NH pole hole
