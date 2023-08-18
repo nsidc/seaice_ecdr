@@ -134,7 +134,7 @@ def get_bt_tb_mask(
     return bt_tb_mask
 
 
-def calculate_cdr_conc(
+def calculate_cdr_conc_raw(
     date: dt.date,
     tb_h19: npt.NDArray,
     tb_v37: npt.NDArray,
@@ -144,7 +144,10 @@ def calculate_cdr_conc(
     missing_flag_value,
     bt_coefs,
     nt_coefs,
-    cdr_fields,
+    #cdr_fields,
+    #bt_weather_mask: npt.NDArray,
+    #nt_weather_mask: npt.NDArray,
+    #invalid_ice_mask: npt.NDArray,
 ) -> npt.NDArray:
     """Run the CDR algorithm."""
     # First, get bootstrap conc.
@@ -174,100 +177,6 @@ def calculate_cdr_conc(
     cdr_conc = bt_conc.copy()
     cdr_conc[use_nt_values] = nt_conc[use_nt_values]
 
-    # Apply masks
-    # Get Nasateam weather filter
-    nt_gr_2219 = nt.compute_ratio(tb_v22, tb_v19)
-    nt_gr_3719 = nt.compute_ratio(tb_v37, tb_v19)
-    cdr_fields['nt_weather_mask'] = nt.get_weather_filter_mask(
-        gr_2219=nt_gr_2219,
-        gr_3719=nt_gr_3719,
-        gr_2219_threshold=nt_coefs['nt_gradient_thresholds']['2219'],
-        gr_3719_threshold=nt_coefs['nt_gradient_thresholds']['3719'],
-    )
-
-    set_to_zero_sic = (
-        cdr_fields['nt_weather_mask']
-        | cdr_fields['bt_weather_mask']
-        | cdr_fields['invalid_ice_mask']
-    )
-    cdr_conc[set_to_zero_sic] = 0
-
-    # Apply land spillover corrections
-    # TODO: eventually, we want each of these routines to return a e.g.,
-    #   delta that can be applied to the input concentration
-    #   instead of returning a new conc. Then we would have a
-    #   seprate algorithm for choosing how to apply
-    #   multiple spillover deltas to a given conc field.
-
-    use_only_nt2_spillover = True
-
-    if use_only_nt2_spillover:
-        logger.info('Applying NT2 land spillover technique...')
-        if tb_h19.shape == (896, 608):
-            # NH
-            l90c = load_or_create_land90_conc(
-                gridid='psn12.5',
-                xdim=608,
-                ydim=896,
-                overwrite=False,
-            )
-            adj123 = read_adj123_file(
-                gridid='psn12.5',
-                xdim=608,
-                ydim=896,
-            )
-            cdr_conc = apply_nt2a_land_spillover(cdr_conc, adj123)
-            cdr_conc = apply_nt2b_land_spillover(cdr_conc, adj123, l90c)
-        elif tb_h19.shape == (664, 632):
-            # SH
-            l90c = load_or_create_land90_conc(
-                gridid='pss12.5',
-                xdim=632,
-                ydim=664,
-                overwrite=False,
-            )
-            adj123 = read_adj123_file(
-                gridid='pss12.5',
-                xdim=632,
-                ydim=664,
-            )
-            cdr_conc = apply_nt2a_land_spillover(cdr_conc, adj123)
-            cdr_conc = apply_nt2b_land_spillover(cdr_conc, adj123, l90c)
-
-        else:
-            raise SystemExit(
-                'Could not determine hemisphere from tb shape: {tb_h19.shape}'
-            )
-    else:
-        # nasateam first:
-        logger.info('Applying NASA TEAM land spillover technique...')
-        cdr_conc = nt.apply_nt_spillover(
-            conc=cdr_conc,
-            shoremap=cdr_fields['shoremap'],
-            minic=cdr_fields['minic'],
-        )
-        # then bootstrap:
-        logger.info('Applying Bootstrap land spillover technique...')
-        cdr_conc = bt.coastal_fix(
-            conc=cdr_conc,
-            missing_flag_value=missing_flag_value,
-            land_mask=cdr_fields['land_mask'],
-            minic=bt_coefs['minic'],
-        )
-    # Fill the NH pole hole
-    if cdr_conc.shape == (896, 608):
-        cdr_conc = fill_pole_hole(cdr_conc)
-
-    # Apply land flag value and clamp max conc to 100.
-    # TODO: extract this func from nt and allow override of flag values
-    cdr_conc = nt._clamp_conc_and_set_flags(
-        shoremap=cdr_fields['shoremap'],
-        conc=cdr_conc,
-    )
-
-    # Return CDR.
-    # TODO: return an xr dataset with variables containing the outputs of
-    # intermediate steps above.
     return cdr_conc
 
 
@@ -369,10 +278,34 @@ def compute_initial_daily_ecdr_dataset(
     # Add the function that generates the bt_tb_mask to bt_coefs
     bt_coefs_init['bt_tb_data_mask_function'] = bt.tb_data_mask
 
-    cdr_fields = pmi_bt_params.get_bootstrap_fields(
+    # TODO: changet this to bt_fields, then assign to ecdr_ide_ds
+    bt_fields = pmi_bt_params.get_bootstrap_fields(
         date=date,
         satellite='amsr2',
         gridid=gridid,
+    )
+    cdr_fields = {key: value for key, value in bt_fields.items()}
+
+    print(f'cdr_fields keys: {cdr_fields.keys()}')
+    # pmi_bt_params.get_bootstrap_fields yields:
+    #  invalid_ice_mask
+    #  land_mask
+    #  pole_mask
+    ecdr_ide_ds['invalid_ice_mask'] = (
+        ('y', 'x'),
+        bt_fields['invalid_ice_mask'],
+        {
+            '_FillValue': 0,
+            'grid_mapping': 'crs',
+            'standard_name': 'seaice_binary_mask',
+            'long_name': 'invalid ice mask',
+            'comment': 'Mask indicating where seaice will not exist on this day based on climatology',
+            'units': 1,
+            'valid_range': [0, 1],
+        },
+        {
+            'zlib': True,
+        },
     )
 
     # Determine the NT fields and coefficients
@@ -486,7 +419,7 @@ def compute_initial_daily_ecdr_dataset(
     #   date
     # Also, snould the ields be xarray DataArrays
 
-    conc = calculate_cdr_conc(
+    cdr_conc_raw = calculate_cdr_conc_raw(
         date=date,
         tb_h19=ecdr_ide_ds['h18_day_si'].data,
         tb_v37=ecdr_ide_ds['v36_day_si'].data,
@@ -496,12 +429,118 @@ def compute_initial_daily_ecdr_dataset(
         missing_flag_value=DEFAULT_FLAG_VALUES.missing,
         bt_coefs=bt_coefs,
         nt_coefs=nt_coefs,
-        cdr_fields=cdr_fields,
+        #cdr_fields=cdr_fields,
+        #invalid_ice_mask=ecdr_ide_ds['invalid_ice_mask'].data,
+    )
+
+    # Apply masks
+    # Get Nasateam weather filter
+    nt_gr_2219 = nt.compute_ratio(
+        #tb_v22,
+        #tb_v19,
+        ecdr_ide_ds['v23_day_si'].data,
+        ecdr_ide_ds['v18_day_si'].data,
+    )
+    nt_gr_3719 = nt.compute_ratio(
+        #tb_v37,
+        #tb_v19,
+        ecdr_ide_ds['v36_day_si'].data,
+        ecdr_ide_ds['v18_day_si'].data,
+    )
+    cdr_fields['nt_weather_mask'] = nt.get_weather_filter_mask(
+        gr_2219=nt_gr_2219,
+        gr_3719=nt_gr_3719,
+        gr_2219_threshold=nt_coefs['nt_gradient_thresholds']['2219'],
+        gr_3719_threshold=nt_coefs['nt_gradient_thresholds']['3719'],
+    )
+
+    set_to_zero_sic = (
+        cdr_fields['nt_weather_mask']
+        | cdr_fields['bt_weather_mask']
+        | cdr_fields['bt_weather_mask']
+        | ecdr_ide_ds['invalid_ice_mask'].data
+    )
+
+    cdr_conc = cdr_conc_raw.copy()
+    cdr_conc[set_to_zero_sic] = 0
+
+    # Apply land spillover corrections
+    # TODO: eventually, we want each of these routines to return a e.g.,
+    #   delta that can be applied to the input concentration
+    #   instead of returning a new conc. Then we would have a
+    #   seprate algorithm for choosing how to apply
+    #   multiple spillover deltas to a given conc field.
+
+    use_only_nt2_spillover = True
+
+    tb_h19 = ecdr_ide_ds['h18_day_si'].data
+    if use_only_nt2_spillover:
+        logger.info('Applying NT2 land spillover technique...')
+        if tb_h19.shape == (896, 608):
+            # NH
+            l90c = load_or_create_land90_conc(
+                gridid='psn12.5',
+                xdim=608,
+                ydim=896,
+                overwrite=False,
+            )
+            adj123 = read_adj123_file(
+                gridid='psn12.5',
+                xdim=608,
+                ydim=896,
+            )
+            cdr_conc = apply_nt2a_land_spillover(cdr_conc, adj123)
+            cdr_conc = apply_nt2b_land_spillover(cdr_conc, adj123, l90c)
+        elif tb_h19.shape == (664, 632):
+            # SH
+            l90c = load_or_create_land90_conc(
+                gridid='pss12.5',
+                xdim=632,
+                ydim=664,
+                overwrite=False,
+            )
+            adj123 = read_adj123_file(
+                gridid='pss12.5',
+                xdim=632,
+                ydim=664,
+            )
+            cdr_conc = apply_nt2a_land_spillover(cdr_conc, adj123)
+            cdr_conc = apply_nt2b_land_spillover(cdr_conc, adj123, l90c)
+
+        else:
+            raise SystemExit(
+                'Could not determine hemisphere from tb shape: {tb_h19.shape}'
+            )
+    else:
+        # nasateam first:
+        logger.info('Applying NASA TEAM land spillover technique...')
+        cdr_conc = nt.apply_nt_spillover(
+            conc=cdr_conc,
+            shoremap=cdr_fields['shoremap'],
+            minic=cdr_fields['minic'],
+        )
+        # then bootstrap:
+        logger.info('Applying Bootstrap land spillover technique...')
+        cdr_conc = bt.coastal_fix(
+            conc=cdr_conc,
+            missing_flag_value=missing_flag_value,
+            land_mask=cdr_fields['land_mask'],
+            minic=bt_coefs['minic'],
+        )
+    # Fill the NH pole hole
+    if cdr_conc.shape == (896, 608):
+        cdr_conc = fill_pole_hole(cdr_conc)
+
+    # Apply land flag value and clamp max conc to 100.
+    # TODO: extract this func from nt and allow override of flag values
+    cdr_conc = nt._clamp_conc_and_set_flags(
+        shoremap=cdr_fields['shoremap'],
+        conc=cdr_conc,
     )
 
     ecdr_ide_ds['conc'] = (
         ('time', 'y', 'x'),
-        np.expand_dims(conc, axis=0),
+        np.expand_dims(cdr_conc, axis=0),
         {
             '_FillValue': 255,
             'grid_mapping': 'crs',
