@@ -142,9 +142,10 @@ def calculate_cdr_conc_raw(
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
     tb_v22: npt.NDArray,
-    bt_coefs,
-    nt_coefs,
-    missing_flag_value,
+    bt_coefs: dict,
+    nt_coefs: dict,
+    missing_flag_value: float | int,
+    return_bt_and_nt_raw: bool,
 ) -> npt.NDArray:
     """Run the CDR algorithm."""
     # First, get bootstrap conc.
@@ -175,7 +176,10 @@ def calculate_cdr_conc_raw(
     cdr_conc = bt_conc.copy()
     cdr_conc[use_nt_values] = nt_conc[use_nt_values]
 
-    return cdr_conc
+    if return_bt_and_nt_raw:
+        return bt_conc, nt_conc, cdr_conc
+    else:
+        return cdr_conc
 
 
 def compute_initial_daily_ecdr_dataset(
@@ -514,7 +518,7 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     # finally, compute the CDR.
-    cdr_conc_raw = calculate_cdr_conc_raw(
+    bt_conc, nt_conc, cdr_conc_raw = calculate_cdr_conc_raw(
         date=date,
         tb_h19=ecdr_ide_ds['h18_day_si'].data,
         tb_v37=ecdr_ide_ds['v36_day_si'].data,
@@ -524,6 +528,7 @@ def compute_initial_daily_ecdr_dataset(
         bt_coefs=bt_coefs,
         nt_coefs=nt_coefs,
         missing_flag_value=ecdr_ide_ds.attrs['missing_value'],
+        return_bt_and_nt_raw=True,
     )
 
     # Apply masks
@@ -644,6 +649,53 @@ def compute_initial_daily_ecdr_dataset(
         conc=cdr_conc,
     )
 
+    # Add the BT raw field to the dataset
+    if bt_conc is not None:
+        ecdr_ide_ds['bt_conc_raw'] = (
+            ('y', 'x'),
+            bt_conc,
+            {
+                '_FillValue': 255,
+                'grid_mapping': 'crs',
+                'standard_name': 'sea_ice_area_fraction',
+                'long_name': 'Bootstrap sea ice concentration, raw field with no masking',
+            },
+            {
+                'zlib': True,
+            },
+        )
+
+    # Add the BT coefficients to the bt_conc_raw DataArray
+    for attr in sorted(bt_coefs.keys()):
+        if type(bt_coefs[attr]) in (float, int):
+            ecdr_ide_ds.variables['bt_conc_raw'].attrs[attr] = bt_coefs[attr]
+        else:
+            ecdr_ide_ds.variables['bt_conc_raw'].attrs[attr] = str(bt_coefs[attr])
+
+    # Add the NT raw field to the dataset
+    if nt_conc is not None:
+        ecdr_ide_ds['nt_conc_raw'] = (
+            ('y', 'x'),
+            nt_conc,
+            {
+                '_FillValue': 255,
+                'grid_mapping': 'crs',
+                'standard_name': 'sea_ice_area_fraction',
+                'long_name': 'NASA Team sea ice concentration, raw field with no masking',
+            },
+            {
+                'zlib': True,
+            },
+        )
+
+    # Add the NT coefficients to the nt_conc_raw DataArray
+    for attr in sorted(nt_coefs.keys()):
+        if type(nt_coefs[attr]) in (float, int):
+            ecdr_ide_ds.variables['nt_conc_raw'].attrs[attr] = nt_coefs[attr]
+        else:
+            ecdr_ide_ds.variables['nt_conc_raw'].attrs[attr] = str(nt_coefs[attr])
+
+    # Add the final cdr_conc value to the xarray dataset
     ecdr_ide_ds['conc'] = (
         ('time', 'y', 'x'),
         np.expand_dims(cdr_conc, axis=0),
