@@ -761,30 +761,6 @@ def compute_initial_daily_ecdr_dataset(
     return ecdr_ide_ds
 
 
-''' This is the code we are working on...
-def create_initial_daily_ecdr_netcdf(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
-    output_dir: Path,
-) -> None:
-    """Create netcdf file of ide data set."""
-    logger.info(
-        'Creating initial daily ECDR netCDF file for:\n'
-        f'{date=}, {hemisphere=}, {resolution=}'
-    )
-
-    # Initialize xr ds container, including georeferencing coords, dimensions
-    # Compute raw bt_conc dataarray
-    # Compute raw nt_conc dataarray
-    # Compute cdr_conc dataarray
-    # Add appropriate global metadata
-    # Determine output filename
-    # Return output filename
-'''
-
-
 def make_cdr_netcdf(
     *,
     date: dt.date,
