@@ -277,6 +277,44 @@ def compute_initial_daily_ecdr_dataset(
             },
         )
 
+    # Set up the spatial interpolation bitmask field where the various
+    # TB fields were interpolated
+    ydim, xdim = ecdr_ide_ds['h18_day_si'].data.shape
+    spatint_bitmask_arr = np.zeros((ydim, xdim), dtype=np.uint8)
+    tb_spatint_bitmask_map = {
+        'v18': 1,
+        'h18': 2,
+        'v23': 4,
+        'v36': 8,
+        'h36': 16,
+    }
+    for tbname in ('h18', 'v18', 'v23', 'h36', 'v36'):
+        tb_varname = f'{tbname}_day'
+        si_varname = f'{tbname}_day_si'
+        is_tb_si_diff = (
+            (ecdr_ide_ds[tb_varname].data != ecdr_ide_ds[si_varname].data)
+            & (~np.isnan(ecdr_ide_ds[si_varname].data))
+        )
+        spatint_bitmask_arr[is_tb_si_diff] += tb_spatint_bitmask_map[tbname]
+
+    ecdr_ide_ds['spatint_bitmask'] = (
+        ('y', 'x'),
+        spatint_bitmask_arr,
+        {
+            '_FillValue': 0,
+            'grid_mapping': 'crs',
+            'standard_name': 'status_flag',
+            'long_name': 'spatial_interpolation_flag',
+            'units': 1,
+            'valid_range': [np.uint8(0), np.uint8(63)],
+            'flag_masks': np.array([1, 2, 4, 8, 16, 32], dtype=np.uint8),
+            'flag_meanings': '19v_tb_value_interpolated 19h_tb_value_interpolated 22v_tb_value_interpolated 37v_tb_value_interpolated 37h_tb_value_interpolated Pole_hole_spatially_interpolated_(Arctic_only)',
+        },
+        {
+            'zlib': True,
+        },
+    )
+
     bt_coefs_init = pmi_bt_params.get_bootstrap_params(
         date=date,
         satellite='amsr2',
