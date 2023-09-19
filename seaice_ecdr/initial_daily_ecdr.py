@@ -287,6 +287,7 @@ def compute_initial_daily_ecdr_dataset(
         'v23': 4,
         'v36': 8,
         'h36': 16,
+        'pole_filled': 32,
     }
     for tbname in ('h18', 'v18', 'v23', 'h36', 'v36'):
         tb_varname = f'{tbname}_day'
@@ -314,6 +315,7 @@ def compute_initial_daily_ecdr_dataset(
             'zlib': True,
         },
     )
+    logger.info('Initialized spatial_interpolation_flag with TB fill locations')
 
     bt_coefs_init = pmi_bt_params.get_bootstrap_params(
         date=date,
@@ -677,8 +679,16 @@ def compute_initial_daily_ecdr_dataset(
         )
 
     # Fill the NH pole hole
+    # TODO: Should check for NH and have grid-dependent filling scheme
     if cdr_conc.shape == (896, 608):
+        cdr_conc_pre_polefill = cdr_conc.copy()
         cdr_conc = fill_pole_hole(cdr_conc)
+        logger.info('Filled pole hole')
+        is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
+        if 'spatint_bitmask' in ecdr_ide_ds.variables.keys():
+            ecdr_ide_ds['spatint_bitmask'].data[is_pole_filled] += \
+                tb_spatint_bitmask_map['pole_filled']
+            logger.info('Updated spatial_interpolation with pole hole value')
 
     # Apply land flag value and clamp max conc to 100.
     # TODO: extract this func from nt and allow override of flag values
