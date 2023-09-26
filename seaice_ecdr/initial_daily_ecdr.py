@@ -371,6 +371,7 @@ def compute_initial_daily_ecdr_dataset(
     # Encode pole_mask
     # TODO: I think this is currently unused
     # ...but it should be coordinated with pole hole filling routines below
+    # ...and the pole filling should occur after temporal interpolation
     if bt_fields['pole_mask'] is not None:
         ecdr_ide_ds['pole_mask'] = (
             ('y', 'x'),
@@ -623,6 +624,12 @@ def compute_initial_daily_ecdr_dataset(
     use_only_nt2_spillover = True
 
     tb_h19 = ecdr_ide_ds['h18_day_si'].data
+    # Will use spillover_applied with values:
+    #  1: NT2
+    #  2: BT (not yet added)
+    #  4: NT (not yet added)
+    spillover_applied = np.zeros((ydim, xdim), dtype=np.uint8)
+    cdr_conc_pre_spillover = cdr_conc.copy()
     if use_only_nt2_spillover:
         logger.info('Applying NT2 land spillover technique...')
         if tb_h19.shape == (896, 608):
@@ -677,6 +684,7 @@ def compute_initial_daily_ecdr_dataset(
             land_mask=ecdr_ide_ds['land_mask'].data,
             minic=bt_coefs['minic'],
         )
+    spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = 1
 
     # Fill the NH pole hole
     # TODO: Should check for NH and have grid-dependent filling scheme
@@ -758,6 +766,40 @@ def compute_initial_daily_ecdr_dataset(
         },
     )
 
+    # Add the QA bitmask field to the initial daily xarray dataset
+    #   1: BT weather
+    #   2: NT weather
+    #   4: NT2 spillover (or in general...any/all spillover corrections)
+    #   8: Missing TBs (exclusive of valid_ice mask)
+    #  16: Invalid ice mask
+    #  32: Spatial interpolation applied
+    # --
+    #  64: Temporal interpolation applied (applied later)
+    # 128: Melt onset detected (applied later)
+    qa_bitmask = np.zeros((ydim, xdim), dtype=np.uint8)
+    qa_bitmask[ecdr_ide_ds['bt_weather_mask'].data] += 1
+    qa_bitmask[ecdr_ide_ds['nt_weather_mask'].data] += 2
+    qa_bitmask[spillover_applied == 1] += 4
+    qa_bitmask[invalid_tb_mask & ~ecdr_ide_ds['invalid_ice_mask'].data] += 8
+    qa_bitmask[ecdr_ide_ds['invalid_ice_mask'].data] += 16
+    qa_bitmask[ecdr_ide_ds['spatint_bitmask'].data != 0] += 32
+    ecdr_ide_ds['qa_of_cdr_seaice_conc'] = (
+        ('y', 'x'),
+        qa_bitmask,
+        {
+            '_FillValue': 0,
+            'grid_mapping': 'crs',
+            'standard_name': 'status_flag',
+            'long_name': 'Sea Ice Concentration QC flags',
+            'units': 1,
+            'valid_range': [np.uint8(), np.uint8(255)],
+        },
+        {
+            'zlib': True,
+        },
+    )
+
+    # Finished!
     return ecdr_ide_ds
 
 
