@@ -33,7 +33,7 @@ from pm_icecon._types import Hemisphere
 from pm_icecon.cli.util import datetime_to_date
 from pm_icecon.config.models.bt import BootstrapParams
 from pm_icecon.constants import CDR_DATA_DIR, DEFAULT_FLAG_VALUES
-from pm_icecon.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
+from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
 from pm_icecon.interpolation import spatial_interp_tbs
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
