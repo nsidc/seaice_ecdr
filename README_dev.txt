@@ -20,4 +20,3 @@ in ~/seaice_ecdr/:
 
    Can generate a sample netCDF file with:
      python seaice_ecdr/tests/integration/gen_ide_sample.py
-

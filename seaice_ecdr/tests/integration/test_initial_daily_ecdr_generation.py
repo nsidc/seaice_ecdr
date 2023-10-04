@@ -23,17 +23,17 @@ from seaice_ecdr.initial_daily_ecdr import (
 
 # Set the default minimum log notification to Warning
 logger.remove(0)  # Removes previous logger info
-logger.add(sys.stderr, level='WARNING')
+logger.add(sys.stderr, level="WARNING")
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def sample_pmicecon_dataset():
     """Set up sample data set using pm_icecon."""
-    logger.info('testing: Creating sample pmicecon dataset')
+    logger.info("testing: Creating sample pmicecon dataset")
 
     test_date = dt.datetime(2021, 4, 5).date()
-    test_hemisphere = 'north'
-    test_resolution = '12'
+    test_hemisphere = "north"
+    test_resolution = "12"
 
     pmicecon_conc_ds = pmi_amsr2_cdr(
         date=test_date,
@@ -43,14 +43,14 @@ def sample_pmicecon_dataset():
     return pmicecon_conc_ds
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def sample_idecdr_dataset():
     """Set up sample data set using idecdr."""
-    logger.info('testing: Creating sample idecdr dataset')
+    logger.info("testing: Creating sample idecdr dataset")
 
     test_date = dt.datetime(2021, 4, 5).date()
-    test_hemisphere = 'north'
-    test_resolution = '12'
+    test_hemisphere = "north"
+    test_resolution = "12"
 
     ide_conc_ds = compute_idecdr_ds(
         date=test_date,
@@ -75,7 +75,7 @@ def test_pmicecon_conc_generation(sample_pmicecon_dataset):
     """Test that pm_icecon yields a 'conc' field."""
     # pmicecon_conc_ds = sample_pmicecon_dataset
 
-    pmicecon_conc_varname = 'conc'
+    pmicecon_conc_varname = "conc"
     assert (
         type(sample_pmicecon_dataset.variables[pmicecon_conc_varname])
         == xr.core.variable.Variable
@@ -87,10 +87,10 @@ def test_seaice_idecdr_and_pmicecon_conc_identical(
 ):
     """Test that pm_icecon yields a 'conc' field."""
     pmicecon_conc_ds = sample_pmicecon_dataset
-    pmi_conc_field = np.array(pmicecon_conc_ds.variables['conc'])
+    pmi_conc_field = np.array(pmicecon_conc_ds.variables["conc"])
 
     ide_conc_ds = sample_idecdr_dataset
-    ide_conc_field = np.squeeze(np.array(ide_conc_ds.variables['conc']))
+    ide_conc_field = np.squeeze(np.array(ide_conc_ds.variables["conc"]))
 
     # We know that the original conc field has zeros where TBs were not
     # available, so only check where idecdr is not nan
