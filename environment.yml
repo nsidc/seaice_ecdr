@@ -12,6 +12,7 @@ dependencies:
   - xarray ~=2023.6
   - netCDF4 ~=1.6.3
   - loguru ~=0.7
+  - scipy ~=1.11.3
 
   #############################
   # Non-imported dependencies #

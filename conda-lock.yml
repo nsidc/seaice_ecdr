@@ -13,17 +13,17 @@
 version: 1
 metadata:
   content_hash:
-    linux-64: 88f0cf0831732cabcdd9c108fac7d12eebb4a271dcdfefd6d8233702250a8bee
-    osx-arm64: 76a6d7459fc737551c9cef15a6cb045a92e57455e642cd733a0ddef84b660d4e
-    osx-64: 1a6ba46b691d82fab54414aec1d290ccec0cf449fb52e73e436f1218e6b2af3d
-    win-64: 94e7f8fd3dbaecfcb1660b00c51a3b9ffdd82a2b369718d1b03013ae981287d0
+    linux-64: fcadd0ed0d84aaa6b8d63b1442f0a3209d12fcad1bba022a54cb76477d40421a
+    osx-arm64: 32686f782da7119ea5458b6c72971fd1ea8d31dadee6cf61e8c150c587e67eec
+    osx-64: b64759c8879cf8191ffdab1ef6cb7b958dffbcf45abb7487b91e82fff647aca8
+    win-64: 5b6f12a3519d1aa314be676cefcb587ff135b922288911b938e2da2bc5b973dd
   channels:
   - url: conda-forge
     used_env_vars: []
   platforms:
   - linux-64
-  - osx-arm64
   - osx-64
+  - osx-arm64
   - win-64
   sources:
   - environment.yml
@@ -1997,6 +1997,27 @@ package:
   hash:
     md5: 59a168d82c582248859d8dc8075da6f6
     sha256: ed8ade65e48279dc9caff53230391d8f72bea6d55f6951fbf7fcc39d762e1e5e
+  category: main
+  optional: false
+- name: scipy
+  version: 1.11.3
+  manager: conda
+  platform: linux-64
+  dependencies:
+    libblas: '>=3.9.0,<4.0a0'
+    libcblas: '>=3.9.0,<4.0a0'
+    libgcc-ng: '>=12'
+    libgfortran-ng: ''
+    libgfortran5: '>=12.3.0'
+    liblapack: '>=3.9.0,<4.0a0'
+    libstdcxx-ng: '>=12'
+    numpy: '>=1.22.4,<2.0a0'
+    python: '>=3.10,<3.11.0a0'
+    python_abi: 3.10.*
+  url: https://conda.anaconda.org/conda-forge/linux-64/scipy-1.11.3-py310hb13e2d6_0.conda
+  hash:
+    md5: 04976ea8528a0f33cd6c39e2ec73e0c3
+    sha256: b0cae2dc94a9e0e97e54a9782136775bbd9afac662143ed660418ae449ad8078
   category: main
   optional: false
 - name: secretstorage
@@ -4043,6 +4064,26 @@ package:
     sha256: 89f7fecc7355181dbc2ab851e668a2fce6aa4830b336a34c93b59bda93206270
   category: main
   optional: false
+- name: scipy
+  version: 1.11.3
+  manager: conda
+  platform: osx-64
+  dependencies:
+    libblas: '>=3.9.0,<4.0a0'
+    libcblas: '>=3.9.0,<4.0a0'
+    libcxx: '>=15.0.7'
+    libgfortran: 5.*
+    libgfortran5: '>=13.2.0'
+    liblapack: '>=3.9.0,<4.0a0'
+    numpy: '>=1.22.4,<2.0a0'
+    python: '>=3.10,<3.11.0a0'
+    python_abi: 3.10.*
+  url: https://conda.anaconda.org/conda-forge/osx-64/scipy-1.11.3-py310h2db466d_0.conda
+  hash:
+    md5: 8dfb8a8f6e5992c748f004c601adcb82
+    sha256: d237d0268d29f78efdbbe5eda28831031fb16e35ed4bfdf081ca1828f952a399
+  category: main
+  optional: false
 - name: conda-lock
   version: 2.3.0
   manager: conda
@@ -5979,6 +6020,26 @@ package:
     sha256: 89f7fecc7355181dbc2ab851e668a2fce6aa4830b336a34c93b59bda93206270
   category: main
   optional: false
+- name: scipy
+  version: 1.11.3
+  manager: conda
+  platform: osx-arm64
+  dependencies:
+    libblas: '>=3.9.0,<4.0a0'
+    libcblas: '>=3.9.0,<4.0a0'
+    libcxx: '>=15.0.7'
+    libgfortran: 5.*
+    libgfortran5: '>=13.2.0'
+    liblapack: '>=3.9.0,<4.0a0'
+    numpy: '>=1.22.4,<2.0a0'
+    python: '>=3.10,<3.11.0a0'
+    python_abi: 3.10.*
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/scipy-1.11.3-py310hd1cfc7d_0.conda
+  hash:
+    md5: 23fe39648c3bc73e3d09b872f32fef1a
+    sha256: aa43dd29d038cda7f6151128e33c211cd974134be22f044227484832f1a256e6
+  category: main
+  optional: false
 - name: conda-lock
   version: 2.3.0
   manager: conda
@@ -6112,6 +6173,17 @@ package:
     sha256: 38367c264bace64d6f939c1170cda3aba2eb0fb2300570c16a8c63aff9ca8031
   category: main
   optional: false
+- name: msys2-conda-epoch
+  version: '20160418'
+  manager: conda
+  platform: win-64
+  dependencies: {}
+  url: https://conda.anaconda.org/conda-forge/win-64/msys2-conda-epoch-20160418-1.tar.bz2
+  hash:
+    md5: b0309b72560df66f71a9d5e34a5efdfa
+    sha256: 99358d58d778abee4dca82ad29fb58058571f19b0f86138363c260049d4ac7f1
+  category: main
+  optional: false
 - name: python_abi
   version: '3.10'
   manager: conda
@@ -6145,6 +6217,30 @@ package:
     sha256: f29cdaf8712008f6b419b8b1a403923b00ab2504bfe0fb2ba8eb60e72d4f14c6
   category: main
   optional: false
+- name: m2w64-gmp
+  version: 6.1.0
+  manager: conda
+  platform: win-64
+  dependencies:
+    msys2-conda-epoch: '20160418'
+  url: https://conda.anaconda.org/conda-forge/win-64/m2w64-gmp-6.1.0-2.tar.bz2
+  hash:
+    md5: 53a1c73e1e3d185516d7e3af177596d9
+    sha256: 7e3cd95f554660de45f8323fca359e904e8d203efaf07a4d311e46d611481ed1
+  category: main
+  optional: false
+- name: m2w64-libwinpthread-git
+  version: 5.0.0.4634.697f757
+  manager: conda
+  platform: win-64
+  dependencies:
+    msys2-conda-epoch: '20160418'
+  url: https://conda.anaconda.org/conda-forge/win-64/m2w64-libwinpthread-git-5.0.0.4634.697f757-2.tar.bz2
+  hash:
+    md5: 774130a326dee16f1ceb05cc687ee4f0
+    sha256: f63a09b2cae7defae0480f1740015d6235f1861afa6fe2e2d3e10bd0d1314ee0
+  category: main
+  optional: false
 - name: vc14_runtime
   version: 14.36.32532
   manager: conda
@@ -6155,6 +6251,20 @@ package:
   hash:
     md5: d0de20f2f3fc806a81b44fcdd941aaf7
     sha256: b317d49af32d5c031828e62c08d56f01d9a64cd3f40d4cccb052bc38c7a9e62e
+  category: main
+  optional: false
+- name: m2w64-gcc-libs-core
+  version: 5.3.0
+  manager: conda
+  platform: win-64
+  dependencies:
+    m2w64-gmp: ''
+    m2w64-libwinpthread-git: ''
+    msys2-conda-epoch: '20160418'
+  url: https://conda.anaconda.org/conda-forge/win-64/m2w64-gcc-libs-core-5.3.0-7.tar.bz2
+  hash:
+    md5: 4289d80fb4d272f1f3b56cfe87ac90bd
+    sha256: 58afdfe859ed2e9a9b1cc06bc408720cb2c3a6a132e59d4805b090d7574f4ee0
   category: main
   optional: false
 - name: vc
@@ -6288,6 +6398,19 @@ package:
   hash:
     md5: e34720eb20a33fc3bfb8451dd837ab7a
     sha256: a0954b4b1590735ea5f3d0f4579c3883f8ac837387afd5b398b241fda85124ab
+  category: main
+  optional: false
+- name: m2w64-gcc-libgfortran
+  version: 5.3.0
+  manager: conda
+  platform: win-64
+  dependencies:
+    m2w64-gcc-libs-core: ''
+    msys2-conda-epoch: '20160418'
+  url: https://conda.anaconda.org/conda-forge/win-64/m2w64-gcc-libgfortran-5.3.0-6.tar.bz2
+  hash:
+    md5: 066552ac6b907ec6d72c0ddab29050dc
+    sha256: 9de95a7996d5366ae0808eef2acbc63f9b11b874aa42375f55379e6715845dc6
   category: main
   optional: false
 - name: openssl
@@ -6449,6 +6572,22 @@ package:
   hash:
     md5: 5c629cd12d89e2856c17b1dc5fcf44a4
     sha256: 221698b52dd7a3dcfc67ff9460e9c8649fc6c86506a2a2ab6f57b97e7489bb9f
+  category: main
+  optional: false
+- name: m2w64-gcc-libs
+  version: 5.3.0
+  manager: conda
+  platform: win-64
+  dependencies:
+    m2w64-gcc-libgfortran: ''
+    m2w64-gcc-libs-core: ''
+    m2w64-gmp: ''
+    m2w64-libwinpthread-git: ''
+    msys2-conda-epoch: '20160418'
+  url: https://conda.anaconda.org/conda-forge/win-64/m2w64-gcc-libs-5.3.0-7.tar.bz2
+  hash:
+    md5: fe759119b8b3bfa720b8762c6fdc35de
+    sha256: 3bd1ab02b7c89a5b153a17be03b36d833f1517ff2a6a77ead7c4a808b88196aa
   category: main
   optional: false
 - name: python
@@ -8047,6 +8186,28 @@ package:
   hash:
     md5: 5ccb41168a031b091c11cce05d2b37c4
     sha256: da289e4bb18065bea2022cdb51c55d0f5c95cebaf94f44dad47b9977f071b7b6
+  category: main
+  optional: false
+- name: scipy
+  version: 1.11.3
+  manager: conda
+  platform: win-64
+  dependencies:
+    libblas: '>=3.9.0,<4.0a0'
+    libcblas: '>=3.9.0,<4.0a0'
+    liblapack: '>=3.9.0,<4.0a0'
+    m2w64-gcc-libs: ''
+    m2w64-gcc-libs-core: ''
+    numpy: '>=1.22.4,<2.0a0'
+    python: '>=3.10,<3.11.0a0'
+    python_abi: 3.10.*
+    ucrt: '>=10.0.20348.0'
+    vc: '>=14.2,<15'
+    vc14_runtime: '>=14.29.30139'
+  url: https://conda.anaconda.org/conda-forge/win-64/scipy-1.11.3-py310h70e3499_0.conda
+  hash:
+    md5: 0b503b20eb2f2466c070b7360650615d
+    sha256: 5818c883d19fd708ad27c317727bf57167478c822531cc993354223d355a56c1
   category: main
   optional: false
 - name: netcdf4
