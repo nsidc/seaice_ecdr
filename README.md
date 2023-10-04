@@ -108,6 +108,14 @@ To manually run the pre-commit hooks without a commit:
 $ pre-commit run --all-files
 ```
 
+#### Running unit tests
+
+Use `pytest` to run unit tests:
+
+```
+$ python -m pytest
+```
+
 ## License
 
 See [LICENSE](LICENSE).

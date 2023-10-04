@@ -31,3 +31,12 @@ max-complexity = 8
 
 [tool.ruff.flake8-quotes]
 inline-quotes = "double"
+
+[tool.pytest.ini_options]
+testpaths = [
+  "seaice_ecdr/tests/",
+]
+
+filterwarnings = [
+  "ignore:numpy.ndarray size changed:RuntimeWarning",
+]
