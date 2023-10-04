@@ -116,6 +116,14 @@ Use `pytest` to run unit tests:
 $ python -m pytest
 ```
 
+#### Type-checking
+
+Use `mypy` to run static typechecking
+
+```
+$ mypy
+```
+
 ## License
 
 See [LICENSE](LICENSE).
