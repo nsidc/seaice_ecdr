@@ -8,6 +8,10 @@
 
 Enhanced SeaIce CDR (ECDR) enables the creation of the 12.5km SeaIce CDR.
 
+Please note that this repository is a work in progress and breaking changes are
+to be expected. Initial work on this repository is specific to NSIDC's internal
+systems and may not work as expected for external collaborators.
+
 
 ## Level of Support
 
