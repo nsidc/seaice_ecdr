@@ -34,6 +34,7 @@ from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_icecon.util import date_range, standard_output_filename
 
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
+from seaice_ecdr.pm_cdr import amsr2_cdr
 
 
 def xwm(m="exiting in xwm()"):
@@ -306,7 +307,12 @@ def compute_initial_daily_ecdr_dataset(
             "units": 1,
             "valid_range": [np.uint8(0), np.uint8(63)],
             "flag_masks": np.array([1, 2, 4, 8, 16, 32], dtype=np.uint8),
-            "flag_meanings": "19v_tb_value_interpolated 19h_tb_value_interpolated 22v_tb_value_interpolated 37v_tb_value_interpolated 37h_tb_value_interpolated Pole_hole_spatially_interpolated_(Arctic_only)",
+            "flag_meanings": (
+                "19v_tb_value_interpolated 19h_tb_value_interpolated"
+                " 22v_tb_value_interpolated 37v_tb_value_interpolated"
+                " 37h_tb_value_interpolated"
+                " Pole_hole_spatially_interpolated_(Arctic_only)"
+            ),
         },
         {
             "zlib": True,
@@ -339,7 +345,10 @@ def compute_initial_daily_ecdr_dataset(
             "grid_mapping": "crs",
             "standard_name": "seaice_binary_mask",
             "long_name": "invalid ice mask",
-            "comment": "Mask indicating where seaice will not exist on this day based on climatology",
+            "comment": (
+                "Mask indicating where seaice will not exist on this day"
+                " based on climatology"
+            ),
             "units": 1,
             "valid_range": [0, 1],
         },
@@ -479,7 +488,10 @@ def compute_initial_daily_ecdr_dataset(
             "grid_mapping": "crs",
             "standard_name": "bt_weather_binary_mask",
             "long_name": "Map of weather masquerading as sea ice per BT",
-            "comment": "Mask indicating pixels with erroneously detected sea ice because of weather per BT ",
+            "comment": (
+                "Mask indicating pixels with erroneously detected sea ice"
+                " because of weather per BT "
+            ),
             "units": 1,
         },
         {
@@ -587,7 +599,10 @@ def compute_initial_daily_ecdr_dataset(
             "grid_mapping": "crs",
             "standard_name": "weather_binary_mask",
             "long_name": "Map of weather masquerading as sea ice per NT",
-            "comment": "Mask indicating pixels with erroneously detected sea ice because of weather per NT ",
+            "comment": (
+                "Mask indicating pixels with erroneously detected sea ice"
+                " because of weather per NT "
+            ),
             "units": 1,
         },
         {
@@ -705,7 +720,9 @@ def compute_initial_daily_ecdr_dataset(
                 "_FillValue": 255,
                 "grid_mapping": "crs",
                 "standard_name": "sea_ice_area_fraction",
-                "long_name": "Bootstrap sea ice concentration, raw field with no masking",
+                "long_name": (
+                    "Bootstrap sea ice concentration, raw field with no masking"
+                ),
             },
             {
                 "zlib": True,
@@ -728,7 +745,9 @@ def compute_initial_daily_ecdr_dataset(
                 "_FillValue": 255,
                 "grid_mapping": "crs",
                 "standard_name": "sea_ice_area_fraction",
-                "long_name": "NASA Team sea ice concentration, raw field with no masking",
+                "long_name": (
+                    "NASA Team sea ice concentration, raw field with no masking"
+                ),
             },
             {
                 "zlib": True,
