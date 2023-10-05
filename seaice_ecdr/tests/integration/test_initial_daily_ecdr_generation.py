@@ -9,6 +9,7 @@ pm_icecon's initial amsr2_cdr results.
 
 import datetime as dt
 import sys
+from typing import Final
 
 import numpy as np
 import pytest
@@ -32,8 +33,8 @@ def sample_pmicecon_dataset():
     logger.info('testing: Creating sample pmicecon dataset')
 
     test_date = dt.datetime(2021, 4, 5).date()
-    test_hemisphere = 'north'
-    test_resolution = '12'
+    test_hemisphere: Final = 'north'
+    test_resolution: Final = '12'
 
     pmicecon_conc_ds = pmi_amsr2_cdr(
         date=test_date,
@@ -49,12 +50,12 @@ def sample_idecdr_dataset():
     logger.info('testing: Creating sample idecdr dataset')
 
     test_date = dt.datetime(2021, 4, 5).date()
-    test_hemisphere = 'north'
-    test_resolution = '12'
+    test_hemisphere: Final = 'north'
+    test_resolution: Final = '12'
 
     ide_conc_ds = compute_idecdr_ds(
         date=test_date,
-        hemisphere=test_hemisphere,
+        hemisphere=test_hemisphere,  # type: ignore
         resolution=test_resolution,
     )
     return ide_conc_ds
@@ -95,6 +96,10 @@ def test_seaice_idecdr_and_pmicecon_conc_identical(
     # We know that the original conc field has zeros where TBs were not
     # available, so only check where idecdr is not nan
     indexes_to_check = ~np.isnan(ide_conc_field)
+    ydim, xdim = pmi_conc_field.shape
+    dtype = pmi_conc_field.dtype
+    pmi_conc_field.tofile(f'pmi_conc_{dtype}_{xdim}x{ydim}.dat')
+    ide_conc_field.tofile(f'ide_conc_{dtype}_{xdim}x{ydim}.dat')
     assert_equal(
         pmi_conc_field[indexes_to_check],
         ide_conc_field[indexes_to_check],

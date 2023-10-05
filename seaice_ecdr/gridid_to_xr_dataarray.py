@@ -8,6 +8,7 @@ a given NSIDC gridid
 
 
 import datetime as dt
+from typing import Dict, Union
 
 import numpy as np
 import xarray as xr
@@ -38,7 +39,7 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
         logger.info(
             f'Creating georeferenced dataset on {gridid} grid for {grid_date}'
         )  # noqa
-    crs_attrs = {}
+    crs_attrs: Dict[str, Union[str, float]] = {}
 
     # CRS for polar stereo grids
     if gridid[:2] == 'ps':
@@ -150,18 +151,20 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
 
     res_km = gridid[3:]
     res_m = int(float(res_km) * 1000)
-    crs_attrs['long_name'] = crs_attrs['long_name'].format(res_km=res_km)
+    crs_attrs['long_name'] = crs_attrs['long_name'].format(  # type: ignore
+        res_km=res_km
+    )
     if gridid[:3] == 'e2t':
-        res_m = 1.0010104 * res_m
+        res_m = 1.0010104 * res_m  # type: ignore
         res_tkm = 1.0010104 * float(res_km)
-        crs_attrs['GeoTransform'] = crs_attrs['GeoTransform'].format(
+        crs_attrs['GeoTransform'] = crs_attrs['GeoTransform'].format(  # type: ignore
             res_km=res_km,
             res_tkm=res_tkm,
             xleft=xleft,
             ytop=ytop,
         )
     else:
-        crs_attrs['GeoTransform'] = crs_attrs['GeoTransform'].format(
+        crs_attrs['GeoTransform'] = crs_attrs['GeoTransform'].format(  # type: ignore
             res_km=res_km,
             res_m=res_m,
             xleft=xleft,
@@ -252,8 +255,6 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
             'y': y_da,
             'x': x_da,
         }
-
-    return None
 
 
 if __name__ == '__main__':
