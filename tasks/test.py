@@ -37,7 +37,7 @@ def formatcheck(ctx):
 def unit(ctx):
     """Run unit tests."""
     print_and_run(
-        f'PYTHONPATH={PROJECT_DIR} pytest -s {PROJECT_DIR}/seaice_ecdr/tests/unit',
+        f'pytest -s {PROJECT_DIR}/seaice_ecdr/tests/unit',
         pty=True,
     )
 
