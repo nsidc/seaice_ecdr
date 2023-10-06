@@ -35,12 +35,14 @@ jobs:
         with:
           repository: "nsidc/pm_icecon"
           ref: "fixup-for-using-pm-tb-data"
+          path: "pm_icecon"
 
       - name: "Check out pm_tb_data repository"
         uses: "actions/checkout@v3"
         with:
           repository: "nsidc/pm_tb_data"
           ref: "main"
+          path: "pm_tb_data"
 
       # Linter
       - name: "Run pre-commit tests"
