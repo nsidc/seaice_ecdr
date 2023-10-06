@@ -37,7 +37,7 @@ def formatcheck(ctx):
 def unit(ctx):
     """Run unit tests."""
     print_and_run(
-        f'PYTHONPATH={PROJECT_DIR} pytest -s {PROJECT_DIR}/pm_icecon/tests/unit',
+        f'pytest -s {PROJECT_DIR}/seaice_ecdr/tests/unit',
         pty=True,
     )
 
@@ -49,7 +49,8 @@ def regression(ctx):
     Requires access to data on NFS and should be run on a VM.
     """
     print_and_run(
-        f'PYTHONPATH={PROJECT_DIR} pytest -s {PROJECT_DIR}/pm_icecon/tests/regression',
+        f'PYTHONPATH={PROJECT_DIR} '
+        f'pytest -s {PROJECT_DIR}/seaice_ecdr/tests/regression',
         pty=True,
     )
 

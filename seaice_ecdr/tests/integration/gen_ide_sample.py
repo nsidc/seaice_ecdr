@@ -1,4 +1,4 @@
-"""Generate a sample ide file for use in development
+"""Generate a sample ide file for use in development.
 
 ./gen_ide_sample.py
 
@@ -8,16 +8,18 @@ Modeled after code in the integration test case
 import datetime as dt
 import sys
 
-import numpy as np
-import pytest
-import xarray as xr
+# import numpy as np
+# import pytest
+# import xarray as xr
 from loguru import logger
-from numpy.testing import assert_equal
-# from pm_icecon.cdr import amsr2_cdr as pmi_amsr2_cdr
 
 from seaice_ecdr.initial_daily_ecdr import (
     compute_initial_daily_ecdr_dataset as compute_idecdr_ds,
 )
+
+# from numpy.testing import assert_equal
+# from pm_icecon.cdr import amsr2_cdr as pmi_amsr2_cdr
+
 
 # Set the default minimum log notification to Warning
 logger.remove(0)  # Removes previous logger info
@@ -32,7 +34,10 @@ def gen_sample_idecdr_dataset(
 ):
     """Generate sample initial daily cdr file from seaice_ecdr repo."""
     if sample_filename is None:
-        sample_filename = f'sample_idecdr_{hemisphere}_{resolution}_{date.strftime("%Y%m%d")}.nc'
+        sample_filename = (
+            f'sample_idecdr_{hemisphere}_{resolution}_'
+            + f'{date.strftime("%Y%m%d")}.nc'
+        )
     """Set up sample data set using pm_icecon."""
     log_string = f"""
 
@@ -53,7 +58,8 @@ def gen_sample_idecdr_dataset(
         resolution=resolution,
     )
     ide_ds.to_netcdf(sample_filename)
-    logger.info(f"""
+    logger.info(
+        f"""
 
     Wrote: {sample_filename}
 

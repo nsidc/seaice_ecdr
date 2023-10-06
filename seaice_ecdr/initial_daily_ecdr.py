@@ -12,17 +12,20 @@ from typing import get_args
 import click
 import numpy as np
 import numpy.typing as npt
-import pm_icecon.bt.bt_params as pmi_bt_params
 import pm_icecon.bt.compute_bt_ic as bt
-import pm_icecon.bt.params.amsr2 as bt_amsr2_params
+import pm_icecon.bt.params.amsr2_cdr as pmi_bt_params
+
+# import pm_icecon.bt.params.amsr2 as bt_amsr2_params
 import pm_icecon.nt.compute_nt_ic as nt
 import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import xarray as xr
 from loguru import logger
-from seaice_ecdr.pm_cdr import cdr
+
+# from seaice_ecdr.pm_cdr import cdr
 from pm_icecon._types import Hemisphere
 from pm_icecon.cli.util import datetime_to_date
-from pm_icecon.config.models.bt import BootstrapParams
+
+# from pm_icecon.config.models.bt import BootstrapParams
 from pm_icecon.constants import CDR_DATA_DIR, DEFAULT_FLAG_VALUES
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
 from pm_icecon.fill_polehole import fill_pole_hole
@@ -33,15 +36,12 @@ from pm_icecon.land_spillover import (
     load_or_create_land90_conc,
     read_adj123_file,
 )
-from pm_icecon.nt._types import NasateamGradientRatioThresholds
+
+# from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_icecon.util import date_range, standard_output_filename
 
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
-
-
-def xwm(m='exiting in xwm()'):
-    raise SystemExit(m)
 
 
 def cdr_bootstrap(
@@ -135,7 +135,7 @@ def get_bt_tb_mask(
     return bt_tb_mask
 
 
-def calculate_cdr_conc_raw(
+def calculate_bt_nt_cdr_raw_conc(
     date: dt.date,
     tb_h19: npt.NDArray,
     tb_v37: npt.NDArray,
@@ -145,8 +145,7 @@ def calculate_cdr_conc_raw(
     bt_coefs: dict,
     nt_coefs: dict,
     missing_flag_value: float | int,
-    return_bt_and_nt_raw: bool,
-) -> npt.NDArray:
+) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     """Run the CDR algorithm."""
     # First, get bootstrap conc.
     bt_conc = cdr_bootstrap(
@@ -176,10 +175,7 @@ def calculate_cdr_conc_raw(
     cdr_conc = bt_conc.copy()
     cdr_conc[use_nt_values] = nt_conc[use_nt_values]
 
-    if return_bt_and_nt_raw:
-        return bt_conc, nt_conc, cdr_conc
-    else:
-        return cdr_conc
+    return bt_conc, nt_conc, cdr_conc
 
 
 def compute_initial_daily_ecdr_dataset(
@@ -207,19 +203,21 @@ def compute_initial_daily_ecdr_dataset(
     # Set initial global attributes
     ecdr_ide_ds.attrs['description'] = 'Initial daily cdr conc file'
 
-    # Note: these attributes should probably go with 
+    # Note: these attributes should probably go with
     #       a variable named "CDR_parameters" or similar
     ecdr_ide_ds.attrs['gridid'] = gridid
     ecdr_ide_ds.attrs['date'] = date.strftime('%Y-%m-%d')
     ecdr_ide_ds.attrs['missing_value'] = DEFAULT_FLAG_VALUES.missing
 
-    file_date = \
-        dt.date(1970, 1, 1) \
-        + dt.timedelta(days=int(ecdr_ide_ds.variables["time"].data))
-    ecdr_ide_ds.attrs['time_coverage_start'] = \
-        str(dt.datetime(file_date.year, file_date.month, file_date.day, 0, 0, 0))
-    ecdr_ide_ds.attrs['time_coverage_end'] = \
-        str(dt.datetime(file_date.year, file_date.month, file_date.day, 23, 59, 59))
+    file_date = dt.date(1970, 1, 1) + dt.timedelta(
+        days=int(ecdr_ide_ds.variables['time'].data)
+    )
+    ecdr_ide_ds.attrs['time_coverage_start'] = str(
+        dt.datetime(file_date.year, file_date.month, file_date.day, 0, 0, 0)
+    )
+    ecdr_ide_ds.attrs['time_coverage_end'] = str(
+        dt.datetime(file_date.year, file_date.month, file_date.day, 23, 59, 59)
+    )
 
     # Get AU_SI TBs
     xr_tbs = get_au_si_tbs(
@@ -293,9 +291,8 @@ def compute_initial_daily_ecdr_dataset(
         tb_varname = f'{tbname}_day'
         si_varname = f'{tbname}_day_si'
         is_tb_si_diff = (
-            (ecdr_ide_ds[tb_varname].data != ecdr_ide_ds[si_varname].data)
-            & (~np.isnan(ecdr_ide_ds[si_varname].data))
-        )
+            ecdr_ide_ds[tb_varname].data != ecdr_ide_ds[si_varname].data
+        ) & (~np.isnan(ecdr_ide_ds[si_varname].data))
         spatint_bitmask_arr[is_tb_si_diff] += tb_spatint_bitmask_map[tbname]
 
     ecdr_ide_ds['spatint_bitmask'] = (
@@ -309,7 +306,12 @@ def compute_initial_daily_ecdr_dataset(
             'units': 1,
             'valid_range': [np.uint8(0), np.uint8(63)],
             'flag_masks': np.array([1, 2, 4, 8, 16, 32], dtype=np.uint8),
-            'flag_meanings': '19v_tb_value_interpolated 19h_tb_value_interpolated 22v_tb_value_interpolated 37v_tb_value_interpolated 37h_tb_value_interpolated Pole_hole_spatially_interpolated_(Arctic_only)',
+            'flag_meanings': '19v_tb_value_interpolated'
+            ' 19h_tb_value_interpolated'
+            ' 22v_tb_value_interpolated'
+            ' 37v_tb_value_interpolated'
+            ' 37h_tb_value_interpolated'
+            ' Pole_hole_spatially_interpolated_(Arctic_only)',
         },
         {
             'zlib': True,
@@ -342,7 +344,8 @@ def compute_initial_daily_ecdr_dataset(
             'grid_mapping': 'crs',
             'standard_name': 'seaice_binary_mask',
             'long_name': 'invalid ice mask',
-            'comment': 'Mask indicating where seaice will not exist on this day based on climatology',
+            'comment': 'Mask indicating where seaice will not exist'
+            ' on this day based on climatology',
             'units': 1,
             'valid_range': [0, 1],
         },
@@ -396,7 +399,7 @@ def compute_initial_daily_ecdr_dataset(
     )
     nt_coefs = {}
     nt_coefs['nt_tiepoints'] = nt_params.tiepoints
-    nt_coefs['nt_gradient_thresholds'] = nt_params.gradient_thresholds
+    nt_coefs['nt_gradient_thresholds'] = nt_params.gradient_thresholds  # type: ignore
 
     # Encode NT shoremap field
     ecdr_ide_ds['shoremap'] = (
@@ -432,17 +435,14 @@ def compute_initial_daily_ecdr_dataset(
         },
     )
 
-
     # Compute the invalid TB mask
     invalid_tb_mask = get_bt_tb_mask(
         tb_v37=ecdr_ide_ds['v36_day_si'].data,
         tb_h37=ecdr_ide_ds['h36_day_si'].data,
         tb_v19=ecdr_ide_ds['v18_day_si'].data,
         tb_v22=ecdr_ide_ds['v23_day_si'].data,
-
         mintb=bt_coefs_init['mintb'],
         maxtb=bt_coefs_init['maxtb'],
-
         tb_data_mask_function=bt_coefs_init['bt_tb_data_mask_function'],
     )
 
@@ -468,7 +468,6 @@ def compute_initial_daily_ecdr_dataset(
         h37=ecdr_ide_ds['h36_day_si'].data,
         v22=ecdr_ide_ds['v23_day_si'].data,
         v19=ecdr_ide_ds['v18_day_si'].data,
-
         land_mask=ecdr_ide_ds['land_mask'].data,
         tb_mask=ecdr_ide_ds['invalid_tb_mask'],
         ln1=bt_coefs_init['vh37_lnline'],
@@ -486,7 +485,8 @@ def compute_initial_daily_ecdr_dataset(
             'grid_mapping': 'crs',
             'standard_name': 'bt_weather_binary_mask',
             'long_name': 'Map of weather masquerading as sea ice per BT',
-            'comment': 'Mask indicating pixels with erroneously detected sea ice because of weather per BT ',
+            'comment': 'Mask indicating pixels with erroneously detected sea ice'
+            ' because of weather per BT',
             'units': 1,
         },
         {
@@ -539,27 +539,24 @@ def compute_initial_daily_ecdr_dataset(
     bt_coefs['ad_line_offset'] = bt.get_adj_ad_line_offset_v2(
         wtp_x=bt_coefs['bt_wtp_v37'],
         wtp_y=bt_coefs['bt_wtp_h37'],
-        line_37v37h=bt_coefs['vh37_lnline']
+        line_37v37h=bt_coefs['vh37_lnline'],
     )
 
     bt_coefs['v1937_lnline'] = bt.get_linfit(
         land_mask=ecdr_ide_ds['land_mask'].data,
         tb_mask=ecdr_ide_ds['invalid_tb_mask'],
-
         tbx=ecdr_ide_ds['v36_day_si'].data,
         tby=ecdr_ide_ds['v18_day_si'].data,
-
         lnline=bt_coefs_init['v1937_lnline'],
         add=bt_coefs['add2'],
         weather_mask=ecdr_ide_ds['bt_weather_mask'],
-
         tba=ecdr_ide_ds['h36_day_si'].data,
         iceline=bt_coefs['vh37_lnline'],
         ad_line_offset=bt_coefs['ad_line_offset'],
     )
 
     # finally, compute the CDR.
-    bt_conc, nt_conc, cdr_conc_raw = calculate_cdr_conc_raw(
+    bt_conc, nt_conc, cdr_conc_raw = calculate_bt_nt_cdr_raw_conc(
         date=date,
         tb_h19=ecdr_ide_ds['h18_day_si'].data,
         tb_v37=ecdr_ide_ds['v36_day_si'].data,
@@ -569,7 +566,6 @@ def compute_initial_daily_ecdr_dataset(
         bt_coefs=bt_coefs,
         nt_coefs=nt_coefs,
         missing_flag_value=ecdr_ide_ds.attrs['missing_value'],
-        return_bt_and_nt_raw=True,
     )
 
     # Apply masks
@@ -585,8 +581,8 @@ def compute_initial_daily_ecdr_dataset(
     nt_weather_mask = nt.get_weather_filter_mask(
         gr_2219=nt_gr_2219,
         gr_3719=nt_gr_3719,
-        gr_2219_threshold=nt_coefs['nt_gradient_thresholds']['2219'],
-        gr_3719_threshold=nt_coefs['nt_gradient_thresholds']['3719'],
+        gr_2219_threshold=nt_coefs['nt_gradient_thresholds']['2219'],  # type: ignore
+        gr_3719_threshold=nt_coefs['nt_gradient_thresholds']['3719'],  # type: ignore
     )
 
     ecdr_ide_ds['nt_weather_mask'] = (
@@ -597,7 +593,8 @@ def compute_initial_daily_ecdr_dataset(
             'grid_mapping': 'crs',
             'standard_name': 'weather_binary_mask',
             'long_name': 'Map of weather masquerading as sea ice per NT',
-            'comment': 'Mask indicating pixels with erroneously detected sea ice because of weather per NT ',
+            'comment': 'Mask indicating pixels with erroneously detected sea ice'
+            ' because of weather per NT',
             'units': 1,
         },
         {
@@ -694,8 +691,9 @@ def compute_initial_daily_ecdr_dataset(
         logger.info('Filled pole hole')
         is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
         if 'spatint_bitmask' in ecdr_ide_ds.variables.keys():
-            ecdr_ide_ds['spatint_bitmask'].data[is_pole_filled] += \
-                tb_spatint_bitmask_map['pole_filled']
+            ecdr_ide_ds['spatint_bitmask'].data[
+                is_pole_filled
+            ] += tb_spatint_bitmask_map['pole_filled']
             logger.info('Updated spatial_interpolation with pole hole value')
 
     # Apply land flag value and clamp max conc to 100.
@@ -714,7 +712,8 @@ def compute_initial_daily_ecdr_dataset(
                 '_FillValue': 255,
                 'grid_mapping': 'crs',
                 'standard_name': 'sea_ice_area_fraction',
-                'long_name': 'Bootstrap sea ice concentration, raw field with no masking',
+                'long_name': 'Bootstrap sea ice concentration,'
+                ' raw field with no masking',
             },
             {
                 'zlib': True,
@@ -737,7 +736,8 @@ def compute_initial_daily_ecdr_dataset(
                 '_FillValue': 255,
                 'grid_mapping': 'crs',
                 'standard_name': 'sea_ice_area_fraction',
-                'long_name': 'NASA Team sea ice concentration, raw field with no masking',
+                'long_name': 'NASA Team sea ice concentration,'
+                ' raw field with no masking',
             },
             {
                 'zlib': True,
@@ -801,6 +801,16 @@ def compute_initial_daily_ecdr_dataset(
 
     # Finished!
     return ecdr_ide_ds
+
+
+def amsr2_cdr(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+):
+    """Obsolete reference to code that creates CDR using AMSR2."""
+    raise RuntimeError('amsr2_cdr() is nowcompute_initial_daily_ecdr_dataset()')
 
 
 def make_cdr_netcdf(
@@ -910,10 +920,12 @@ def cli(
 ) -> None:
     """Run the initial daily ECDR algorithm with AMSR2 data."""
     create_idecdr_for_date_range(
+        hemisphere=hemisphere,
         start_date=date,
         end_date=date,
-        gridid=gridid,
-        tbsrc=tb_source,
+        # gridid=gridid,
+        # tbsrc=tb_source,
+        resolution=resolution,
         output_dir=output_dir,
     )
 
@@ -930,24 +942,39 @@ if __name__ == '__main__':
     # vvvv MODIFY THESE PARAMETERS AS NEEDED vvvv
     start_date, end_date, gridid, tb_source, output_dir = parse_cmdline_iedcdr_params()
 
+    if tb_source is None:
+        raise ValueError('tb_source should not be None')
+
+    if gridid == 'e2n12.5':
+        hemisphere = 'north'
+        resolution = 12
+    elif gridid == 'e2s12.5':
+        hemisphere = 'south'
+        resolution = 12
+    else:
+        raise RuntimeError(f'Could not parse gridid: {gridid}')
+
     create_idecdr_for_date_range(
+        hemisphere=hemisphere,  # type: ignore
         start_date=start_date,
         end_date=end_date,
-        gridid=gridid,
-        tb_source=tb_source,
+        # gridid=gridid,
+        # tb_source=tb_source,
         output_dir=output_dir,
+        resolution=resolution,  # type: ignore
     )
     start_date = dt.date(2012, 7, 2)
     end_date = dt.date(2021, 2, 11)
     # resolution: ECDR_ = '12'
-    resolution = '12'
-    output_dir = CDR_DATA_DIR
+    # resolution = '12'
+    resolution = 12  # ignore
+    output_dir = CDR_DATA_DIR  # type: ignore
     # ^^^^ MODIFY THESE PARAMETERS AS NEEDED ^^^^
     for hemisphere in get_args(Hemisphere):
         create_idecdr_for_date_range(
             start_date=start_date,
             end_date=end_date,
-            hemisphere=hemisphere,
-            resolution=resolution,
+            hemisphere=hemisphere,  # type: ignore
+            resolution=resolution,  # type: ignore
             output_dir=output_dir,
         )
