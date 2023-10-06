@@ -30,6 +30,18 @@ jobs:
           # Increase this key to trigger cache invalidation
           cache-environment-key: 1
 
+      - name: "Check out pm_icecon repository"
+        uses: "actions/checkout@v3"
+        with:
+          repository: "https://github.com/nsidc/pm_icecon"
+          ref: "fixup-for-using-pm-tb-data"
+
+      - name: "Check out pm_tb_data repository"
+        uses: "actions/checkout@v3"
+        with:
+          repository: "https://github.com/nsidc/pm_tb_data"
+          ref: "main"
+
       # Linter
       - name: "Run pre-commit tests"
         run: "pre-commit run --all-files"
