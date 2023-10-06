@@ -151,18 +151,18 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
 
     res_km = gridid[3:]
     res_m = int(float(res_km) * 1000)
-    crs_attrs["long_name"] = crs_attrs["long_name"].format(res_km=res_km)
+    crs_attrs["long_name"] = crs_attrs["long_name"].format(res_km=res_km)  # type: ignore[union-attr]  # noqa
     if gridid[:3] == "e2t":
-        res_m = 1.0010104 * res_m
+        res_m = 1.0010104 * res_m  # type: ignore[assignment]
         res_tkm = 1.0010104 * float(res_km)
-        crs_attrs["GeoTransform"] = crs_attrs["GeoTransform"].format(
+        crs_attrs["GeoTransform"] = crs_attrs["GeoTransform"].format(  # type: ignore[union-attr]  # noqa
             res_km=res_km,
             res_tkm=res_tkm,
             xleft=xleft,
             ytop=ytop,
         )
     else:
-        crs_attrs["GeoTransform"] = crs_attrs["GeoTransform"].format(
+        crs_attrs["GeoTransform"] = crs_attrs["GeoTransform"].format(  # type: ignore[union-attr]  # noqa
             res_km=res_km,
             res_m=res_m,
             xleft=xleft,

@@ -7,7 +7,7 @@ import datetime as dt
 import sys
 import traceback
 from pathlib import Path
-from typing import get_args
+from typing import get_args, TypedDict, cast
 
 import click
 import numpy as np
@@ -23,7 +23,7 @@ from loguru import logger
 from pm_icecon._types import Hemisphere
 from pm_icecon.cli.util import datetime_to_date
 
-from pm_icecon.constants import CDR_DATA_DIR, DEFAULT_FLAG_VALUES
+from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
@@ -35,6 +35,7 @@ from pm_icecon.land_spillover import (
 )
 
 from pm_icecon.nt.tiepoints import NasateamTiePoints
+from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.util import date_range, standard_output_filename
 
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
@@ -131,6 +132,11 @@ def get_bt_tb_mask(
     return bt_tb_mask
 
 
+class NtCoefs(TypedDict):
+    nt_tiepoints: NasateamTiePoints
+    nt_gradient_thresholds: NasateamGradientRatioThresholds
+
+
 def calculate_bt_nt_cdr_raw_conc(
     date: dt.date,
     tb_h19: npt.NDArray,
@@ -139,7 +145,7 @@ def calculate_bt_nt_cdr_raw_conc(
     tb_v19: npt.NDArray,
     tb_v22: npt.NDArray,
     bt_coefs: dict,
-    nt_coefs: dict,
+    nt_coefs: NtCoefs,
     missing_flag_value: float | int,
 ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     """Run the CDR algorithm."""
@@ -397,9 +403,10 @@ def compute_initial_daily_ecdr_dataset(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    nt_coefs = {}
-    nt_coefs["nt_tiepoints"] = nt_params.tiepoints
-    nt_coefs["nt_gradient_thresholds"] = nt_params.gradient_thresholds
+    nt_coefs = NtCoefs(
+        nt_tiepoints=nt_params.tiepoints,
+        nt_gradient_thresholds=nt_params.gradient_thresholds,
+    )
 
     # Encode NT shoremap field
     ecdr_ide_ds["shoremap"] = (
@@ -752,10 +759,10 @@ def compute_initial_daily_ecdr_dataset(
 
     # Add the NT coefficients to the nt_conc_raw DataArray
     for attr in sorted(nt_coefs.keys()):
-        if type(nt_coefs[attr]) in (float, int):
-            ecdr_ide_ds.variables["nt_conc_raw"].attrs[attr] = nt_coefs[attr]
+        if type(nt_coefs[attr]) in (float, int):  # type: ignore[literal-required]
+            ecdr_ide_ds.variables["nt_conc_raw"].attrs[attr] = nt_coefs[attr]  # type: ignore[literal-required]  # noqa
         else:
-            ecdr_ide_ds.variables["nt_conc_raw"].attrs[attr] = str(nt_coefs[attr])
+            ecdr_ide_ds.variables["nt_conc_raw"].attrs[attr] = str(nt_coefs[attr])  # type: ignore[literal-required]  # noqa
 
     # Add the final cdr_conc value to the xarray dataset
     ecdr_ide_ds["conc"] = (
@@ -953,33 +960,19 @@ if __name__ == "__main__":
 
     if gridid == "e2n12.5":
         hemisphere = "north"
-        resolution = 12
+        resolution = "12"
     elif gridid == "e2s12.5":
         hemisphere = "south"
-        resolution = 12
+        resolution = "12"
     else:
         raise RuntimeError(f"Could not parse gridid: {gridid}")
 
+    hemisphere = cast(Hemisphere, hemisphere)
+    resolution = cast(AU_SI_RESOLUTIONS, resolution)
     create_idecdr_for_date_range(
-        hemisphere=hemisphere,  # type: ignore
+        hemisphere=hemisphere,
         start_date=start_date,
         end_date=end_date,
-        # gridid=gridid,
-        # tb_source=tb_source,
         output_dir=output_dir,
-        resolution=resolution,  # type: ignore
+        resolution=resolution,
     )
-    start_date = dt.date(2012, 7, 2)
-    end_date = dt.date(2021, 2, 11)
-    # resolution: ECDR_ = '12'
-    resolution = "12"
-    output_dir = CDR_DATA_DIR
-    # ^^^^ MODIFY THESE PARAMETERS AS NEEDED ^^^^
-    for hemisphere in get_args(Hemisphere):
-        create_idecdr_for_date_range(
-            start_date=start_date,
-            end_date=end_date,
-            hemisphere=hemisphere,  # type: ignore
-            resolution=resolution,  # type: ignore
-            output_dir=output_dir,
-        )

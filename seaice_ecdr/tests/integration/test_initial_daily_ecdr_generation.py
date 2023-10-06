@@ -55,7 +55,7 @@ def sample_idecdr_dataset():
 
     ide_conc_ds = compute_idecdr_ds(
         date=test_date,
-        hemisphere=test_hemisphere,  # type: ignore
+        hemisphere=test_hemisphere,
         resolution=test_resolution,
     )
     return ide_conc_ds
