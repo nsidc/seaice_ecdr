@@ -12,14 +12,17 @@ from typing import get_args
 import click
 import numpy as np
 import numpy.typing as npt
-import pm_icecon.bt.bt_params as pmi_bt_params
 import pm_icecon.bt.compute_bt_ic as bt
+import pm_icecon.bt.params.amsr2_cdr as pmi_bt_params
+
 import pm_icecon.nt.compute_nt_ic as nt
 import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import xarray as xr
 from loguru import logger
+
 from pm_icecon._types import Hemisphere
 from pm_icecon.cli.util import datetime_to_date
+
 from pm_icecon.constants import CDR_DATA_DIR, DEFAULT_FLAG_VALUES
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
 from pm_icecon.fill_polehole import fill_pole_hole
@@ -30,15 +33,11 @@ from pm_icecon.land_spillover import (
     load_or_create_land90_conc,
     read_adj123_file,
 )
+
 from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_icecon.util import date_range, standard_output_filename
 
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
-from seaice_ecdr.pm_cdr import amsr2_cdr
-
-
-def xwm(m="exiting in xwm()"):
-    raise SystemExit(m)
 
 
 def cdr_bootstrap(
@@ -132,7 +131,7 @@ def get_bt_tb_mask(
     return bt_tb_mask
 
 
-def calculate_cdr_conc_raw(
+def calculate_bt_nt_cdr_raw_conc(
     date: dt.date,
     tb_h19: npt.NDArray,
     tb_v37: npt.NDArray,
@@ -142,8 +141,7 @@ def calculate_cdr_conc_raw(
     bt_coefs: dict,
     nt_coefs: dict,
     missing_flag_value: float | int,
-    return_bt_and_nt_raw: bool,
-) -> npt.NDArray:
+) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     """Run the CDR algorithm."""
     # First, get bootstrap conc.
     bt_conc = cdr_bootstrap(
@@ -173,10 +171,7 @@ def calculate_cdr_conc_raw(
     cdr_conc = bt_conc.copy()
     cdr_conc[use_nt_values] = nt_conc[use_nt_values]
 
-    if return_bt_and_nt_raw:
-        return bt_conc, nt_conc, cdr_conc
-    else:
-        return cdr_conc
+    return bt_conc, nt_conc, cdr_conc
 
 
 def compute_initial_daily_ecdr_dataset(
@@ -308,8 +303,10 @@ def compute_initial_daily_ecdr_dataset(
             "valid_range": [np.uint8(0), np.uint8(63)],
             "flag_masks": np.array([1, 2, 4, 8, 16, 32], dtype=np.uint8),
             "flag_meanings": (
-                "19v_tb_value_interpolated 19h_tb_value_interpolated"
-                " 22v_tb_value_interpolated 37v_tb_value_interpolated"
+                "19v_tb_value_interpolated"
+                " 19h_tb_value_interpolated"
+                " 22v_tb_value_interpolated"
+                " 37v_tb_value_interpolated"
                 " 37h_tb_value_interpolated"
                 " Pole_hole_spatially_interpolated_(Arctic_only)"
             ),
@@ -561,7 +558,7 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     # finally, compute the CDR.
-    bt_conc, nt_conc, cdr_conc_raw = calculate_cdr_conc_raw(
+    bt_conc, nt_conc, cdr_conc_raw = calculate_bt_nt_cdr_raw_conc(
         date=date,
         tb_h19=ecdr_ide_ds["h18_day_si"].data,
         tb_v37=ecdr_ide_ds["v36_day_si"].data,
@@ -571,7 +568,6 @@ def compute_initial_daily_ecdr_dataset(
         bt_coefs=bt_coefs,
         nt_coefs=nt_coefs,
         missing_flag_value=ecdr_ide_ds.attrs["missing_value"],
-        return_bt_and_nt_raw=True,
     )
 
     # Apply masks
@@ -813,6 +809,16 @@ def compute_initial_daily_ecdr_dataset(
     return ecdr_ide_ds
 
 
+def amsr2_cdr(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+):
+    """Obsolete reference to code that creates CDR using AMSR2."""
+    raise RuntimeError("amsr2_cdr() is nowcompute_initial_daily_ecdr_dataset()")
+
+
 def make_cdr_netcdf(
     *,
     date: dt.date,
@@ -920,10 +926,12 @@ def cli(
 ) -> None:
     """Run the initial daily ECDR algorithm with AMSR2 data."""
     create_idecdr_for_date_range(
+        hemisphere=hemisphere,
         start_date=date,
         end_date=date,
-        gridid=gridid,
-        tbsrc=tb_source,
+        # gridid=gridid,
+        # tbsrc=tb_source,
+        resolution=resolution,
         output_dir=output_dir,
     )
 
@@ -940,12 +948,26 @@ if __name__ == "__main__":
     # vvvv MODIFY THESE PARAMETERS AS NEEDED vvvv
     start_date, end_date, gridid, tb_source, output_dir = parse_cmdline_iedcdr_params()
 
+    if tb_source is None:
+        raise ValueError("tb_source should not be None")
+
+    if gridid == "e2n12.5":
+        hemisphere = "north"
+        resolution = 12
+    elif gridid == "e2s12.5":
+        hemisphere = "south"
+        resolution = 12
+    else:
+        raise RuntimeError(f"Could not parse gridid: {gridid}")
+
     create_idecdr_for_date_range(
+        hemisphere=hemisphere,  # type: ignore
         start_date=start_date,
         end_date=end_date,
-        gridid=gridid,
-        tb_source=tb_source,
+        # gridid=gridid,
+        # tb_source=tb_source,
         output_dir=output_dir,
+        resolution=resolution,  # type: ignore
     )
     start_date = dt.date(2012, 7, 2)
     end_date = dt.date(2021, 2, 11)
@@ -957,7 +979,7 @@ if __name__ == "__main__":
         create_idecdr_for_date_range(
             start_date=start_date,
             end_date=end_date,
-            hemisphere=hemisphere,
-            resolution=resolution,
+            hemisphere=hemisphere,  # type: ignore
+            resolution=resolution,  # type: ignore
             output_dir=output_dir,
         )

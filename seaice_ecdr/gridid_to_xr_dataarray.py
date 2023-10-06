@@ -8,6 +8,7 @@ a given NSIDC gridid
 
 
 import datetime as dt
+from typing import Dict, Union
 
 import numpy as np
 import xarray as xr
@@ -38,7 +39,7 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
         logger.info(
             f"Creating georeferenced dataset on {gridid} grid for {grid_date}"
         )  # noqa
-    crs_attrs = {}
+    crs_attrs: Dict[str, Union[str, float]] = {}
 
     # CRS for polar stereo grids
     if gridid[:2] == "ps":
@@ -252,8 +253,6 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
             "y": y_da,
             "x": x_da,
         }
-
-    return None
 
 
 if __name__ == "__main__":

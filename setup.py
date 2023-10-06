@@ -1,3 +1,5 @@
+"""Setup file for seaice_ecdr."""
+
 from setuptools import find_packages, setup
 
 setup(

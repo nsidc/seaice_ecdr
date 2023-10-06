@@ -1,4 +1,4 @@
-"""Generate a sample ide file for use in development
+"""Generate a sample ide file for use in development.
 
 ./gen_ide_sample.py
 
@@ -10,11 +10,10 @@ import sys
 
 from loguru import logger
 
-# from pm_icecon.cdr import amsr2_cdr as pmi_amsr2_cdr
-
 from seaice_ecdr.initial_daily_ecdr import (
     compute_initial_daily_ecdr_dataset as compute_idecdr_ds,
 )
+
 
 # Set the default minimum log notification to Warning
 logger.remove(0)  # Removes previous logger info
@@ -30,7 +29,8 @@ def gen_sample_idecdr_dataset(
     """Generate sample initial daily cdr file from seaice_ecdr repo."""
     if sample_filename is None:
         sample_filename = (
-            f'sample_idecdr_{hemisphere}_{resolution}_{date.strftime("%Y%m%d")}.nc'
+            f"sample_idecdr_{hemisphere}_{resolution}_"
+            + f'{date.strftime("%Y%m%d")}.nc'
         )
     """Set up sample data set using pm_icecon."""
     log_string = f"""

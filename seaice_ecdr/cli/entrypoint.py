@@ -4,8 +4,7 @@ from pm_icecon.bt.cli import cli as bt_cli
 from pm_icecon.cdr import cli as cdr_cli
 from pm_icecon.nt.cli import cli as nt_cli
 
-# from seaice_ecdr.pm_cdr import cli as pm_cdr_cli
-from seaice_ecdr.pm_cdr import cli as ecdr_cli
+from seaice_ecdr.initial_daily_ecdr import cli as ecdr_cli
 
 
 @click.group()

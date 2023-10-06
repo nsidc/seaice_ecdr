@@ -4,6 +4,7 @@ test_initial_daily_ecdr.py
 """
 
 import datetime as dt
+from typing import Final
 
 import pytest
 import xarray as xr
@@ -20,8 +21,8 @@ def sample_idecdr_dataset_nh():
     logger.info("testing: Creating sample idecdr dataset")
 
     test_date = dt.datetime(2021, 4, 5).date()
-    test_hemisphere = "north"
-    test_resolution = "12"
+    test_hemisphere: Final = "north"
+    test_resolution: Final = "12"
 
     ide_conc_ds = compute_idecdr_ds(
         date=test_date,
@@ -37,8 +38,8 @@ def sample_idecdr_dataset_sh():
     logger.info("testing: Creating sample idecdr dataset")
 
     test_date = dt.datetime(2021, 4, 5).date()
-    test_hemisphere = "south"
-    test_resolution = "12"
+    test_hemisphere: Final = "north"
+    test_resolution: Final = "12"
 
     ide_conc_ds = compute_idecdr_ds(
         date=test_date,
