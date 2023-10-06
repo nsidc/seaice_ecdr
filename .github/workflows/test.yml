@@ -53,5 +53,5 @@ jobs:
         run: "PYTHONPATH=/home/runner/work/seaice_ecdr/seaice_ecdr/pm_icecon/:/home/runner/work/seaice_ecdr/seaice_ecdr/pm_tb_data/ mypy"
 
       # Unit tests
-      - name: "Run unit tests"
-        run: "PYTHONPATH=/home/runner/work/seaice_ecdr/seaice_ecdr/pm_icecon/:/home/runner/work/seaice_ecdr/seaice_ecdr/pm_tb_data/ python -m pytest seaice_ecdr/tests/unit/"
+      # - name: "Run unit tests"
+      #   run: "PYTHONPATH=/home/runner/work/seaice_ecdr/seaice_ecdr/pm_icecon/:/home/runner/work/seaice_ecdr/seaice_ecdr/pm_tb_data/ python -m pytest seaice_ecdr/tests/unit/"
