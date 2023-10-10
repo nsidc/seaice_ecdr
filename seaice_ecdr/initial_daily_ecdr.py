@@ -470,7 +470,7 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     # Compute the BT weather mask
-    bt_weather_mask = bt.get_weather_mask_v2(
+    bt_weather_mask = bt.get_weather_mask(
         v37=ecdr_ide_ds["v36_day_si"].data,
         h37=ecdr_ide_ds["h36_day_si"].data,
         v22=ecdr_ide_ds["v23_day_si"].data,
@@ -545,7 +545,7 @@ def compute_initial_daily_ecdr_dataset(
         tb=ecdr_ide_ds["v18_day_si"].data,
     )
 
-    bt_coefs["ad_line_offset"] = bt.get_adj_ad_line_offset_v2(
+    bt_coefs["ad_line_offset"] = bt.get_adj_ad_line_offset(
         wtp_x=bt_coefs["bt_wtp_v37"],
         wtp_y=bt_coefs["bt_wtp_h37"],
         line_37v37h=bt_coefs["vh37_lnline"],
