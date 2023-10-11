@@ -10,7 +10,7 @@ def print_and_run(cmd, **run_kwargs):
     """Print the command string and then execute it."""
     print(cmd)
     kwargs = {
-        'pty': True,
+        "pty": True,
         **run_kwargs,
     }
     return run(cmd, **kwargs)

@@ -1,0 +1,70 @@
+[project]
+name = "seaice_ecdr"
+version = "0.1.0"
+
+[tool.black]
+target-version = ["py310"]
+
+
+[tool.vulture]
+paths = ["seaice_ecdr"]
+min_confidence = 80
+
+
+[tool.ruff]
+target-version = "py310"
+
+ignore = [
+  # D1: Ignore errors requiring docstrings on everything.
+  # D203: "1 blank line required before class docstring"
+  # D213: "Multi-line docstring summary should start at the second line"
+  # E731: Lambda assignments are OK, use your best judgement.
+  # RUF010: !a, !r, !s are too magical for me.
+  "D1", "D203", "D213", "E731", "RUF010",
+]
+
+[tool.ruff.isort]
+known-first-party = ["seaice_ecdr"]
+
+[tool.ruff.mccabe]
+max-complexity = 8
+
+[tool.ruff.flake8-quotes]
+inline-quotes = "double"
+
+[tool.pytest.ini_options]
+testpaths = [
+  "seaice_ecdr/tests/",
+]
+
+filterwarnings = [
+  "ignore:numpy.ndarray size changed:RuntimeWarning",
+]
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["seaice_ecdr"]
+incremental = true
+strict = false
+show_error_codes = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+warn_unreachable = true
+check_untyped_defs = true
+warn_unused_ignores = true
+plugins = ["numpy.typing.mypy_plugin", ]
+
+[[tool.mypy.overrides]]
+module = [
+  "invoke.*",
+  "matplotlib.*",
+  "cartopy.*",
+  "scipy.*",
+  "sklearn.*",
+  "h5py.*",
+  "pandas.*",
+  "pyresample.*",
+  "setuptools.*",
+  "netCDF4.*",
+  "rasterio.*",
+]
+ignore_missing_imports = true
