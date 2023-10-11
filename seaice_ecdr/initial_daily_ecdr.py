@@ -13,7 +13,7 @@ import click
 import numpy as np
 import numpy.typing as npt
 import pm_icecon.bt.compute_bt_ic as bt
-import pm_icecon.bt.params.amsr2_cdr as pmi_bt_params
+import pm_icecon.bt.params.ausi12_amsr2 as pmi_bt_params
 
 import pm_icecon.nt.compute_nt_ic as nt
 import pm_icecon.nt.params.amsr2 as nt_amsr2_params
