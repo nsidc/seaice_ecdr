@@ -1,10 +1,10 @@
 """Code to run NRT ECDR processing."""
 from pathlib import Path
 
-from seaice_ecdr.constants import LANCE_NRT_DATA_DIR
-
 import click
 from pm_tb_data.fetch.lance_amsr2 import download_latest_lance_files
+
+from seaice_ecdr.constants import LANCE_NRT_DATA_DIR
 
 
 @click.command(name="download-latest-nrt-data")

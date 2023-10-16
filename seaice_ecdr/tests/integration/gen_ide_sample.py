@@ -14,7 +14,6 @@ from seaice_ecdr.initial_daily_ecdr import (
     compute_initial_daily_ecdr_dataset as compute_idecdr_ds,
 )
 
-
 # Set the default minimum log notification to Warning
 logger.remove(0)  # Removes previous logger info
 logger.add(sys.stderr, level="INFO")

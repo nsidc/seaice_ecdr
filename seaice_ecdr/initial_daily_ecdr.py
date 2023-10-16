@@ -7,24 +7,21 @@ import datetime as dt
 import sys
 import traceback
 from pathlib import Path
-from typing import get_args, TypedDict, cast
+from typing import TypedDict, cast, get_args
 
 import click
 import numpy as np
 import numpy.typing as npt
 import pm_icecon.bt.compute_bt_ic as bt
-import pm_icecon.bt.params.amsr2_cdr as pmi_bt_params
-
+import pm_icecon.bt.params.ausi_amsr2 as pmi_bt_params
 import pm_icecon.nt.compute_nt_ic as nt
 import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import xarray as xr
 from loguru import logger
-
 from pm_icecon._types import Hemisphere
+from pm_icecon.bt.fields import get_bootstrap_fields
 from pm_icecon.cli.util import datetime_to_date
-
 from pm_icecon.constants import DEFAULT_FLAG_VALUES
-from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
 from pm_icecon.land_spillover import (
@@ -33,10 +30,10 @@ from pm_icecon.land_spillover import (
     load_or_create_land90_conc,
     read_adj123_file,
 )
-
-from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
+from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_icecon.util import date_range, standard_output_filename
+from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
 
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
 
@@ -323,7 +320,7 @@ def compute_initial_daily_ecdr_dataset(
     )
     logger.info("Initialized spatial_interpolation_flag with TB fill locations")
 
-    bt_coefs_init = pmi_bt_params.get_bootstrap_params(
+    bt_coefs_init = pmi_bt_params.get_ausi_bootstrap_params(
         date=date,
         satellite="amsr2",
         gridid=gridid,
@@ -333,7 +330,7 @@ def compute_initial_daily_ecdr_dataset(
     bt_coefs_init["bt_tb_data_mask_function"] = bt.tb_data_mask
 
     # Get the bootstrap fields and assign them to ide_ds DataArrays
-    bt_fields = pmi_bt_params.get_bootstrap_fields(
+    bt_fields = get_bootstrap_fields(
         date=date,
         satellite="amsr2",
         gridid=gridid,
