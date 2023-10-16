@@ -48,7 +48,7 @@ TODO
 
 ### For developers at NSIDC
 
-For developers at the NSIDC, the [seaice_ecdr_vm
+For developers at NSIDC, the [seaice_ecdr_vm
 repository](https://bitbucket.org/nsidc/seaice_ecdr_vm/src/main/) provides the
 NSIDC VM configuration for this project.
 
