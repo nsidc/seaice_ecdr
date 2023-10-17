@@ -13,6 +13,7 @@ dependencies:
   - netCDF4 ~=1.6.3
   - loguru ~=0.7
   - scipy ~=1.11.3
+  - seaice ~=6.0
 
   #############################
   # Non-imported dependencies #
