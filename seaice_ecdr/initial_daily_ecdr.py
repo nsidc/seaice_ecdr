@@ -24,18 +24,15 @@ from pm_icecon.cli.util import datetime_to_date
 from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
-from pm_icecon.land_spillover import (
-    apply_nt2a_land_spillover,
-    apply_nt2b_land_spillover,
-    load_or_create_land90_conc,
-    read_adj123_file,
-)
+from pm_icecon.land_spillover import apply_nt2_land_spillover
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_icecon.util import date_range, standard_output_filename
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
 
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
+from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
+from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 
 
 def cdr_bootstrap(
@@ -650,8 +647,11 @@ def compute_initial_daily_ecdr_dataset(
                 xdim=608,
                 ydim=896,
             )
-            cdr_conc = apply_nt2a_land_spillover(cdr_conc, adj123)
-            cdr_conc = apply_nt2b_land_spillover(cdr_conc, adj123, l90c)
+            cdr_conc = apply_nt2_land_spillover(
+                conc=cdr_conc,
+                adj123=adj123,
+                l90c=l90c,
+            )
         elif tb_h19.shape == (664, 632):
             # SH
             l90c = load_or_create_land90_conc(
@@ -665,8 +665,11 @@ def compute_initial_daily_ecdr_dataset(
                 xdim=632,
                 ydim=664,
             )
-            cdr_conc = apply_nt2a_land_spillover(cdr_conc, adj123)
-            cdr_conc = apply_nt2b_land_spillover(cdr_conc, adj123, l90c)
+            cdr_conc = apply_nt2_land_spillover(
+                conc=cdr_conc,
+                adj123=adj123,
+                l90c=l90c,
+            )
 
         else:
             raise SystemExit(
@@ -695,7 +698,11 @@ def compute_initial_daily_ecdr_dataset(
     # TODO: Should check for NH and have grid-dependent filling scheme
     if cdr_conc.shape == (896, 608):
         cdr_conc_pre_polefill = cdr_conc.copy()
-        cdr_conc = fill_pole_hole(cdr_conc)
+        near_pole_hole_mask = psn_125_near_pole_hole_mask()
+        cdr_conc = fill_pole_hole(
+            conc=cdr_conc,
+            near_pole_hole_mask=near_pole_hole_mask,
+        )
         logger.info("Filled pole hole")
         is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
         if "spatint_bitmask" in ecdr_ide_ds.variables.keys():
