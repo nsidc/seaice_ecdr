@@ -27,8 +27,6 @@ from pm_icecon.interpolation import spatial_interp_tbs
 from pm_icecon.land_spillover import (
     apply_nt2a_land_spillover,
     apply_nt2b_land_spillover,
-    load_or_create_land90_conc,
-    read_adj123_file,
 )
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
@@ -36,6 +34,7 @@ from pm_icecon.util import date_range, standard_output_filename
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
 
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
+from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
 
 
 def cdr_bootstrap(

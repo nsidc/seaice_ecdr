@@ -39,8 +39,6 @@ from pm_icecon.interpolation import spatial_interp_tbs
 from pm_icecon.land_spillover import (
     apply_nt2a_land_spillover,
     apply_nt2b_land_spillover,
-    load_or_create_land90_conc,
-    read_adj123_file,
 )
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
@@ -48,6 +46,7 @@ from pm_icecon.util import date_range, standard_output_filename
 from pm_icecon.constants import DEFAULT_FLAG_VALUES
 
 from seaice_ecdr.constants import CDR_DATA_DIR
+from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
 
 
 def cdr(
@@ -163,6 +162,7 @@ def cdr(
                 xdim=608,
                 ydim=896,
             )
+            # TODO: wrap calling these two functions in another func.
             cdr_conc = apply_nt2a_land_spillover(cdr_conc, adj123)
             cdr_conc = apply_nt2b_land_spillover(cdr_conc, adj123, l90c)
         elif tb_h19.shape == (664, 632):
