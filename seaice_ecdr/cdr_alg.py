@@ -94,7 +94,7 @@ def cdr(
         wslope=season_params.wslope,
         wxlimt=season_params.wxlimt,
     )
-    bt_conc = bt.bootstrap_for_cdr(
+    bt_conc = bt.bootstrap(
         tb_v37=tb_v37,
         tb_h37=tb_h37,
         tb_v19=tb_v19,
