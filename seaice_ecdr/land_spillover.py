@@ -46,7 +46,7 @@ def create_land90_conc_file(
     yields the `land90` concentration value.
     """
     adj123 = read_adj123_file(gridid, xdim, ydim, anc_dir, adj123_fn_template)
-    land90 = create_land90(ajd123=adj123)
+    land90 = create_land90(adj123=adj123)
 
     if write_l90c_file:
         l90c_fn = l90c_fn_template.format(anc_dir=anc_dir, gridid=gridid)
