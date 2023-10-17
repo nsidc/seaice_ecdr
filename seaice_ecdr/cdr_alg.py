@@ -262,7 +262,8 @@ def amsr2_cdr(
         nt_minic=nt_params.minic,
         nt_shoremap=nt_params.shoremap,
         missing_flag_value=DEFAULT_FLAG_VALUES.missing,
-        land_flag_value=DEFAULT_FLAG_VALUES.land,
+        # TODO: do we need the land flag value? Currently unused.
+        # land_flag_value=DEFAULT_FLAG_VALUES.land,
     )
 
     cdr_conc_ds = xr.Dataset({"conc": (("y", "x"), conc)})
