@@ -62,7 +62,6 @@ def cdr(
     nt_minic: npt.NDArray,
     nt_shoremap: npt.NDArray,
     missing_flag_value,
-    land_flag_value,
     use_only_nt2_spillover=True,
 ) -> npt.NDArray:
     """Run the CDR algorithm."""
