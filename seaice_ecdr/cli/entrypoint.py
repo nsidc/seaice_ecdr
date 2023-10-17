@@ -3,8 +3,8 @@ import click
 from pm_icecon.bt.cli import cli as bt_cli
 from pm_icecon.nt.cli import cli as nt_cli
 
-from seaice_ecdr.initial_daily_ecdr import cli as ecdr_cli
 from seaice_ecdr.cdr_alg import cli as cdr_cli
+from seaice_ecdr.initial_daily_ecdr import cli as ecdr_cli
 
 
 @click.group()
