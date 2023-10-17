@@ -37,8 +37,7 @@ from pm_icecon.config.models.bt import BootstrapParams
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
 from pm_icecon.land_spillover import (
-    apply_nt2a_land_spillover,
-    apply_nt2b_land_spillover,
+    apply_nt2_land_spillover,
 )
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
@@ -162,9 +161,11 @@ def cdr(
                 xdim=608,
                 ydim=896,
             )
-            # TODO: wrap calling these two functions in another func.
-            cdr_conc = apply_nt2a_land_spillover(cdr_conc, adj123)
-            cdr_conc = apply_nt2b_land_spillover(cdr_conc, adj123, l90c)
+            cdr_conc = apply_nt2_land_spillover(
+                conc=cdr_conc,
+                adj123=adj123,
+                l90c=l90c,
+            )
         elif tb_h19.shape == (664, 632):
             # SH
             l90c = load_or_create_land90_conc(
@@ -178,8 +179,11 @@ def cdr(
                 xdim=632,
                 ydim=664,
             )
-            cdr_conc = apply_nt2a_land_spillover(cdr_conc, adj123)
-            cdr_conc = apply_nt2b_land_spillover(cdr_conc, adj123, l90c)
+            cdr_conc = apply_nt2_land_spillover(
+                conc=cdr_conc,
+                adj123=adj123,
+                l90c=l90c,
+            )
 
         else:
             raise RuntimeError(
