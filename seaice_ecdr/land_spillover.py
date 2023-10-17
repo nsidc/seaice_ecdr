@@ -1,8 +1,9 @@
 import os
 
 import numpy as np
-from scipy.signal import convolve2d
 from loguru import logger
+
+from pm_icecon.land_spillover import create_land90
 
 # TODO: The various directory vars, eg anc_dir, should be either abstracted
 #   as a constant or passed as a configuration parameter.
@@ -45,16 +46,7 @@ def create_land90_conc_file(
     yields the `land90` concentration value.
     """
     adj123 = read_adj123_file(gridid, xdim, ydim, anc_dir, adj123_fn_template)
-    is_land = adj123 == 0
-    is_coast = (adj123 == 1) | (adj123 == 2)
-
-    ones_7x7 = np.ones((7, 7), dtype=np.uint8)
-
-    land_count = convolve2d(is_land, ones_7x7, mode="same", boundary="symm")
-    land90 = (land_count * 0.9) / 49 * 100.0
-    land90 = land90.astype(np.float32)
-
-    land90[~is_coast] = 0
+    land90 = create_land90(ajd123=adj123)
 
     if write_l90c_file:
         l90c_fn = l90c_fn_template.format(anc_dir=anc_dir, gridid=gridid)
