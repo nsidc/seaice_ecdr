@@ -46,6 +46,7 @@ from pm_icecon.constants import DEFAULT_FLAG_VALUES
 
 from seaice_ecdr.constants import CDR_DATA_DIR
 from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
+from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 
 
 def cdr(
@@ -210,7 +211,10 @@ def cdr(
 
     # Fill the NH pole hole
     if cdr_conc.shape == (896, 608):
-        cdr_conc = fill_pole_hole(cdr_conc)
+        near_pole_hole_mask = psn_125_near_pole_hole_mask()
+        cdr_conc = fill_pole_hole(
+            conc=cdr_conc, near_pole_hole_mask=near_pole_hole_mask
+        )
 
     # Apply land flag value and clamp max conc to 100.
     # TODO: extract this func from nt and allow override of flag values
