@@ -10,11 +10,11 @@ import pandas as pd
 import xarray as xr
 from loguru import logger
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
-
 from pm_icecon._types import Hemisphere
-from pm_icecon.compare.ref_data import cdr_for_date_range
-from pm_icecon.constants import CDR_DATA_DIR
 from pm_icecon.util import date_range, standard_output_filename
+
+from seaice_ecdr.constants import CDR_DATA_DIR
+from seaice_ecdr.compare.ref_data import cdr_for_date_range
 
 OUTPUT_DIR = Path("/tmp/compare_cdr/")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
