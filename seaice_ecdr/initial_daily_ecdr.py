@@ -176,34 +176,16 @@ def calculate_bt_nt_cdr_raw_conc(
     return bt_conc, nt_conc, cdr_conc
 
 
-def compute_initial_daily_ecdr_dataset(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
-) -> xr.Dataset:
-    """Create xr dataset containing the first pass of daily enhanced CDR."""
-    # Note: at first, this is simply a copy of amsr2_cdr
-
-    # Set the gridid
-    if hemisphere == "north" and resolution == "12":
-        gridid = "psn12.5"
-    elif hemisphere == "south" and resolution == "12":
-        gridid = "pss12.5"
-    else:
-        raise RuntimeError(
-            f"Could not determine gridid from:\n" f"{hemisphere} and {resolution}"
-        )
-
+def _setup_ecdr_ds(*, grid_id: str, date: dt.date):
     # Initialize geo-referenced xarray Dataset
-    ecdr_ide_ds = get_dataset_for_gridid(gridid, date)
+    ecdr_ide_ds = get_dataset_for_gridid(grid_id, date)
 
     # Set initial global attributes
     ecdr_ide_ds.attrs["description"] = "Initial daily cdr conc file"
 
     # Note: these attributes should probably go with
     #       a variable named "CDR_parameters" or similar
-    ecdr_ide_ds.attrs["gridid"] = gridid
+    ecdr_ide_ds.attrs["grid_id"] = grid_id
     ecdr_ide_ds.attrs["date"] = date.strftime("%Y-%m-%d")
     ecdr_ide_ds.attrs["missing_value"] = DEFAULT_FLAG_VALUES.missing
 
@@ -215,6 +197,41 @@ def compute_initial_daily_ecdr_dataset(
     )
     ecdr_ide_ds.attrs["time_coverage_end"] = str(
         dt.datetime(file_date.year, file_date.month, file_date.day, 23, 59, 59)
+    )
+
+    return ecdr_ide_ds
+
+
+def _get_grid_id(*, hemisphere: Hemisphere, resolution: AU_SI_RESOLUTIONS) -> str:
+    # Set the gridid
+    if hemisphere == "north" and resolution == "12":
+        gridid = "psn12.5"
+    elif hemisphere == "south" and resolution == "12":
+        gridid = "pss12.5"
+    else:
+        raise RuntimeError(
+            f"Could not determine gridid from:\n" f"{hemisphere} and {resolution}"
+        )
+
+    return gridid
+
+
+def compute_initial_daily_ecdr_dataset(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+) -> xr.Dataset:
+    """Create xr dataset containing the first pass of daily enhanced CDR."""
+    # Note: at first, this is simply a copy of amsr2_cdr
+
+    gridid = _get_grid_id(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    ecdr_ide_ds = _setup_ecdr_ds(
+        grid_id=gridid,
+        date=date,
     )
 
     # Get AU_SI TBs
@@ -907,6 +924,7 @@ def create_idecdr_for_date_range(
     required=True,
     type=click.Choice(get_args(Hemisphere)),
 )
+# TODO: default output-dir for initial daily files.
 @click.option(
     "-o",
     "--output-dir",
