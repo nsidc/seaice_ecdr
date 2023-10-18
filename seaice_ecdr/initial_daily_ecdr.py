@@ -869,10 +869,16 @@ def create_idecdr_for_date_range(
                 resolution=resolution,
                 output_dir=output_dir,
             )
+        # TODO: either catch and re-throw this exception or throw an error after
+        # attempting to make the netcdf for each date. The exit code should be
+        # non-zero in such a case.
         except Exception:
             logger.error(
                 "Failed to create NetCDF for " f"{hemisphere=}, {date=}, {resolution=}."
             )
+            # TODO: These error logs should be written to e.g.,
+            # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
+            # to handle automatically logging error details to such a file.
             err_filename = standard_output_filename(
                 hemisphere=hemisphere,
                 date=date,
