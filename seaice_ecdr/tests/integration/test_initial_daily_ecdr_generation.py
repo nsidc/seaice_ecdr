@@ -95,17 +95,6 @@ def sample_idecdr_dataset():
     return ide_conc_ds
 
 
-def test_testing_initial_daily_ecdr_generation():
-    """Test that this integration test is being performed."""
-    assert True
-
-
-def test_pmicecon_fixture(sample_pmicecon_dataset):
-    """Test that pm_icecon yields a 'conc' field."""
-    # assert type(sample_pmicecon_dataset) == type(xr.Dataset())
-    assert isinstance(sample_pmicecon_dataset, type(xr.Dataset()))
-
-
 def test_pmicecon_conc_generation(sample_pmicecon_dataset):
     """Test that pm_icecon yields a 'conc' field."""
     # pmicecon_conc_ds = sample_pmicecon_dataset
