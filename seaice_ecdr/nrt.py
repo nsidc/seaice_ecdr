@@ -11,7 +11,7 @@ from pm_tb_data.fetch.lance_amsr2 import (
 from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
 
-from seaice_ecdr.constants import LANCE_NRT_DATA_DIR
+from seaice_ecdr.constants import LANCE_NRT_DATA_DIR, NRT_INITIAL_DAILY_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import make_cdr_netcdf
 from seaice_ecdr.cli.util import datetime_to_date
 
@@ -65,7 +65,6 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     required=True,
     type=click.Choice(get_args(Hemisphere)),
 )
-# TODO: default output-dir for initial daily nrt files.
 @click.option(
     "-o",
     "--output-dir",
@@ -78,6 +77,8 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
         resolve_path=True,
         path_type=Path,
     ),
+    show_default=True,
+    default=NRT_INITIAL_DAILY_OUTPUT_DIR,
 )
 @click.option(
     "-r",
