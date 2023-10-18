@@ -97,8 +97,6 @@ def sample_idecdr_dataset():
 
 def test_pmicecon_conc_generation(sample_pmicecon_dataset):
     """Test that pm_icecon yields a 'conc' field."""
-    # pmicecon_conc_ds = sample_pmicecon_dataset
-
     pmicecon_conc_varname = "conc"
     assert (
         type(sample_pmicecon_dataset.variables[pmicecon_conc_varname])
