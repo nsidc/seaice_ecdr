@@ -822,16 +822,6 @@ def compute_initial_daily_ecdr_dataset(
     return ecdr_ide_ds
 
 
-def amsr2_cdr(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
-):
-    """Obsolete reference to code that creates CDR using AMSR2."""
-    raise RuntimeError("amsr2_cdr() is nowcompute_initial_daily_ecdr_dataset()")
-
-
 def make_cdr_netcdf(
     *,
     date: dt.date,
@@ -841,7 +831,7 @@ def make_cdr_netcdf(
 ) -> None:
     """Create the cdr netCDF file."""
     logger.info(f"Creating CDR for {date=}, {hemisphere=}, {resolution=}")
-    conc_ds = amsr2_cdr(
+    conc_ds = compute_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,

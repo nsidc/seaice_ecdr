@@ -23,8 +23,8 @@ from pm_icecon.nt.masks import get_ps25_sst_mask
 from pm_icecon.tests.regression import test_nt
 from pm_tb_data.fetch import au_si
 
-from seaice_ecdr.cdr_alg import amsr2_cdr
 from seaice_ecdr.compare.ref_data import get_au_si_bt_conc, get_cdr, get_sea_ice_index
+from seaice_ecdr.initial_daily_ecdr import compute_initial_daily_ecdr_dataset
 
 OUTPUT_DIR = Path("/tmp/diffs/")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -420,7 +420,9 @@ def compare_cdr(
     cdr_ds = get_cdr(date=date, hemisphere=hemisphere, resolution=resolution)
 
     our_cdr_ds = _flip(
-        amsr2_cdr(date=date, hemisphere=hemisphere, resolution=resolution)
+        compute_initial_daily_ecdr_dataset(
+            date=date, hemisphere=hemisphere, resolution=resolution
+        )
     )
 
     do_comparisons(
