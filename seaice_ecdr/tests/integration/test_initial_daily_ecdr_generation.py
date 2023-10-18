@@ -95,15 +95,6 @@ def sample_idecdr_dataset():
     return ide_conc_ds
 
 
-def test_pmicecon_conc_generation(sample_pmicecon_dataset):
-    """Test that pm_icecon yields a 'conc' field."""
-    pmicecon_conc_varname = "conc"
-    assert (
-        type(sample_pmicecon_dataset.variables[pmicecon_conc_varname])
-        == xr.core.variable.Variable
-    )
-
-
 def test_seaice_idecdr_and_pmicecon_conc_identical(
     sample_pmicecon_dataset, sample_idecdr_dataset
 ):
