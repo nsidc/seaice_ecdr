@@ -1,11 +1,4 @@
-"""Verify no change in initial amsr2_cdr data sets.
-
-test_initial_daily_ecdr_generation.py
-
-Verify that the initial daily ecdr files are the same as
-pm_icecon's initial amsr2_cdr results.
-
-"""
+"""Tests for initial daily ECDR generation."""
 
 import datetime as dt
 import sys
