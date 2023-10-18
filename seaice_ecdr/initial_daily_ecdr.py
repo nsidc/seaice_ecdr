@@ -223,8 +223,6 @@ def compute_initial_daily_ecdr_dataset(
     resolution: AU_SI_RESOLUTIONS,
 ) -> xr.Dataset:
     """Create xr dataset containing the first pass of daily enhanced CDR."""
-    # Note: at first, this is simply a copy of amsr2_cdr
-
     gridid = _get_grid_id(
         hemisphere=hemisphere,
         resolution=resolution,
