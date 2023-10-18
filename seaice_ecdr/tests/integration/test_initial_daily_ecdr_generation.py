@@ -90,7 +90,5 @@ def test_seaice_idecdr_is_Dataset(
     sample_idecdr_dataset_sh,
 ):
     """Test that pm_icecon yields a 'conc' field."""
-    # assert type(sample_idecdr_dataset_nh) == type(xr.Dataset())
-    # assert type(sample_idecdr_dataset_sh) == type(xr.Dataset())
     assert isinstance(sample_idecdr_dataset_nh, type(xr.Dataset()))
     assert isinstance(sample_idecdr_dataset_sh, type(xr.Dataset()))
