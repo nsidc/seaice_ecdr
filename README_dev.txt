@@ -1,17 +1,14 @@
-
-README_dev.txt
+TODO: this README out of date.
 
 While developing, the workflow is:
 
 pm_icecon:
    Download pm_icecon repo to ~/pm_icecon
    run 'python setup.py develop'
-   Current branch: origin/update_for_nise_cdr_cetb
 
 seaice_ecdr:
    Download seaice_ecdr repo to ~/seaice_ecdr
    run 'python setup.py develop'
-   Current branch: origin/initial_pmicecon_ecdr_gen
 
 in ~/seaice_ecdr/:
 
