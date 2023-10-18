@@ -17,6 +17,3 @@ in ~/seaice_ecdr/:
 
    Can run unit and integration tests -- or manual subsets of -- with:
      ./run_ecdr_pytest.sh
-
-   Can generate a sample netCDF file with:
-     python seaice_ecdr/tests/integration/gen_ide_sample.py
