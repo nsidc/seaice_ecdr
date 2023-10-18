@@ -54,19 +54,19 @@ def sample_idecdr_dataset_sh():
 def test_seaice_idecdr_can_output_to_netcdf(
     sample_idecdr_dataset_nh,
     sample_idecdr_dataset_sh,
+    tmp_path,
 ):
     """Test that xarray dataset can be saved to a netCDF file."""
-    import os
 
     # NH
-    sample_output_filename_nh = "./sample_ecdr_nh.nc"
-    sample_idecdr_dataset_nh.to_netcdf(sample_output_filename_nh)
-    assert os.path.isfile(sample_output_filename_nh)
+    sample_output_filepath_nh = tmp_path / "sample_ecdr_nh.nc"
+    sample_idecdr_dataset_nh.to_netcdf(sample_output_filepath_nh)
+    assert sample_output_filepath_nh.is_file()
 
     # SH
-    sample_output_filename_sh = "./sample_ecdr_sh.nc"
-    sample_idecdr_dataset_sh.to_netcdf(sample_output_filename_sh)
-    assert os.path.isfile(sample_output_filename_sh)
+    sample_output_filepath_sh = tmp_path / "sample_ecdr_sh.nc"
+    sample_idecdr_dataset_sh.to_netcdf(sample_output_filepath_sh)
+    assert sample_output_filepath_sh.is_file()
 
 
 def test_seaice_idecdr_has_crs(
