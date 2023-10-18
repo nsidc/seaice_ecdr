@@ -1,6 +1,8 @@
 """Create the initial daily ECDR file.
 
-Initially based on pm_icecon's 'pm_cdr.py' routines
+Notes:
+
+* `idecdr` is shorthand for == "Initial Daily ECDR"
 """
 
 import datetime as dt
