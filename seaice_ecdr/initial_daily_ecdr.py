@@ -216,7 +216,7 @@ def _get_grid_id(*, hemisphere: Hemisphere, resolution: AU_SI_RESOLUTIONS) -> st
     return gridid
 
 
-def compute_initial_daily_ecdr_dataset(
+def initial_daily_ecdr_dataset_for_au_si_tbs(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
@@ -846,7 +846,7 @@ def make_cdr_netcdf(
 ) -> None:
     """Create the cdr netCDF file."""
     logger.info(f"Creating CDR for {date=}, {hemisphere=}, {resolution=}")
-    conc_ds = compute_initial_daily_ecdr_dataset(
+    conc_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
