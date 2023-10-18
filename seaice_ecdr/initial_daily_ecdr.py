@@ -7,7 +7,7 @@ import datetime as dt
 import sys
 import traceback
 from pathlib import Path
-from typing import TypedDict, cast, get_args
+from typing import TypedDict, get_args
 
 import click
 import numpy as np
@@ -944,39 +944,4 @@ def cli(
         # tbsrc=tb_source,
         resolution=resolution,
         output_dir=output_dir,
-    )
-
-
-def parse_cmdline_iedcdr_params():
-    """Extract info from command line call of initial_daily_ecdr.py."""
-    import sys
-
-    print(f"cmdline args: {sys.argv}")
-    raise RuntimeError("in parse_cmdline_iedcdr_params")
-
-
-if __name__ == "__main__":
-    # vvvv MODIFY THESE PARAMETERS AS NEEDED vvvv
-    start_date, end_date, gridid, tb_source, output_dir = parse_cmdline_iedcdr_params()
-
-    if tb_source is None:
-        raise ValueError("tb_source should not be None")
-
-    if gridid == "e2n12.5":
-        hemisphere = "north"
-        resolution = "12"
-    elif gridid == "e2s12.5":
-        hemisphere = "south"
-        resolution = "12"
-    else:
-        raise RuntimeError(f"Could not parse gridid: {gridid}")
-
-    hemisphere = cast(Hemisphere, hemisphere)
-    resolution = cast(AU_SI_RESOLUTIONS, resolution)
-    create_idecdr_for_date_range(
-        hemisphere=hemisphere,
-        start_date=start_date,
-        end_date=end_date,
-        output_dir=output_dir,
-        resolution=resolution,
     )
