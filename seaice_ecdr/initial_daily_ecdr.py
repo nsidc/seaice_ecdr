@@ -988,8 +988,6 @@ def cli(
         hemisphere=hemisphere,
         start_date=date,
         end_date=date,
-        # gridid=gridid,
-        # tbsrc=tb_source,
         resolution=resolution,
         output_dir=output_dir,
     )
