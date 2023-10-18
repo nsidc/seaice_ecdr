@@ -868,14 +868,16 @@ def make_cdr_netcdf(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
+    xr_tbs: xr.Dataset,
     output_dir: Path,
 ) -> None:
     """Create the cdr netCDF file."""
     logger.info(f"Creating CDR for {date=}, {hemisphere=}, {resolution=}")
-    conc_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
+    conc_ds = compute_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
+        xr_tbs=xr_tbs,
     )
 
     output_fn = standard_output_filename(
@@ -904,7 +906,13 @@ def create_idecdr_for_date_range(
     """Generate the initial daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
         try:
+            xr_tbs = get_au_si_tbs(
+                date=date,
+                hemisphere=hemisphere,
+                resolution=resolution,
+            )
             make_cdr_netcdf(
+                xr_tbs=xr_tbs,
                 date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
