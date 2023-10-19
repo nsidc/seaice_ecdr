@@ -261,7 +261,16 @@ def compute_initial_daily_ecdr_dataset(
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
     xr_tbs: xr.Dataset,
-):
+) -> xr.Dataset:
+    """Create intermediate daily ECDR xarray dataset.
+
+    Returns an xarray Dataset with CDR concentration and other fields required
+    to produce a final, temporally interpolated CDR NetCDF file.
+
+    TODO: more details/type definition/model for the various output data
+    fields. Its difficult to understand what's in the resulting dataset without
+    manually inspecting the result of running this code.
+    """
     ecdr_ide_ds = _setup_ecdr_ds(
         date=date,
         xr_tbs=xr_tbs,
