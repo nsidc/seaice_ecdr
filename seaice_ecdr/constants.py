@@ -3,6 +3,8 @@ from pathlib import Path
 # NSIDC infrastructure-specific paths:
 NSIDC_NFS_SHARE_DIR = Path("/share/apps/amsr2-cdr")
 
+# TODO: dev-specific directories for the outputs!
+
 # Outputs from the `seaice_ecdr` go to these locations.
 BASE_OUTPUT_DIR = NSIDC_NFS_SHARE_DIR / "ecdr_outputs"
 # Daily initial output from 'final' input data (e.g., AU_SI12)
