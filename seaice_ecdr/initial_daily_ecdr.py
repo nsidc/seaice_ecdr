@@ -1,13 +1,15 @@
 """Create the initial daily ECDR file.
 
-Initially based on pm_icecon's 'pm_cdr.py' routines
+Notes:
+
+* `idecdr` is shorthand for == "Initial Daily ECDR"
 """
 
 import datetime as dt
 import sys
 import traceback
 from pathlib import Path
-from typing import TypedDict, cast, get_args
+from typing import TypedDict, get_args
 
 import click
 import numpy as np
@@ -820,16 +822,6 @@ def compute_initial_daily_ecdr_dataset(
     return ecdr_ide_ds
 
 
-def amsr2_cdr(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
-):
-    """Obsolete reference to code that creates CDR using AMSR2."""
-    raise RuntimeError("amsr2_cdr() is nowcompute_initial_daily_ecdr_dataset()")
-
-
 def make_cdr_netcdf(
     *,
     date: dt.date,
@@ -839,7 +831,7 @@ def make_cdr_netcdf(
 ) -> None:
     """Create the cdr netCDF file."""
     logger.info(f"Creating CDR for {date=}, {hemisphere=}, {resolution=}")
-    conc_ds = amsr2_cdr(
+    conc_ds = compute_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
@@ -935,7 +927,12 @@ def cli(
     output_dir: Path,
     resolution: AU_SI_RESOLUTIONS,
 ) -> None:
-    """Run the initial daily ECDR algorithm with AMSR2 data."""
+    """Run the initial daily ECDR algorithm with AMSR2 data.
+
+    TODO: eventually we want to be able to specify: date, grid (grid includes
+    projection, resolution, and bounds), and TBtype (TB type includes source and
+    methodology for getting those TBs onto the grid)
+    """
     create_idecdr_for_date_range(
         hemisphere=hemisphere,
         start_date=date,
@@ -944,39 +941,4 @@ def cli(
         # tbsrc=tb_source,
         resolution=resolution,
         output_dir=output_dir,
-    )
-
-
-def parse_cmdline_iedcdr_params():
-    """Extract info from command line call of initial_daily_ecdr.py."""
-    import sys
-
-    print(f"cmdline args: {sys.argv}")
-    raise RuntimeError("in parse_cmdline_iedcdr_params")
-
-
-if __name__ == "__main__":
-    # vvvv MODIFY THESE PARAMETERS AS NEEDED vvvv
-    start_date, end_date, gridid, tb_source, output_dir = parse_cmdline_iedcdr_params()
-
-    if tb_source is None:
-        raise ValueError("tb_source should not be None")
-
-    if gridid == "e2n12.5":
-        hemisphere = "north"
-        resolution = "12"
-    elif gridid == "e2s12.5":
-        hemisphere = "south"
-        resolution = "12"
-    else:
-        raise RuntimeError(f"Could not parse gridid: {gridid}")
-
-    hemisphere = cast(Hemisphere, hemisphere)
-    resolution = cast(AU_SI_RESOLUTIONS, resolution)
-    create_idecdr_for_date_range(
-        hemisphere=hemisphere,
-        start_date=start_date,
-        end_date=end_date,
-        output_dir=output_dir,
-        resolution=resolution,
     )
