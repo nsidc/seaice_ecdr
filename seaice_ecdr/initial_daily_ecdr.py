@@ -986,7 +986,12 @@ def cli(
     output_dir: Path,
     resolution: AU_SI_RESOLUTIONS,
 ) -> None:
-    """Run the initial daily ECDR algorithm with AMSR2 data."""
+    """Run the initial daily ECDR algorithm with AMSR2 data.
+
+    TODO: eventually we want to be able to specify: date, grid (grid includes
+    projection, resolution, and bounds), and TBtype (TB type includes source and
+    methodology for getting those TBs onto the grid)
+    """
     create_idecdr_for_date_range(
         hemisphere=hemisphere,
         start_date=date,
