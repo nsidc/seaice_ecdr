@@ -20,9 +20,8 @@ import pm_icecon.nt.compute_nt_ic as nt
 import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import xarray as xr
 from loguru import logger
-from pm_icecon._types import Hemisphere
+from pm_tb_data._types import Hemisphere
 from pm_icecon.bt.fields import get_bootstrap_fields
-from pm_icecon.cli.util import datetime_to_date
 from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
@@ -35,6 +34,11 @@ from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
 from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
 from seaice_ecdr.masks import psn_125_near_pole_hole_mask
+from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.constants import INITIAL_DAILY_OUTPUT_DIR
+
+
+EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
 
 
 def cdr_bootstrap(
@@ -176,34 +180,27 @@ def calculate_bt_nt_cdr_raw_conc(
     return bt_conc, nt_conc, cdr_conc
 
 
-def compute_initial_daily_ecdr_dataset(
+def _setup_ecdr_ds(
     *,
     date: dt.date,
+    xr_tbs: xr.Dataset,
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
 ) -> xr.Dataset:
-    """Create xr dataset containing the first pass of daily enhanced CDR."""
-    # Note: at first, this is simply a copy of amsr2_cdr
-
-    # Set the gridid
-    if hemisphere == "north" and resolution == "12":
-        gridid = "psn12.5"
-    elif hemisphere == "south" and resolution == "12":
-        gridid = "pss12.5"
-    else:
-        raise RuntimeError(
-            f"Could not determine gridid from:\n" f"{hemisphere} and {resolution}"
-        )
-
     # Initialize geo-referenced xarray Dataset
-    ecdr_ide_ds = get_dataset_for_gridid(gridid, date)
+    grid_id = _get_grid_id(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    ecdr_ide_ds = get_dataset_for_gridid(grid_id, date)
 
     # Set initial global attributes
     ecdr_ide_ds.attrs["description"] = "Initial daily cdr conc file"
 
     # Note: these attributes should probably go with
     #       a variable named "CDR_parameters" or similar
-    ecdr_ide_ds.attrs["gridid"] = gridid
+    ecdr_ide_ds.attrs["grid_id"] = grid_id
     ecdr_ide_ds.attrs["date"] = date.strftime("%Y-%m-%d")
     ecdr_ide_ds.attrs["missing_value"] = DEFAULT_FLAG_VALUES.missing
 
@@ -217,15 +214,8 @@ def compute_initial_daily_ecdr_dataset(
         dt.datetime(file_date.year, file_date.month, file_date.day, 23, 59, 59)
     )
 
-    # Get AU_SI TBs
-    xr_tbs = get_au_si_tbs(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-
     # Move TBs to ecdr_ds
-    for tbname in ("h18", "v18", "v23", "h36", "v36"):
+    for tbname in EXPECTED_TB_NAMES:
         tb_varname = f"{tbname}_day"
         tbdata = xr_tbs.variables[tbname].data
         freq = tbname[1:]
@@ -248,13 +238,51 @@ def compute_initial_daily_ecdr_dataset(
             },
         )
 
+    return ecdr_ide_ds
+
+
+def _get_grid_id(*, hemisphere: Hemisphere, resolution: AU_SI_RESOLUTIONS) -> str:
+    # Set the gridid
+    if hemisphere == "north" and resolution == "12":
+        gridid = "psn12.5"
+    elif hemisphere == "south" and resolution == "12":
+        gridid = "pss12.5"
+    else:
+        raise RuntimeError(
+            f"Could not determine gridid from:\n" f"{hemisphere} and {resolution}"
+        )
+
+    return gridid
+
+
+def compute_initial_daily_ecdr_dataset(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+    xr_tbs: xr.Dataset,
+) -> xr.Dataset:
+    """Create intermediate daily ECDR xarray dataset.
+
+    Returns an xarray Dataset with CDR concentration and other fields required
+    to produce a final, temporally interpolated CDR NetCDF file.
+
+    TODO: more details/type definition/model for the various output data
+    fields. Its difficult to understand what's in the resulting dataset without
+    manually inspecting the result of running this code.
+    """
+    ecdr_ide_ds = _setup_ecdr_ds(
+        date=date,
+        xr_tbs=xr_tbs,
+        resolution=resolution,
+        hemisphere=hemisphere,
+    )
+
     # Spatially interpolate the brightness temperatures
-    for tbname in ("h18", "v18", "v23", "h36", "v36"):
+    for tbname in EXPECTED_TB_NAMES:
         tb_day_name = f"{tbname}_day"
         tb_si_varname = f"{tb_day_name}_si"
         tb_si_data = spatial_interp_tbs(ecdr_ide_ds[tb_day_name].data)
-        freq = tbname[1:]
-        pol = tbname[:1]
         tb_si_longname = f"Spatially interpolated {ecdr_ide_ds[tb_day_name].long_name}"
         tb_units = "K"
         ecdr_ide_ds[tb_si_varname] = (
@@ -285,7 +313,7 @@ def compute_initial_daily_ecdr_dataset(
         "h36": 16,
         "pole_filled": 32,
     }
-    for tbname in ("h18", "v18", "v23", "h36", "v36"):
+    for tbname in EXPECTED_TB_NAMES:
         tb_varname = f"{tbname}_day"
         si_varname = f"{tbname}_day_si"
         is_tb_si_diff = (
@@ -322,7 +350,7 @@ def compute_initial_daily_ecdr_dataset(
     bt_coefs_init = pmi_bt_params.get_ausi_bootstrap_params(
         date=date,
         satellite="amsr2",
-        gridid=gridid,
+        gridid=ecdr_ide_ds.grid_id,
     )
 
     # Add the function that generates the bt_tb_mask to bt_coefs
@@ -332,7 +360,7 @@ def compute_initial_daily_ecdr_dataset(
     bt_fields = get_bootstrap_fields(
         date=date,
         satellite="amsr2",
-        gridid=gridid,
+        gridid=ecdr_ide_ds.grid_id,
     )
 
     # Encode invalid_ice_mask
@@ -472,7 +500,7 @@ def compute_initial_daily_ecdr_dataset(
         v22=ecdr_ide_ds["v23_day_si"].data,
         v19=ecdr_ide_ds["v18_day_si"].data,
         land_mask=ecdr_ide_ds["land_mask"].data,
-        tb_mask=ecdr_ide_ds["invalid_tb_mask"],
+        tb_mask=ecdr_ide_ds["invalid_tb_mask"].data,
         ln1=bt_coefs_init["vh37_lnline"],
         date=date,
         wintrc=bt_coefs_init["wintrc"],
@@ -515,29 +543,29 @@ def compute_initial_daily_ecdr_dataset(
 
     bt_coefs["vh37_lnline"] = bt.get_linfit(
         land_mask=ecdr_ide_ds["land_mask"].data,
-        tb_mask=ecdr_ide_ds["invalid_tb_mask"],
+        tb_mask=ecdr_ide_ds["invalid_tb_mask"].data,
         tbx=ecdr_ide_ds["v36_day_si"].data,
         tby=ecdr_ide_ds["h36_day_si"].data,
         lnline=bt_coefs_init["vh37_lnline"],
         add=bt_coefs["add1"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"],
+        weather_mask=ecdr_ide_ds["bt_weather_mask"].data,
     )
 
     bt_coefs["bt_wtp_v37"] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init["bt_wtp_v37"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"],
+        weather_mask=ecdr_ide_ds["bt_weather_mask"].data,
         tb=ecdr_ide_ds["v36_day_si"].data,
     )
 
     bt_coefs["bt_wtp_h37"] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init["bt_wtp_h37"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"],
+        weather_mask=ecdr_ide_ds["bt_weather_mask"].data,
         tb=ecdr_ide_ds["h36_day_si"].data,
     )
 
     bt_coefs["bt_wtp_v19"] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init["bt_wtp_v19"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"],
+        weather_mask=ecdr_ide_ds["bt_weather_mask"].data,
         tb=ecdr_ide_ds["v18_day_si"].data,
     )
 
@@ -549,12 +577,12 @@ def compute_initial_daily_ecdr_dataset(
 
     bt_coefs["v1937_lnline"] = bt.get_linfit(
         land_mask=ecdr_ide_ds["land_mask"].data,
-        tb_mask=ecdr_ide_ds["invalid_tb_mask"],
+        tb_mask=ecdr_ide_ds["invalid_tb_mask"].data,
         tbx=ecdr_ide_ds["v36_day_si"].data,
         tby=ecdr_ide_ds["v18_day_si"].data,
         lnline=bt_coefs_init["v1937_lnline"],
         add=bt_coefs["add2"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"],
+        weather_mask=ecdr_ide_ds["bt_weather_mask"].data,
         tba=ecdr_ide_ds["h36_day_si"].data,
         iceline=bt_coefs["vh37_lnline"],
         ad_line_offset=bt_coefs["ad_line_offset"],
@@ -683,8 +711,8 @@ def compute_initial_daily_ecdr_dataset(
         logger.info("Applying NASA TEAM land spillover technique...")
         cdr_conc = nt.apply_nt_spillover(
             conc=cdr_conc,
-            shoremap=ecdr_ide_ds["shoremap"],
-            minic=ecdr_ide_ds["NT_icecon_min"],
+            shoremap=ecdr_ide_ds["shoremap"].data,
+            minic=ecdr_ide_ds["NT_icecon_min"].data,
         )
         # then bootstrap:
         logger.info("Applying Bootstrap land spillover technique...")
@@ -716,7 +744,7 @@ def compute_initial_daily_ecdr_dataset(
     # Apply land flag value and clamp max conc to 100.
     # TODO: extract this func from nt and allow override of flag values
     cdr_conc = nt._clamp_conc_and_set_flags(
-        shoremap=ecdr_ide_ds["shoremap"],
+        shoremap=ecdr_ide_ds["shoremap"].data,
         conc=cdr_conc,
     )
 
@@ -822,11 +850,36 @@ def compute_initial_daily_ecdr_dataset(
     return ecdr_ide_ds
 
 
+def initial_daily_ecdr_dataset_for_au_si_tbs(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+) -> xr.Dataset:
+    """Create xr dataset containing the first pass of daily enhanced CDR."""
+    # Get AU_SI TBs
+    xr_tbs = get_au_si_tbs(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        xr_tbs=xr_tbs,
+    )
+
+    return initial_ecdr_ds
+
+
 def make_cdr_netcdf(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
+    xr_tbs: xr.Dataset,
     output_dir: Path,
 ) -> None:
     """Create the cdr netCDF file."""
@@ -835,6 +888,7 @@ def make_cdr_netcdf(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
+        xr_tbs=xr_tbs,
     )
 
     output_fn = standard_output_filename(
@@ -863,16 +917,28 @@ def create_idecdr_for_date_range(
     """Generate the initial daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
         try:
+            xr_tbs = get_au_si_tbs(
+                date=date,
+                hemisphere=hemisphere,
+                resolution=resolution,
+            )
             make_cdr_netcdf(
+                xr_tbs=xr_tbs,
                 date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
                 output_dir=output_dir,
             )
+        # TODO: either catch and re-throw this exception or throw an error after
+        # attempting to make the netcdf for each date. The exit code should be
+        # non-zero in such a case.
         except Exception:
             logger.error(
                 "Failed to create NetCDF for " f"{hemisphere=}, {date=}, {resolution=}."
             )
+            # TODO: These error logs should be written to e.g.,
+            # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
+            # to handle automatically logging error details to such a file.
             err_filename = standard_output_filename(
                 hemisphere=hemisphere,
                 date=date,
@@ -913,6 +979,8 @@ def create_idecdr_for_date_range(
         resolve_path=True,
         path_type=Path,
     ),
+    default=INITIAL_DAILY_OUTPUT_DIR,
+    show_default=True,
 )
 @click.option(
     "-r",
@@ -937,8 +1005,6 @@ def cli(
         hemisphere=hemisphere,
         start_date=date,
         end_date=date,
-        # gridid=gridid,
-        # tbsrc=tb_source,
         resolution=resolution,
         output_dir=output_dir,
     )

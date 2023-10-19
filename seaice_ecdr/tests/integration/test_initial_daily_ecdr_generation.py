@@ -9,7 +9,7 @@ import xarray as xr
 from loguru import logger
 
 from seaice_ecdr.initial_daily_ecdr import (
-    compute_initial_daily_ecdr_dataset as compute_idecdr_ds,
+    initial_daily_ecdr_dataset_for_au_si_tbs as compute_idecdr_ds,
 )
 
 # Set the default minimum log notification to Warning

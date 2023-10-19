@@ -42,7 +42,22 @@ $ conda activate pm_tb_data
 
 ## Usage
 
-TODO
+`seaice_ecdr` is primarily interacted with through it's CLI. To utilize the CLI,
+use the provided `scripts/cli.sh`:
+
+```
+$ ./scripts/cli.sh  --help
+Usage: python -m seaice_ecdr.cli.entrypoint [OPTIONS] COMMAND [ARGS]...
+
+  Run the Sea Ice EDCDR.
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  idecdr  Run the initial daily ECDR algorithm with AMSR2 data.
+  nrt     Run NRT Sea Ice ECDR.
+```
 
 ## Development/contributing
 

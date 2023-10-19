@@ -24,7 +24,7 @@ from pm_icecon.tests.regression import test_nt
 from pm_tb_data.fetch import au_si
 
 from seaice_ecdr.compare.ref_data import get_au_si_bt_conc, get_cdr, get_sea_ice_index
-from seaice_ecdr.initial_daily_ecdr import compute_initial_daily_ecdr_dataset
+from seaice_ecdr.initial_daily_ecdr import initial_daily_ecdr_dataset_for_au_si_tbs
 
 OUTPUT_DIR = Path("/tmp/diffs/")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -420,7 +420,7 @@ def compare_cdr(
     cdr_ds = get_cdr(date=date, hemisphere=hemisphere, resolution=resolution)
 
     our_cdr_ds = _flip(
-        compute_initial_daily_ecdr_dataset(
+        initial_daily_ecdr_dataset_for_au_si_tbs(
             date=date, hemisphere=hemisphere, resolution=resolution
         )
     )
