@@ -1,12 +1,15 @@
 from pathlib import Path
 
+# This is the version string for the ECDR product.
+ECDR_PRODUCT_VERSION = "v5"
+
 # NSIDC infrastructure-specific paths:
 NSIDC_NFS_SHARE_DIR = Path("/share/apps/amsr2-cdr")
 
 # TODO: dev-specific directories for the outputs!
 
 # Outputs from the `seaice_ecdr` go to these locations.
-BASE_OUTPUT_DIR = NSIDC_NFS_SHARE_DIR / "ecdr_outputs"
+BASE_OUTPUT_DIR = NSIDC_NFS_SHARE_DIR / f"ecdr_{ECDR_PRODUCT_VERSION}_outputs"
 # Daily initial/intermiedate output for 'standard' (not NRT) ECDR processing
 # (e.g, using input data from AU_SI12)
 INITIAL_DAILY_OUTPUT_DIR = BASE_OUTPUT_DIR / "standard" / "initial_daily"
