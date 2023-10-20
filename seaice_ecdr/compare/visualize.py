@@ -195,9 +195,9 @@ def do_comparisons(
     _ax = fig.add_subplot(2, 2, 1, projection=map_proj)
 
     # Visualize the comparison conc.
-    _ax.title.set_text(
+    _ax.title.set_text(  # type:ignore[attr-defined]
         f"{comparison_dataproduct} provided conc"
-    )  # type:ignore[attr-defined]
+    )
     _ax.set_xticks([])
     _ax.set_yticks([])
     save_conc_image(
