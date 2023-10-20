@@ -21,6 +21,30 @@ from seaice_ecdr.initial_daily_ecdr import (
 from pm_icecon.util import standard_output_filename
 
 
+def compute_nrt_initial_daily_ecdr_dataset(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+    lance_amsr2_input_dir: Path,
+):
+    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
+    xr_tbs = access_local_lance_data(
+        date=date,
+        hemisphere=hemisphere,
+        data_dir=lance_amsr2_input_dir,
+    )
+
+    nrt_initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        xr_tbs=xr_tbs,
+    )
+
+    return nrt_initial_ecdr_ds
+
+
 @click.command(name="download-latest-nrt-data")
 @click.option(
     "-o",
@@ -56,31 +80,7 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     download_latest_lance_files(output_dir=output_dir, overwrite=overwrite)
 
 
-def compute_nrt_initial_daily_ecdr_dataset(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
-    lance_amsr2_input_dir: Path,
-):
-    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
-    xr_tbs = access_local_lance_data(
-        date=date,
-        hemisphere=hemisphere,
-        data_dir=lance_amsr2_input_dir,
-    )
-
-    nrt_initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        xr_tbs=xr_tbs,
-    )
-
-    return nrt_initial_ecdr_ds
-
-
-@click.command(name="initial-daily-ecdr")
+@click.command(name="nrt-initial-daily-ecdr")
 @click.option(
     "-d",
     "--date",
@@ -138,8 +138,10 @@ def nrt_initial_daily_ecdr(
     resolution: AU_SI_RESOLUTIONS,
     lance_amsr2_input_dir: Path,
 ):
-    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
-    # TODO: Consider renaming this: nrt_initial_daily_ecdr_netcdf()
+    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data.
+
+    TODO: Consider renaming this: nrt_initial_daily_ecdr_netcdf()
+    """
     nrt_initial_ecdr_ds = compute_nrt_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
