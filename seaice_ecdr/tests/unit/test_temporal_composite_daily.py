@@ -2,6 +2,7 @@
 
 import datetime as dt
 import sys
+from pathlib import Path
 
 from loguru import logger
 
@@ -9,12 +10,17 @@ from loguru import logger
 from seaice_ecdr.temporal_composite_daily import (
     get_sample_idecdr_filename,
     iter_dates_near_date,
-    # gen_sample_idecdr_dataset,
+    get_standard_initial_daily_ecdr_filename,
 )
 
+
 # Set the default minimum log notification to Warning
-logger.remove(0)  # Removes previous logger info
-logger.add(sys.stderr, level="WARNING")
+try:
+    logger.remove(0)  # Removes previous logger info
+    logger.add(sys.stderr, level="WARNING")
+except ValueError:
+    logger.debug(sys.stderr, f"Started logging in {__name__}")
+    logger.add(sys.stderr, level="WARNING")
 
 
 date = dt.date(2021, 2, 19)
@@ -49,6 +55,23 @@ def test_date_iterator():
         iter_dates_near_date(date, day_range=2, skip_future=True)
     ):
         assert iter_date == expected_dates[idx]
+
+
+def test_access_to_standard_output_filename():
+    """Verify that standard output file names can be generated."""
+    sample_ide_filepath = get_standard_initial_daily_ecdr_filename(
+        date, hemisphere, resolution, output_directory=""
+    )
+    expected_filepath = Path("idecdr_NH_20210219_ausi_12km.nc")
+
+    assert sample_ide_filepath == expected_filepath
+
+
+'''
+def test_create_and_read_initial_daily_ecdr():
+    """Verify that if ide file does not exist, it is created and can be read."""
+    from pm_icecon.util import standard_output_filename
+'''
 
 
 '''
