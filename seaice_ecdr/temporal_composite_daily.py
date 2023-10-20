@@ -4,9 +4,15 @@
 
 import datetime as dt
 import sys
+import xarray as xr
 from loguru import logger
 from pathlib import Path
 from pm_icecon.util import standard_output_filename
+
+from seaice_ecdr.initial_daily_ecdr import (
+    initial_daily_ecdr_dataset_for_au_si_tbs,
+    write_ide_netcdf,
+)
 
 
 # Set the default minimum log notification to "info"
@@ -73,21 +79,30 @@ def get_standard_initial_daily_ecdr_filename(
 
 
 def read_with_create_initial_daily_ecdr(
+    *,
     date,
     hemisphere,
     resolution,
-    ide_filename_template=None,
-    # force_ide_file_creation=False,
+    ide_filepath=None,
+    force_ide_file_creation=False,
 ):
     """Return init daily ecdr field, creating it if necessary."""
-    if ide_filename_template is None:
-        standard_output_filename(
-            hemisphere=hemisphere,
+    if ide_filepath is None:
+        ide_filepath = get_standard_initial_daily_ecdr_filename(
             date=date,
-            sat="u2",
-            algorithm="idecdr",
-            resolution=f"{resolution}km",
+            hemisphere=hemisphere,
+            resolution=resolution,
         )
+
+    if not ide_filepath.exists() or force_ide_file_creation:
+        created_ide_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
+            date=date, hemisphere=hemisphere, resolution=resolution
+        )
+        write_ide_netcdf(ide_ds=created_ide_ds, output_filepath=ide_filepath)
+
+    ide_ds = xr.open_dataset(ide_filepath)
+
+    return ide_ds
 
 
 def gen_temporal_composite_daily(

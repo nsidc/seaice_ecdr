@@ -874,6 +874,29 @@ def initial_daily_ecdr_dataset_for_au_si_tbs(
     return initial_ecdr_ds
 
 
+def write_ide_netcdf(
+    *,
+    ide_ds: xr.Dataset,
+    output_filepath: Path,
+) -> Path:
+    """Write the initial_ecdr_ds to a netCDF file and return the path."""
+    logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
+
+    # Here, we should specify details about the initial daily eCDF file, eg:
+    #  exclude unwanted fields
+    #  ensure that fields are compressed
+    ide_ds.to_netcdf(
+        output_filepath,
+        encoding={"conc": {"zlib": True}},
+    )
+
+    # Return the path if it exists
+    if output_filepath.exists():
+        return output_filepath
+    else:
+        return Path("")
+
+
 def make_cdr_netcdf(
     *,
     date: dt.date,

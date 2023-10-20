@@ -1,5 +1,9 @@
 """Tests for initial daily ECDR generation."""
 
+# TODO: The tests should probably not require "real" data, but
+#  should work with mock data.  Or else, they should be moved to
+#  tests/integration/ directory.
+
 import datetime as dt
 import sys
 from pathlib import Path
@@ -11,6 +15,12 @@ from seaice_ecdr.temporal_composite_daily import (
     get_sample_idecdr_filename,
     iter_dates_near_date,
     get_standard_initial_daily_ecdr_filename,
+    read_with_create_initial_daily_ecdr,
+)
+
+from seaice_ecdr.initial_daily_ecdr import (
+    initial_daily_ecdr_dataset_for_au_si_tbs,
+    write_ide_netcdf,
 )
 
 
@@ -67,80 +77,69 @@ def test_access_to_standard_output_filename():
     assert sample_ide_filepath == expected_filepath
 
 
-'''
-def test_create_and_read_initial_daily_ecdr():
-    """Verify that if ide file does not exist, it is created and can be read."""
-    from pm_icecon.util import standard_output_filename
-'''
-
-
-'''
-@pytest.fixture(scope="session")
-def sample_idecdr_dataset_nh():
-    """Set up the sample NH initial daily ecdr data set."""
-    logger.info("testing: Creating sample idecdr dataset")
-
-    test_date = dt.datetime(2021, 4, 5).date()
-    test_hemisphere: Final = "north"
-    test_resolution: Final = "12"
-
-    ide_conc_ds = compute_idecdr_ds(
-        date=test_date,
-        hemisphere=test_hemisphere,
-        resolution=test_resolution,
+def test_create_ide_file():
+    """Verify that initial daily ecdr file can be created."""
+    sample_ide_filepath = get_standard_initial_daily_ecdr_filename(
+        date, hemisphere, resolution, output_directory=""
     )
-    return ide_conc_ds
+    if sample_ide_filepath.exists():
+        sample_ide_filepath.unlink()
+    assert not sample_ide_filepath.exists()
 
-
-@pytest.fixture(scope="session")
-def sample_idecdr_dataset_sh():
-    """Set up the sample SH initial daily ecdr data set."""
-    logger.info("testing: Creating sample idecdr dataset")
-
-    test_date = dt.datetime(2021, 4, 5).date()
-    test_hemisphere: Final = "north"
-    test_resolution: Final = "12"
-
-    ide_conc_ds = compute_idecdr_ds(
-        date=test_date,
-        hemisphere=test_hemisphere,
-        resolution=test_resolution,
+    test_ide_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
+        date=date, hemisphere=hemisphere, resolution=resolution
     )
-    return ide_conc_ds
+    written_path = write_ide_netcdf(
+        ide_ds=test_ide_ds,
+        output_filepath=sample_ide_filepath,
+    )
+    assert sample_ide_filepath == written_path
+    assert sample_ide_filepath.exists()
+
+    # Clean up Test
+    sample_ide_filepath.unlink()
 
 
-def test_seaice_idecdr_can_output_to_netcdf(
-    sample_idecdr_dataset_nh,
-    sample_idecdr_dataset_sh,
-    tmp_path,
-):
-    """Test that xarray dataset can be saved to a netCDF file."""
+def test_read_with_create_ide_file():
+    """Verify that initial daily ecdr file can be created."""
+    sample_ide_filepath = get_standard_initial_daily_ecdr_filename(
+        date, hemisphere, resolution, output_directory=""
+    )
+    if sample_ide_filepath.exists():
+        sample_ide_filepath.unlink()
+    assert not sample_ide_filepath.exists()
+    test_ide_ds_with_creation = read_with_create_initial_daily_ecdr(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ide_filepath=sample_ide_filepath,
+    )
 
-    # NH
-    sample_output_filepath_nh = tmp_path / "sample_ecdr_nh.nc"
-    sample_idecdr_dataset_nh.to_netcdf(sample_output_filepath_nh)
-    assert sample_output_filepath_nh.is_file()
+    assert sample_ide_filepath.exists()
+    test_ide_ds_with_reading = read_with_create_initial_daily_ecdr(
+        date=date, hemisphere=hemisphere, resolution=resolution
+    )
 
-    # SH
-    sample_output_filepath_sh = tmp_path / "sample_ecdr_sh.nc"
-    sample_idecdr_dataset_sh.to_netcdf(sample_output_filepath_sh)
-    assert sample_output_filepath_sh.is_file()
+    assert test_ide_ds_with_creation == test_ide_ds_with_reading
 
-
-def test_seaice_idecdr_has_crs(
-    sample_idecdr_dataset_nh,
-    sample_idecdr_dataset_sh,
-):
-    """Test that pm_icecon yields a 'conc' field."""
-    assert "crs" in sample_idecdr_dataset_nh.variables
-    assert "crs" in sample_idecdr_dataset_sh.variables
+    # Clean up test
+    # TODO: These tests should probably use non-standard names or a tempdir
+    #   or something so they don't clobber actual files....
+    # sample_ide_filepath.unlink()
 
 
-def test_seaice_idecdr_is_Dataset(
-    sample_idecdr_dataset_nh,
-    sample_idecdr_dataset_sh,
-):
-    """Test that pm_icecon yields a 'conc' field."""
-    assert isinstance(sample_idecdr_dataset_nh, type(xr.Dataset()))
-    assert isinstance(sample_idecdr_dataset_sh, type(xr.Dataset()))
-'''
+def test_can_use_nonstandard_ide_filepath():
+    """Verify that we can override use of standard ide filepath."""
+    # TODO: this should probably use a tempdir / temp_filename
+    # Define a name
+    nonstandard_path = Path("not_a_standard_name.nc")
+    read_with_create_initial_daily_ecdr(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ide_filepath=nonstandard_path,
+    )
+    assert nonstandard_path.exists()
+
+    # Clean up test
+    nonstandard_path.unlink()
