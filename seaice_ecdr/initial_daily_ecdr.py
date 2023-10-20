@@ -878,6 +878,8 @@ def write_ide_netcdf(
     *,
     ide_ds: xr.Dataset,
     output_filepath: Path,
+    uncompressed_fields: list = ("crs", "time", "y", "x"),
+    excluded_fields: list = (),
 ) -> Path:
     """Write the initial_ecdr_ds to a netCDF file and return the path."""
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
@@ -885,9 +887,20 @@ def write_ide_netcdf(
     # Here, we should specify details about the initial daily eCDF file, eg:
     #  exclude unwanted fields
     #  ensure that fields are compressed
+    # Set netCDF encoding to compress all except excluded fields
+    if excluded_fields != "":
+        for varname in ide_ds.variables.keys():
+            if varname in excluded_fields:
+                ide_ds = ide_ds.drop_vars(varname)
+
+    nc_encoding = {}
+    for varname in ide_ds.variables.keys():
+        if varname not in uncompressed_fields:
+            nc_encoding[varname] = {"zlib": True}
+
     ide_ds.to_netcdf(
         output_filepath,
-        encoding={"conc": {"zlib": True}},
+        encoding=nc_encoding,
     )
 
     # Return the path if it exists
@@ -895,38 +908,6 @@ def write_ide_netcdf(
         return output_filepath
     else:
         return Path("")
-
-
-def make_cdr_netcdf(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
-    xr_tbs: xr.Dataset,
-    output_dir: Path,
-) -> None:
-    """Create the cdr netCDF file."""
-    logger.info(f"Creating CDR for {date=}, {hemisphere=}, {resolution=}")
-    conc_ds = compute_initial_daily_ecdr_dataset(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        xr_tbs=xr_tbs,
-    )
-
-    output_fn = standard_output_filename(
-        hemisphere=hemisphere,
-        date=date,
-        sat="u2",
-        algorithm="cdr",
-        resolution=f"{resolution}km",
-    )
-    output_path = output_dir / output_fn
-    conc_ds.to_netcdf(
-        output_path,
-        encoding={"conc": {"zlib": True}},
-    )
-    logger.info(f"Wrote AMSR2 CDR concentration field: {output_path}")
 
 
 def create_idecdr_for_date_range(
@@ -940,18 +921,26 @@ def create_idecdr_for_date_range(
     """Generate the initial daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
         try:
-            xr_tbs = get_au_si_tbs(
+            logger.info(f"Creating eCDR for {date=}, {hemisphere=}, {resolution=}")
+            ide_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
             )
-            make_cdr_netcdf(
-                xr_tbs=xr_tbs,
-                date=date,
+            output_fn = standard_output_filename(
                 hemisphere=hemisphere,
-                resolution=resolution,
-                output_dir=output_dir,
+                date=date,
+                sat="ausi",
+                algorithm="idecdr",
+                resolution=f"{resolution}km",
             )
+            output_path = output_dir / output_fn
+
+            written_ide_ncfile = write_ide_netcdf(
+                ide_ds=ide_ds, output_filepath=output_path
+            )
+            logger.info(f"Wrote intermed daily ncfile: {written_ide_ncfile}")
+
         # TODO: either catch and re-throw this exception or throw an error after
         # attempting to make the netcdf for each date. The exit code should be
         # non-zero in such a case.
