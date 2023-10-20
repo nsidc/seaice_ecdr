@@ -56,6 +56,30 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     download_latest_lance_files(output_dir=output_dir, overwrite=overwrite)
 
 
+def compute_nrt_initial_daily_ecdr_dataset(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+    lance_amsr2_input_dir: Path,
+):
+    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
+    xr_tbs = access_local_lance_data(
+        date=date,
+        hemisphere=hemisphere,
+        data_dir=lance_amsr2_input_dir,
+    )
+
+    nrt_initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        xr_tbs=xr_tbs,
+    )
+
+    return nrt_initial_ecdr_ds
+
+
 @click.command(name="initial-daily-ecdr")
 @click.option(
     "-d",
@@ -106,31 +130,6 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     default=LANCE_NRT_DATA_DIR,
     help="Directory in which LANCE AMSR2 NRT files are located.",
 )
-def compute_nrt_initial_daily_ecdr_dataset(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
-    lance_amsr2_input_dir: Path,
-):
-    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
-    xr_tbs = access_local_lance_data(
-        date=date,
-        hemisphere=hemisphere,
-        data_dir=lance_amsr2_input_dir,
-    )
-
-    nrt_initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        xr_tbs=xr_tbs,
-    )
-
-    return nrt_initial_ecdr_ds
-
-
-# TODO: Consider renaming this: nrt_initial_daily_ecdr_netcdf()
 def nrt_initial_daily_ecdr(
     *,
     date: dt.date,
@@ -140,6 +139,7 @@ def nrt_initial_daily_ecdr(
     lance_amsr2_input_dir: Path,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
+    # TODO: Consider renaming this: nrt_initial_daily_ecdr_netcdf()
     nrt_initial_ecdr_ds = compute_nrt_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,

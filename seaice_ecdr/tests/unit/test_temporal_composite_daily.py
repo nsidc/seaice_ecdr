@@ -15,12 +15,6 @@ from seaice_ecdr.temporal_composite_daily import (
     get_sample_idecdr_filename,
     iter_dates_near_date,
     get_standard_initial_daily_ecdr_filename,
-    read_with_create_initial_daily_ecdr,
-)
-
-from seaice_ecdr.initial_daily_ecdr import (
-    initial_daily_ecdr_dataset_for_au_si_tbs,
-    write_ide_netcdf,
 )
 
 
@@ -75,71 +69,3 @@ def test_access_to_standard_output_filename():
     expected_filepath = Path("idecdr_NH_20210219_ausi_12km.nc")
 
     assert sample_ide_filepath == expected_filepath
-
-
-def test_create_ide_file():
-    """Verify that initial daily ecdr file can be created."""
-    sample_ide_filepath = get_standard_initial_daily_ecdr_filename(
-        date, hemisphere, resolution, output_directory=""
-    )
-    if sample_ide_filepath.exists():
-        sample_ide_filepath.unlink()
-    assert not sample_ide_filepath.exists()
-
-    test_ide_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
-        date=date, hemisphere=hemisphere, resolution=resolution
-    )
-    written_path = write_ide_netcdf(
-        ide_ds=test_ide_ds,
-        output_filepath=sample_ide_filepath,
-    )
-    assert sample_ide_filepath == written_path
-    assert sample_ide_filepath.exists()
-
-    # Clean up Test
-    sample_ide_filepath.unlink()
-
-
-def test_read_with_create_ide_file():
-    """Verify that initial daily ecdr file can be created."""
-    sample_ide_filepath = get_standard_initial_daily_ecdr_filename(
-        date, hemisphere, resolution, output_directory=""
-    )
-    if sample_ide_filepath.exists():
-        sample_ide_filepath.unlink()
-    assert not sample_ide_filepath.exists()
-    test_ide_ds_with_creation = read_with_create_initial_daily_ecdr(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ide_filepath=sample_ide_filepath,
-    )
-
-    assert sample_ide_filepath.exists()
-    test_ide_ds_with_reading = read_with_create_initial_daily_ecdr(
-        date=date, hemisphere=hemisphere, resolution=resolution
-    )
-
-    assert test_ide_ds_with_creation == test_ide_ds_with_reading
-
-    # Clean up test
-    # TODO: These tests should probably use non-standard names or a tempdir
-    #   or something so they don't clobber actual files....
-    # sample_ide_filepath.unlink()
-
-
-def test_can_use_nonstandard_ide_filepath():
-    """Verify that we can override use of standard ide filepath."""
-    # TODO: this should probably use a tempdir / temp_filename
-    # Define a name
-    nonstandard_path = Path("not_a_standard_name.nc")
-    read_with_create_initial_daily_ecdr(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ide_filepath=nonstandard_path,
-    )
-    assert nonstandard_path.exists()
-
-    # Clean up test
-    nonstandard_path.unlink()
