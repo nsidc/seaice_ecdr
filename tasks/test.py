@@ -33,6 +33,18 @@ def regression(ctx):
     )
 
 
+@task()
+def pytest(ctx):
+    """Run all tests with pytest.
+
+    Includes a code-coverage check.
+    """
+    print_and_run(
+        "pytest --cov=seaice_ecdr --cov-fail-under 40",
+        pty=True,
+    )
+
+
 @task(
     pre=[
         typecheck,
@@ -50,8 +62,7 @@ def ci(ctx):
 @task(
     pre=[
         typecheck,
-        integration,
-        regression,
+        pytest,
     ],
     default=True,
 )
