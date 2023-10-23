@@ -1,6 +1,7 @@
 name: seaice_ecdr
 channels:
   - conda-forge
+  - nsidc
   - nodefaults
 dependencies:
   - python ~=3.10.0
@@ -12,7 +13,7 @@ dependencies:
   - xarray ~=2023.6
   - netCDF4 ~=1.6.3
   - loguru ~=0.7
-  - scipy ~=1.11.3
+  - scipy ~=1.8.1 # TODO: we should be able to upgrade (.eg., ~=1.11.3) but `seaice` depends on an earlier version. `seaice` isn't _really_ a dependency.
   - seaice ~=6.0
 
   #############################
@@ -29,3 +30,4 @@ dependencies:
   - ipython
   - ipdb
   - conda-lock
+  - invoke
