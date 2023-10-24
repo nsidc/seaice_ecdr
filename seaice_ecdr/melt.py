@@ -41,9 +41,9 @@ MELT_ONSET_DAY_FILL_VALUE = -1
 # Melt detection requires a SIC of >= this value
 CONCENTRATION_THRESHOLD_PERCENT = 50
 
-# TODO: this assumes that the TBs are provided in tenths of K as well, but e.g.,
-# AU_SI12 has TBS in degrees K.
-TB_DELTA_THRESHOLD_TENTHS_K = 20
+# One of the conditions for melt detection is that the delta between 19H and 37H
+# (19H-37H) is less than this value.
+TB_DELTA_THRESHOLD_K = 2
 
 # TODO: In the CDR, tbs that are missing are assumed to be 0. That's not the case
 # anymore. We expect NaN.
@@ -53,7 +53,7 @@ TB_MISSING = 0
 def melting(concentrations, tb19, tb37):
     melting = np.logical_and(
         concentrations >= CONCENTRATION_THRESHOLD_PERCENT,
-        tb19 - tb37 < TB_DELTA_THRESHOLD_TENTHS_K,
+        tb19 - tb37 < TB_DELTA_THRESHOLD_K,
     )
     melting[tb19 == TB_MISSING] = False
     melting[tb37 == TB_MISSING] = False

@@ -30,7 +30,7 @@ def test_that_tb_threshold_is_2_kelvin():
     # Brightness temperatures are in *tenths* of kelvin
     concentrations = np.array([80, 80, 80, 90])
     tb19 = np.array([200, 200, 200, 200])
-    tb37 = np.array([150, 180, 181, 200])
+    tb37 = np.array([150, 180, 199, 200])
     expected = np.array([False, False, True, True])
 
     actual = melt.melting(concentrations, tb19, tb37)
