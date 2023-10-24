@@ -54,8 +54,8 @@ TB_MISSING = 0
 
 def melting(
     concentrations: npt.NDArray,
-    tb19: npt.NDArray,
-    tb37: npt.NDArray,
+    tb_h19: npt.NDArray,
+    tb_h37: npt.NDArray,
 ) -> npt.NDArray[np.bool_]:
     """Determine melting locations.
 
@@ -63,9 +63,9 @@ def melting(
     """
     melting = np.logical_and(
         concentrations >= CONCENTRATION_THRESHOLD_PERCENT,
-        tb19 - tb37 < TB_DELTA_THRESHOLD_K,
+        tb_h19 - tb_h37 < TB_DELTA_THRESHOLD_K,
     )
-    melting[tb19 == TB_MISSING] = False
-    melting[tb37 == TB_MISSING] = False
+    melting[tb_h19 == TB_MISSING] = False
+    melting[tb_h37 == TB_MISSING] = False
 
     return melting

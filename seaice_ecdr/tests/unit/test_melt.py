@@ -10,7 +10,7 @@ def test_with_melting_everywhere():
     tb37 = np.array([200, 200, 200, 200])
     expected = np.array([True, True, True, True])
 
-    actual = melt.melting(concentrations, tb19, tb37)
+    actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
     npt.assert_array_equal(expected, actual)
 
@@ -21,7 +21,7 @@ def test_with_some_non_melting_due_to_large_tb_deltas():
     tb37 = np.array([150, 200, 200, 200])
     expected = np.array([False, True, True, True])
 
-    actual = melt.melting(concentrations, tb19, tb37)
+    actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
     npt.assert_array_equal(expected, actual)
 
@@ -33,7 +33,7 @@ def test_that_tb_threshold_is_2_kelvin():
     tb37 = np.array([150, 180, 199, 200])
     expected = np.array([False, False, True, True])
 
-    actual = melt.melting(concentrations, tb19, tb37)
+    actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
     npt.assert_array_equal(expected, actual)
 
@@ -44,7 +44,7 @@ def test_with_some_non_melting_due_to_low_concentrations():
     tb37 = np.array([200, 200, 200, 200])
     expected = np.array([False, False, True, True])
 
-    actual = melt.melting(concentrations, tb19, tb37)
+    actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
     npt.assert_array_equal(expected, actual)
 
@@ -55,7 +55,7 @@ def test_that_50_percent_concentration_is_in_range():
     tb37 = np.array([200, 200, 200, 200])
     expected = np.array([False, True, True, True])
 
-    actual = melt.melting(concentrations, tb19, tb37)
+    actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
     npt.assert_array_equal(expected, actual)
 
@@ -66,7 +66,7 @@ def test_with_missing_tb19_values():
     tb37 = np.array([200, 200, 200, 200])
     expected = np.array([False, False, True, True])
 
-    actual = melt.melting(concentrations, tb19, tb37)
+    actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
     npt.assert_array_equal(expected, actual)
 
@@ -77,7 +77,7 @@ def test_with_missing_tb37_values():
     tb37 = np.array([200, melt.TB_MISSING, melt.TB_MISSING, 200])
     expected = np.array([True, False, False, True])
 
-    actual = melt.melting(concentrations, tb19, tb37)
+    actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
     npt.assert_array_equal(expected, actual)
 
@@ -88,6 +88,6 @@ def test_with_both_missing_values():
     tb37 = np.array([200, melt.TB_MISSING, melt.TB_MISSING, 200])
     expected = np.array([True, False, False, True])
 
-    actual = melt.melting(concentrations, tb19, tb37)
+    actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
     npt.assert_array_equal(expected, actual)
