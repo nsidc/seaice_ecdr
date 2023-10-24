@@ -16,10 +16,31 @@ def typecheck(ctx):
 
 
 @task()
-def unit(ctx):
-    """Run unit tests."""
+def integration(ctx):
+    """Run integration tests."""
     print_and_run(
-        f"PYTHONPATH={PROJECT_DIR} pytest -s {PROJECT_DIR}/seaice_ecdr/tests/unit",
+        f"pytest -s {PROJECT_DIR}/seaice_ecdr/tests/integration",
+        pty=True,
+    )
+
+
+@task()
+def regression(ctx):
+    """Run regression tests."""
+    print_and_run(
+        f"pytest -s {PROJECT_DIR}/seaice_ecdr/tests/regression",
+        pty=True,
+    )
+
+
+@task()
+def pytest(ctx):
+    """Run all tests with pytest.
+
+    Includes a code-coverage check.
+    """
+    print_and_run(
+        "pytest --cov=seaice_ecdr --cov-fail-under 40",
         pty=True,
     )
 
@@ -27,7 +48,21 @@ def unit(ctx):
 @task(
     pre=[
         typecheck,
-        unit,
+    ],
+)
+def ci(ctx):
+    """Run tests not requiring access to external data.
+
+    Excludes e.g., regression tests that require access to data on
+    NSIDC-specific infrastructure.
+    """
+    ...
+
+
+@task(
+    pre=[
+        typecheck,
+        pytest,
     ],
     default=True,
 )
