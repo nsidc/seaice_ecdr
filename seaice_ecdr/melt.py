@@ -29,6 +29,8 @@ Other notes:
 * In the CDR code, it looks like we use spatially interpolated TBs as input.
 """
 import numpy as np
+import numpy.typing as npt
+
 
 # Start and end DOYs for the melt season (inclusive)
 MELT_SEASON_START_DOY = 60
@@ -50,7 +52,15 @@ TB_DELTA_THRESHOLD_K = 2
 TB_MISSING = 0
 
 
-def melting(concentrations, tb19, tb37):
+def melting(
+    concentrations: npt.NDArray,
+    tb19: npt.NDArray,
+    tb37: npt.NDArray,
+) -> npt.NDArray[np.bool_]:
+    """Determine melting locations.
+
+    Expects brightness temperatures in degrees Kelvin.
+    """
     melting = np.logical_and(
         concentrations >= CONCENTRATION_THRESHOLD_PERCENT,
         tb19 - tb37 < TB_DELTA_THRESHOLD_K,
