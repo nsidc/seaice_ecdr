@@ -157,9 +157,7 @@ def temporally_composite_dataarray(
         # This time was not in the time slice; need to init to all-missing
         # TODO: Do we need dims, coords, attrs here?
         # temp_comp_da = zeros_xrdataarray(xdim, ydim, np.nan)
-        raise RuntimeError(
-            f' the target_date was not in the dataarray: {target_date}'
-        )
+        raise RuntimeError(f" the target_date was not in the dataarray: {target_date}")
 
     temp_comp_2d = np.squeeze(temp_comp_da.data)
     assert temp_comp_2d.shape == (ydim, xdim)
@@ -191,16 +189,8 @@ def temporally_composite_dataarray(
         prior_date = target_date - dt.timedelta(days=time_offset)
         next_date = target_date + dt.timedelta(days=time_offset)
 
-        prior_field = np.squeeze(
-            da.isel(
-                time=da.time.dt.date == prior_date
-            ).to_numpy()
-        )
-        next_field = np.squeeze(
-            da.isel(
-                time=da.time.dt.date == next_date
-            ).to_numpy()
-        )
+        prior_field = np.squeeze(da.isel(time=da.time.dt.date == prior_date).to_numpy())
+        next_field = np.squeeze(da.isel(time=da.time.dt.date == next_date).to_numpy())
 
         # update prior arrays
         n_prior = prior_field.size
