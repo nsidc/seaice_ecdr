@@ -1,8 +1,4 @@
-"""Tests for initial daily ECDR generation."""
-
-# TODO: The tests should probably not require "real" data, but
-#  should work with mock data.  Or else, they should be moved to
-#  tests/integration/ directory.
+"""Unit tests for initial daily ECDR generation."""
 
 import datetime as dt
 import sys
@@ -33,14 +29,47 @@ except ValueError:
     logger.add(sys.stderr, level="WARNING")
 
 
-# TODO: Prefix these with "mock_" or "test_" ?
-date = dt.date(2021, 2, 19)
-hemisphere = "north"
-resolution = "12"
+def compose_tyx_dataarray(
+    data,
+    xvals,
+    yvals,
+    datevals,
+) -> xr.DataArray:
+    """Create a simple data array with coords (time, y, x)."""
+    dims = ["time", "y", "x"]
+    coords = dict(
+        time=("time", datevals),
+        y=(
+            [
+                "y",
+            ],
+            yvals,
+        ),
+        x=(
+            [
+                "x",
+            ],
+            xvals,
+        ),
+    )
+    dataarray = xr.DataArray(
+        data=data,
+        dims=dims,
+        coords=coords,
+    )
+
+    return dataarray
 
 
 def test_sample_filename_generation():
-    """Verify creation of sample filename."""
+    """Verify creation of sample filename.
+
+    Note: this function may ultimately use a construction from the pm_tb_data
+    repository.
+    """
+    date = dt.date(2021, 2, 19)
+    hemisphere = "north"
+    resolution = "12"
 
     expected_filename = "sample_idecdr_north_12_20210219.nc"
     sample_filename = get_sample_idecdr_filename(date, hemisphere, resolution)
@@ -49,8 +78,13 @@ def test_sample_filename_generation():
 
 
 def test_date_iterator():
-    """Verify operation of date temporal composite's date iterator."""
-    # Single argument to iterator should yield that date
+    """Verify operation of date temporal composite's date iterator.
+
+    A data with only data at the target date should yield the values
+    on that date.
+    """
+    date = dt.date(2021, 2, 19)
+
     expected_date = date
     for iter_date in iter_dates_near_date(date):
         assert iter_date == expected_date
@@ -70,6 +104,10 @@ def test_date_iterator():
 
 def test_access_to_standard_output_filename():
     """Verify that standard output file names can be generated."""
+    date = dt.date(2021, 2, 19)
+    hemisphere = "north"
+    resolution = "12"
+
     sample_ide_filepath = get_standard_initial_daily_ecdr_filename(
         date, hemisphere, resolution, output_directory=""
     )
@@ -109,42 +147,26 @@ def test_temporal_composite_da_oneday():
         ]
     )
     tdim, ydim, xdim = mock_data.shape
-    mock_xs = np.arange(xdim)
-    mock_ys = np.arange(ydim)
+
+    mock_xvals = np.arange(xdim)
+    mock_yvals = np.arange(ydim)
 
     mock_date = dt.date(2023, 1, 10)
     mock_dates = pd.date_range(mock_date, periods=tdim)
 
-    mock_dims = ["time", "y", "x"]
-    mock_coords = dict(
-        time=("time", mock_dates),
-        y=(
-            [
-                "y",
-            ],
-            mock_ys,
-        ),
-        x=(
-            [
-                "x",
-            ],
-            mock_xs,
-        ),
-    )
-    da = xr.DataArray(
-        data=mock_data,
-        dims=mock_dims,
-        coords=mock_coords,
+    initial_data_array = compose_tyx_dataarray(
+        mock_data, mock_xvals, mock_yvals, mock_dates
     )
 
-    tcarray, tcflags = temporally_composite_dataarray(
+    # Note: the key is to test that if interp_range is zero,
+    #       then the output will equal the input
+    temporal_composite, temporal_flags = temporally_composite_dataarray(
         target_date=mock_date,
-        da=da,
+        da=initial_data_array,
         interp_range=0,
     )
 
-    # TODO: Clarify these variable names
-    assert np.array_equal(da, tcarray, equal_nan=True)
+    assert np.array_equal(temporal_composite, initial_data_array, equal_nan=True)
 
 
 def test_temporal_composite_da_multiday():
@@ -169,17 +191,15 @@ def test_temporal_composite_da_multiday():
     # Set up mock array so that left (=prior) day test values are 20 if exist
     # Temporal flag values start at zero; add 10*prior_dist, add 1*next_dist,
 
-    # TODO: rename this; it is a flag array, NOT a bitmask
-    expected_temporal_bitmask = np.array(
+    expected_temporal_flags = np.array(
         [
             # All valid values in orig field
             [0, 0, 0],
             # valid, then land (not interp'ed) and never-filled missing
             [0, 0, still_missing_flag],
-            # TODO: Consider re-ordering these rows 12345 -> 12534
+            [still_missing_flag, 1, 2],  # no prior and next not,1,2
             [10, 11, 12],  # have prior 1 and next not,1,2
             [20, 21, 22],  # have prior 2 and next not,1,2
-            [still_missing_flag, 1, 2],  # no prior and next not,1,2
         ],
     )
     expected_temporal_composite_data = np.array(
@@ -187,9 +207,9 @@ def test_temporal_composite_da_multiday():
             [
                 [no_siconc_val, not_siext_val, some_siconc_val],
                 [max_siconc_val, land_siconc_val, missing_siconc_val],
+                [missing_siconc_val, right_siconc_val, right_siconc_val],
                 [left_siconc_val, mid_siconc_val, one_third_siconc_val],
                 [left_siconc_val, two_thirds_siconc_val, mid_siconc_val],
-                [missing_siconc_val, right_siconc_val, right_siconc_val],
             ],
         ]
     )
@@ -200,17 +220,17 @@ def test_temporal_composite_da_multiday():
                 # this is target date minus 2 days
                 [no_siconc_val, not_siext_val, some_siconc_val],
                 [max_siconc_val, land_siconc_val, missing_siconc_val],
-                # this middle should be ignored bc exists in day-1
+                [missing_siconc_val, missing_siconc_val, missing_siconc_val],
+                # the next row should be ignored bc exists in day-1
                 [missing_siconc_val, max_siconc_val, right_siconc_val],
                 [left_siconc_val, left_siconc_val, left_siconc_val],
-                [missing_siconc_val, missing_siconc_val, missing_siconc_val],
             ],
             [
                 # this is target date minus 1 day
                 [no_siconc_val, not_siext_val, some_siconc_val],
                 [max_siconc_val, land_siconc_val, missing_siconc_val],
-                [left_siconc_val, left_siconc_val, left_siconc_val],
                 [missing_siconc_val, missing_siconc_val, missing_siconc_val],
+                [left_siconc_val, left_siconc_val, left_siconc_val],
                 [missing_siconc_val, missing_siconc_val, missing_siconc_val],
             ],
             [
@@ -233,55 +253,35 @@ def test_temporal_composite_da_multiday():
                 # this is target date plus 2 days
                 [no_siconc_val, not_siext_val, some_siconc_val],
                 [max_siconc_val, land_siconc_val, missing_siconc_val],
+                [missing_siconc_val, right_siconc_val, right_siconc_val],
                 # the next two middle values should be ignored because exist day+1
                 [missing_siconc_val, max_siconc_val, right_siconc_val],
                 [missing_siconc_val, missing_siconc_val, right_siconc_val],
-                [missing_siconc_val, right_siconc_val, right_siconc_val],
             ],
         ]
     )
     # --- end mock data ------------------------------------------------
     tdim, ydim, xdim = mock_data.shape
-    mock_xs = np.arange(xdim)
-    mock_ys = np.arange(ydim)
+    mock_xvals = np.arange(xdim)
+    mock_yvals = np.arange(ydim)
 
     mock_date = dt.date(2023, 1, 10)
     mock_start_date = mock_date - dt.timedelta(days=tdim // 2)
     mock_dates = pd.date_range(mock_start_date, periods=tdim)
 
-    # TODO: Move the code here to set up test DataArray to function
-    mock_dims = ["time", "y", "x"]
-    mock_coords = dict(
-        time=("time", mock_dates),
-        y=(
-            [
-                "y",
-            ],
-            mock_ys,
-        ),
-        x=(
-            [
-                "x",
-            ],
-            mock_xs,
-        ),
-    )
-    da = xr.DataArray(
-        data=mock_data,
-        dims=mock_dims,
-        coords=mock_coords,
+    input_data_array = compose_tyx_dataarray(
+        mock_data, mock_xvals, mock_yvals, mock_dates
     )
 
     time_spread = (tdim - 1) // 2
 
-    temporal_composite, temporal_bitmask = temporally_composite_dataarray(
+    temporal_composite, temporal_flags = temporally_composite_dataarray(
         target_date=mock_date,
-        da=da,
+        da=input_data_array,
         interp_range=time_spread,
     )
 
     assert np.array_equal(
         temporal_composite.data, expected_temporal_composite_data, equal_nan=True
     )
-    # TODO: Again, this is not a bitmask
-    assert np.array_equal(temporal_bitmask, expected_temporal_bitmask, equal_nan=True)
+    assert np.array_equal(temporal_flags, expected_temporal_flags, equal_nan=True)

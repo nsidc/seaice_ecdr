@@ -40,22 +40,32 @@ def get_sample_idecdr_filename(
 
 
 def iter_dates_near_date(
-    seed_date: dt.date,
+    target_date: dt.date,
     day_range: int = 0,
     skip_future: bool = False,
+    date_step: int = 1,
 ):
-    """Return iterator of dates near a given date."""
-    # TODO: This might need better naming and description?
-    first_date = seed_date - dt.timedelta(days=day_range)
-    if skip_future:
-        last_date = seed_date
-    else:
-        last_date = seed_date + dt.timedelta(days=day_range)
+    """Return iterator of dates near a given date.
 
-    date = first_date
-    while date <= last_date:
+    This routine aids in the construction of a DataArray for use in
+    temporally_composite_dataarray().  It provides a series of dates
+    around a "seed" date.  The temporal compositing process fills in
+    data missing at a target date with data from a few days before and
+    (optionally) after that date.  The number of days away from the
+    target date is the day_range.  if skip_future is True, then only
+    dates prior to the target date are provided.  This is suitable for
+    near-real-time use, because data from "the future" are not available.
+    """
+    earliest_date = target_date - dt.timedelta(days=day_range)
+    if skip_future:
+        latest_date = target_date
+    else:
+        latest_date = target_date + dt.timedelta(days=day_range)
+
+    date = earliest_date
+    while date <= latest_date:
         yield date
-        date += dt.timedelta(days=1)
+        date += dt.timedelta(days=date_step)
 
 
 def get_standard_initial_daily_ecdr_filename(
@@ -168,9 +178,6 @@ def temporally_composite_dataarray(
 
     nconc = np.zeros((ydim, xdim), dtype=np.uint8)
     ndist = np.zeros((ydim, xdim), dtype=np.uint8)
-
-    # TODO: Need to *not* fill pole hole in idecdr fields
-    # TODO: Need to add 19h and 37h to idecdr netcdf files
 
     need_values = initial_missing_locs.copy()
     n_missing = np.sum(np.where(need_values, 1, 0))
