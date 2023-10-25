@@ -134,17 +134,17 @@ def temporally_composite_dataarray(
     one_sided_limit is the max number of days we are willing to look in only
     one direction.  It will generally (always?) be less than the interp_range.
     """
-    print('in temporally_composite_dataarray()')
-    logger.info(f'Temporally compositing {da.name} dataarray around {target_date}')
+    print("in temporally_composite_dataarray()")
+    logger.info(f"Temporally compositing {da.name} dataarray around {target_date}")
     # Our flag system requires that the value be expressible by no more than
     # nine days in either direction
     try:
         assert interp_range <= 9
     except AssertionError:
         interp_range_error_message = (
-            f'interp_range in {__name__} is > 9: {interp_range}.'
-            '  This value must be <= 9 in order to be expressable in the '
-            ' temporal_flags field.'
+            f"interp_range in {__name__} is > 9: {interp_range}."
+            "  This value must be <= 9 in order to be expressable in the "
+            " temporal_flags field."
         )
         logger.error(interp_range_error_message)
         raise RuntimeError(interp_range_error_message)
@@ -156,7 +156,10 @@ def temporally_composite_dataarray(
     if temp_comp_da.size == 0:
         # This time was not in the time slice; need to init to all-missing
         # TODO: Do we need dims, coords, attrs here?
-        temp_comp_da = zeros_xrdataarray(xdim, ydim, np.nan)
+        # temp_comp_da = zeros_xrdataarray(xdim, ydim, np.nan)
+        raise RuntimeError(
+            f' the target_date was not in the dataarray: {target_date}'
+        )
 
     temp_comp_2d = np.squeeze(temp_comp_da.data)
     assert temp_comp_2d.shape == (ydim, xdim)
@@ -181,19 +184,23 @@ def temporally_composite_dataarray(
     nconc[need_values] = 0
     ndist[need_values] = 0
 
-    tried_temporal_interp = False
-
     for time_offset in range(1, interp_range + 1):
         if n_missing == 0:
             continue
 
-        tried_temporal_interp = False
-
         prior_date = target_date - dt.timedelta(days=time_offset)
         next_date = target_date + dt.timedelta(days=time_offset)
 
-        prior_field = np.squeeze(da.isel(time=da.time.dt.date == (target_date - dt.timedelta(days=time_offset))).to_numpy())
-        next_field = np.squeeze(da.isel(time=da.time.dt.date == (target_date + dt.timedelta(days=time_offset))).to_numpy())
+        prior_field = np.squeeze(
+            da.isel(
+                time=da.time.dt.date == prior_date
+            ).to_numpy()
+        )
+        next_field = np.squeeze(
+            da.isel(
+                time=da.time.dt.date == next_date
+            ).to_numpy()
+        )
 
         # update prior arrays
         n_prior = prior_field.size
@@ -243,20 +250,19 @@ def temporally_composite_dataarray(
     temp_comp_2d[have_both_prior_and_next] = linint[have_both_prior_and_next]
 
     # Update the temporal interp flag value
-    temporal_flags[have_both_prior_and_next] = \
+    temporal_flags[have_both_prior_and_next] = (
         10 * pdist[have_both_prior_and_next] + ndist[have_both_prior_and_next]
+    )
 
     temp_comp_2d[have_only_prior] = pconc[have_only_prior]
 
     # Update the temporal interp flag value
-    temporal_flags[have_only_prior] = \
-        10 * pdist[have_only_prior]
+    temporal_flags[have_only_prior] = 10 * pdist[have_only_prior]
 
     temp_comp_2d[have_only_next] = nconc[have_only_next]
 
     # Update the temporal interp flag value
-    temporal_flags[have_only_next] = \
-        ndist[have_only_next]
+    temporal_flags[have_only_next] = ndist[have_only_next]
 
     """ I think this is obsolete...
     # Update the new .nc file with new temporal_interpolation_flag
