@@ -253,3 +253,4 @@ def test_temporal_composite_da_multiday():
 
     assert np.array_equal(temporal_composite.data, expected_temporal_composite_data, equal_nan=True)
     assert np.array_equal(temporal_bitmask, expected_temporal_bitmask, equal_nan=True)
+

@@ -302,7 +302,6 @@ def gen_temporal_composite_daily(
 
     # Loop over all desired each desired output field
     # potentially including associated fields such as interp flag fields
-
     # Write out the composited file
 
 
