@@ -4,6 +4,8 @@
 
 import datetime as dt
 import sys
+import numpy as np
+import numpy.typing as npt
 import xarray as xr
 from loguru import logger
 from pathlib import Path
@@ -103,6 +105,171 @@ def read_with_create_initial_daily_ecdr(
     ide_ds = xr.open_dataset(ide_filepath)
 
     return ide_ds
+
+
+def is_seaice_conc(
+    field: npt.NDArray,
+) -> npt.NDArray:
+    """Returns boolean index array where field has values 0-100."""
+    where_seaice = (field >= 0) & (field <= 100)
+
+    return where_seaice
+
+
+def temporally_composite_dataarray(
+    target_date: dt.date,
+    da: xr.DataArray,
+    interp_range: int = 5,
+    one_sided_limit: int = 3,
+    still_missing_flag: int = 255,
+):
+    """Temporally composite a DataArray referenced to given reference date
+    up to interp_range days.
+
+    target_date is the date that we are temporally filling with this routine
+    da is an xr.DataArray that has all the fields we might use in the interp
+    interp_range is the number of days forward and back that we are willing
+    to look to do two-sided -- meaning we need data from both prior and
+    subsequent ("next") days in order to do the interpolation.
+    one_sided_limit is the max number of days we are willing to look in only
+    one direction.  It will generally (always?) be less than the interp_range.
+    """
+    print('in temporally_composite_dataarray()')
+    logger.info(f'Temporally compositing {da.name} dataarray around {target_date}')
+    # Our flag system requires that the value be expressible by no more than
+    # nine days in either direction
+    try:
+        assert interp_range <= 9
+    except AssertionError:
+        interp_range_error_message = (
+            f'interp_range in {__name__} is > 9: {interp_range}.'
+            '  This value must be <= 9 in order to be expressable in the '
+            ' temporal_flags field.'
+        )
+        logger.error(interp_range_error_message)
+        raise RuntimeError(interp_range_error_message)
+
+    _, ydim, xdim = da.shape
+
+    temp_comp_da = da.isel(time=da.time.dt.date == target_date).copy()
+
+    if temp_comp_da.size == 0:
+        # This time was not in the time slice; need to init to all-missing
+        # TODO: Do we need dims, coords, attrs here?
+        temp_comp_da = zeros_xrdataarray(xdim, ydim, np.nan)
+
+    temp_comp_2d = np.squeeze(temp_comp_da.data)
+    assert temp_comp_2d.shape == (ydim, xdim)
+
+    # Initialize arrays
+    initial_missing_locs = np.isnan(temp_comp_2d.data)
+
+    pconc = np.zeros((ydim, xdim), dtype=np.uint8)
+    pdist = np.zeros((ydim, xdim), dtype=np.uint8)
+
+    nconc = np.zeros((ydim, xdim), dtype=np.uint8)
+    ndist = np.zeros((ydim, xdim), dtype=np.uint8)
+
+    # TODO: Need to *not* fill pole hole in idecdr fields
+    # TODO: Need to add 19h and 37h to idecdr netcdf files
+
+    need_values = initial_missing_locs.copy()
+    n_missing = np.sum(np.where(need_values, 1, 0))
+
+    pconc[need_values] = 0
+    pdist[need_values] = 0
+    nconc[need_values] = 0
+    ndist[need_values] = 0
+
+    tried_temporal_interp = False
+
+    for time_offset in range(1, interp_range + 1):
+        if n_missing == 0:
+            continue
+
+        tried_temporal_interp = False
+
+        prior_date = target_date - dt.timedelta(days=time_offset)
+        next_date = target_date + dt.timedelta(days=time_offset)
+
+        prior_field = np.squeeze(da.isel(time=da.time.dt.date == (target_date - dt.timedelta(days=time_offset))).to_numpy())
+        next_field = np.squeeze(da.isel(time=da.time.dt.date == (target_date + dt.timedelta(days=time_offset))).to_numpy())
+
+        # update prior arrays
+        n_prior = prior_field.size
+        if n_prior != 0:
+            need_prior = need_values & (pdist == 0)
+            have_prior = is_seaice_conc(prior_field) & need_prior
+            pconc[have_prior] = prior_field[have_prior]
+            pdist[have_prior] = time_offset
+
+        # update next arrays
+        n_next = next_field.size
+        if n_next != 0:
+            need_next = need_values & (ndist == 0)
+            have_next = is_seaice_conc(next_field) & need_next
+            nconc[have_next] = next_field[have_next]
+            ndist[have_next] = time_offset
+
+        # Update still-missing arrays
+        need_values = initial_missing_locs & ((pdist == 0) | (ndist == 0))
+        n_missing = np.sum(np.where(need_values, 1, 0))
+
+    # NOTE: Need to update the QA flag where temporal interpolation occurred
+
+    # Temporal flag field will get filled with:
+    #   0 where values already exist and don't need to be filled (inc land)
+    #   pconc/nconc/linearly-interpolsted if have prior/next values
+    #   otherwise, defaults to "still_missing_flag" value
+    temporal_flags = np.zeros(temp_comp_2d.shape, dtype=np.uint8)
+    temporal_flags[initial_missing_locs] = still_missing_flag
+
+    # *** If we have values from BOTH prior and subsequent days, interpolate
+    have_both_prior_and_next = (pdist > 0) & (ndist > 0)
+    # *** If we only have values from prior days,
+    #     and within <one_sided_limit> days, use it
+    have_only_prior = (pdist > 0) & (pdist <= one_sided_limit) & (ndist == 0)
+    # *** If we only have values from subsequent days,
+    #     and within <one_sided_limit> days, use it
+    have_only_next = (ndist > 0) & (ndist <= one_sided_limit) & (pdist == 0)
+    # breakpoint()
+    # print('know need_values, and have...')
+
+    linint_rise = nconc.astype(np.float32) - pconc.astype(np.float32)
+    linint_run = pdist + ndist
+    linint_run[linint_run == 0] = 1  # avoid div by zero
+    linint = pconc + pdist * linint_rise / linint_run
+    linint = np.round(linint).astype(np.uint8)
+    temp_comp_2d[have_both_prior_and_next] = linint[have_both_prior_and_next]
+
+    # Update the temporal interp flag value
+    temporal_flags[have_both_prior_and_next] = \
+        10 * pdist[have_both_prior_and_next] + ndist[have_both_prior_and_next]
+
+    temp_comp_2d[have_only_prior] = pconc[have_only_prior]
+
+    # Update the temporal interp flag value
+    temporal_flags[have_only_prior] = \
+        10 * pdist[have_only_prior]
+
+    temp_comp_2d[have_only_next] = nconc[have_only_next]
+
+    # Update the temporal interp flag value
+    temporal_flags[have_only_next] = \
+        ndist[have_only_next]
+
+    """ I think this is obsolete...
+    # Update the new .nc file with new temporal_interpolation_flag
+    if tried_temporal_interp:
+        if n_missing > 0:
+            # Tried, but could not find replacement values
+            where_missing = temp_comp_2d == missing_value
+            temporal_flags[where_missing] = FLAGVAL_STILLMISSING
+    """
+
+    temp_comp_da.data[0, :, :] = temp_comp_2d[:, :]
+
+    return temp_comp_da, temporal_flags
 
 
 def gen_temporal_composite_daily(
