@@ -261,6 +261,7 @@ def compute_initial_daily_ecdr_dataset(
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
     xr_tbs: xr.Dataset,
+    fill_the_pole_hole: bool = False,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -726,20 +727,22 @@ def compute_initial_daily_ecdr_dataset(
 
     # Fill the NH pole hole
     # TODO: Should check for NH and have grid-dependent filling scheme
-    if cdr_conc.shape == (896, 608):
-        cdr_conc_pre_polefill = cdr_conc.copy()
-        near_pole_hole_mask = psn_125_near_pole_hole_mask()
-        cdr_conc = fill_pole_hole(
-            conc=cdr_conc,
-            near_pole_hole_mask=near_pole_hole_mask,
-        )
-        logger.info("Filled pole hole")
-        is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
-        if "spatint_bitmask" in ecdr_ide_ds.variables.keys():
-            ecdr_ide_ds["spatint_bitmask"].data[
-                is_pole_filled
-            ] += tb_spatint_bitmask_map["pole_filled"]
-            logger.info("Updated spatial_interpolation with pole hole value")
+    # NOTE: Usually, the pole hole will be filled in pass 3, along with melt onset calc.
+    if fill_the_pole_hole:
+        if cdr_conc.shape == (896, 608):
+            cdr_conc_pre_polefill = cdr_conc.copy()
+            near_pole_hole_mask = psn_125_near_pole_hole_mask()
+            cdr_conc = fill_pole_hole(
+                conc=cdr_conc,
+                near_pole_hole_mask=near_pole_hole_mask,
+            )
+            logger.info("Filled pole hole")
+            is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
+            if "spatint_bitmask" in ecdr_ide_ds.variables.keys():
+                ecdr_ide_ds["spatint_bitmask"].data[
+                    is_pole_filled
+                ] += tb_spatint_bitmask_map["pole_filled"]
+                logger.info("Updated spatial_interpolation with pole hole value")
 
     # Apply land flag value and clamp max conc to 100.
     # TODO: extract this func from nt and allow override of flag values
@@ -962,10 +965,10 @@ def create_idecdr_for_date_range(
                     "v23_day",
                     "h36_day",
                     "v36_day",
-                    "h18_day_si",
+                    # "h18_day_si",  # include this field for melt onset calculation
                     "v18_day_si",
                     "v23_day_si",
-                    "h36_day_si",
+                    # "h36_day_si",  # include this field for melt onset calculation
                     "v36_day_si",
                     "shoremap",
                     "NT_icecon_min",
