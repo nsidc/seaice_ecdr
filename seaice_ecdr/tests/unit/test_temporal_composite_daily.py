@@ -24,6 +24,7 @@ from seaice_ecdr.temporal_composite_daily import (
 
 
 # Set the default minimum log notification to Warning
+# TODO: Think about logging holistically...
 try:
     logger.remove(0)  # Removes previous logger info
     logger.add(sys.stderr, level="WARNING")
@@ -32,6 +33,7 @@ except ValueError:
     logger.add(sys.stderr, level="WARNING")
 
 
+# TODO: Prefix these with "mock_" or "test_" ?
 date = dt.date(2021, 2, 19)
 hemisphere = "north"
 resolution = "12"
@@ -113,11 +115,9 @@ def test_temporal_composite_da_oneday():
     mock_date = dt.date(2023, 1, 10)
     mock_dates = pd.date_range(mock_date, periods=tdim)
 
-    ref_time = pd.Timestamp("2023-01-01")
     mock_dims = ["time", "y", "x"]
     mock_coords = dict(
         time=("time", mock_dates),
-        reference_time=ref_time,
         y=(
             [
                 "y",
@@ -143,6 +143,7 @@ def test_temporal_composite_da_oneday():
         interp_range=0,
     )
 
+    # TODO: Clarify these variable names
     assert np.array_equal(da, tcarray, equal_nan=True)
 
 
@@ -168,12 +169,14 @@ def test_temporal_composite_da_multiday():
     # Set up mock array so that left (=prior) day test values are 20 if exist
     # Temporal flag values start at zero; add 10*prior_dist, add 1*next_dist,
 
+    # TODO: rename this; it is a flag array, NOT a bitmask
     expected_temporal_bitmask = np.array(
         [
             # All valid values in orig field
             [0, 0, 0],
             # valid, then land (not interp'ed) and never-filled missing
             [0, 0, still_missing_flag],
+            # TODO: Consider re-ordering these rows 12345 -> 12534
             [10, 11, 12],  # have prior 1 and next not,1,2
             [20, 21, 22],  # have prior 2 and next not,1,2
             [still_missing_flag, 1, 2],  # no prior and next not,1,2
@@ -246,11 +249,10 @@ def test_temporal_composite_da_multiday():
     mock_start_date = mock_date - dt.timedelta(days=tdim // 2)
     mock_dates = pd.date_range(mock_start_date, periods=tdim)
 
-    ref_time = pd.Timestamp("2023-01-01")
+    # TODO: Move the code here to set up test DataArray to function
     mock_dims = ["time", "y", "x"]
     mock_coords = dict(
         time=("time", mock_dates),
-        reference_time=ref_time,
         y=(
             [
                 "y",
@@ -281,4 +283,5 @@ def test_temporal_composite_da_multiday():
     assert np.array_equal(
         temporal_composite.data, expected_temporal_composite_data, equal_nan=True
     )
+    # TODO: Again, this is not a bitmask
     assert np.array_equal(temporal_bitmask, expected_temporal_bitmask, equal_nan=True)

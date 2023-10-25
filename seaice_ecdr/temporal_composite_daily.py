@@ -45,7 +45,7 @@ def iter_dates_near_date(
     skip_future: bool = False,
 ):
     """Return iterator of dates near a given date."""
-    first_date = seed_date - dt.timedelta(days=day_range)
+    # TODO: This might need better naming and description?
     first_date = seed_date - dt.timedelta(days=day_range)
     if skip_future:
         last_date = seed_date
@@ -138,9 +138,7 @@ def temporally_composite_dataarray(
     logger.info(f"Temporally compositing {da.name} dataarray around {target_date}")
     # Our flag system requires that the value be expressible by no more than
     # nine days in either direction
-    try:
-        assert interp_range <= 9
-    except AssertionError:
+    if interp_range > 9:
         interp_range_error_message = (
             f"interp_range in {__name__} is > 9: {interp_range}."
             "  This value must be <= 9 in order to be expressable in the "
