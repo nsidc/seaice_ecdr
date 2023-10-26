@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Final
 
 from loguru import logger
+from pm_tb_data._types import NORTH
 
 
 from seaice_ecdr.temporal_composite_daily import (
@@ -33,7 +34,7 @@ except ValueError:
 
 
 date = dt.date(2021, 2, 19)
-hemisphere = "north"
+hemisphere = NORTH
 resolution: Final = "12"
 
 

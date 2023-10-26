@@ -29,7 +29,7 @@ def sample_idecdr_dataset_nh():
     logger.info("testing: Creating sample idecdr dataset")
 
     test_date = dt.datetime(2021, 4, 5).date()
-    test_hemisphere: Final = "north"
+    test_hemisphere = NORTH
     test_resolution: Final = "12"
 
     ide_conc_ds = compute_idecdr_ds(
@@ -46,7 +46,7 @@ def sample_idecdr_dataset_sh():
     logger.info("testing: Creating sample idecdr dataset")
 
     test_date = dt.datetime(2021, 4, 5).date()
-    test_hemisphere: Final = "north"
+    test_hemisphere = NORTH
     test_resolution: Final = "12"
 
     ide_conc_ds = compute_idecdr_ds(
@@ -150,7 +150,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
 ):
     """Verify that specified fields can be excluded in idecdr nc files"""
     test_date = dt.datetime(2021, 4, 5).date()
-    test_hemisphere: Final = "north"
+    test_hemisphere = NORTH
     test_resolution: Final = "12"
     make_idecdr_netcdf(
         date=test_date,

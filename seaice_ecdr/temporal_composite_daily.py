@@ -10,6 +10,7 @@ import xarray as xr
 from loguru import logger
 from pathlib import Path
 from pm_icecon.util import standard_output_filename
+from pm_tb_data._types import NORTH
 
 from seaice_ecdr.initial_daily_ecdr import (
     initial_daily_ecdr_dataset_for_au_si_tbs,
@@ -308,7 +309,7 @@ def gen_temporal_composite_daily(
 
 if __name__ == "__main__":
     date = dt.datetime(2021, 2, 16).date()
-    hemisphere = "north"
+    hemisphere = NORTH
     resolution = "12"
 
     gen_temporal_composite_daily(date, hemisphere, resolution)
