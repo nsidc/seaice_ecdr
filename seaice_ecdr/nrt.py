@@ -162,7 +162,6 @@ def nrt_initial_daily_ecdr(
     write_ide_netcdf(
         ide_ds=nrt_initial_ecdr_ds,
         output_filepath=output_path,
-        excluded_fields="",
     )
 
 
