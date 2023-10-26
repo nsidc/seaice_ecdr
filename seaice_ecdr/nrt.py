@@ -12,8 +12,37 @@ from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
 
 from seaice_ecdr.constants import LANCE_NRT_DATA_DIR, NRT_INITIAL_DAILY_OUTPUT_DIR
-from seaice_ecdr.initial_daily_ecdr import make_cdr_netcdf
 from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.initial_daily_ecdr import (
+    compute_initial_daily_ecdr_dataset,
+    write_ide_netcdf,
+)
+
+from pm_icecon.util import standard_output_filename
+
+
+def compute_nrt_initial_daily_ecdr_dataset(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+    lance_amsr2_input_dir: Path,
+):
+    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
+    xr_tbs = access_local_lance_data(
+        date=date,
+        hemisphere=hemisphere,
+        data_dir=lance_amsr2_input_dir,
+    )
+
+    nrt_initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        xr_tbs=xr_tbs,
+    )
+
+    return nrt_initial_ecdr_ds
 
 
 @click.command(name="download-latest-nrt-data")
@@ -51,7 +80,7 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     download_latest_lance_files(output_dir=output_dir, overwrite=overwrite)
 
 
-@click.command(name="initial-daily-ecdr")
+@click.command(name="nrt-initial-daily-ecdr")
 @click.option(
     "-d",
     "--date",
@@ -109,19 +138,30 @@ def nrt_initial_daily_ecdr(
     resolution: AU_SI_RESOLUTIONS,
     lance_amsr2_input_dir: Path,
 ):
-    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
-    xr_tbs = access_local_lance_data(
-        date=date,
-        hemisphere=hemisphere,
-        data_dir=lance_amsr2_input_dir,
-    )
+    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data.
 
-    make_cdr_netcdf(
-        xr_tbs=xr_tbs,
+    TODO: Consider renaming this: nrt_initial_daily_ecdr_netcdf()
+    """
+    nrt_initial_ecdr_ds = compute_nrt_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        output_dir=output_dir,
+        lance_amsr2_input_dir=lance_amsr2_input_dir,
+    )
+
+    output_fn = standard_output_filename(
+        hemisphere=hemisphere,
+        date=date,
+        sat="ausi",
+        algorithm="nrt_idecdr",
+        resolution=f"{resolution}km",
+    )
+
+    output_path = Path(output_dir) / Path(output_fn)
+
+    write_ide_netcdf(
+        ide_ds=nrt_initial_ecdr_ds,
+        output_filepath=output_path,
     )
 
 
