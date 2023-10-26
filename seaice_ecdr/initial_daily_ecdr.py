@@ -9,7 +9,7 @@ import datetime as dt
 import sys
 import traceback
 from pathlib import Path
-from typing import TypedDict, get_args
+from typing import TypedDict, get_args, Iterable, cast
 
 import click
 import numpy as np
@@ -881,8 +881,8 @@ def write_ide_netcdf(
     *,
     ide_ds: xr.Dataset,
     output_filepath: Path,
-    uncompressed_fields: list = ("crs", "time", "y", "x"),
-    excluded_fields: list = (),
+    uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
+    excluded_fields: Iterable[str] = [],
 ) -> Path:
     """Write the initial_ecdr_ds to a netCDF file and return the path."""
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
@@ -891,13 +891,13 @@ def write_ide_netcdf(
     #  exclude unwanted fields
     #  ensure that fields are compressed
     # Set netCDF encoding to compress all except excluded fields
-    if excluded_fields != "":
-        for varname in ide_ds.variables.keys():
-            if varname in excluded_fields:
-                ide_ds = ide_ds.drop_vars(varname)
+    for excluded_field in excluded_fields:
+        if excluded_field in ide_ds.variables.keys():
+            ide_ds = ide_ds.drop_vars(excluded_field)
 
     nc_encoding = {}
     for varname in ide_ds.variables.keys():
+        varname = cast(str, varname)
         if varname not in uncompressed_fields:
             nc_encoding[varname] = {"zlib": True}
 
@@ -919,7 +919,7 @@ def make_idecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
     output_dir: Path,
-    excluded_fields: list = [],
+    excluded_fields: Iterable[str] = [],
 ) -> None:
     logger.info(f"Creating idecdr for {date=}, {hemisphere=}, {resolution=}")
     ide_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
