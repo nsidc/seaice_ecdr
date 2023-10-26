@@ -368,8 +368,15 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     resolution: AU_SI_RESOLUTIONS,
     interp_range: int = 5,
     ide_dir: Path,
-) -> xr.Dataset:
-    """Create xr dataset containing the second pass of daily enhanced CDR."""
+) -> tuple[xr.Dataset, npt.NDArray]:
+    """Create xr dataset containing the second pass of daily enhanced CDR.
+
+    This function returns two fields:
+      - a Dataset containing the temporally interpolated field
+        - this is 3d: (time, y, x)
+      - a numpy array with the temporal interpolation flags that are
+          determined during the temporal interpolation process
+    """
     # Read in the idecdr file for this date
     ide_ds = read_or_create_and_read_idecdr_ds(
         date=date, hemisphere=hemisphere, resolution=resolution, ide_dir=ide_dir
