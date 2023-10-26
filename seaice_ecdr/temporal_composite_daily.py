@@ -9,6 +9,7 @@ import numpy.typing as npt
 import xarray as xr
 from loguru import logger
 from pathlib import Path
+from typing import Iterable, cast
 from pm_icecon.util import standard_output_filename
 from pm_tb_data._types import Hemisphere, NORTH
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
@@ -135,7 +136,7 @@ def temporally_composite_dataarray(
     interp_range: int = 5,
     one_sided_limit: int = 3,
     still_missing_flag: int = 255,
-):
+) -> tuple[xr.DataArray, npt.NDArray]:
     """Temporally composite a DataArray referenced to given reference date
     up to interp_range days.
 
@@ -147,7 +148,6 @@ def temporally_composite_dataarray(
     one_sided_limit is the max number of days we are willing to look in only
     one direction.  It will generally (always?) be less than the interp_range.
     """
-    print("in temporally_composite_dataarray()")
     logger.info(f"Temporally compositing {da.name} dataarray around {target_date}")
     # Our flag system requires that the value be expressible by no more than
     # nine days in either direction
@@ -368,7 +368,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     resolution: AU_SI_RESOLUTIONS,
     interp_range: int = 5,
     ide_dir: Path,
-) -> tuple[xr.Dataset, npt.NDArray]:
+) -> xr.Dataset:
     """Create xr dataset containing the second pass of daily enhanced CDR.
 
     This function returns two fields:
@@ -383,7 +383,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     )
 
     # Copy ide_ds to a new xr tiecdr dataset
-    ide_ds.copy(deep=True)
+    tie_ds = ide_ds.copy(deep=True)
     # ds_varlist = [name for name in tie_ds.data_vars]
 
     # Update the cdr_conc var with temporally interpolated cdr_conc field
@@ -410,8 +410,72 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         interp_range=interp_range,
     )
 
+    tie_ds["cdr_conc"] = ti_var
+
+    # Add the temporal interp flags to the dataset
+    tie_ds["temporal_flag"] = (
+        ("y", "x"),
+        ti_flags,
+        {
+            "_FillValue": 255,
+            "grid_mapping": "crs",
+            "standard_name": "status_flag",
+            "valid_range": [np.uint8(0), np.uint8(254)],
+            "comment": (
+                "Value of 0 indicates no temporal interpolation occurred."
+                "  Values greater than 0 and less than 100 are of the form"
+                ' "AB" where "A" indicates the number of days prior to the'
+                ' current day and "B" indicates the number of days after'
+                " the current day used to linearly interpolate the data."
+                "  If either A or B are zero, the value was extrapolated"
+                " from that date rather than interpolated.  A value of 255"
+                " indicates that temporal interpolation could not be"
+                " accomplished."
+            ),
+        },
+        {
+            "zlib": True,
+        },
+    )
+
     # Return the tiecdr dataset
-    return ti_var, ti_flags
+    return tie_ds
+
+
+def write_tie_netcdf(
+    *,
+    tie_ds: xr.Dataset,
+    output_filepath: Path,
+    uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
+    excluded_fields: Iterable[str] = [],
+) -> Path:
+    """Write the initial_ecdr_ds to a netCDF file and return the path."""
+    logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
+
+    # Here, we should specify details about the initial daily eCDF file, eg:
+    #  exclude unwanted fields
+    #  ensure that fields are compressed
+    # Set netCDF encoding to compress all except excluded fields
+    for excluded_field in excluded_fields:
+        if excluded_field in tie_ds.variables.keys():
+            tie_ds = tie_ds.drop_vars(excluded_field)
+
+    nc_encoding = {}
+    for varname in tie_ds.variables.keys():
+        varname = cast(str, varname)
+        if varname not in uncompressed_fields:
+            nc_encoding[varname] = {"zlib": True}
+
+    tie_ds.to_netcdf(
+        output_filepath,
+        encoding=nc_encoding,
+    )
+
+    # Return the path if it exists
+    if output_filepath.exists():
+        return output_filepath
+    else:
+        return Path("")
 
 
 def make_tiecdr_netcdf(
@@ -420,15 +484,16 @@ def make_tiecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
     output_dir: Path,
+    interp_range: int = 5,
 ) -> None:
     logger.info(f"Creating tiecdr for {date=}, {hemisphere=}, {resolution=}")
-    temporally_interpolated_ecdr_dataset_for_au_si_tbs(
+    tie_ds = temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
+        interp_range=interp_range,
         ide_dir=output_dir,
     )
-    """
     output_fn = standard_output_filename(
         hemisphere=hemisphere,
         date=date,
@@ -438,12 +503,14 @@ def make_tiecdr_netcdf(
     )
     output_path = Path(output_dir) / Path(output_fn)
 
+    breakpoint()
     written_tie_ncfile = write_tie_netcdf(
         tie_ds=tie_ds,
         output_filepath=output_path,
     )
-    logger.info(f"Wrote intermed daily ncfile: {written_tie_ncfile}")
-    """
+    logger.info(f"Wrote temporally interpolated daily ncfile: {written_tie_ncfile}")
+
+    breakpoint()
 
 
 if __name__ == "__main__":

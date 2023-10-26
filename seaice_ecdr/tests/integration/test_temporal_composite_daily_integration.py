@@ -118,9 +118,11 @@ def test_create_tiecdr_file(tmpdir):
     """
     test_date = dt.date(2022, 3, 2)
 
+    # For the test, only interpolate up to two days forward/back in time
     make_tiecdr_netcdf(
         date=test_date,
         hemisphere=hemisphere,
         resolution=resolution,
         output_dir=tmpdir,
+        interp_range=2,
     )
