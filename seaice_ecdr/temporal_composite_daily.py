@@ -10,9 +10,12 @@ import xarray as xr
 from loguru import logger
 from pathlib import Path
 from pm_icecon.util import standard_output_filename
+from pm_tb_data._types import Hemisphere
+from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
 
 from seaice_ecdr.initial_daily_ecdr import (
     initial_daily_ecdr_dataset_for_au_si_tbs,
+    make_idecdr_netcdf,
     write_ide_netcdf,
 )
 
@@ -234,8 +237,6 @@ def temporally_composite_dataarray(
     # *** If we only have values from subsequent days,
     #     and within <one_sided_limit> days, use it
     have_only_next = (ndist > 0) & (ndist <= one_sided_limit) & (pdist == 0)
-    # breakpoint()
-    # print('know need_values, and have...')
 
     linint_rise = nconc.astype(np.float32) - pconc.astype(np.float32)
     linint_run = pdist + ndist
@@ -304,6 +305,138 @@ def gen_temporal_composite_daily(
     # Loop over all desired each desired output field
     # potentially including associated fields such as interp flag fields
     # Write out the composited file
+
+
+def get_idecdr_filename(
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+    idecdr_dir: Path,
+) -> Path:
+    idecdr_fn = standard_output_filename(
+        hemisphere=hemisphere,
+        date=date,
+        sat="ausi",
+        algorithm="idecdr",
+        resolution=f"{resolution}km",
+    )
+    idecdr_path = Path(idecdr_dir) / Path(idecdr_fn)
+
+    return idecdr_path
+
+
+def read_or_create_and_read_idecdr_ds(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+    ide_dir: Path,
+) -> xr.Dataset:
+    """Read an idecdr netCDF file, creating it if it doesn't exist."""
+    ide_filepath = get_idecdr_filename(date, hemisphere, resolution, idecdr_dir=ide_dir)
+    if not ide_filepath.exists():
+        excluded_idecdr_fields = [
+            "h18_day",
+            "v18_day",
+            "v23_day",
+            "h36_day",
+            "v36_day",
+            # "h18_day_si",  # include this field for melt onset calculation
+            "v18_day_si",
+            "v23_day_si",
+            # "h36_day_si",  # include this field for melt onset calculation
+            "v36_day_si",
+            "shoremap",
+            "NT_icecon_min",
+        ]
+        make_idecdr_netcdf(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            output_dir=ide_dir,
+            excluded_fields=excluded_idecdr_fields,
+        )
+    ide_ds = xr.open_dataset(ide_filepath)
+
+    return ide_ds
+
+
+def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+    interp_range: int = 5,
+    ide_dir: Path,
+) -> xr.Dataset:
+    """Create xr dataset containing the second pass of daily enhanced CDR."""
+    # Read in the idecdr file for this date
+    ide_ds = read_or_create_and_read_idecdr_ds(
+        date=date, hemisphere=hemisphere, resolution=resolution, ide_dir=ide_dir
+    )
+
+    # Copy ide_ds to a new xr tiecdr dataset
+    ide_ds.copy(deep=True)
+    # ds_varlist = [name for name in tie_ds.data_vars]
+
+    # Update the cdr_conc var with temporally interpolated cdr_conc field
+    #   by creating a DataArray with conc fields +/- interp_range around date
+    interp_varname = "conc"
+    var_stack = ide_ds.data_vars[interp_varname].copy()
+    for interp_date in iter_dates_near_date(target_date=date, day_range=interp_range):
+        print(f"interp_date: {interp_date}")
+        if interp_date != date:
+            interp_ds = read_or_create_and_read_idecdr_ds(
+                date=interp_date,
+                hemisphere=hemisphere,
+                resolution=resolution,
+                ide_dir=ide_dir,
+            )
+            this_var = interp_ds.data_vars[interp_varname].copy()
+            var_stack = xr.concat([var_stack, this_var], "time")
+
+    var_stack = var_stack.sortby("time")
+
+    ti_var, ti_flags = temporally_composite_dataarray(
+        target_date=date,
+        da=var_stack,
+        interp_range=interp_range,
+    )
+
+    # Return the tiecdr dataset
+    return ti_var, ti_flags
+
+
+def make_tiecdr_netcdf(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+    output_dir: Path,
+) -> None:
+    logger.info(f"Creating tiecdr for {date=}, {hemisphere=}, {resolution=}")
+    temporally_interpolated_ecdr_dataset_for_au_si_tbs(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ide_dir=output_dir,
+    )
+    """
+    output_fn = standard_output_filename(
+        hemisphere=hemisphere,
+        date=date,
+        sat="ausi",
+        algorithm="tiecdr",
+        resolution=f"{resolution}km",
+    )
+    output_path = Path(output_dir) / Path(output_fn)
+
+    written_tie_ncfile = write_tie_netcdf(
+        tie_ds=tie_ds,
+        output_filepath=output_path,
+    )
+    logger.info(f"Wrote intermed daily ncfile: {written_tie_ncfile}")
+    """
 
 
 if __name__ == "__main__":
