@@ -13,11 +13,11 @@ import xarray as xr
 from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_icecon.util import date_range, get_ps12_grid_shape, get_ps25_grid_shape
 from pm_tb_data.fetch import au_si
-from pm_tb_data._types import Hemisphere
+from pm_tb_data._types import Hemisphere, NORTH, SOUTH
 from pyresample import AreaDefinition
 from pyresample.image import ImageContainerNearest
 from seaice.data.api import concentration_daily
-from seaice.nasateam import NORTH, SOUTH
+import seaice.nasateam as nt
 
 
 def _get_area_def(*, hemisphere: Hemisphere, shape: tuple[int, int]) -> AreaDefinition:
@@ -67,8 +67,13 @@ def get_sea_ice_index(
 
     Concentrations are floating point values 0-100
     """
+    # The `seaice` library has a different defintiion for hemispheres.
+    seaice_hemisphere = {
+        NORTH: nt.NORTH,
+        SOUTH: nt.SOUTH,
+    }[hemisphere]
     gridset = concentration_daily(
-        hemisphere=NORTH if hemisphere == NORTH else SOUTH,
+        hemisphere=seaice_hemisphere,
         year=date.year,
         month=date.month,
         day=date.day,
