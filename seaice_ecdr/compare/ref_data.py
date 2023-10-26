@@ -68,7 +68,7 @@ def get_sea_ice_index(
     Concentrations are floating point values 0-100
     """
     gridset = concentration_daily(
-        hemisphere=NORTH if hemisphere == "north" else SOUTH,
+        hemisphere=NORTH if hemisphere == NORTH else SOUTH,
         year=date.year,
         month=date.month,
         day=date.day,

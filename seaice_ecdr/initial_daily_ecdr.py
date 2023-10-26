@@ -30,6 +30,7 @@ from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_icecon.util import date_range, standard_output_filename
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
+from pm_tb_data._types import SOUTH, NORTH
 
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
 from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
@@ -243,9 +244,9 @@ def _setup_ecdr_ds(
 
 def _get_grid_id(*, hemisphere: Hemisphere, resolution: AU_SI_RESOLUTIONS) -> str:
     # Set the gridid
-    if hemisphere == "north" and resolution == "12":
+    if hemisphere == NORTH and resolution == "12":
         gridid = "psn12.5"
-    elif hemisphere == "south" and resolution == "12":
+    elif hemisphere == SOUTH and resolution == "12":
         gridid = "pss12.5"
     else:
         raise RuntimeError(

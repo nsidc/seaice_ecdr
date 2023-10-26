@@ -21,7 +21,7 @@ from pm_icecon.masks import get_ps_pole_hole_mask
 from pm_icecon.nt.masks import get_ps25_sst_mask
 from pm_icecon.tests.regression import test_nt
 from pm_tb_data.fetch import au_si
-from pm_tb_data._types import Hemisphere
+from pm_tb_data._types import Hemisphere, NORTH, SOUTH
 
 from seaice_ecdr.compare.ref_data import get_au_si_bt_conc, get_cdr, get_sea_ice_index
 from seaice_ecdr.initial_daily_ecdr import initial_daily_ecdr_dataset_for_au_si_tbs
@@ -148,7 +148,7 @@ def _mask_data(
     # don't include those in our valid ice masks.
     masked = masked.where(cond=~invalid_icemask, other=0)
 
-    if hemisphere == "north" and pole_hole_mask is not None:
+    if hemisphere == NORTH and pole_hole_mask is not None:
         masked = masked.where(cond=~pole_hole_mask, other=0)
 
     return masked
@@ -156,17 +156,17 @@ def _mask_data(
 
 def _get_projection(*, hemisphere: Hemisphere) -> tuple[ccrs.CRS, list[float]]:
     proj = ccrs.Stereographic(
-        central_latitude=90.0 if hemisphere == "north" else -90.0,
-        central_longitude=-45.0 if hemisphere == "north" else 0,
+        central_latitude=90.0 if hemisphere == NORTH else -90.0,
+        central_longitude=-45.0 if hemisphere == NORTH else 0,
         false_easting=0.0,
         false_northing=0.0,
-        true_scale_latitude=70 if hemisphere == "north" else -70,
+        true_scale_latitude=70 if hemisphere == NORTH else -70,
         globe=None,
     )
 
     extent = {
-        "north": [-3850000.0, 3750000.0, -5350000.0, 5850000.0],
-        "south": [-3950000.0, 3950000.0, -3950000.0, 4350000.0],
+        NORTH: [-3850000.0, 3750000.0, -5350000.0, 5850000.0],
+        SOUTH: [-3950000.0, 3950000.0, -3950000.0, 4350000.0],
     }[hemisphere]
 
     return proj, extent
@@ -328,7 +328,7 @@ def do_comparisons_au_si_bt(  # noqa
         resolution=resolution,
     )
 
-    if hemisphere == "north":
+    if hemisphere == NORTH:
         holemask = get_ps_pole_hole_mask(resolution=resolution)
     else:
         holemask = None
@@ -372,7 +372,7 @@ def compare_original_nt_to_sii(*, hemisphere: Hemisphere) -> None:  # noqa
         pm_icecon_algorithm="nasateam",
         comparison_dataproduct="SII_25km",
         pole_hole_mask=get_ps_pole_hole_mask(resolution="25")
-        if hemisphere == "north"
+        if hemisphere == NORTH
         else None,
     )
 
@@ -407,7 +407,7 @@ def compare_amsr_nt_to_sii(  # noqa
         comparison_dataproduct=f"SII_{resolution}km",
         pole_hole_mask=(
             get_ps_pole_hole_mask(resolution=resolution)
-            if hemisphere == "north"
+            if hemisphere == NORTH
             else None
         ),
     )
@@ -440,7 +440,7 @@ def compare_cdr(
         comparison_dataproduct=f"sea_ice_cdr_{resolution}km",
         pole_hole_mask=(
             get_ps_pole_hole_mask(resolution=resolution)
-            if hemisphere == "north"
+            if hemisphere == NORTH
             else None
         ),
     )

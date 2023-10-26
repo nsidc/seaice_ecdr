@@ -14,6 +14,7 @@ from seaice_ecdr.initial_daily_ecdr import (
 )
 
 from pm_icecon.util import standard_output_filename
+from pm_tb_data._types import NORTH
 
 # Set the default minimum log notification to Warning
 logger.remove(0)  # Removes previous logger info
@@ -120,7 +121,7 @@ def test_seaice_idecdr_has_necessary_fields(
 def test_cli_idecdr_ncfile_creation(tmpdir):
     """Verify that code used in cli.sh creates netCDF file."""
     test_date = dt.datetime(2021, 4, 5).date()
-    test_hemisphere: Final = "north"
+    test_hemisphere = NORTH
     test_resolution: Final = "12"
     make_idecdr_netcdf(
         date=test_date,
