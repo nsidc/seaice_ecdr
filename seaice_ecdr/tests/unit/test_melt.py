@@ -62,7 +62,7 @@ def test_that_50_percent_concentration_is_in_range():
 
 def test_with_missing_tb19_values():
     concentrations = np.array([80, 80, 80, 90])
-    tb19 = np.array([melt.TB_MISSING, melt.TB_MISSING, 200, 200])
+    tb19 = np.array([np.nan, np.nan, 200, 200])
     tb37 = np.array([200, 200, 200, 200])
     expected = np.array([False, False, True, True])
 
@@ -73,8 +73,8 @@ def test_with_missing_tb19_values():
 
 def test_with_missing_tb37_values():
     concentrations = np.array([80, 80, 80, 90])
-    tb19 = np.array([200, melt.TB_MISSING + 1, melt.TB_MISSING + 1, 200])
-    tb37 = np.array([200, melt.TB_MISSING, melt.TB_MISSING, 200])
+    tb19 = np.array([200, np.nan + 1, np.nan + 1, 200])
+    tb37 = np.array([200, np.nan, np.nan, 200])
     expected = np.array([True, False, False, True])
 
     actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
@@ -84,8 +84,8 @@ def test_with_missing_tb37_values():
 
 def test_with_both_missing_values():
     concentrations = np.array([80, 80, 80, 90])
-    tb19 = np.array([200, melt.TB_MISSING, melt.TB_MISSING, 200])
-    tb37 = np.array([200, melt.TB_MISSING, melt.TB_MISSING, 200])
+    tb19 = np.array([200, np.nan, np.nan, 200])
+    tb37 = np.array([200, np.nan, np.nan, 200])
     expected = np.array([True, False, False, True])
 
     actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)

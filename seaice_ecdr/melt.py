@@ -47,10 +47,6 @@ CONCENTRATION_THRESHOLD_PERCENT = 50
 # (19H-37H) is less than this value.
 TB_DELTA_THRESHOLD_K = 2
 
-# TODO: In the CDR, tbs that are missing are assumed to be 0. That's not the case
-# anymore. We expect NaN.
-TB_MISSING = 0
-
 
 def melting(
     concentrations: npt.NDArray,
@@ -65,7 +61,8 @@ def melting(
         concentrations >= CONCENTRATION_THRESHOLD_PERCENT,
         tb_h19 - tb_h37 < TB_DELTA_THRESHOLD_K,
     )
-    melting[tb_h19 == TB_MISSING] = False
-    melting[tb_h37 == TB_MISSING] = False
+
+    melting[np.isnan(tb_h19)] = False
+    melting[np.isnan(tb_h37)] = False
 
     return melting
