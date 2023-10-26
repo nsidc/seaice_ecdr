@@ -10,7 +10,7 @@ import xarray as xr
 from loguru import logger
 from pathlib import Path
 from pm_icecon.util import standard_output_filename
-from pm_tb_data._types import Hemisphere
+from pm_tb_data._types import Hemisphere, NORTH
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
 
 from seaice_ecdr.initial_daily_ecdr import (
@@ -25,7 +25,7 @@ try:
     logger.remove(0)  # Removes previous logger info
     logger.add(sys.stderr, level="INFO")
 except ValueError:
-    logger.debug(sys.stderr, f"Started logging in {__name__}")
+    logger.debug(f"Started logging in {__name__}")
     logger.add(sys.stderr, level="INFO")
 
 
@@ -441,7 +441,7 @@ def make_tiecdr_netcdf(
 
 if __name__ == "__main__":
     date = dt.datetime(2021, 2, 16).date()
-    hemisphere = "north"
+    hemisphere = NORTH
     resolution = "12"
 
     gen_temporal_composite_daily(date, hemisphere, resolution)

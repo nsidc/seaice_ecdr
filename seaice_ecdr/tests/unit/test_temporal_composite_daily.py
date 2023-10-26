@@ -25,7 +25,7 @@ try:
     logger.remove(0)  # Removes previous logger info
     logger.add(sys.stderr, level="WARNING")
 except ValueError:
-    logger.debug(sys.stderr, f"Started logging in {__name__}")
+    logger.debug(f"Started logging in {__name__}")
     logger.add(sys.stderr, level="WARNING")
 
 

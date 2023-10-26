@@ -7,9 +7,10 @@
 import datetime as dt
 import sys
 from pathlib import Path
-import tempfile
+from typing import Final
 
 from loguru import logger
+from pm_tb_data._types import NORTH
 
 
 from seaice_ecdr.temporal_composite_daily import (
@@ -29,13 +30,13 @@ try:
     logger.remove(0)  # Removes previous logger info
     logger.add(sys.stderr, level="WARNING")
 except ValueError:
-    logger.debug(sys.stderr, f"Started logging in {__name__}")
+    logger.debug(f"Started logging in {__name__}")
     logger.add(sys.stderr, level="WARNING")
 
 
 date = dt.date(2021, 2, 19)
-hemisphere = "north"
-resolution = "12"
+hemisphere = NORTH
+resolution: Final = "12"
 
 
 def test_create_ide_file():
@@ -106,7 +107,7 @@ def test_can_use_nonstandard_ide_filepath():
     nonstandard_path.unlink()
 
 
-def test_create_tiecdr_file():
+def test_create_tiecdr_file(tmpdir):
     """Verify creation of a "pass 2" tiecdr file.
 
     tiecdr is short for temporally integrated eCDR file
@@ -117,10 +118,9 @@ def test_create_tiecdr_file():
     """
     test_date = dt.date(2022, 3, 2)
 
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        make_tiecdr_netcdf(
-            date=test_date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            output_dir=tmpdirname,
-        )
+    make_tiecdr_netcdf(
+        date=test_date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        output_dir=tmpdir,
+    )
