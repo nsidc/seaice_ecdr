@@ -1011,7 +1011,13 @@ def create_idecdr_for_date_range(
     "-d",
     "--date",
     required=True,
-    type=click.DateTime(formats=("%Y-%m-%d",)),
+    type=click.DateTime(
+        formats=(
+            "%Y-%m-%d",
+            "%Y%m%d",
+            "%Y.%m.%d",
+        )
+    ),
     callback=datetime_to_date,
 )
 @click.option(
