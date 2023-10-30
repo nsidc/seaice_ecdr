@@ -16,6 +16,7 @@ from pm_tb_data._types import NORTH
 from seaice_ecdr.temporal_composite_daily import (
     get_standard_initial_daily_ecdr_filename,
     read_with_create_initial_daily_ecdr,
+    make_tiecdr_netcdf,
 )
 
 from seaice_ecdr.initial_daily_ecdr import (
@@ -104,3 +105,24 @@ def test_can_use_nonstandard_ide_filepath():
 
     # Clean up test
     nonstandard_path.unlink()
+
+
+def test_create_tiecdr_file(tmpdir):
+    """Verify creation of a "pass 2" tiecdr file.
+
+    tiecdr is short for temporally integrated eCDR file
+
+    Only a few dates between July 2012 and Oct 2023 have enough
+    missing NH data in AU_SI12 to make testing with actual
+    data possible.
+    """
+    test_date = dt.date(2022, 3, 2)
+
+    # For the test, only interpolate up to two days forward/back in time
+    make_tiecdr_netcdf(
+        date=test_date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        output_dir=Path(tmpdir),
+        interp_range=2,
+    )
