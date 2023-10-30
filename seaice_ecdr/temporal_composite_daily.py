@@ -408,7 +408,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     )
 
     if fill_the_pole_hole:
-        cdr_conc = np.squeeze(tie_ds["cdr_conc_ti"])
+        cdr_conc = np.squeeze(tie_ds["cdr_conc_ti"].data)
         tie_ds["cdr_conc"] = tie_ds["cdr_conc_ti"].copy()
         # TODO: This is a really coarse way of determining which
         #       grid is having its pole hole filled!
@@ -427,7 +427,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
             cdr_conc_pre_polefill = cdr_conc.copy()
             near_pole_hole_mask = psn_125_near_pole_hole_mask()
             cdr_conc_pole_filled = fill_pole_hole(
-                conc=cdr_conc.to_numpy(),
+                conc=cdr_conc,
                 near_pole_hole_mask=near_pole_hole_mask,
             )
             logger.info("Filled pole hole")
@@ -629,7 +629,7 @@ if __name__ == "__main__":
     make_tiecdr_netcdf(
         date=date,
         hemisphere=hemisphere,
-        resolution=resolution,
+        resolution="12" if resolution == "12" else "25",
         output_dir=Path("./"),
         interp_range=5,
     )
