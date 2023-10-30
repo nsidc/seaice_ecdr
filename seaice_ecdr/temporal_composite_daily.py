@@ -324,7 +324,7 @@ def get_idecdr_filename(
         algorithm="idecdr",
         resolution=f"{resolution}km",
     )
-    idecdr_path = Path(idecdr_dir) / Path(idecdr_fn)
+    idecdr_path = idecdr_dir / idecdr_fn
 
     return idecdr_path
 
@@ -338,7 +338,7 @@ def read_or_create_and_read_idecdr_ds(
 ) -> xr.Dataset:
     """Read an idecdr netCDF file, creating it if it doesn't exist."""
     ide_filepath = get_idecdr_filename(date, hemisphere, resolution, idecdr_dir=ide_dir)
-    if not ide_filepath.exists():
+    if not ide_filepath.is_file():
         excluded_idecdr_fields = [
             "h18_day",
             "v18_day",
@@ -453,7 +453,7 @@ def write_tie_netcdf(
     uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
     excluded_fields: Iterable[str] = [],
 ) -> Path:
-    """Write the initial_ecdr_ds to a netCDF file and return the path."""
+    """Write the temporally interpolated ECDR DS to a netCDF file and return the path."""
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
 
     # Here, we should specify details about the initial daily eCDF file, eg:
