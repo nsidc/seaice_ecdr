@@ -13,6 +13,8 @@ from loguru import logger
 from pathlib import Path
 from typing import get_args, Iterable, cast
 from pm_icecon.util import date_range, standard_output_filename
+from pm_icecon.fill_polehole import fill_pole_hole
+from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 from pm_tb_data._types import Hemisphere, NORTH
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
 
@@ -278,10 +280,12 @@ def temporally_composite_dataarray(
     return temp_comp_da, temporal_flags
 
 
+''' I think this is obsolete
 def gen_temporal_composite_daily(
-    date,
-    hemisphere,
-    resolution,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+    fill_the_pole_hole: bool = True,
 ):
     """Create a temporally composited daily data set."""
     print("NOTE: gen_temporal_composite_daily() only partially implemented...")
@@ -309,6 +313,7 @@ def gen_temporal_composite_daily(
     # Loop over all desired each desired output field
     # potentially including associated fields such as interp flag fields
     # Write out the composited file
+'''
 
 
 def get_idecdr_filename(
@@ -373,6 +378,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     resolution: AU_SI_RESOLUTIONS,
     interp_range: int = 5,
     ide_dir: Path,
+    fill_the_pole_hole: bool = True,
 ) -> xr.Dataset:
     """Create xr dataset containing the second pass of daily enhanced CDR.
 
@@ -414,7 +420,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         interp_range=interp_range,
     )
 
-    tie_ds["cdr_conc"] = ti_var
+    tie_ds["cdr_conc_ti"] = ti_var
 
     # Add the temporal interp flags to the dataset
     tie_ds["temporal_flag"] = (
@@ -441,6 +447,44 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
             "zlib": True,
         },
     )
+
+    if fill_the_pole_hole:
+        cdr_conc = np.squeeze(tie_ds["cdr_conc_ti"])
+        tie_ds["cdr_conc"] = tie_ds["cdr_conc_ti"].copy()
+        # TODO: This is a really coarse way of determining which
+        #       grid is having its pole hole filled!
+
+        # TODO: These are constants for the eCDR runs.  They should
+        #       NOT be definied here (and in the idecdr code...(!))
+        tb_spatint_bitmask_map = {
+            "v18": 1,
+            "h18": 2,
+            "v23": 4,
+            "v36": 8,
+            "h36": 16,
+            "pole_filled": 32,
+        }
+        if cdr_conc.shape == (896, 608):
+            cdr_conc_pre_polefill = cdr_conc.copy()
+            near_pole_hole_mask = psn_125_near_pole_hole_mask()
+            breakpoint()
+            print("this next call fails...")
+            cdr_conc_pole_filled = fill_pole_hole(
+                conc=cdr_conc.to_numpy(),
+                near_pole_hole_mask=near_pole_hole_mask,
+            )
+            logger.info("Filled pole hole")
+            is_pole_filled = (cdr_conc_pole_filled != cdr_conc_pre_polefill) & (
+                ~np.isnan(cdr_conc_pole_filled)
+            )
+            if "spatint_bitmask" in tie_ds.variables.keys():
+                tie_ds["spatint_bitmask"].data[
+                    is_pole_filled
+                ] += tb_spatint_bitmask_map["pole_filled"]
+                logger.info("Updated spatial_interpolation with pole hole value")
+        tie_ds["cdr_conc"].data[0, :, :] = cdr_conc_pole_filled[:, :]
+        breakpoint()
+        print("filled the pole hole")
 
     # Return the tiecdr dataset
     return tie_ds
@@ -489,6 +533,7 @@ def make_tiecdr_netcdf(
     resolution: AU_SI_RESOLUTIONS,
     output_dir: Path,
     interp_range: int = 5,
+    fill_the_pole_hole: bool = True,
 ) -> None:
     logger.info(f"Creating tiecdr for {date=}, {hemisphere=}, {resolution=}")
     tie_ds = temporally_interpolated_ecdr_dataset_for_au_si_tbs(
@@ -497,6 +542,7 @@ def make_tiecdr_netcdf(
         resolution=resolution,
         interp_range=interp_range,
         ide_dir=output_dir,
+        fill_the_pole_hole=fill_the_pole_hole,
     )
     output_fn = standard_output_filename(
         hemisphere=hemisphere,
@@ -626,4 +672,11 @@ if __name__ == "__main__":
     hemisphere = NORTH
     resolution = "12"
 
-    gen_temporal_composite_daily(date, hemisphere, resolution)
+    # gen_temporal_composite_daily(date, hemisphere, resolution)
+    make_tiecdr_netcdf(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        output_dir=Path("./"),
+        interp_range=5,
+    )
