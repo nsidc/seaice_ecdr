@@ -86,6 +86,7 @@ def get_standard_initial_daily_ecdr_filename(
 ):
     """Return standard ide file name."""
     # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
+    #       Specifically, the conventions specified in open Trello card
     standard_initial_daily_ecdr_filename = standard_output_filename(
         algorithm="idecdr",
         hemisphere=hemisphere,
@@ -330,6 +331,13 @@ def read_or_create_and_read_idecdr_ds(
     return ide_ds
 
 
+def grid_is_psn125(hemisphere, gridshape):
+    """Return True if this is the 12.5km NSIDC NH polar stereo grid."""
+    is_nh = hemisphere == NORTH
+    is_125 = gridshape == (896, 608)
+    return is_nh and is_125
+
+
 def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     *,
     date: dt.date,
@@ -407,23 +415,20 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         },
     )
 
-    if fill_the_pole_hole:
-        cdr_conc = np.squeeze(tie_ds["cdr_conc_ti"].data)
-        tie_ds["cdr_conc"] = tie_ds["cdr_conc_ti"].copy()
-        # TODO: This is a really coarse way of determining which
-        #       grid is having its pole hole filled!
+    cdr_conc = np.squeeze(tie_ds["cdr_conc_ti"].data)
+    # TODO: May want to rename this field.  Specifically, after this
+    #       operation, this will be both temporally interpoalted and
+    #       polehole-filled (if appropriate).  For now, "cdr_conc" is okay
+    tie_ds["cdr_conc"] = tie_ds["cdr_conc_ti"].copy()
 
-        # TODO: These are constants for the eCDR runs.  They should
-        #       NOT be definied here (and in the idecdr code...(!))
-        tb_spatint_bitmask_map = {
-            "v18": 1,
-            "h18": 2,
-            "v23": 4,
-            "v36": 8,
-            "h36": 16,
-            "pole_filled": 32,
-        }
-        if cdr_conc.shape == (896, 608):
+    # TODO: This is a really coarse way of determining which
+    #       grid is having its pole hole filled!
+    if fill_the_pole_hole and hemisphere == NORTH:
+        # TODO: Write code that better captures the logic of whether
+        #       or not the grid has a pole hole to fill.  In general,
+        #       this is an attribute of the grid.
+        # Currently, this code expects psn12.5 grids only
+        if grid_is_psn125(hemisphere=hemisphere, gridshape=cdr_conc.shape):
             cdr_conc_pre_polefill = cdr_conc.copy()
             near_pole_hole_mask = psn_125_near_pole_hole_mask()
             cdr_conc_pole_filled = fill_pole_hole(
@@ -435,11 +440,37 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
                 ~np.isnan(cdr_conc_pole_filled)
             )
             if "spatint_bitmask" in tie_ds.variables.keys():
+                # TODO: These are constants for the eCDR runs.  They should
+                #       NOT be defined here (and in the idecdr code...(!))
+                # TODO Actually, if this is defined here, the 'pole_filled'
+                #      bitmask value should be determined by examining the
+                #      bitmask_flags and bitmask_flag_meanings fields of the
+                #      DataArray variable.
+                tb_spatint_bitmask_map = {
+                    "v18": 1,
+                    "h18": 2,
+                    "v23": 4,
+                    "v36": 8,
+                    "h36": 16,
+                    "pole_filled": 32,
+                }
                 tie_ds["spatint_bitmask"].data[
                     is_pole_filled
                 ] += tb_spatint_bitmask_map["pole_filled"]
                 logger.info("Updated spatial_interpolation with pole hole value")
-        tie_ds["cdr_conc"].data[0, :, :] = cdr_conc_pole_filled[:, :]
+            else:
+                raise RuntimeError(
+                    "temporally interpolated dataset should have ",
+                    '"spatint_bitmask_map" field',
+                )
+
+            tie_ds["cdr_conc"].data[0, :, :] = cdr_conc_pole_filled[:, :]
+        else:
+            raise RuntimeError("Only the psn12.5 pole filling is implemented")
+    else:
+        # TODO: May want to modify attributes of the cdr_conc field to
+        #       distinguish it from the cdr_conc_ti field
+        pass
 
     # Return the tiecdr dataset
     return tie_ds
@@ -625,7 +656,6 @@ if __name__ == "__main__":
     hemisphere = NORTH
     resolution = "12"
 
-    # gen_temporal_composite_daily(date, hemisphere, resolution)
     make_tiecdr_netcdf(
         date=date,
         hemisphere=hemisphere,
