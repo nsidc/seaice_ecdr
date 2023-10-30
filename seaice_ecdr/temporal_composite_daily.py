@@ -13,6 +13,8 @@ from loguru import logger
 from pathlib import Path
 from typing import get_args, Iterable, cast
 from pm_icecon.util import date_range, standard_output_filename
+from pm_icecon.fill_polehole import fill_pole_hole
+from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 from pm_tb_data._types import Hemisphere, NORTH
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
 
@@ -39,7 +41,7 @@ def get_sample_idecdr_filename(
     hemisphere,
     resolution,
 ):
-    """Return name of sample inidial daily ecdr file."""
+    """Return name of sample initial daily ecdr file."""
     sample_idecdr_filename = (
         f"sample_idecdr_{hemisphere}_{resolution}_" + f'{date.strftime("%Y%m%d")}.nc'
     )
@@ -83,6 +85,8 @@ def get_standard_initial_daily_ecdr_filename(
     output_directory="",
 ):
     """Return standard ide file name."""
+    # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
+    #       Specifically, the conventions specified in open Trello card
     standard_initial_daily_ecdr_filename = standard_output_filename(
         algorithm="idecdr",
         hemisphere=hemisphere,
@@ -264,51 +268,9 @@ def temporally_composite_dataarray(
     # Update the temporal interp flag value
     temporal_flags[have_only_next] = ndist[have_only_next]
 
-    """ I think this is obsolete...
-    # Update the new .nc file with new temporal_interpolation_flag
-    if tried_temporal_interp:
-        if n_missing > 0:
-            # Tried, but could not find replacement values
-            where_missing = temp_comp_2d == missing_value
-            temporal_flags[where_missing] = FLAGVAL_STILLMISSING
-    """
-
     temp_comp_da.data[0, :, :] = temp_comp_2d[:, :]
 
     return temp_comp_da, temporal_flags
-
-
-def gen_temporal_composite_daily(
-    date,
-    hemisphere,
-    resolution,
-):
-    """Create a temporally composited daily data set."""
-    print("NOTE: gen_temporal_composite_daily() only partially implemented...")
-
-    # Load data from all contributing files
-    # Is it possible to make this "lazy" evaluation so we don't create/read
-    # these fields until they are needed?
-    # Though...I guess they are always needed in the NH because we try
-    # to fill in data near the North Pole (hole).
-    init_datasets = {}
-    for date in iter_dates_near_date(date, day_range=3):
-        # Read in or create the data set
-        # ds = read_with_create_initial_daily_ecdr(date, hemisphere, resolution)
-
-        # Drop unnecessary fields, and assert existence of needed fields
-        # Question: does it make sense to temporally interpolate
-        #   unfiltered fields such as bt_raw and nt_raw?  Perhaps need
-        #   to apply filter fields to those....
-        init_datasets[date] = date
-
-    # This is a placeholder showing that dates were looped through...
-    for ds in init_datasets:
-        print(f"ds: {ds}")
-
-    # Loop over all desired each desired output field
-    # potentially including associated fields such as interp flag fields
-    # Write out the composited file
 
 
 def get_idecdr_filename(
@@ -317,6 +279,9 @@ def get_idecdr_filename(
     resolution: AU_SI_RESOLUTIONS,
     idecdr_dir: Path,
 ) -> Path:
+    """Yields the name of the pass1 -- idecdr -- intermediate file."""
+
+    # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
     idecdr_fn = standard_output_filename(
         hemisphere=hemisphere,
         date=date,
@@ -366,6 +331,13 @@ def read_or_create_and_read_idecdr_ds(
     return ide_ds
 
 
+def grid_is_psn125(hemisphere, gridshape):
+    """Return True if this is the 12.5km NSIDC NH polar stereo grid."""
+    is_nh = hemisphere == NORTH
+    is_125 = gridshape == (896, 608)
+    return is_nh and is_125
+
+
 def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     *,
     date: dt.date,
@@ -373,6 +345,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     resolution: AU_SI_RESOLUTIONS,
     interp_range: int = 5,
     ide_dir: Path,
+    fill_the_pole_hole: bool = True,
 ) -> xr.Dataset:
     """Create xr dataset containing the second pass of daily enhanced CDR.
 
@@ -414,7 +387,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         interp_range=interp_range,
     )
 
-    tie_ds["cdr_conc"] = ti_var
+    tie_ds["cdr_conc_ti"] = ti_var
 
     # Add the temporal interp flags to the dataset
     tie_ds["temporal_flag"] = (
@@ -441,6 +414,63 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
             "zlib": True,
         },
     )
+
+    cdr_conc = np.squeeze(tie_ds["cdr_conc_ti"].data)
+    # TODO: May want to rename this field.  Specifically, after this
+    #       operation, this will be both temporally interpoalted and
+    #       polehole-filled (if appropriate).  For now, "cdr_conc" is okay
+    tie_ds["cdr_conc"] = tie_ds["cdr_conc_ti"].copy()
+
+    # TODO: This is a really coarse way of determining which
+    #       grid is having its pole hole filled!
+    if fill_the_pole_hole and hemisphere == NORTH:
+        # TODO: Write code that better captures the logic of whether
+        #       or not the grid has a pole hole to fill.  In general,
+        #       this is an attribute of the grid.
+        # Currently, this code expects psn12.5 grids only
+        if grid_is_psn125(hemisphere=hemisphere, gridshape=cdr_conc.shape):
+            cdr_conc_pre_polefill = cdr_conc.copy()
+            near_pole_hole_mask = psn_125_near_pole_hole_mask()
+            cdr_conc_pole_filled = fill_pole_hole(
+                conc=cdr_conc,
+                near_pole_hole_mask=near_pole_hole_mask,
+            )
+            logger.info("Filled pole hole")
+            is_pole_filled = (cdr_conc_pole_filled != cdr_conc_pre_polefill) & (
+                ~np.isnan(cdr_conc_pole_filled)
+            )
+            if "spatint_bitmask" in tie_ds.variables.keys():
+                # TODO: These are constants for the eCDR runs.  They should
+                #       NOT be defined here (and in the idecdr code...(!))
+                # TODO Actually, if this is defined here, the 'pole_filled'
+                #      bitmask value should be determined by examining the
+                #      bitmask_flags and bitmask_flag_meanings fields of the
+                #      DataArray variable.
+                tb_spatint_bitmask_map = {
+                    "v18": 1,
+                    "h18": 2,
+                    "v23": 4,
+                    "v36": 8,
+                    "h36": 16,
+                    "pole_filled": 32,
+                }
+                tie_ds["spatint_bitmask"].data[
+                    is_pole_filled
+                ] += tb_spatint_bitmask_map["pole_filled"]
+                logger.info("Updated spatial_interpolation with pole hole value")
+            else:
+                raise RuntimeError(
+                    "temporally interpolated dataset should have ",
+                    '"spatint_bitmask_map" field',
+                )
+
+            tie_ds["cdr_conc"].data[0, :, :] = cdr_conc_pole_filled[:, :]
+        else:
+            raise RuntimeError("Only the psn12.5 pole filling is implemented")
+    else:
+        # TODO: May want to modify attributes of the cdr_conc field to
+        #       distinguish it from the cdr_conc_ti field
+        pass
 
     # Return the tiecdr dataset
     return tie_ds
@@ -485,6 +515,7 @@ def make_tiecdr_netcdf(
     resolution: AU_SI_RESOLUTIONS,
     output_dir: Path,
     interp_range: int = 5,
+    fill_the_pole_hole: bool = True,
 ) -> None:
     logger.info(f"Creating tiecdr for {date=}, {hemisphere=}, {resolution=}")
     tie_ds = temporally_interpolated_ecdr_dataset_for_au_si_tbs(
@@ -493,7 +524,9 @@ def make_tiecdr_netcdf(
         resolution=resolution,
         interp_range=interp_range,
         ide_dir=output_dir,
+        fill_the_pole_hole=fill_the_pole_hole,
     )
+    # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
     output_fn = standard_output_filename(
         hemisphere=hemisphere,
         date=date,
@@ -538,6 +571,7 @@ def create_tiecdr_for_date_range(
             # TODO: These error logs should be written to e.g.,
             # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
             # to handle automatically logging error details to such a file.
+            # TODO: Perhaps this function should come from seaice_ecdr
             err_filename = standard_output_filename(
                 hemisphere=hemisphere,
                 date=date,
@@ -622,4 +656,10 @@ if __name__ == "__main__":
     hemisphere = NORTH
     resolution = "12"
 
-    gen_temporal_composite_daily(date, hemisphere, resolution)
+    make_tiecdr_netcdf(
+        date=date,
+        hemisphere=hemisphere,
+        resolution="12" if resolution == "12" else "25",
+        output_dir=Path("./"),
+        interp_range=5,
+    )
