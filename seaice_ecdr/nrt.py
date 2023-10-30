@@ -85,7 +85,7 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     "-d",
     "--date",
     required=True,
-    type=click.DateTime(formats=("%Y-%m-%d",)),
+    type=click.DateTime(formats=("%Y-%m-%d", "%Y%m%d", "%Y.%m.%d")),
     callback=datetime_to_date,
 )
 @click.option(

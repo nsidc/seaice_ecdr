@@ -3,6 +3,7 @@
 import datetime as dt
 import sys
 from typing import Final
+from pathlib import Path
 
 import pytest
 import xarray as xr
@@ -120,6 +121,7 @@ def test_seaice_idecdr_has_necessary_fields(
 
 def test_cli_idecdr_ncfile_creation(tmpdir):
     """Verify that code used in cli.sh creates netCDF file."""
+    tmpdir_path = Path(tmpdir)
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
     test_resolution: Final = "12"
@@ -127,7 +129,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
-        output_dir=tmpdir,
+        output_dir=tmpdir_path,
     )
     output_fn = standard_output_filename(
         hemisphere=test_hemisphere,
@@ -136,7 +138,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
         algorithm="idecdr",
         resolution=f"{test_resolution}km",
     )
-    output_path = tmpdir / output_fn
+    output_path = tmpdir_path / output_fn
 
     assert output_path.exists()
 
@@ -149,6 +151,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
     tmpdir,
 ):
     """Verify that specified fields can be excluded in idecdr nc files"""
+    tmpdir_path = Path(tmpdir)
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
     test_resolution: Final = "12"
@@ -156,7 +159,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
-        output_dir=tmpdir,
+        output_dir=tmpdir_path,
         excluded_fields=(cdr_conc_fieldname,),
     )
     output_fn = standard_output_filename(
@@ -166,7 +169,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
         algorithm="idecdr",
         resolution=f"{test_resolution}km",
     )
-    output_path = tmpdir / output_fn
+    output_path = tmpdir_path / output_fn
 
     ds = xr.open_dataset(output_path)
     assert cdr_conc_fieldname not in ds.variables.keys()
