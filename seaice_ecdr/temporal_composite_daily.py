@@ -41,7 +41,7 @@ def get_sample_idecdr_filename(
     hemisphere,
     resolution,
 ):
-    """Return name of sample inidial daily ecdr file."""
+    """Return name of sample initial daily ecdr file."""
     sample_idecdr_filename = (
         f"sample_idecdr_{hemisphere}_{resolution}_" + f'{date.strftime("%Y%m%d")}.nc'
     )
@@ -85,6 +85,7 @@ def get_standard_initial_daily_ecdr_filename(
     output_directory="",
 ):
     """Return standard ide file name."""
+    # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
     standard_initial_daily_ecdr_filename = standard_output_filename(
         algorithm="idecdr",
         hemisphere=hemisphere,
@@ -266,54 +267,9 @@ def temporally_composite_dataarray(
     # Update the temporal interp flag value
     temporal_flags[have_only_next] = ndist[have_only_next]
 
-    """ I think this is obsolete...
-    # Update the new .nc file with new temporal_interpolation_flag
-    if tried_temporal_interp:
-        if n_missing > 0:
-            # Tried, but could not find replacement values
-            where_missing = temp_comp_2d == missing_value
-            temporal_flags[where_missing] = FLAGVAL_STILLMISSING
-    """
-
     temp_comp_da.data[0, :, :] = temp_comp_2d[:, :]
 
     return temp_comp_da, temporal_flags
-
-
-''' I think this is obsolete
-def gen_temporal_composite_daily(
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
-    fill_the_pole_hole: bool = True,
-):
-    """Create a temporally composited daily data set."""
-    print("NOTE: gen_temporal_composite_daily() only partially implemented...")
-
-    # Load data from all contributing files
-    # Is it possible to make this "lazy" evaluation so we don't create/read
-    # these fields until they are needed?
-    # Though...I guess they are always needed in the NH because we try
-    # to fill in data near the North Pole (hole).
-    init_datasets = {}
-    for date in iter_dates_near_date(date, day_range=3):
-        # Read in or create the data set
-        # ds = read_with_create_initial_daily_ecdr(date, hemisphere, resolution)
-
-        # Drop unnecessary fields, and assert existence of needed fields
-        # Question: does it make sense to temporally interpolate
-        #   unfiltered fields such as bt_raw and nt_raw?  Perhaps need
-        #   to apply filter fields to those....
-        init_datasets[date] = date
-
-    # This is a placeholder showing that dates were looped through...
-    for ds in init_datasets:
-        print(f"ds: {ds}")
-
-    # Loop over all desired each desired output field
-    # potentially including associated fields such as interp flag fields
-    # Write out the composited file
-'''
 
 
 def get_idecdr_filename(
@@ -322,6 +278,9 @@ def get_idecdr_filename(
     resolution: AU_SI_RESOLUTIONS,
     idecdr_dir: Path,
 ) -> Path:
+    """Yields the name of the pass1 -- idecdr -- intermediate file."""
+
+    # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
     idecdr_fn = standard_output_filename(
         hemisphere=hemisphere,
         date=date,
@@ -467,8 +426,6 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         if cdr_conc.shape == (896, 608):
             cdr_conc_pre_polefill = cdr_conc.copy()
             near_pole_hole_mask = psn_125_near_pole_hole_mask()
-            breakpoint()
-            print("this next call fails...")
             cdr_conc_pole_filled = fill_pole_hole(
                 conc=cdr_conc.to_numpy(),
                 near_pole_hole_mask=near_pole_hole_mask,
@@ -483,8 +440,6 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
                 ] += tb_spatint_bitmask_map["pole_filled"]
                 logger.info("Updated spatial_interpolation with pole hole value")
         tie_ds["cdr_conc"].data[0, :, :] = cdr_conc_pole_filled[:, :]
-        breakpoint()
-        print("filled the pole hole")
 
     # Return the tiecdr dataset
     return tie_ds
@@ -544,6 +499,7 @@ def make_tiecdr_netcdf(
         ide_dir=output_dir,
         fill_the_pole_hole=fill_the_pole_hole,
     )
+    # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
     output_fn = standard_output_filename(
         hemisphere=hemisphere,
         date=date,
@@ -588,6 +544,7 @@ def create_tiecdr_for_date_range(
             # TODO: These error logs should be written to e.g.,
             # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
             # to handle automatically logging error details to such a file.
+            # TODO: Perhaps this function should come from seaice_ecdr
             err_filename = standard_output_filename(
                 hemisphere=hemisphere,
                 date=date,
