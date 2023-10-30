@@ -453,7 +453,7 @@ def write_tie_netcdf(
     uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
     excluded_fields: Iterable[str] = [],
 ) -> Path:
-    """Write the temporally interpolated ECDR DS to a netCDF file and return the path."""
+    """Write the temporally interpolated ECDR to a netCDF file."""
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
 
     # Here, we should specify details about the initial daily eCDF file, eg:
@@ -475,11 +475,7 @@ def write_tie_netcdf(
         encoding=nc_encoding,
     )
 
-    # Return the path if it exists
-    if output_filepath.exists():
-        return output_filepath
-    else:
-        return Path("")
+    return output_filepath
 
 
 def make_tiecdr_netcdf(
