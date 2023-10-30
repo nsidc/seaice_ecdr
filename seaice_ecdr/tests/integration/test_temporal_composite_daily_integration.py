@@ -123,6 +123,6 @@ def test_create_tiecdr_file(tmpdir):
         date=test_date,
         hemisphere=hemisphere,
         resolution=resolution,
-        output_dir=tmpdir,
+        output_dir=Path(tmpdir),
         interp_range=2,
     )
