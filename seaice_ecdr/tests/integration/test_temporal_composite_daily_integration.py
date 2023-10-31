@@ -79,8 +79,6 @@ def test_read_with_create_ide_file(tmpdir):
 
 def test_can_use_nonstandard_ide_filepath(tmpdir):
     """Verify that we can override use of standard ide filepath."""
-    # TODO: this should probably use a tempdir / temp_filename
-    # Define a name
     nonstandard_path = Path(tmpdir) / "not_a_standard_name.nc"
     read_with_create_initial_daily_ecdr(
         date=date,
