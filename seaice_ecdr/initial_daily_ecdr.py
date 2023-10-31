@@ -10,6 +10,7 @@ import sys
 import traceback
 from pathlib import Path
 from typing import TypedDict, get_args, Iterable, cast
+from functools import cache
 
 import click
 import numpy as np
@@ -914,12 +915,43 @@ def write_ide_netcdf(
         return Path("")
 
 
+@cache
+def get_idecdr_dir(*, cdr_data_dir: Path) -> Path:
+    """Daily initial output dir for ECDR processing."""
+    idecdr_dir = cdr_data_dir / "initial_daily"
+    idecdr_dir.mkdir(exist_ok=True)
+
+    return idecdr_dir
+
+
+def get_idecdr_filepath(
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+    cdr_data_dir: Path,
+) -> Path:
+    """Yields the filepath of the pass1 -- idecdr -- intermediate file."""
+
+    # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
+    idecdr_fn = standard_output_filename(
+        hemisphere=hemisphere,
+        date=date,
+        sat="ausi",
+        algorithm="idecdr",
+        resolution=f"{resolution}km",
+    )
+    idecdr_dir = get_idecdr_dir(cdr_data_dir=cdr_data_dir)
+    idecdr_path = idecdr_dir / idecdr_fn
+
+    return idecdr_path
+
+
 def make_idecdr_netcdf(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
-    output_dir: Path,
+    cdr_data_dir: Path,
     excluded_fields: Iterable[str] = [],
 ) -> None:
     logger.info(f"Creating idecdr for {date=}, {hemisphere=}, {resolution=}")
@@ -928,14 +960,11 @@ def make_idecdr_netcdf(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    output_fn = standard_output_filename(
-        hemisphere=hemisphere,
+    output_path = get_idecdr_filepath(
         date=date,
-        sat="ausi",
-        algorithm="idecdr",
-        resolution=f"{resolution}km",
+        hemisphere=hemisphere,
+        cdr_data_dir=cdr_data_dir,
     )
-    output_path = Path(output_dir) / Path(output_fn)
 
     written_ide_ncfile = write_ide_netcdf(
         ide_ds=ide_ds,
