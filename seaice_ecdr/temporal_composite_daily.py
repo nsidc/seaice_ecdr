@@ -349,7 +349,6 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
 
     # Copy ide_ds to a new xr tiecdr dataset
     tie_ds = ide_ds.copy(deep=True)
-    # ds_varlist = [name for name in tie_ds.data_vars]
 
     # Update the cdr_conc var with temporally interpolated cdr_conc field
     #   by creating a DataArray with conc fields +/- interp_range around date
