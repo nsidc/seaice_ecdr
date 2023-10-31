@@ -102,16 +102,19 @@ def test_date_iterator():
         assert iter_date == expected_dates[idx]
 
 
-def test_access_to_standard_output_filename():
+def test_access_to_standard_output_filename(tmpdir):
     """Verify that standard output file names can be generated."""
     date = dt.date(2021, 2, 19)
     hemisphere = "north"
     resolution = "12"
 
     sample_ide_filepath = get_standard_initial_daily_ecdr_filename(
-        date, hemisphere, resolution, output_directory=""
+        date,
+        hemisphere,
+        resolution,
+        output_directory=Path(tmpdir),
     )
-    expected_filepath = Path("idecdr_NH_20210219_ausi_12km.nc")
+    expected_filepath = Path(tmpdir) / "idecdr_NH_20210219_ausi_12km.nc"
 
     assert sample_ide_filepath == expected_filepath
 

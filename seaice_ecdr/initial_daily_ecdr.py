@@ -1050,6 +1050,10 @@ def create_idecdr_for_date_range(
 @click.option(
     "-v",
     "--verbose_intermed_ncfile",
+    help=(
+        "Create intermediate daily netcdf file that has"
+        " extra fields unnecessary for subsequent CDR processing."
+    ),
     required=False,
     default=False,
     type=bool,
