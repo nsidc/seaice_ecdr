@@ -15,4 +15,27 @@ Variables:
   spillover, valid ice mask, spatial and temporal interpolation, melt onset)
 * `melt_onset_day_cdr_seaice_conc_monthly`: Melt onset day (Value from the last
   day of the month)
+
+Notes about CDR v4:
+
+* Requires a minimum of 20 days for monthly calculations, unless the
+  platform is 'n07', in which case we use a minimum of 10 days.
+* Skips 1987-12 and 1988-01.
+* Only determines monthly melt onset day for NH.
+* CDR is not re-calculated from the monthly nt and bt fields. Just the average
+  of the CDR conc fields.
 """
+
+import xarray as xr
+
+from seaice_ecdr.constants import TEMPORAL_INTERP_DAILY_OUTPUT_DIR
+
+
+if __name__ == "__main__":
+    year = 2022
+    month = 3
+
+    data_list = list(TEMPORAL_INTERP_DAILY_OUTPUT_DIR.glob(f"*{year}{month:02}*.nc"))
+    ds = xr.open_mfdataset(data_list)
+
+    breakpoint()
