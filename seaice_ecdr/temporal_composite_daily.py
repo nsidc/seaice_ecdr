@@ -617,7 +617,8 @@ def create_tiecdr_for_date_range(
             "%Y.%m.%d",
         )
     ),
-    callback=datetime_to_date,
+    # Like `datetime_to_date` but allows `None`.
+    callback=lambda _ctx, _param, value: value if value is None else value.date(),
     default=None,
     help="If given, run temporal composite for `--date` through this end date.",
 )
@@ -665,7 +666,7 @@ def create_tiecdr_for_date_range(
 def cli(
     *,
     date: dt.date,
-    end_date: dt.date,
+    end_date: dt.date | None,
     hemisphere: Hemisphere,
     output_dir: Path,
     resolution: AU_SI_RESOLUTIONS,
