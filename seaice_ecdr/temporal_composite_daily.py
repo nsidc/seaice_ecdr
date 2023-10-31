@@ -619,6 +619,7 @@ def create_tiecdr_for_date_range(
     ),
     callback=datetime_to_date,
     default=None,
+    help="If given, run temporal composite for `--date` through this end date.",
 )
 @click.option(
     "-h",
