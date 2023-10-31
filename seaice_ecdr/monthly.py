@@ -36,6 +36,23 @@ if __name__ == "__main__":
     month = 3
 
     data_list = list(TEMPORAL_INTERP_DAILY_OUTPUT_DIR.glob(f"*{year}{month:02}*.nc"))
-    ds = xr.open_mfdataset(data_list)
-
     breakpoint()
+
+    # *** xarray.core.merge.MergeError: conflicting values for variable
+    # *** 'h18_day_si' on objects to be combined. You can skip this check by
+    # *** specifying compat='override'.
+    conflicting = (
+        "/share/apps/amsr2-cdr/ecdr_v5_outputs/standard/"
+        "temporal_interp_daily/tiecdr_NH_20220315_ausi_12km.nc"
+    )
+
+    other = (
+        "/share/apps/amsr2-cdr/ecdr_v5_outputs/standard/"
+        "temporal_interp_daily/tiecdr_NH_20220308_ausi_12km.nc"
+    )
+
+    conflicting_ds = xr.open_dataset(conflicting)
+    other_ds = xr.open_dataset(other)
+    breakpoint()
+
+    ds = xr.open_mfdataset([conflicting, other])
