@@ -1,30 +1,34 @@
 """Routines for generating temporally composited file.
 
 """
-
-import click
+import copy
 import traceback
 import datetime as dt
 import sys
+from pathlib import Path
+from typing import get_args, Iterable, cast
+
+import click
 import numpy as np
 import numpy.typing as npt
 import xarray as xr
 from loguru import logger
-from pathlib import Path
-from typing import get_args, Iterable, cast
 from pm_icecon.util import date_range, standard_output_filename
 from pm_icecon.fill_polehole import fill_pole_hole
-from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 from pm_tb_data._types import Hemisphere, NORTH
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
 
+from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 from seaice_ecdr.initial_daily_ecdr import (
     initial_daily_ecdr_dataset_for_au_si_tbs,
     make_idecdr_netcdf,
     write_ide_netcdf,
 )
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import INITIAL_DAILY_OUTPUT_DIR
+from seaice_ecdr.constants import (
+    INITIAL_DAILY_OUTPUT_DIR,
+    TEMPORAL_INTERP_DAILY_OUTPUT_DIR,
+)
 
 
 # Set the default minimum log notification to "info"
@@ -512,6 +516,7 @@ def make_tiecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
     output_dir: Path,
+    ide_dir: Path,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
 ) -> None:
@@ -521,7 +526,7 @@ def make_tiecdr_netcdf(
         hemisphere=hemisphere,
         resolution=resolution,
         interp_range=interp_range,
-        ide_dir=output_dir,
+        ide_dir=ide_dir,
         fill_the_pole_hole=fill_the_pole_hole,
     )
     # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
@@ -548,6 +553,7 @@ def create_tiecdr_for_date_range(
     end_date: dt.date,
     resolution: AU_SI_RESOLUTIONS,
     output_dir: Path,
+    ide_dir: Path,
 ) -> None:
     """Generate the temporally composited daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
@@ -557,6 +563,7 @@ def create_tiecdr_for_date_range(
                 hemisphere=hemisphere,
                 resolution=resolution,
                 output_dir=output_dir,
+                ide_dir=ide_dir,
             )
 
         # TODO: either catch and re-throw this exception or throw an error after
@@ -599,6 +606,21 @@ def create_tiecdr_for_date_range(
     callback=datetime_to_date,
 )
 @click.option(
+    "--end-date",
+    required=False,
+    type=click.DateTime(
+        formats=(
+            "%Y-%m-%d",
+            "%Y%m%d",
+            "%Y.%m.%d",
+        )
+    ),
+    # Like `datetime_to_date` but allows `None`.
+    callback=lambda _ctx, _param, value: value if value is None else value.date(),
+    default=None,
+    help="If given, run temporal composite for `--date` through this end date.",
+)
+@click.option(
     "-h",
     "--hemisphere",
     required=True,
@@ -616,7 +638,7 @@ def create_tiecdr_for_date_range(
         resolve_path=True,
         path_type=Path,
     ),
-    default=INITIAL_DAILY_OUTPUT_DIR,
+    default=TEMPORAL_INTERP_DAILY_OUTPUT_DIR,
     show_default=True,
 )
 @click.option(
@@ -625,12 +647,28 @@ def create_tiecdr_for_date_range(
     required=True,
     type=click.Choice(get_args(AU_SI_RESOLUTIONS)),
 )
+@click.option(
+    "--initial-daily-ecdr-dir",
+    required=True,
+    type=click.Path(
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        writable=True,
+        resolve_path=True,
+        path_type=Path,
+    ),
+    default=INITIAL_DAILY_OUTPUT_DIR,
+    show_default=True,
+)
 def cli(
     *,
     date: dt.date,
+    end_date: dt.date | None,
     hemisphere: Hemisphere,
     output_dir: Path,
     resolution: AU_SI_RESOLUTIONS,
+    initial_daily_ecdr_dir: Path,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.
 
@@ -640,24 +678,15 @@ def cli(
     projection, resolution, and bounds), and TBtype (TB type includes source and
     methodology for getting those TBs onto the grid)
     """
+
+    if end_date is None:
+        end_date = copy.copy(date)
+
     create_tiecdr_for_date_range(
         hemisphere=hemisphere,
         start_date=date,
-        end_date=date,
+        end_date=end_date,
         resolution=resolution,
         output_dir=output_dir,
-    )
-
-
-if __name__ == "__main__":
-    date = dt.datetime(2021, 2, 16).date()
-    hemisphere = NORTH
-    resolution = "12"
-
-    make_tiecdr_netcdf(
-        date=date,
-        hemisphere=hemisphere,
-        resolution="12" if resolution == "12" else "25",
-        output_dir=Path("./"),
-        interp_range=5,
+        ide_dir=initial_daily_ecdr_dir,
     )
