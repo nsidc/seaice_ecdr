@@ -66,27 +66,18 @@ def test_read_with_create_ide_file(tmpdir):
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        ide_filepath=sample_ide_filepath,
+        ide_dir=Path(tmpdir),
     )
 
     assert sample_ide_filepath.exists()
     test_ide_ds_with_reading = read_with_create_initial_daily_ecdr(
-        date=date, hemisphere=hemisphere, resolution=resolution, ide_dir=Path(tmpdir)
-    )
-
-    assert test_ide_ds_with_creation == test_ide_ds_with_reading
-
-
-def test_can_use_nonstandard_ide_filepath(tmpdir):
-    """Verify that we can override use of standard ide filepath."""
-    nonstandard_path = Path(tmpdir) / "not_a_standard_name.nc"
-    read_with_create_initial_daily_ecdr(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        ide_filepath=nonstandard_path,
+        ide_dir=Path(tmpdir),
     )
-    assert nonstandard_path.exists()
+
+    assert test_ide_ds_with_creation == test_ide_ds_with_reading
 
 
 def test_create_tiecdr_file(tmpdir):

@@ -107,21 +107,16 @@ def read_with_create_initial_daily_ecdr(
     date,
     hemisphere,
     resolution,
-    ide_filepath: Path | None = None,
-    ide_dir: Path | None = None,
+    ide_dir: Path,
     force_ide_file_creation=False,
 ):
     """Return init daily ecdr field, creating it if necessary."""
-    if ide_filepath is None and ide_dir is not None:
-        ide_filepath = get_standard_initial_daily_ecdr_filename(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            output_directory=ide_dir,
-        )
-
-    if ide_filepath is None:
-        raise RuntimeError("Either `ide_filepath` or `ide_dir` must be set.")
+    ide_filepath = get_standard_initial_daily_ecdr_filename(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        output_directory=ide_dir,
+    )
 
     if not ide_filepath.is_file() or force_ide_file_creation:
         created_ide_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
