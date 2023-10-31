@@ -29,19 +29,6 @@ from seaice_ecdr.melt import (
 )
 
 
-def get_sample_idecdr_filename(
-    date,
-    hemisphere,
-    resolution,
-):
-    """Return name of sample initial daily ecdr file."""
-    sample_idecdr_filename = (
-        f"sample_idecdr_{hemisphere}_{resolution}_" + f'{date.strftime("%Y%m%d")}.nc'
-    )
-
-    return sample_idecdr_filename
-
-
 def get_ecdr_filename(
     date,
     hemisphere,
