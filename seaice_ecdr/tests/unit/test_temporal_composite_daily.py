@@ -12,7 +12,6 @@ from loguru import logger
 
 
 from seaice_ecdr.temporal_composite_daily import (
-    get_sample_idecdr_filename,
     iter_dates_near_date,
     get_standard_initial_daily_ecdr_filename,
     temporally_composite_dataarray,
@@ -59,22 +58,6 @@ def compose_tyx_dataarray(
     )
 
     return dataarray
-
-
-def test_sample_filename_generation():
-    """Verify creation of sample filename.
-
-    Note: this function may ultimately use a construction from the pm_tb_data
-    repository.
-    """
-    date = dt.date(2021, 2, 19)
-    hemisphere = "north"
-    resolution = "12"
-
-    expected_filename = "sample_idecdr_north_12_20210219.nc"
-    sample_filename = get_sample_idecdr_filename(date, hemisphere, resolution)
-
-    assert sample_filename == expected_filename
 
 
 def test_date_iterator():
