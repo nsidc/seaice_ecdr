@@ -33,12 +33,12 @@ import numpy.typing as npt
 
 
 # Start and end DOYs for the melt season (inclusive)
-MELT_SEASON_START_DOY = 60
-MELT_SEASON_END_DOY = 244
+MELT_SEASON_FIRST_DOY = 60
+MELT_SEASON_LAST_DOY = 244
 
 # Flag value for grid cells before melting is detected or if no melt is ever
 # detected.
-MELT_ONSET_DAY_FILL_VALUE = -1
+MELT_ONSET_FILL_VALUE = 255
 
 # Melt detection requires a SIC of >= this value
 CONCENTRATION_THRESHOLD_PERCENT = 50
@@ -57,8 +57,11 @@ def melting(
 
     Expects brightness temperatures in degrees Kelvin.
     """
+    is_valid_concentration = np.logical_and(
+        concentrations >= CONCENTRATION_THRESHOLD_PERCENT, concentrations <= 100
+    )
     melting = np.logical_and(
-        concentrations >= CONCENTRATION_THRESHOLD_PERCENT,
+        is_valid_concentration,
         tb_h19 - tb_h37 < TB_DELTA_THRESHOLD_K,
     )
 

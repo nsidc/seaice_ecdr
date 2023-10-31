@@ -303,6 +303,7 @@ def read_or_create_and_read_idecdr_ds(
 ) -> xr.Dataset:
     """Read an idecdr netCDF file, creating it if it doesn't exist."""
     ide_filepath = get_idecdr_filename(date, hemisphere, resolution, idecdr_dir=ide_dir)
+    # TODO: Perhaps add an overwrite condition here?
     if not ide_filepath.is_file():
         excluded_idecdr_fields = [
             "h18_day",
@@ -486,14 +487,11 @@ def write_tie_netcdf(
     """Write the temporally interpolated ECDR to a netCDF file."""
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
 
-    # Here, we should specify details about the initial daily eCDF file, eg:
-    #  exclude unwanted fields
-    #  ensure that fields are compressed
-    # Set netCDF encoding to compress all except excluded fields
     for excluded_field in excluded_fields:
         if excluded_field in tie_ds.variables.keys():
             tie_ds = tie_ds.drop_vars(excluded_field)
 
+    # Set netCDF encoding to compress all except excluded fields
     nc_encoding = {}
     for varname in tie_ds.variables.keys():
         varname = cast(str, varname)

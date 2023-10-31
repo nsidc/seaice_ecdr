@@ -2,6 +2,9 @@
 import datetime as dt
 
 from seaice_ecdr import complete_daily_ecdr as cdecdr
+from pm_tb_data._types import NORTH, SOUTH
+from pathlib import Path
+import numpy as np
 
 
 def test_cdecdr_date_iter_starts_with_jan1():
@@ -25,3 +28,33 @@ def test_cdecdr_date_iter_ends_with_target_date():
         latest_date = iter_date
 
     assert latest_date == target_date
+
+
+def test_no_melt_onset_for_southern_hemisphere():
+    """Verify that melt onset is all fill value when not in melt season."""
+    for date in (dt.date(2020, 2, 1), dt.date(2021, 6, 2), dt.date(2020, 10, 3)):
+        melt_onset_field = cdecdr.get_melt_onset_field(
+            date=date,
+            hemisphere=SOUTH,
+            resolution="12",
+            tie_dir=Path("./"),
+        )
+        assert melt_onset_field is None
+
+
+def test_melt_onset_field_outside_melt_season():
+    """Verify that melt onset is all fill value when not in melt season."""
+    hemisphere = NORTH
+    resolution = "12"
+    tie_dir = Path("./")
+    no_melt_flag = 255
+
+    for date in (dt.date(2020, 2, 1), dt.date(2020, 10, 3)):
+        melt_onset_field = cdecdr.get_melt_onset_field(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            tie_dir=tie_dir,
+            no_melt_flag=no_melt_flag,
+        )
+        assert np.all(melt_onset_field == no_melt_flag)
