@@ -39,14 +39,11 @@ hemisphere = NORTH
 resolution: Final = "12"
 
 
-def test_create_ide_file():
+def test_create_ide_file(tmpdir):
     """Verify that initial daily ecdr file can be created."""
     sample_ide_filepath = get_standard_initial_daily_ecdr_filename(
-        date, hemisphere, resolution, output_directory=""
+        date, hemisphere, resolution, output_directory=Path(tmpdir)
     )
-    if sample_ide_filepath.exists():
-        sample_ide_filepath.unlink()
-    assert not sample_ide_filepath.exists()
 
     test_ide_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
         date=date, hemisphere=hemisphere, resolution=resolution
@@ -58,18 +55,13 @@ def test_create_ide_file():
     assert sample_ide_filepath == written_path
     assert sample_ide_filepath.exists()
 
-    # Clean up Test
-    sample_ide_filepath.unlink()
 
-
-def test_read_with_create_ide_file():
+def test_read_with_create_ide_file(tmpdir):
     """Verify that initial daily ecdr file can be created."""
     sample_ide_filepath = get_standard_initial_daily_ecdr_filename(
-        date, hemisphere, resolution, output_directory=""
+        date, hemisphere, resolution, output_directory=Path(tmpdir)
     )
-    if sample_ide_filepath.exists():
-        sample_ide_filepath.unlink()
-    assert not sample_ide_filepath.exists()
+
     test_ide_ds_with_creation = read_with_create_initial_daily_ecdr(
         date=date,
         hemisphere=hemisphere,
@@ -79,22 +71,17 @@ def test_read_with_create_ide_file():
 
     assert sample_ide_filepath.exists()
     test_ide_ds_with_reading = read_with_create_initial_daily_ecdr(
-        date=date, hemisphere=hemisphere, resolution=resolution
+        date=date, hemisphere=hemisphere, resolution=resolution, ide_dir=Path(tmpdir)
     )
 
     assert test_ide_ds_with_creation == test_ide_ds_with_reading
 
-    # Clean up test
-    # TODO: These tests should probably use non-standard names or a tempdir
-    #   or something so they don't clobber actual files....
-    # sample_ide_filepath.unlink()
 
-
-def test_can_use_nonstandard_ide_filepath():
+def test_can_use_nonstandard_ide_filepath(tmpdir):
     """Verify that we can override use of standard ide filepath."""
     # TODO: this should probably use a tempdir / temp_filename
     # Define a name
-    nonstandard_path = Path("not_a_standard_name.nc")
+    nonstandard_path = Path(tmpdir) / "not_a_standard_name.nc"
     read_with_create_initial_daily_ecdr(
         date=date,
         hemisphere=hemisphere,
@@ -102,9 +89,6 @@ def test_can_use_nonstandard_ide_filepath():
         ide_filepath=nonstandard_path,
     )
     assert nonstandard_path.exists()
-
-    # Clean up test
-    nonstandard_path.unlink()
 
 
 def test_create_tiecdr_file(tmpdir):
