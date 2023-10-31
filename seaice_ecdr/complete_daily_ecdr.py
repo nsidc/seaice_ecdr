@@ -29,6 +29,7 @@ from seaice_ecdr.melt import (
 )
 
 
+"""
 # Set the default minimum log notification to "info"
 try:
     logger.remove(0)  # Removes previous logger info
@@ -36,6 +37,7 @@ try:
 except ValueError:
     logger.debug(f"Started logging in {__name__}")
     logger.add(sys.stderr, level="INFO")
+"""
 
 
 def get_sample_idecdr_filename(
@@ -155,10 +157,14 @@ def read_melt_onset_field(
     cde_dir,
 ) -> np.ndarray:
     """Return the melt onset field for this complete daily eCDR file."""
-    print(f"calling read_or_create_and_read_cdecdr_ds for {date}...")
     cde_ds = read_or_create_and_read_cdecdr_ds(
-        date=date, hemisphere=hemisphere, resolution=resolution, cde_dir=cde_dir
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        cde_dir=cde_dir,
+        mask_and_scale=False,
     )
+
     return cde_ds["melt_onset"].to_numpy()
 
 
@@ -213,7 +219,6 @@ def create_melt_onset_field(
         return None
 
     day_of_year = int(date.strftime("%j"))
-    print(f"day_of_year: {day_of_year}")
     if (day_of_year < first_melt_doy) or (day_of_year > last_melt_doy):
         melt_onset_field = filled_ndarray(
             hemisphere=hemisphere,
@@ -221,7 +226,7 @@ def create_melt_onset_field(
             fill_value=no_melt_flag,
             dtype=np.uint8,
         )
-        print(f"  --- returning empty melt_onset_field for {day_of_year}")
+        logger.info(f"returning empty melt_onset_field for {day_of_year}")
         return melt_onset_field
     elif day_of_year == first_melt_doy:
         # This is the first day with melt onset
@@ -231,7 +236,7 @@ def create_melt_onset_field(
             fill_value=no_melt_flag,
             dtype=np.uint8,
         )
-        print(f"  --- using empty melt_onset_field for prior for {day_of_year}")
+        logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
     else:
         prior_melt_onset_field = read_melt_onset_field(
             date=date - dt.timedelta(days=1),
@@ -239,9 +244,8 @@ def create_melt_onset_field(
             resolution=resolution,
             cde_dir=cde_dir,
         )
-        print(f"  --- using read melt_onset_field for prior for {day_of_year}")
+        logger.info(f"using read melt_onset_field for prior for {day_of_year}")
 
-    print(f"got prior melt for {date}")
     cdr_conc_ti, tb_h19, tb_h37 = read_melt_elements(
         date=date, hemisphere=hemisphere, resolution=resolution, tie_dir=tie_dir
     )
@@ -251,10 +255,16 @@ def create_melt_onset_field(
         tb_h37=tb_h37,
     )
 
+    have_prior_melt_values = prior_melt_onset_field != no_melt_flag
     is_missing_prior = prior_melt_onset_field == no_melt_flag
     has_new_melt = is_missing_prior & is_melted_today
 
-    melt_onset_field = prior_melt_onset_field.copy()
+    melt_onset_field = np.zeros(prior_melt_onset_field.shape, dtype=np.uint8)
+    melt_onset_field[:] = no_melt_flag
+    melt_onset_field[have_prior_melt_values] = prior_melt_onset_field[
+        have_prior_melt_values
+    ]
+
     melt_onset_field[has_new_melt] = day_of_year
 
     # TODO: Do we want to modify QA flag here too?
@@ -364,7 +374,6 @@ def make_cdecdr_netcdf(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        sat="ausi",
         file_label="cdecdr",
         directory_name=output_dir,
     )
@@ -383,13 +392,13 @@ def read_or_create_and_read_cdecdr_ds(
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
     cde_dir: Path,
+    mask_and_scale: bool = True,
 ) -> xr.Dataset:
     """Read an cdecdr netCDF file, creating it if it doesn't exist.
 
     Note: this can be recursive because the melt onset field calculation
     requires the prior day's field values during the melt season.
     """
-    print(f"in read_or_create_and_read_cdecdr_ds for date: {date}")
     cde_filepath = get_ecdr_filename(
         date,
         hemisphere,
@@ -406,7 +415,7 @@ def read_or_create_and_read_cdecdr_ds(
             output_dir=cde_dir,
         )
     logger.info(f"Reading cdeCDR file from: {cde_filepath}")
-    cde_ds = xr.open_dataset(cde_filepath)
+    cde_ds = xr.open_dataset(cde_filepath, mask_and_scale=mask_and_scale)
 
     return cde_ds
 
@@ -522,11 +531,11 @@ def cli(
 
 
 if __name__ == "__main__":
-    date = dt.datetime(2022, 3, 3).date()
+    # date = dt.datetime(2022, 3, 3).date()
+    date = dt.datetime(2022, 3, 20).date()
     hemisphere = NORTH
     resolution = "12"
 
-    print(f"calling make_cdecdr_netcdf from __main__  with date: {date}")
     make_cdecdr_netcdf(
         date=date,
         hemisphere=hemisphere,
