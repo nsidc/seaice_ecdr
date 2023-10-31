@@ -29,17 +29,6 @@ from seaice_ecdr.melt import (
 )
 
 
-"""
-# Set the default minimum log notification to "info"
-try:
-    logger.remove(0)  # Removes previous logger info
-    logger.add(sys.stderr, level="INFO")
-except ValueError:
-    logger.debug(f"Started logging in {__name__}")
-    logger.add(sys.stderr, level="INFO")
-"""
-
-
 def get_sample_idecdr_filename(
     date,
     hemisphere,
