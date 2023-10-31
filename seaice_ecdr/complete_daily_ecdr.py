@@ -120,6 +120,7 @@ def read_or_create_and_read_tiecdr_ds(
             hemisphere=hemisphere,
             resolution=resolution,
             output_dir=tie_dir,
+            ide_dir=tie_dir,
         )
     logger.info(f"Reading tieCDR file from: {tie_filepath}")
     tie_ds = xr.open_dataset(tie_filepath)
@@ -199,7 +200,7 @@ def create_melt_onset_field(
     first_melt_doy: int = MELT_SEASON_FIRST_DOY,
     last_melt_doy: int = MELT_SEASON_LAST_DOY,
     no_melt_flag: int = MELT_ONSET_FILL_VALUE,
-) -> np.ndarray:
+) -> np.ndarray | None:
     """Return a uint8 melt onset field (NH only).
 
     Note: this routine creates the melt onset field using input data
@@ -454,10 +455,9 @@ def create_cdecdr_for_date_range(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
-                sat="u2",
                 file_label="cdecdr",
             )
-            err_filename += ".error"
+            err_filename = Path(err_filename, ".error")
             logger.info(f"Writing error info to {err_filename}")
             with open(output_dir / err_filename, "w") as f:
                 traceback.print_exc(file=f)
