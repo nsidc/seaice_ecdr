@@ -503,18 +503,3 @@ def cli(
         resolution=resolution,
         output_dir=output_dir,
     )
-
-
-if __name__ == "__main__":
-    # date = dt.datetime(2022, 3, 3).date()
-    date = dt.datetime(2022, 3, 20).date()
-    hemisphere = NORTH
-    resolution = "12"
-
-    make_cdecdr_netcdf(
-        date=date,
-        hemisphere=hemisphere,
-        resolution="12" if resolution == "12" else "25",
-        output_dir=Path("./"),
-        interp_range=5,
-    )
