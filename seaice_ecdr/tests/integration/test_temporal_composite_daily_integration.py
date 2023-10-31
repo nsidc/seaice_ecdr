@@ -90,12 +90,18 @@ def test_create_tiecdr_file(tmpdir):
     data possible.
     """
     test_date = dt.date(2022, 3, 2)
+    tmpdir_path = Path(tmpdir)
+    initial_daily_dir = tmpdir_path / "initial"
+    initial_daily_dir.mkdir()
+    temporal_daily_dir = tmpdir_path / "temporal"
+    temporal_daily_dir.mkdir()
 
     # For the test, only interpolate up to two days forward/back in time
     make_tiecdr_netcdf(
         date=test_date,
         hemisphere=hemisphere,
         resolution=resolution,
-        output_dir=Path(tmpdir),
+        output_dir=temporal_daily_dir,
         interp_range=2,
+        ide_dir=initial_daily_dir,
     )
