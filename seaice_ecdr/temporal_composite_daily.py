@@ -24,7 +24,7 @@ from seaice_ecdr.initial_daily_ecdr import (
     write_ide_netcdf,
 )
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import INITIAL_DAILY_OUTPUT_DIR
+from seaice_ecdr.constants import TEMPORAL_INTERP_DAILY_OUTPUT_DIR
 
 
 # Set the default minimum log notification to "info"
@@ -618,7 +618,7 @@ def create_tiecdr_for_date_range(
         resolve_path=True,
         path_type=Path,
     ),
-    default=INITIAL_DAILY_OUTPUT_DIR,
+    default=TEMPORAL_INTERP_DAILY_OUTPUT_DIR,
     show_default=True,
 )
 @click.option(
