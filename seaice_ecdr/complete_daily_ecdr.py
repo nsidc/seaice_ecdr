@@ -120,8 +120,7 @@ def filled_ndarray(
         raise RuntimeError(
             f"Could not determine array shape for {hemisphere}" f" and {resolution}"
         )
-    array = np.zeros(array_shape, dtype=dtype)
-    array[:] = fill_value
+    array = np.full(array_shape, fill_value, dtype=dtype)
 
     return array
 
