@@ -9,7 +9,7 @@ import datetime as dt
 import sys
 import traceback
 from pathlib import Path
-from typing import TypedDict, get_args
+from typing import TypedDict, get_args, Iterable, cast
 
 import click
 import numpy as np
@@ -30,6 +30,7 @@ from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_icecon.util import date_range, standard_output_filename
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
+from pm_tb_data._types import SOUTH, NORTH
 
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
 from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
@@ -243,9 +244,9 @@ def _setup_ecdr_ds(
 
 def _get_grid_id(*, hemisphere: Hemisphere, resolution: AU_SI_RESOLUTIONS) -> str:
     # Set the gridid
-    if hemisphere == "north" and resolution == "12":
+    if hemisphere == NORTH and resolution == "12":
         gridid = "psn12.5"
-    elif hemisphere == "south" and resolution == "12":
+    elif hemisphere == SOUTH and resolution == "12":
         gridid = "pss12.5"
     else:
         raise RuntimeError(
@@ -261,6 +262,7 @@ def compute_initial_daily_ecdr_dataset(
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
     xr_tbs: xr.Dataset,
+    fill_the_pole_hole: bool = False,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -726,20 +728,22 @@ def compute_initial_daily_ecdr_dataset(
 
     # Fill the NH pole hole
     # TODO: Should check for NH and have grid-dependent filling scheme
-    if cdr_conc.shape == (896, 608):
-        cdr_conc_pre_polefill = cdr_conc.copy()
-        near_pole_hole_mask = psn_125_near_pole_hole_mask()
-        cdr_conc = fill_pole_hole(
-            conc=cdr_conc,
-            near_pole_hole_mask=near_pole_hole_mask,
-        )
-        logger.info("Filled pole hole")
-        is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
-        if "spatint_bitmask" in ecdr_ide_ds.variables.keys():
-            ecdr_ide_ds["spatint_bitmask"].data[
-                is_pole_filled
-            ] += tb_spatint_bitmask_map["pole_filled"]
-            logger.info("Updated spatial_interpolation with pole hole value")
+    # NOTE: Usually, the pole hole will be filled in pass 3, along with melt onset calc.
+    if fill_the_pole_hole:
+        if cdr_conc.shape == (896, 608):
+            cdr_conc_pre_polefill = cdr_conc.copy()
+            near_pole_hole_mask = psn_125_near_pole_hole_mask()
+            cdr_conc = fill_pole_hole(
+                conc=cdr_conc,
+                near_pole_hole_mask=near_pole_hole_mask,
+            )
+            logger.info("Filled pole hole")
+            is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
+            if "spatint_bitmask" in ecdr_ide_ds.variables.keys():
+                ecdr_ide_ds["spatint_bitmask"].data[
+                    is_pole_filled
+                ] += tb_spatint_bitmask_map["pole_filled"]
+                logger.info("Updated spatial_interpolation with pole hole value")
 
     # Apply land flag value and clamp max conc to 100.
     # TODO: extract this func from nt and allow override of flag values
@@ -874,38 +878,75 @@ def initial_daily_ecdr_dataset_for_au_si_tbs(
     return initial_ecdr_ds
 
 
-def make_cdr_netcdf(
+def write_ide_netcdf(
+    *,
+    ide_ds: xr.Dataset,
+    output_filepath: Path,
+    uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
+    excluded_fields: Iterable[str] = [],
+) -> Path:
+    """Write the initial_ecdr_ds to a netCDF file and return the path."""
+    logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
+
+    # Here, we should specify details about the initial daily eCDF file, eg:
+    #  exclude unwanted fields
+    #  ensure that fields are compressed
+    # Set netCDF encoding to compress all except excluded fields
+    for excluded_field in excluded_fields:
+        if excluded_field in ide_ds.variables.keys():
+            ide_ds = ide_ds.drop_vars(excluded_field)
+
+    nc_encoding = {}
+    for varname in ide_ds.variables.keys():
+        varname = cast(str, varname)
+        if varname not in uncompressed_fields:
+            nc_encoding[varname] = {"zlib": True}
+
+    ide_ds.to_netcdf(
+        output_filepath,
+        encoding=nc_encoding,
+    )
+
+    # Return the path if it exists
+    if output_filepath.exists():
+        return output_filepath
+    else:
+        return Path("")
+
+
+def make_idecdr_netcdf(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
-    xr_tbs: xr.Dataset,
     output_dir: Path,
+    excluded_fields: Iterable[str] = [],
 ) -> None:
-    """Create the cdr netCDF file."""
-    logger.info(f"Creating CDR for {date=}, {hemisphere=}, {resolution=}")
-    conc_ds = compute_initial_daily_ecdr_dataset(
+    logger.info(f"Creating idecdr for {date=}, {hemisphere=}, {resolution=}")
+    ide_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        xr_tbs=xr_tbs,
     )
-
     output_fn = standard_output_filename(
         hemisphere=hemisphere,
         date=date,
-        sat="u2",
-        algorithm="cdr",
+        sat="ausi",
+        algorithm="idecdr",
         resolution=f"{resolution}km",
     )
-    output_path = output_dir / output_fn
-    conc_ds.to_netcdf(
-        output_path,
-        encoding={"conc": {"zlib": True}},
+    output_path = Path(output_dir) / Path(output_fn)
+
+    written_ide_ncfile = write_ide_netcdf(
+        ide_ds=ide_ds,
+        output_filepath=output_path,
+        excluded_fields=excluded_fields,
     )
-    logger.info(f"Wrote AMSR2 CDR concentration field: {output_path}")
+    logger.info(f"Wrote intermed daily ncfile: {written_ide_ncfile}")
 
 
+# TODO: add a "verbose_ide" indicator to determine whether to save all the
+#       contributing fields -- eg tb arrays -- in the init daily ecdr ncfile
 def create_idecdr_for_date_range(
     *,
     hemisphere: Hemisphere,
@@ -913,22 +954,34 @@ def create_idecdr_for_date_range(
     end_date: dt.date,
     resolution: AU_SI_RESOLUTIONS,
     output_dir: Path,
+    verbose_intermed_ncfile: bool = False,
 ) -> None:
     """Generate the initial daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
         try:
-            xr_tbs = get_au_si_tbs(
-                date=date,
-                hemisphere=hemisphere,
-                resolution=resolution,
-            )
-            make_cdr_netcdf(
-                xr_tbs=xr_tbs,
+            if not verbose_intermed_ncfile:
+                excluded_fields = [
+                    "h18_day",
+                    "v18_day",
+                    "v23_day",
+                    "h36_day",
+                    "v36_day",
+                    # "h18_day_si",  # include this field for melt onset calculation
+                    "v18_day_si",
+                    "v23_day_si",
+                    # "h36_day_si",  # include this field for melt onset calculation
+                    "v36_day_si",
+                    "shoremap",
+                    "NT_icecon_min",
+                ]
+            make_idecdr_netcdf(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
                 output_dir=output_dir,
+                excluded_fields=excluded_fields,
             )
+
         # TODO: either catch and re-throw this exception or throw an error after
         # attempting to make the netcdf for each date. The exit code should be
         # non-zero in such a case.
@@ -958,7 +1011,13 @@ def create_idecdr_for_date_range(
     "-d",
     "--date",
     required=True,
-    type=click.DateTime(formats=("%Y-%m-%d",)),
+    type=click.DateTime(
+        formats=(
+            "%Y-%m-%d",
+            "%Y%m%d",
+            "%Y.%m.%d",
+        )
+    ),
     callback=datetime_to_date,
 )
 @click.option(
@@ -988,12 +1047,24 @@ def create_idecdr_for_date_range(
     required=True,
     type=click.Choice(get_args(AU_SI_RESOLUTIONS)),
 )
+@click.option(
+    "-v",
+    "--verbose_intermed_ncfile",
+    help=(
+        "Create intermediate daily netcdf file that has"
+        " extra fields unnecessary for subsequent CDR processing."
+    ),
+    required=False,
+    default=False,
+    type=bool,
+)
 def cli(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
     output_dir: Path,
     resolution: AU_SI_RESOLUTIONS,
+    verbose_intermed_ncfile: bool,
 ) -> None:
     """Run the initial daily ECDR algorithm with AMSR2 data.
 
@@ -1007,4 +1078,5 @@ def cli(
         end_date=date,
         resolution=resolution,
         output_dir=output_dir,
+        verbose_intermed_ncfile=verbose_intermed_ncfile,
     )

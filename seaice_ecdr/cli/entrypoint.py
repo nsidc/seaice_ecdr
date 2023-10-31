@@ -2,6 +2,7 @@
 import click
 
 from seaice_ecdr.initial_daily_ecdr import cli as ecdr_cli
+from seaice_ecdr.temporal_composite_daily import cli as tiecdr_cli
 from seaice_ecdr.nrt import nrt_cli
 
 
@@ -12,6 +13,7 @@ def cli():
 
 
 cli.add_command(ecdr_cli)
+cli.add_command(tiecdr_cli)
 cli.add_command(nrt_cli)
 
 
