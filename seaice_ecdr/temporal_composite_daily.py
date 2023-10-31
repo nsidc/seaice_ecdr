@@ -1,23 +1,24 @@
 """Routines for generating temporally composited file.
 
 """
-
-import click
+import copy
 import traceback
 import datetime as dt
 import sys
+from pathlib import Path
+from typing import get_args, Iterable, cast
+
+import click
 import numpy as np
 import numpy.typing as npt
 import xarray as xr
 from loguru import logger
-from pathlib import Path
-from typing import get_args, Iterable, cast
 from pm_icecon.util import date_range, standard_output_filename
 from pm_icecon.fill_polehole import fill_pole_hole
-from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 from pm_tb_data._types import Hemisphere, NORTH
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
 
+from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 from seaice_ecdr.initial_daily_ecdr import (
     initial_daily_ecdr_dataset_for_au_si_tbs,
     make_idecdr_netcdf,
@@ -607,6 +608,21 @@ def create_tiecdr_for_date_range(
     callback=datetime_to_date,
 )
 @click.option(
+    "--end-date",
+    required=False,
+    type=click.DateTime(
+        formats=(
+            "%Y-%m-%d",
+            "%Y%m%d",
+            "%Y.%m.%d",
+        )
+    ),
+    # Like `datetime_to_date` but allows `None`.
+    callback=lambda _ctx, _param, value: value if value is None else value.date(),
+    default=None,
+    help="If given, run temporal composite for `--date` through this end date.",
+)
+@click.option(
     "-h",
     "--hemisphere",
     required=True,
@@ -650,6 +666,7 @@ def create_tiecdr_for_date_range(
 def cli(
     *,
     date: dt.date,
+    end_date: dt.date | None,
     hemisphere: Hemisphere,
     output_dir: Path,
     resolution: AU_SI_RESOLUTIONS,
@@ -663,10 +680,14 @@ def cli(
     projection, resolution, and bounds), and TBtype (TB type includes source and
     methodology for getting those TBs onto the grid)
     """
+
+    if end_date is None:
+        end_date = copy.copy(date)
+
     create_tiecdr_for_date_range(
         hemisphere=hemisphere,
         start_date=date,
-        end_date=date,
+        end_date=end_date,
         resolution=resolution,
         output_dir=output_dir,
         ide_dir=initial_daily_ecdr_dir,
