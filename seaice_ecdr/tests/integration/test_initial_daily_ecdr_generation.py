@@ -10,11 +10,10 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr.initial_daily_ecdr import get_idecdr_filepath
+from seaice_ecdr.initial_daily_ecdr import get_idecdr_filepath, make_idecdr_netcdf
 from seaice_ecdr.initial_daily_ecdr import (
     initial_daily_ecdr_dataset_for_au_si_tbs as compute_idecdr_ds,
 )
-from seaice_ecdr.initial_daily_ecdr import make_idecdr_netcdf
 
 # Set the default minimum log notification to Warning
 logger.remove(0)  # Removes previous logger info

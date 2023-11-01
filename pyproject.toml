@@ -14,6 +14,9 @@ min_confidence = 80
 [tool.ruff]
 target-version = "py310"
 
+extend-fixable = ["I"]
+extend-select = ["I"]
+
 ignore = [
   # D1: Ignore errors requiring docstrings on everything.
   # D203: "1 blank line required before class docstring"
