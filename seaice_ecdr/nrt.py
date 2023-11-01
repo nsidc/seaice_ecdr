@@ -4,21 +4,20 @@ from pathlib import Path
 from typing import get_args
 
 import click
-from pm_tb_data.fetch.lance_amsr2 import (
-    download_latest_lance_files,
-    access_local_lance_data,
-)
 from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
-
-from seaice_ecdr.constants import LANCE_NRT_DATA_DIR, NRT_INITIAL_DAILY_OUTPUT_DIR
-from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.initial_daily_ecdr import (
-    compute_initial_daily_ecdr_dataset,
-    write_ide_netcdf,
+from pm_tb_data.fetch.lance_amsr2 import (
+    access_local_lance_data,
+    download_latest_lance_files,
 )
 
-from pm_icecon.util import standard_output_filename
+from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.constants import LANCE_NRT_DATA_DIR, NRT_BASE_OUTPUT_DIR
+from seaice_ecdr.initial_daily_ecdr import (
+    compute_initial_daily_ecdr_dataset,
+    get_idecdr_filepath,
+    write_ide_netcdf,
+)
 
 
 def compute_nrt_initial_daily_ecdr_dataset(
@@ -95,8 +94,7 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "-o",
-    "--output-dir",
+    "--ecdr-data-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -106,8 +104,13 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
         resolve_path=True,
         path_type=Path,
     ),
+    default=NRT_BASE_OUTPUT_DIR,
+    help=(
+        "Base output directory for standard ECDR outputs."
+        " Subdirectories are created for outputs of"
+        " different stages of processing."
+    ),
     show_default=True,
-    default=NRT_INITIAL_DAILY_OUTPUT_DIR,
 )
 @click.option(
     "-r",
@@ -134,7 +137,7 @@ def nrt_initial_daily_ecdr(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    output_dir: Path,
+    ecdr_data_dir: Path,
     resolution: AU_SI_RESOLUTIONS,
     lance_amsr2_input_dir: Path,
 ):
@@ -149,15 +152,12 @@ def nrt_initial_daily_ecdr(
         lance_amsr2_input_dir=lance_amsr2_input_dir,
     )
 
-    output_fn = standard_output_filename(
+    output_path = get_idecdr_filepath(
         hemisphere=hemisphere,
         date=date,
-        sat="ausi",
-        algorithm="nrt_idecdr",
-        resolution=f"{resolution}km",
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
     )
-
-    output_path = Path(output_dir) / Path(output_fn)
 
     write_ide_netcdf(
         ide_ds=nrt_initial_ecdr_ds,

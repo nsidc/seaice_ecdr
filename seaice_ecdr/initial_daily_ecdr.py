@@ -8,8 +8,9 @@ Notes:
 import datetime as dt
 import sys
 import traceback
+from functools import cache
 from pathlib import Path
-from typing import TypedDict, get_args, Iterable, cast
+from typing import Iterable, TypedDict, cast, get_args
 
 import click
 import numpy as np
@@ -20,7 +21,6 @@ import pm_icecon.nt.compute_nt_ic as nt
 import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import xarray as xr
 from loguru import logger
-from pm_tb_data._types import Hemisphere
 from pm_icecon.bt.fields import get_bootstrap_fields
 from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_icecon.fill_polehole import fill_pole_hole
@@ -29,15 +29,14 @@ from pm_icecon.land_spillover import apply_nt2_land_spillover
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_icecon.util import date_range, standard_output_filename
+from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
-from pm_tb_data._types import SOUTH, NORTH
 
+from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
 from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
 from seaice_ecdr.masks import psn_125_near_pole_hole_mask
-from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import INITIAL_DAILY_OUTPUT_DIR
-
 
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
 
@@ -914,12 +913,43 @@ def write_ide_netcdf(
         return Path("")
 
 
+@cache
+def get_idecdr_dir(*, ecdr_data_dir: Path) -> Path:
+    """Daily initial output dir for ECDR processing."""
+    idecdr_dir = ecdr_data_dir / "initial_daily"
+    idecdr_dir.mkdir(exist_ok=True)
+
+    return idecdr_dir
+
+
+def get_idecdr_filepath(
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: AU_SI_RESOLUTIONS,
+    ecdr_data_dir: Path,
+) -> Path:
+    """Yields the filepath of the pass1 -- idecdr -- intermediate file."""
+
+    # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
+    idecdr_fn = standard_output_filename(
+        hemisphere=hemisphere,
+        date=date,
+        sat="ausi",
+        algorithm="idecdr",
+        resolution=f"{resolution}km",
+    )
+    idecdr_dir = get_idecdr_dir(ecdr_data_dir=ecdr_data_dir)
+    idecdr_path = idecdr_dir / idecdr_fn
+
+    return idecdr_path
+
+
 def make_idecdr_netcdf(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
-    output_dir: Path,
+    ecdr_data_dir: Path,
     excluded_fields: Iterable[str] = [],
 ) -> None:
     logger.info(f"Creating idecdr for {date=}, {hemisphere=}, {resolution=}")
@@ -928,14 +958,12 @@ def make_idecdr_netcdf(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    output_fn = standard_output_filename(
-        hemisphere=hemisphere,
+    output_path = get_idecdr_filepath(
         date=date,
-        sat="ausi",
-        algorithm="idecdr",
-        resolution=f"{resolution}km",
+        hemisphere=hemisphere,
+        ecdr_data_dir=ecdr_data_dir,
+        resolution=resolution,
     )
-    output_path = Path(output_dir) / Path(output_fn)
 
     written_ide_ncfile = write_ide_netcdf(
         ide_ds=ide_ds,
@@ -953,7 +981,7 @@ def create_idecdr_for_date_range(
     start_date: dt.date,
     end_date: dt.date,
     resolution: AU_SI_RESOLUTIONS,
-    output_dir: Path,
+    ecdr_data_dir: Path,
     verbose_intermed_ncfile: bool = False,
 ) -> None:
     """Generate the initial daily ecdr files for a range of dates."""
@@ -978,7 +1006,7 @@ def create_idecdr_for_date_range(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
-                output_dir=output_dir,
+                ecdr_data_dir=ecdr_data_dir,
                 excluded_fields=excluded_fields,
             )
 
@@ -992,16 +1020,15 @@ def create_idecdr_for_date_range(
             # TODO: These error logs should be written to e.g.,
             # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
             # to handle automatically logging error details to such a file.
-            err_filename = standard_output_filename(
-                hemisphere=hemisphere,
+            err_filepath = get_idecdr_filepath(
                 date=date,
-                sat="u2",
-                algorithm="cdr",
-                resolution=f"{resolution}km",
+                hemisphere=hemisphere,
+                resolution=resolution,
+                ecdr_data_dir=ecdr_data_dir,
             )
-            err_filename += ".error"
+            err_filename = err_filepath.name + ".error"
             logger.info(f"Writing error info to {err_filename}")
-            with open(output_dir / err_filename, "w") as f:
+            with open(err_filepath.parent / err_filename, "w") as f:
                 traceback.print_exc(file=f)
                 traceback.print_exc(file=sys.stdout)
 
@@ -1027,8 +1054,7 @@ def create_idecdr_for_date_range(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "-o",
-    "--output-dir",
+    "--ecdr-data-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -1038,7 +1064,12 @@ def create_idecdr_for_date_range(
         resolve_path=True,
         path_type=Path,
     ),
-    default=INITIAL_DAILY_OUTPUT_DIR,
+    default=STANDARD_BASE_OUTPUT_DIR,
+    help=(
+        "Base output directory for standard ECDR outputs."
+        " Subdirectories are created for outputs of"
+        " different stages of processing."
+    ),
     show_default=True,
 )
 @click.option(
@@ -1062,7 +1093,7 @@ def cli(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    output_dir: Path,
+    ecdr_data_dir: Path,
     resolution: AU_SI_RESOLUTIONS,
     verbose_intermed_ncfile: bool,
 ) -> None:
@@ -1077,6 +1108,6 @@ def cli(
         start_date=date,
         end_date=date,
         resolution=resolution,
-        output_dir=output_dir,
+        ecdr_data_dir=ecdr_data_dir,
         verbose_intermed_ncfile=verbose_intermed_ncfile,
     )
