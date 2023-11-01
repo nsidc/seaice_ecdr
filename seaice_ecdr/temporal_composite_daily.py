@@ -39,19 +39,6 @@ except ValueError:
     logger.add(sys.stderr, level="INFO")
 
 
-def get_sample_idecdr_filename(
-    date,
-    hemisphere,
-    resolution,
-):
-    """Return name of sample initial daily ecdr file."""
-    sample_idecdr_filename = (
-        f"sample_idecdr_{hemisphere}_{resolution}_" + f'{date.strftime("%Y%m%d")}.nc'
-    )
-
-    return sample_idecdr_filename
-
-
 def iter_dates_near_date(
     target_date: dt.date,
     day_range: int = 0,

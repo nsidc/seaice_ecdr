@@ -550,20 +550,3 @@ def cli(
         tie_dir=tie_dir,
         output_dir=output_dir,
     )
-
-
-if __name__ == "__main__":
-    # These are test values which are run if this file is executed standalone
-    date = dt.datetime(2022, 3, 3).date()
-    hemisphere = NORTH
-    resolution = "12"
-
-    make_cdecdr_netcdf(
-        date=date,
-        hemisphere=hemisphere,
-        resolution="12",
-        ide_dir=Path("./"),
-        tie_dir=Path("./"),
-        output_dir=Path("./"),
-        interp_range=5,
-    )
