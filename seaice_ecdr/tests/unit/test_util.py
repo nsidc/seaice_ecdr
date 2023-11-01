@@ -65,3 +65,19 @@ def test_monthly_filename_south():
     )
 
     assert actual == expected
+
+
+def test_monthly_aggregate_filename():
+    expected = "sic_pss12.5_202101-202112_amsr2_v05r00.nc"
+
+    actual = standard_monthly_filename(
+        hemisphere=SOUTH,
+        resolution="12.5",
+        sat="amsr2",
+        year=2021,
+        month=1,
+        end_year=2021,
+        end_month=12,
+    )
+
+    assert actual == expected
