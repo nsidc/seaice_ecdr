@@ -557,13 +557,6 @@ def create_tiecdr_for_date_range(
                 file_label="tiecdr",
                 ecdr_data_dir=ecdr_data_dir,
             )
-            err_filename = standard_output_filename(
-                hemisphere=hemisphere,
-                date=date,
-                sat="u2",
-                algorithm="tiecdr",
-                resolution=f"{resolution}km",
-            )
             err_filename = err_filepath.name + ".error"
             logger.info(f"Writing error info to {err_filename}")
             with open(err_filepath.parent / err_filename, "w") as f:
