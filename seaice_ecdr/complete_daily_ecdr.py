@@ -30,9 +30,9 @@ from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_n
 
 
 @cache
-def get_ecdr_dir(*, cdr_data_dir: Path) -> Path:
+def get_ecdr_dir(*, ecdr_data_dir: Path) -> Path:
     """Daily complete output dir for ECDR processing"""
-    ecdr_dir = cdr_data_dir / "complete_daily"
+    ecdr_dir = ecdr_data_dir / "complete_daily"
     ecdr_dir.mkdir(exist_ok=True)
 
     return ecdr_dir
@@ -42,7 +42,7 @@ def get_ecdr_filepath(
     date,
     hemisphere,
     resolution,
-    cdr_data_dir: Path,
+    ecdr_data_dir: Path,
     file_label: str,
 ) -> Path:
     """Return the complete daily eCDR file path."""
@@ -55,7 +55,7 @@ def get_ecdr_filepath(
         sat="ausi",
         resolution=resolution,
     )
-    ecdr_dir = get_ecdr_dir(cdr_data_dir=cdr_data_dir)
+    ecdr_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir)
 
     ecdr_filepath = ecdr_dir / ecdr_filename
 
@@ -67,14 +67,14 @@ def read_or_create_and_read_tiecdr_ds(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
-    cdr_data_dir: Path,
+    ecdr_data_dir: Path,
 ) -> xr.Dataset:
     """Read an tiecdr netCDF file, creating it if it doesn't exist."""
     tie_filepath = get_tie_filepath(
         date,
         hemisphere,
         resolution,
-        cdr_data_dir=cdr_data_dir,
+        ecdr_data_dir=ecdr_data_dir,
         file_label="tiecdr",
     )
     # TODO: This only creates if file is missing.  We may want an overwrite opt
@@ -83,7 +83,7 @@ def read_or_create_and_read_tiecdr_ds(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
-            cdr_data_dir=cdr_data_dir,
+            ecdr_data_dir=ecdr_data_dir,
         )
     logger.info(f"Reading tieCDR file from: {tie_filepath}")
     tie_ds = xr.open_dataset(tie_filepath)
@@ -117,14 +117,14 @@ def read_melt_onset_field(
     date,
     hemisphere,
     resolution,
-    cdr_data_dir: Path,
+    ecdr_data_dir: Path,
 ) -> np.ndarray:
     """Return the melt onset field for this complete daily eCDR file."""
     cde_ds = read_or_create_and_read_cdecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        cdr_data_dir=cdr_data_dir,
+        ecdr_data_dir=ecdr_data_dir,
         mask_and_scale=False,
     )
 
@@ -136,14 +136,14 @@ def read_melt_elements(
     date,
     hemisphere,
     resolution,
-    cdr_data_dir,
+    ecdr_data_dir,
 ):
     """Return the elements from tiecdr needed to calculate melt."""
     tie_ds = read_or_create_and_read_tiecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        cdr_data_dir=cdr_data_dir,
+        ecdr_data_dir=ecdr_data_dir,
     )
     return (
         np.squeeze(tie_ds["cdr_conc"].to_numpy()),
@@ -157,7 +157,7 @@ def create_melt_onset_field(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
-    cdr_data_dir: Path,
+    ecdr_data_dir: Path,
     first_melt_doy: int = MELT_SEASON_FIRST_DOY,
     last_melt_doy: int = MELT_SEASON_LAST_DOY,
     no_melt_flag: int = MELT_ONSET_FILL_VALUE,
@@ -204,7 +204,7 @@ def create_melt_onset_field(
             date=date - dt.timedelta(days=1),
             hemisphere=hemisphere,
             resolution=resolution,
-            cdr_data_dir=cdr_data_dir,
+            ecdr_data_dir=ecdr_data_dir,
         )
         logger.info(f"using read melt_onset_field for prior for {day_of_year}")
 
@@ -212,7 +212,7 @@ def create_melt_onset_field(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        cdr_data_dir=cdr_data_dir,
+        ecdr_data_dir=ecdr_data_dir,
     )
     is_melted_today = melting(
         concentrations=cdr_conc_ti,
@@ -242,7 +242,7 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
     interp_range: int = 5,
-    cdr_data_dir: Path,
+    ecdr_data_dir: Path,
 ) -> xr.Dataset:
     """Create xr dataset containing the complete daily enhanced CDR.
 
@@ -255,14 +255,14 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        cdr_data_dir=cdr_data_dir,
+        ecdr_data_dir=ecdr_data_dir,
     )
     cde_ds = tie_ds.copy()
     melt_onset_field = create_melt_onset_field(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        cdr_data_dir=cdr_data_dir,
+        ecdr_data_dir=ecdr_data_dir,
     )
 
     # Update cde_ds with melt onset info
@@ -324,7 +324,7 @@ def make_cdecdr_netcdf(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
-    cdr_data_dir: Path,
+    ecdr_data_dir: Path,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
 ) -> None:
@@ -334,7 +334,7 @@ def make_cdecdr_netcdf(
         hemisphere=hemisphere,
         resolution=resolution,
         interp_range=interp_range,
-        cdr_data_dir=cdr_data_dir,
+        ecdr_data_dir=ecdr_data_dir,
     )
     # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
     output_path = get_ecdr_filepath(
@@ -342,7 +342,7 @@ def make_cdecdr_netcdf(
         hemisphere=hemisphere,
         resolution=resolution,
         file_label="cdecdr",
-        cdr_data_dir=cdr_data_dir,
+        ecdr_data_dir=ecdr_data_dir,
     )
 
     written_cde_ncfile = write_cde_netcdf(
@@ -357,7 +357,7 @@ def read_or_create_and_read_cdecdr_ds(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
-    cdr_data_dir: Path,
+    ecdr_data_dir: Path,
     mask_and_scale: bool = True,
 ) -> xr.Dataset:
     """Read an cdecdr netCDF file, creating it if it doesn't exist.
@@ -369,7 +369,7 @@ def read_or_create_and_read_cdecdr_ds(
         date,
         hemisphere,
         resolution,
-        cdr_data_dir=cdr_data_dir,
+        ecdr_data_dir=ecdr_data_dir,
         file_label="cdecdr",
     )
     # TODO: This only creates if file is missing.  We may want an overwrite opt
@@ -378,7 +378,7 @@ def read_or_create_and_read_cdecdr_ds(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
-            cdr_data_dir=cdr_data_dir,
+            ecdr_data_dir=ecdr_data_dir,
         )
     logger.info(f"Reading cdeCDR file from: {cde_filepath}")
     cde_ds = xr.open_dataset(cde_filepath, mask_and_scale=mask_and_scale)
@@ -392,7 +392,7 @@ def create_cdecdr_for_date_range(
     start_date: dt.date,
     end_date: dt.date,
     resolution: AU_SI_RESOLUTIONS,
-    cdr_data_dir: Path,
+    ecdr_data_dir: Path,
 ) -> None:
     """Generate the complete daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
@@ -401,7 +401,7 @@ def create_cdecdr_for_date_range(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
-                cdr_data_dir=cdr_data_dir,
+                ecdr_data_dir=ecdr_data_dir,
             )
 
         # TODO: either catch and re-throw this exception or throw an error after
@@ -421,7 +421,7 @@ def create_cdecdr_for_date_range(
                 hemisphere=hemisphere,
                 resolution=resolution,
                 file_label="cdecdr",
-                cdr_data_dir=cdr_data_dir,
+                ecdr_data_dir=ecdr_data_dir,
             )
             err_filename = err_filepath.name + ".error"
             logger.info(f"Writing error info to {err_filename}")
@@ -451,7 +451,7 @@ def create_cdecdr_for_date_range(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--cdr-data-dir",
+    "--ecdr-data-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -479,7 +479,7 @@ def cli(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    cdr_data_dir: Path,
+    ecdr_data_dir: Path,
     resolution: AU_SI_RESOLUTIONS,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.
@@ -496,5 +496,5 @@ def cli(
         start_date=date,
         end_date=date,
         resolution=resolution,
-        cdr_data_dir=cdr_data_dir,
+        ecdr_data_dir=ecdr_data_dir,
     )

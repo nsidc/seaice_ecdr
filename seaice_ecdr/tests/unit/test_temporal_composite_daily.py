@@ -90,15 +90,15 @@ def test_access_to_standard_output_filename(tmpdir):
     date = dt.date(2021, 2, 19)
     resolution: Final = "12"
 
-    cdr_data_dir = Path(tmpdir)
+    ecdr_data_dir = Path(tmpdir)
     sample_ide_filepath = get_idecdr_filepath(
         date=date,
         hemisphere=NORTH,
         resolution=resolution,
-        cdr_data_dir=cdr_data_dir,
+        ecdr_data_dir=ecdr_data_dir,
     )
     expected_filepath = (
-        get_idecdr_dir(cdr_data_dir=cdr_data_dir) / "idecdr_NH_20210219_ausi_12km.nc"
+        get_idecdr_dir(ecdr_data_dir=ecdr_data_dir) / "idecdr_NH_20210219_ausi_12km.nc"
     )
 
     assert sample_ide_filepath == expected_filepath

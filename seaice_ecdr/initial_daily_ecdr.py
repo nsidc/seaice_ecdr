@@ -914,9 +914,9 @@ def write_ide_netcdf(
 
 
 @cache
-def get_idecdr_dir(*, cdr_data_dir: Path) -> Path:
+def get_idecdr_dir(*, ecdr_data_dir: Path) -> Path:
     """Daily initial output dir for ECDR processing."""
-    idecdr_dir = cdr_data_dir / "initial_daily"
+    idecdr_dir = ecdr_data_dir / "initial_daily"
     idecdr_dir.mkdir(exist_ok=True)
 
     return idecdr_dir
@@ -926,7 +926,7 @@ def get_idecdr_filepath(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
-    cdr_data_dir: Path,
+    ecdr_data_dir: Path,
 ) -> Path:
     """Yields the filepath of the pass1 -- idecdr -- intermediate file."""
 
@@ -938,7 +938,7 @@ def get_idecdr_filepath(
         algorithm="idecdr",
         resolution=f"{resolution}km",
     )
-    idecdr_dir = get_idecdr_dir(cdr_data_dir=cdr_data_dir)
+    idecdr_dir = get_idecdr_dir(ecdr_data_dir=ecdr_data_dir)
     idecdr_path = idecdr_dir / idecdr_fn
 
     return idecdr_path
@@ -949,7 +949,7 @@ def make_idecdr_netcdf(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: AU_SI_RESOLUTIONS,
-    cdr_data_dir: Path,
+    ecdr_data_dir: Path,
     excluded_fields: Iterable[str] = [],
 ) -> None:
     logger.info(f"Creating idecdr for {date=}, {hemisphere=}, {resolution=}")
@@ -961,7 +961,7 @@ def make_idecdr_netcdf(
     output_path = get_idecdr_filepath(
         date=date,
         hemisphere=hemisphere,
-        cdr_data_dir=cdr_data_dir,
+        ecdr_data_dir=ecdr_data_dir,
         resolution=resolution,
     )
 
@@ -981,7 +981,7 @@ def create_idecdr_for_date_range(
     start_date: dt.date,
     end_date: dt.date,
     resolution: AU_SI_RESOLUTIONS,
-    cdr_data_dir: Path,
+    ecdr_data_dir: Path,
     verbose_intermed_ncfile: bool = False,
 ) -> None:
     """Generate the initial daily ecdr files for a range of dates."""
@@ -1006,7 +1006,7 @@ def create_idecdr_for_date_range(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
-                cdr_data_dir=cdr_data_dir,
+                ecdr_data_dir=ecdr_data_dir,
                 excluded_fields=excluded_fields,
             )
 
@@ -1024,7 +1024,7 @@ def create_idecdr_for_date_range(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
-                cdr_data_dir=cdr_data_dir,
+                ecdr_data_dir=ecdr_data_dir,
             )
             err_filename = err_filepath.name + ".error"
             logger.info(f"Writing error info to {err_filename}")
@@ -1054,7 +1054,7 @@ def create_idecdr_for_date_range(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--cdr-data-dir",
+    "--ecdr-data-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -1093,7 +1093,7 @@ def cli(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    cdr_data_dir: Path,
+    ecdr_data_dir: Path,
     resolution: AU_SI_RESOLUTIONS,
     verbose_intermed_ncfile: bool,
 ) -> None:
@@ -1108,6 +1108,6 @@ def cli(
         start_date=date,
         end_date=date,
         resolution=resolution,
-        cdr_data_dir=cdr_data_dir,
+        ecdr_data_dir=ecdr_data_dir,
         verbose_intermed_ncfile=verbose_intermed_ncfile,
     )

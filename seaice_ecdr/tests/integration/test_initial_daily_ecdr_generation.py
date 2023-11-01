@@ -127,13 +127,13 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
-        cdr_data_dir=tmpdir_path,
+        ecdr_data_dir=tmpdir_path,
     )
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,
         date=test_date,
         resolution=test_resolution,
-        cdr_data_dir=tmpdir_path,
+        ecdr_data_dir=tmpdir_path,
     )
 
     assert output_path.is_file()
@@ -155,14 +155,14 @@ def test_can_drop_fields_from_idecdr_netcdf(
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
-        cdr_data_dir=tmpdir_path,
+        ecdr_data_dir=tmpdir_path,
         excluded_fields=(cdr_conc_fieldname,),
     )
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,
         date=test_date,
         resolution=test_resolution,
-        cdr_data_dir=tmpdir_path,
+        ecdr_data_dir=tmpdir_path,
     )
 
     assert output_path.is_file()

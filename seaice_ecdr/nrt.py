@@ -94,7 +94,7 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--cdr-data-dir",
+    "--ecdr-data-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -137,7 +137,7 @@ def nrt_initial_daily_ecdr(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    cdr_data_dir: Path,
+    ecdr_data_dir: Path,
     resolution: AU_SI_RESOLUTIONS,
     lance_amsr2_input_dir: Path,
 ):
@@ -156,7 +156,7 @@ def nrt_initial_daily_ecdr(
         hemisphere=hemisphere,
         date=date,
         resolution=resolution,
-        cdr_data_dir=cdr_data_dir,
+        ecdr_data_dir=ecdr_data_dir,
     )
 
     write_ide_netcdf(
