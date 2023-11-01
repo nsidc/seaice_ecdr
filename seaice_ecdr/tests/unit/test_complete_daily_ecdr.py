@@ -38,8 +38,9 @@ def test_no_melt_onset_for_southern_hemisphere():
             date=date,
             hemisphere=SOUTH,
             resolution="12",
+            ide_dir=Path("./"),
             tie_dir=Path("./"),
-            cde_dir=Path("./"),
+            output_dir=Path("./"),
         )
         assert melt_onset_field is None
 
@@ -47,8 +48,9 @@ def test_no_melt_onset_for_southern_hemisphere():
 def test_melt_onset_field_outside_melt_season():
     """Verify that melt onset is all fill value when not in melt season."""
     hemisphere = NORTH
+    ide_dir = Path("./")
     tie_dir = Path("./")
-    cde_dir = Path("./")
+    output_dir = Path("./")
     no_melt_flag = 255
 
     for date in (dt.date(2020, 2, 1), dt.date(2020, 10, 3)):
@@ -56,8 +58,9 @@ def test_melt_onset_field_outside_melt_season():
             date=date,
             hemisphere=hemisphere,
             resolution="12",
+            ide_dir=ide_dir,
             tie_dir=tie_dir,
-            cde_dir=cde_dir,
+            output_dir=output_dir,
             no_melt_flag=no_melt_flag,
         )
         assert np.all(melt_onset_field == no_melt_flag)
