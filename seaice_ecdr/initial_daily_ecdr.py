@@ -37,7 +37,7 @@ from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
 from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
 from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import INITIAL_DAILY_OUTPUT_DIR
+from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 
 
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
@@ -964,6 +964,7 @@ def make_idecdr_netcdf(
         date=date,
         hemisphere=hemisphere,
         cdr_data_dir=cdr_data_dir,
+        resolution=resolution,
     )
 
     written_ide_ncfile = write_ide_netcdf(
@@ -982,7 +983,7 @@ def create_idecdr_for_date_range(
     start_date: dt.date,
     end_date: dt.date,
     resolution: AU_SI_RESOLUTIONS,
-    output_dir: Path,
+    cdr_data_dir: Path,
     verbose_intermed_ncfile: bool = False,
 ) -> None:
     """Generate the initial daily ecdr files for a range of dates."""
@@ -1007,7 +1008,7 @@ def create_idecdr_for_date_range(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
-                output_dir=output_dir,
+                cdr_data_dir=cdr_data_dir,
                 excluded_fields=excluded_fields,
             )
 
@@ -1021,16 +1022,15 @@ def create_idecdr_for_date_range(
             # TODO: These error logs should be written to e.g.,
             # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
             # to handle automatically logging error details to such a file.
-            err_filename = standard_output_filename(
-                hemisphere=hemisphere,
+            err_filepath = get_idecdr_filepath(
                 date=date,
-                sat="u2",
-                algorithm="cdr",
-                resolution=f"{resolution}km",
+                hemisphere=hemisphere,
+                resolution=resolution,
+                cdr_data_dir=cdr_data_dir,
             )
-            err_filename += ".error"
+            err_filename = err_filepath.name + ".error"
             logger.info(f"Writing error info to {err_filename}")
-            with open(output_dir / err_filename, "w") as f:
+            with open(err_filepath.parent / err_filename, "w") as f:
                 traceback.print_exc(file=f)
                 traceback.print_exc(file=sys.stdout)
 
@@ -1056,8 +1056,7 @@ def create_idecdr_for_date_range(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "-o",
-    "--output-dir",
+    "--cdr-data-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -1067,7 +1066,12 @@ def create_idecdr_for_date_range(
         resolve_path=True,
         path_type=Path,
     ),
-    default=INITIAL_DAILY_OUTPUT_DIR,
+    default=STANDARD_BASE_OUTPUT_DIR,
+    help=(
+        "Base output directory for standard ECDR outputs."
+        " Subdirectories are created for outputs of"
+        " different stages of processing."
+    ),
     show_default=True,
 )
 @click.option(
@@ -1091,7 +1095,7 @@ def cli(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    output_dir: Path,
+    cdr_data_dir: Path,
     resolution: AU_SI_RESOLUTIONS,
     verbose_intermed_ncfile: bool,
 ) -> None:
@@ -1106,6 +1110,6 @@ def cli(
         start_date=date,
         end_date=date,
         resolution=resolution,
-        output_dir=output_dir,
+        cdr_data_dir=cdr_data_dir,
         verbose_intermed_ncfile=verbose_intermed_ncfile,
     )

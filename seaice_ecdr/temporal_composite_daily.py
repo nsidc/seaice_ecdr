@@ -514,6 +514,7 @@ def make_tiecdr_netcdf(
         hemisphere=hemisphere,
         resolution=resolution,
         file_label="tiecdr",
+        cdr_data_dir=cdr_data_dir,
     )
 
     written_tie_ncfile = write_tie_netcdf(

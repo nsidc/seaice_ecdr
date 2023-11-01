@@ -7,15 +7,16 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 import pytest
+from typing import Final
 
 from loguru import logger
-
+from pm_tb_data._types import NORTH
 
 from seaice_ecdr.temporal_composite_daily import (
     iter_dates_near_date,
-    get_standard_initial_daily_ecdr_filename,
     temporally_composite_dataarray,
 )
+from seaice_ecdr.initial_daily_ecdr import get_idecdr_filepath
 
 
 # Set the default minimum log notification to Warning
@@ -88,14 +89,13 @@ def test_date_iterator():
 def test_access_to_standard_output_filename(tmpdir):
     """Verify that standard output file names can be generated."""
     date = dt.date(2021, 2, 19)
-    hemisphere = "north"
-    resolution = "12"
+    resolution: Final = "12"
 
-    sample_ide_filepath = get_standard_initial_daily_ecdr_filename(
-        date,
-        hemisphere,
-        resolution,
-        output_directory=Path(tmpdir),
+    sample_ide_filepath = get_idecdr_filepath(
+        date=date,
+        hemisphere=NORTH,
+        resolution=resolution,
+        cdr_data_dir=Path(tmpdir),
     )
     expected_filepath = Path(tmpdir) / "idecdr_NH_20210219_ausi_12km.nc"
 

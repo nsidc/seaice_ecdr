@@ -129,7 +129,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
-        output_dir=tmpdir_path,
+        cdr_data_dir=tmpdir_path,
     )
     output_fn = standard_output_filename(
         hemisphere=test_hemisphere,
@@ -159,7 +159,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
-        output_dir=tmpdir_path,
+        cdr_data_dir=tmpdir_path,
         excluded_fields=(cdr_conc_fieldname,),
     )
     output_fn = standard_output_filename(
