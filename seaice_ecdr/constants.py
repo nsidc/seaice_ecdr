@@ -15,6 +15,8 @@ BASE_OUTPUT_DIR = NSIDC_NFS_SHARE_DIR / f"ecdr_{ECDR_PRODUCT_VERSION}_outputs"
 # (e.g, using input data from AU_SI12)
 STANDARD_BASE_OUTPUT_DIR = BASE_OUTPUT_DIR / "standard"
 
+NRT_BASE_OUTPUT_DIR = BASE_OUTPUT_DIR / "nrt"
+
 INITIAL_DAILY_OUTPUT_DIR = STANDARD_BASE_OUTPUT_DIR / "initial_daily"
 # Daily temporally interpolated output for 'standard' ECDR processing
 TEMPORAL_INTERP_DAILY_OUTPUT_DIR = STANDARD_BASE_OUTPUT_DIR / "temporal_interp_daily"
