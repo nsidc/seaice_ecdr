@@ -2,7 +2,7 @@ import datetime as dt
 
 from pm_tb_data._types import NORTH, SOUTH
 
-from seaice_ecdr.util import standard_daily_filename
+from seaice_ecdr.util import standard_daily_filename, standard_monthly_filename
 
 
 def test_daily_filename_north():
@@ -20,6 +20,34 @@ def test_daily_filename_south():
 
     actual = standard_daily_filename(
         hemisphere=SOUTH, resolution="12.5", sat="amsr2", date=dt.date(2021, 1, 1)
+    )
+
+    assert actual == expected
+
+
+def test_monthly_filename_north():
+    expected = "sic_psn12.5_202101_amsr2_v05r00.nc"
+
+    actual = standard_monthly_filename(
+        hemisphere=NORTH,
+        resolution="12.5",
+        sat="amsr2",
+        year=2021,
+        month=1,
+    )
+
+    assert actual == expected
+
+
+def test_monthly_filename_south():
+    expected = "sic_pss12.5_202101_amsr2_v05r00.nc"
+
+    actual = standard_monthly_filename(
+        hemisphere=SOUTH,
+        resolution="12.5",
+        sat="amsr2",
+        year=2021,
+        month=1,
     )
 
     assert actual == expected
