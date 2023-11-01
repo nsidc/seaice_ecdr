@@ -36,7 +36,9 @@ from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 
 
 def check_min_days_for_valid_month(
-    *, daily_ds_for_month: xr.Dataset, sat: SUPPORTED_SAT
+    *,
+    daily_ds_for_month: xr.Dataset,
+    sat: SUPPORTED_SAT,
 ) -> None:
     days_in_ds = len(daily_ds_for_month.time)
     if sat == "n07":
@@ -69,7 +71,11 @@ def _get_daily_complete_filepaths_for_month(
 
 
 def get_daily_ds_for_month(
-    *, year: int, month: int, sat: SUPPORTED_SAT, ecdr_data_dir: Path
+    *,
+    year: int,
+    month: int,
+    sat: SUPPORTED_SAT,
+    ecdr_data_dir: Path,
 ) -> xr.Dataset:
     data_list = _get_daily_complete_filepaths_for_month(
         year=year,
@@ -84,7 +90,9 @@ def get_daily_ds_for_month(
 
 
 def make_monthly_ds(
-    *, daily_ds_for_month: xr.Dataset, sat: SUPPORTED_SAT
+    *,
+    daily_ds_for_month: xr.Dataset,
+    sat: SUPPORTED_SAT,
 ) -> xr.Dataset:
     # TODO: some kind of check that `daily_ds_for_month` only has data for one year & month?
     # Min-day check
@@ -92,8 +100,6 @@ def make_monthly_ds(
         daily_ds_for_month=daily_ds_for_month,
         sat=sat,
     )
-
-    breakpoint()
 
     return ds
 
