@@ -41,7 +41,7 @@ except ValueError:
 @cache
 def get_tie_dir(*, ecdr_data_dir: Path) -> Path:
     """Daily complete output dir for TIE processing"""
-    tie_dir = ecdr_data_dir / "complete_daily"
+    tie_dir = ecdr_data_dir / "temporal_interp"
     tie_dir.mkdir(exist_ok=True)
 
     return tie_dir
