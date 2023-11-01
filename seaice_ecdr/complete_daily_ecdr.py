@@ -25,29 +25,6 @@ from seaice_ecdr.melt import (
 )
 from seaice_ecdr.temporal_composite_daily import make_tiecdr_netcdf
 
-"""
-# Set the default minimum log notification to "info"
-try:
-    logger.remove(0)  # Removes previous logger info
-    logger.add(sys.stderr, level="INFO")
-except ValueError:
-    logger.debug(f"Started logging in {__name__}")
-    logger.add(sys.stderr, level="INFO")
-"""
-
-
-def get_sample_idecdr_filename(
-    date,
-    hemisphere,
-    resolution,
-):
-    """Return name of sample initial daily ecdr file."""
-    sample_idecdr_filename = (
-        f"sample_idecdr_{hemisphere}_{resolution}_" + f'{date.strftime("%Y%m%d")}.nc'
-    )
-
-    return sample_idecdr_filename
-
 
 def get_ecdr_filename(
     date,
@@ -140,8 +117,7 @@ def filled_ndarray(
         raise RuntimeError(
             f"Could not determine array shape for {hemisphere}" f" and {resolution}"
         )
-    array = np.zeros(array_shape, dtype=dtype)
-    array[:] = fill_value
+    array = np.full(array_shape, fill_value, dtype=dtype)
 
     return array
 
