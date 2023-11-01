@@ -1,10 +1,11 @@
 """Tests of the routines in test_complete_daily_ecdr.py.  """
 import datetime as dt
+from pathlib import Path
+
+import numpy as np
+from pm_tb_data._types import NORTH, SOUTH
 
 from seaice_ecdr import complete_daily_ecdr as cdecdr
-from pm_tb_data._types import NORTH, SOUTH
-from pathlib import Path
-import numpy as np
 
 
 def test_cdecdr_date_iter_starts_with_jan1():

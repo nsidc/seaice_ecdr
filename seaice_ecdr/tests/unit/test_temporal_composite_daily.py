@@ -3,21 +3,19 @@
 import datetime as dt
 import sys
 from pathlib import Path
+
 import numpy as np
-import xarray as xr
 import pandas as pd
 import pytest
-
+import xarray as xr
 from loguru import logger
-
 
 from seaice_ecdr.temporal_composite_daily import (
     get_sample_idecdr_filename,
-    iter_dates_near_date,
     get_standard_initial_daily_ecdr_filename,
+    iter_dates_near_date,
     temporally_composite_dataarray,
 )
-
 
 # Set the default minimum log notification to Warning
 # TODO: Think about logging holistically...

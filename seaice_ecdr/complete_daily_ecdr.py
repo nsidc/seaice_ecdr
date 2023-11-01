@@ -1,33 +1,29 @@
 """Routines for generating completely filled daily eCDR files.
 
 """
-import click
-import traceback
-
 import datetime as dt
 import sys
-from loguru import logger
-import numpy as np
-
-import xarray as xr
+import traceback
 from pathlib import Path
+from typing import Iterable, cast, get_args
+
+import click
+import numpy as np
+import xarray as xr
+from loguru import logger
 from pm_icecon.util import date_range, standard_output_filename
-
-from typing import get_args, Iterable, cast
-
-from pm_tb_data._types import Hemisphere, NORTH, SOUTH
+from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
+
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import INITIAL_DAILY_OUTPUT_DIR
-from seaice_ecdr.temporal_composite_daily import make_tiecdr_netcdf
-
 from seaice_ecdr.melt import (
-    melting,
+    MELT_ONSET_FILL_VALUE,
     MELT_SEASON_FIRST_DOY,
     MELT_SEASON_LAST_DOY,
-    MELT_ONSET_FILL_VALUE,
+    melting,
 )
-
+from seaice_ecdr.temporal_composite_daily import make_tiecdr_netcdf
 
 """
 # Set the default minimum log notification to "info"

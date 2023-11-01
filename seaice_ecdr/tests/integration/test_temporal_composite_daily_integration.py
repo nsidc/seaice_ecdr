@@ -12,18 +12,15 @@ from typing import Final
 from loguru import logger
 from pm_tb_data._types import NORTH
 
-
-from seaice_ecdr.temporal_composite_daily import (
-    get_standard_initial_daily_ecdr_filename,
-    read_with_create_initial_daily_ecdr,
-    make_tiecdr_netcdf,
-)
-
 from seaice_ecdr.initial_daily_ecdr import (
     initial_daily_ecdr_dataset_for_au_si_tbs,
     write_ide_netcdf,
 )
-
+from seaice_ecdr.temporal_composite_daily import (
+    get_standard_initial_daily_ecdr_filename,
+    make_tiecdr_netcdf,
+    read_with_create_initial_daily_ecdr,
+)
 
 # Set the default minimum log notification to Warning
 try:
