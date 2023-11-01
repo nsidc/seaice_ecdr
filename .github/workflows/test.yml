@@ -30,23 +30,23 @@ jobs:
           # Increase this key to trigger cache invalidation
           cache-environment-key: 1
 
+      # Linter
+      - name: "Run pre-commit tests"
+        run: "pre-commit run --all-files"
+
+      # Check out repos resquired for unit tests.
       - name: "Check out pm_icecon repository"
         uses: "actions/checkout@v3"
         with:
           repository: "nsidc/pm_icecon"
           ref: "main"
           path: "pm_icecon"
-
       - name: "Check out pm_tb_data repository"
         uses: "actions/checkout@v3"
         with:
           repository: "nsidc/pm_tb_data"
           ref: "main"
           path: "pm_tb_data"
-
-      # Linter
-      - name: "Run pre-commit tests"
-        run: "pre-commit run --all-files"
 
       # Unit tests
       - name: "Run typecheck and tests"

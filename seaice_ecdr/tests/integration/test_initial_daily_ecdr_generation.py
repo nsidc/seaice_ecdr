@@ -2,20 +2,18 @@
 
 import datetime as dt
 import sys
-from typing import Final
 from pathlib import Path
+from typing import Final
 
 import pytest
 import xarray as xr
 from loguru import logger
+from pm_tb_data._types import NORTH
 
+from seaice_ecdr.initial_daily_ecdr import get_idecdr_filepath, make_idecdr_netcdf
 from seaice_ecdr.initial_daily_ecdr import (
     initial_daily_ecdr_dataset_for_au_si_tbs as compute_idecdr_ds,
-    make_idecdr_netcdf,
 )
-
-from pm_icecon.util import standard_output_filename
-from pm_tb_data._types import NORTH
 
 # Set the default minimum log notification to Warning
 logger.remove(0)  # Removes previous logger info
@@ -31,7 +29,7 @@ def sample_idecdr_dataset_nh():
 
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
-    test_resolution: Final = "12"
+    test_resolution: Final = "12.5"
 
     ide_conc_ds = compute_idecdr_ds(
         date=test_date,
@@ -48,7 +46,7 @@ def sample_idecdr_dataset_sh():
 
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
-    test_resolution: Final = "12"
+    test_resolution: Final = "12.5"
 
     ide_conc_ds = compute_idecdr_ds(
         date=test_date,
@@ -124,23 +122,21 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
     tmpdir_path = Path(tmpdir)
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
-    test_resolution: Final = "12"
+    test_resolution: Final = "12.5"
     make_idecdr_netcdf(
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
-        output_dir=tmpdir_path,
+        ecdr_data_dir=tmpdir_path,
     )
-    output_fn = standard_output_filename(
+    output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,
         date=test_date,
-        sat="ausi",
-        algorithm="idecdr",
-        resolution=f"{test_resolution}km",
+        resolution=test_resolution,
+        ecdr_data_dir=tmpdir_path,
     )
-    output_path = tmpdir_path / output_fn
 
-    assert output_path.exists()
+    assert output_path.is_file()
 
     ds = xr.open_dataset(output_path)
     assert cdr_conc_fieldname in ds.variables.keys()
@@ -154,22 +150,22 @@ def test_can_drop_fields_from_idecdr_netcdf(
     tmpdir_path = Path(tmpdir)
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
-    test_resolution: Final = "12"
+    test_resolution: Final = "12.5"
     make_idecdr_netcdf(
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
-        output_dir=tmpdir_path,
+        ecdr_data_dir=tmpdir_path,
         excluded_fields=(cdr_conc_fieldname,),
     )
-    output_fn = standard_output_filename(
+    output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,
         date=test_date,
-        sat="ausi",
-        algorithm="idecdr",
-        resolution=f"{test_resolution}km",
+        resolution=test_resolution,
+        ecdr_data_dir=tmpdir_path,
     )
-    output_path = tmpdir_path / output_fn
+
+    assert output_path.is_file()
 
     ds = xr.open_dataset(output_path)
     assert cdr_conc_fieldname not in ds.variables.keys()

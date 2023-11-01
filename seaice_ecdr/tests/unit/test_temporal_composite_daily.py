@@ -3,21 +3,21 @@
 import datetime as dt
 import sys
 from pathlib import Path
+from typing import Final
+
 import numpy as np
-import xarray as xr
 import pandas as pd
 import pytest
-
+import xarray as xr
 from loguru import logger
+from pm_tb_data._types import NORTH
 
-
+from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
+from seaice_ecdr.initial_daily_ecdr import get_idecdr_dir, get_idecdr_filepath
 from seaice_ecdr.temporal_composite_daily import (
-    get_sample_idecdr_filename,
     iter_dates_near_date,
-    get_standard_initial_daily_ecdr_filename,
     temporally_composite_dataarray,
 )
-
 
 # Set the default minimum log notification to Warning
 # TODO: Think about logging holistically...
@@ -61,22 +61,6 @@ def compose_tyx_dataarray(
     return dataarray
 
 
-def test_sample_filename_generation():
-    """Verify creation of sample filename.
-
-    Note: this function may ultimately use a construction from the pm_tb_data
-    repository.
-    """
-    date = dt.date(2021, 2, 19)
-    hemisphere = "north"
-    resolution = "12"
-
-    expected_filename = "sample_idecdr_north_12_20210219.nc"
-    sample_filename = get_sample_idecdr_filename(date, hemisphere, resolution)
-
-    assert sample_filename == expected_filename
-
-
 def test_date_iterator():
     """Verify operation of date temporal composite's date iterator.
 
@@ -105,16 +89,19 @@ def test_date_iterator():
 def test_access_to_standard_output_filename(tmpdir):
     """Verify that standard output file names can be generated."""
     date = dt.date(2021, 2, 19)
-    hemisphere = "north"
-    resolution = "12"
+    resolution: Final = "12.5"
 
-    sample_ide_filepath = get_standard_initial_daily_ecdr_filename(
-        date,
-        hemisphere,
-        resolution,
-        output_directory=Path(tmpdir),
+    ecdr_data_dir = Path(tmpdir)
+    sample_ide_filepath = get_idecdr_filepath(
+        date=date,
+        hemisphere=NORTH,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
     )
-    expected_filepath = Path(tmpdir) / "idecdr_NH_20210219_ausi_12km.nc"
+    expected_filepath = (
+        get_idecdr_dir(ecdr_data_dir=ecdr_data_dir)
+        / f"idecdr_sic_psn12.5_20210219_am2_{ECDR_PRODUCT_VERSION}.nc"
+    )
 
     assert sample_ide_filepath == expected_filepath
 

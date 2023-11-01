@@ -2,34 +2,33 @@
 
 """
 import copy
-import traceback
 import datetime as dt
 import sys
+import traceback
+from functools import cache
 from pathlib import Path
-from typing import get_args, Iterable, cast
+from typing import Iterable, cast, get_args
 
 import click
 import numpy as np
 import numpy.typing as npt
 import xarray as xr
 from loguru import logger
-from pm_icecon.util import date_range, standard_output_filename
 from pm_icecon.fill_polehole import fill_pole_hole
-from pm_tb_data._types import Hemisphere, NORTH
-from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
+from pm_icecon.util import date_range
+from pm_tb_data._types import NORTH, Hemisphere
 
-from seaice_ecdr.masks import psn_125_near_pole_hole_mask
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
+    get_idecdr_filepath,
     initial_daily_ecdr_dataset_for_au_si_tbs,
     make_idecdr_netcdf,
     write_ide_netcdf,
 )
-from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import (
-    INITIAL_DAILY_OUTPUT_DIR,
-    TEMPORAL_INTERP_DAILY_OUTPUT_DIR,
-)
-
+from seaice_ecdr.masks import psn_125_near_pole_hole_mask
+from seaice_ecdr.util import standard_daily_filename
 
 # Set the default minimum log notification to "info"
 try:
@@ -40,17 +39,36 @@ except ValueError:
     logger.add(sys.stderr, level="INFO")
 
 
-def get_sample_idecdr_filename(
+@cache
+def get_tie_dir(*, ecdr_data_dir: Path) -> Path:
+    """Daily complete output dir for TIE processing"""
+    tie_dir = ecdr_data_dir / "temporal_interp"
+    tie_dir.mkdir(exist_ok=True)
+
+    return tie_dir
+
+
+def get_tie_filepath(
     date,
     hemisphere,
     resolution,
-):
-    """Return name of sample initial daily ecdr file."""
-    sample_idecdr_filename = (
-        f"sample_idecdr_{hemisphere}_{resolution}_" + f'{date.strftime("%Y%m%d")}.nc'
+    ecdr_data_dir: Path,
+) -> Path:
+    """Return the complete daily tie file path."""
+    standard_fn = standard_daily_filename(
+        hemisphere=hemisphere,
+        date=date,
+        sat="am2",
+        resolution=resolution,
     )
+    # Add `tiecdr` to the beginning of the standard name to distinguish it as a
+    # WIP.
+    tie_filename = "tiecdr_" + standard_fn
+    tie_dir = get_tie_dir(ecdr_data_dir=ecdr_data_dir)
 
-    return sample_idecdr_filename
+    tie_filepath = tie_dir / tie_filename
+
+    return tie_filepath
 
 
 def iter_dates_near_date(
@@ -82,44 +100,20 @@ def iter_dates_near_date(
         date += dt.timedelta(days=date_step)
 
 
-def get_standard_initial_daily_ecdr_filename(
-    date,
-    hemisphere,
-    resolution,
-    output_directory: Path,
-):
-    """Return standard ide file name."""
-    # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
-    #       Specifically, the conventions specified in open Trello card
-    standard_initial_daily_ecdr_filename = standard_output_filename(
-        algorithm="idecdr",
-        hemisphere=hemisphere,
-        date=date,
-        sat="ausi",
-        resolution=f"{resolution}km",
-    )
-    initial_daily_ecdr_filename = Path(
-        output_directory,
-        standard_initial_daily_ecdr_filename,
-    )
-
-    return initial_daily_ecdr_filename
-
-
 def read_with_create_initial_daily_ecdr(
     *,
     date,
     hemisphere,
     resolution,
-    ide_dir: Path,
+    ecdr_data_dir: Path,
     force_ide_file_creation=False,
 ):
     """Return init daily ecdr field, creating it if necessary."""
-    ide_filepath = get_standard_initial_daily_ecdr_filename(
+    ide_filepath = get_idecdr_filepath(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        output_directory=ide_dir,
+        ecdr_data_dir=ecdr_data_dir,
     )
 
     if not ide_filepath.is_file() or force_ide_file_creation:
@@ -277,36 +271,19 @@ def temporally_composite_dataarray(
     return temp_comp_da, temporal_flags
 
 
-def get_idecdr_filename(
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
-    idecdr_dir: Path,
-) -> Path:
-    """Yields the name of the pass1 -- idecdr -- intermediate file."""
-
-    # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
-    idecdr_fn = standard_output_filename(
-        hemisphere=hemisphere,
-        date=date,
-        sat="ausi",
-        algorithm="idecdr",
-        resolution=f"{resolution}km",
-    )
-    idecdr_path = idecdr_dir / idecdr_fn
-
-    return idecdr_path
-
-
+# TODO: this function also belongs in the intial daily ecdr module.
 def read_or_create_and_read_idecdr_ds(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
-    ide_dir: Path,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
 ) -> xr.Dataset:
     """Read an idecdr netCDF file, creating it if it doesn't exist."""
-    ide_filepath = get_idecdr_filename(date, hemisphere, resolution, idecdr_dir=ide_dir)
+    ide_filepath = get_idecdr_filepath(
+        date, hemisphere, resolution, ecdr_data_dir=ecdr_data_dir
+    )
+    # TODO: Perhaps add an overwrite condition here?
     if not ide_filepath.is_file():
         excluded_idecdr_fields = [
             "h18_day",
@@ -326,7 +303,7 @@ def read_or_create_and_read_idecdr_ds(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
-            output_dir=ide_dir,
+            ecdr_data_dir=ecdr_data_dir,
             excluded_fields=excluded_idecdr_fields,
         )
     logger.info(f"Reading ideCDR file from: {ide_filepath}")
@@ -346,9 +323,9 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     interp_range: int = 5,
-    ide_dir: Path,
+    ecdr_data_dir: Path,
     fill_the_pole_hole: bool = True,
 ) -> xr.Dataset:
     """Create xr dataset containing the second pass of daily enhanced CDR.
@@ -361,12 +338,14 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     """
     # Read in the idecdr file for this date
     ide_ds = read_or_create_and_read_idecdr_ds(
-        date=date, hemisphere=hemisphere, resolution=resolution, ide_dir=ide_dir
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
     )
 
     # Copy ide_ds to a new xr tiecdr dataset
     tie_ds = ide_ds.copy(deep=True)
-    # ds_varlist = [name for name in tie_ds.data_vars]
 
     # Update the cdr_conc var with temporally interpolated cdr_conc field
     #   by creating a DataArray with conc fields +/- interp_range around date
@@ -378,7 +357,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
                 date=interp_date,
                 hemisphere=hemisphere,
                 resolution=resolution,
-                ide_dir=ide_dir,
+                ecdr_data_dir=ecdr_data_dir,
             )
             this_var = interp_ds.data_vars[interp_varname].copy()
             var_stack = xr.concat([var_stack, this_var], "time")
@@ -490,14 +469,11 @@ def write_tie_netcdf(
     """Write the temporally interpolated ECDR to a netCDF file."""
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
 
-    # Here, we should specify details about the initial daily eCDF file, eg:
-    #  exclude unwanted fields
-    #  ensure that fields are compressed
-    # Set netCDF encoding to compress all except excluded fields
     for excluded_field in excluded_fields:
         if excluded_field in tie_ds.variables.keys():
             tie_ds = tie_ds.drop_vars(excluded_field)
 
+    # Set netCDF encoding to compress all except excluded fields
     nc_encoding = {}
     for varname in tie_ds.variables.keys():
         varname = cast(str, varname)
@@ -516,9 +492,8 @@ def make_tiecdr_netcdf(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
-    output_dir: Path,
-    ide_dir: Path,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
 ) -> None:
@@ -528,18 +503,15 @@ def make_tiecdr_netcdf(
         hemisphere=hemisphere,
         resolution=resolution,
         interp_range=interp_range,
-        ide_dir=ide_dir,
+        ecdr_data_dir=ecdr_data_dir,
         fill_the_pole_hole=fill_the_pole_hole,
     )
-    # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
-    output_fn = standard_output_filename(
-        hemisphere=hemisphere,
+    output_path = get_tie_filepath(
         date=date,
-        sat="ausi",
-        algorithm="tiecdr",
-        resolution=f"{resolution}km",
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
     )
-    output_path = Path(output_dir) / Path(output_fn)
 
     written_tie_ncfile = write_tie_netcdf(
         tie_ds=tie_ds,
@@ -553,9 +525,8 @@ def create_tiecdr_for_date_range(
     hemisphere: Hemisphere,
     start_date: dt.date,
     end_date: dt.date,
-    resolution: AU_SI_RESOLUTIONS,
-    output_dir: Path,
-    ide_dir: Path,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
 ) -> None:
     """Generate the temporally composited daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
@@ -564,8 +535,7 @@ def create_tiecdr_for_date_range(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
-                output_dir=output_dir,
-                ide_dir=ide_dir,
+                ecdr_data_dir=ecdr_data_dir,
             )
 
         # TODO: either catch and re-throw this exception or throw an error after
@@ -579,16 +549,15 @@ def create_tiecdr_for_date_range(
             # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
             # to handle automatically logging error details to such a file.
             # TODO: Perhaps this function should come from seaice_ecdr
-            err_filename = standard_output_filename(
-                hemisphere=hemisphere,
+            err_filepath = get_tie_filepath(
                 date=date,
-                sat="u2",
-                algorithm="tiecdr",
-                resolution=f"{resolution}km",
+                hemisphere=hemisphere,
+                resolution=resolution,
+                ecdr_data_dir=ecdr_data_dir,
             )
-            err_filename += ".error"
+            err_filename = err_filepath.name + ".error"
             logger.info(f"Writing error info to {err_filename}")
-            with open(output_dir / err_filename, "w") as f:
+            with open(err_filepath.parent / err_filename, "w") as f:
                 traceback.print_exc(file=f)
                 traceback.print_exc(file=sys.stdout)
 
@@ -629,8 +598,7 @@ def create_tiecdr_for_date_range(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "-o",
-    "--output-dir",
+    "--ecdr-data-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -640,37 +608,27 @@ def create_tiecdr_for_date_range(
         resolve_path=True,
         path_type=Path,
     ),
-    default=TEMPORAL_INTERP_DAILY_OUTPUT_DIR,
+    default=STANDARD_BASE_OUTPUT_DIR,
+    help=(
+        "Base output directory for standard ECDR outputs."
+        " Subdirectories are created for outputs of"
+        " different stages of processing."
+    ),
     show_default=True,
 )
 @click.option(
     "-r",
     "--resolution",
     required=True,
-    type=click.Choice(get_args(AU_SI_RESOLUTIONS)),
-)
-@click.option(
-    "--initial-daily-ecdr-dir",
-    required=True,
-    type=click.Path(
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        writable=True,
-        resolve_path=True,
-        path_type=Path,
-    ),
-    default=INITIAL_DAILY_OUTPUT_DIR,
-    show_default=True,
+    type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
 def cli(
     *,
     date: dt.date,
     end_date: dt.date | None,
     hemisphere: Hemisphere,
-    output_dir: Path,
-    resolution: AU_SI_RESOLUTIONS,
-    initial_daily_ecdr_dir: Path,
+    ecdr_data_dir: Path,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.
 
@@ -689,6 +647,5 @@ def cli(
         start_date=date,
         end_date=end_date,
         resolution=resolution,
-        output_dir=output_dir,
-        ide_dir=initial_daily_ecdr_dir,
+        ecdr_data_dir=ecdr_data_dir,
     )

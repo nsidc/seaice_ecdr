@@ -10,8 +10,8 @@ import pandas as pd
 import xarray as xr
 from loguru import logger
 from pm_icecon.util import date_range, standard_output_filename
-from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
 from pm_tb_data._types import Hemisphere
+from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
 
 from seaice_ecdr.compare.ref_data import cdr_for_date_range
 from seaice_ecdr.constants import CDR_DATA_DIR
