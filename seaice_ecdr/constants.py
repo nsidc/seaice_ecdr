@@ -15,18 +15,9 @@ BASE_OUTPUT_DIR = NSIDC_NFS_SHARE_DIR / f"ecdr_{ECDR_PRODUCT_VERSION}_outputs"
 # (e.g, using input data from AU_SI12)
 STANDARD_BASE_OUTPUT_DIR = BASE_OUTPUT_DIR / "standard"
 
-NRT_BASE_OUTPUT_DIR = BASE_OUTPUT_DIR / "nrt"
-
-INITIAL_DAILY_OUTPUT_DIR = STANDARD_BASE_OUTPUT_DIR / "initial_daily"
-# Daily temporally interpolated output for 'standard' ECDR processing
-TEMPORAL_INTERP_DAILY_OUTPUT_DIR = STANDARD_BASE_OUTPUT_DIR / "temporal_interp_daily"
-
-# Complete daily output for 'standard' ECDR processing
-COMPLETE_DAILY_OUTPUT_DIR = BASE_OUTPUT_DIR / "standard"
-
 # Daily initial/intermiedate output for 'Near Real Time' (NRT) ECDR processing
 # (using data from AU_SI12_NRT_R04)
-NRT_INITIAL_DAILY_OUTPUT_DIR = BASE_OUTPUT_DIR / "nrt" / "initial_daily"
+NRT_BASE_OUTPUT_DIR = BASE_OUTPUT_DIR / "nrt"
 
 # Location of LANCE AMSR2 NRT data files:
 # TODO: nest the subdir under an `ecdr_inputs` or similar?
