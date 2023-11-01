@@ -3,15 +3,17 @@
 import datetime as dt
 import sys
 from pathlib import Path
+from typing import Final
 
 import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
 from loguru import logger
+from pm_tb_data._types import NORTH
 
+from seaice_ecdr.initial_daily_ecdr import get_idecdr_dir, get_idecdr_filepath
 from seaice_ecdr.temporal_composite_daily import (
-    get_standard_initial_daily_ecdr_filename,
     iter_dates_near_date,
     temporally_composite_dataarray,
 )
@@ -86,16 +88,18 @@ def test_date_iterator():
 def test_access_to_standard_output_filename(tmpdir):
     """Verify that standard output file names can be generated."""
     date = dt.date(2021, 2, 19)
-    hemisphere = "north"
-    resolution = "12"
+    resolution: Final = "12"
 
-    sample_ide_filepath = get_standard_initial_daily_ecdr_filename(
-        date,
-        hemisphere,
-        resolution,
-        output_directory=Path(tmpdir),
+    ecdr_data_dir = Path(tmpdir)
+    sample_ide_filepath = get_idecdr_filepath(
+        date=date,
+        hemisphere=NORTH,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
     )
-    expected_filepath = Path(tmpdir) / "idecdr_NH_20210219_ausi_12km.nc"
+    expected_filepath = (
+        get_idecdr_dir(ecdr_data_dir=ecdr_data_dir) / "idecdr_NH_20210219_ausi_12km.nc"
+    )
 
     assert sample_ide_filepath == expected_filepath
 

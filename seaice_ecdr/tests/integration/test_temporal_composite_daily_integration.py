@@ -13,11 +13,11 @@ from loguru import logger
 from pm_tb_data._types import NORTH
 
 from seaice_ecdr.initial_daily_ecdr import (
+    get_idecdr_filepath,
     initial_daily_ecdr_dataset_for_au_si_tbs,
     write_ide_netcdf,
 )
 from seaice_ecdr.temporal_composite_daily import (
-    get_standard_initial_daily_ecdr_filename,
     make_tiecdr_netcdf,
     read_with_create_initial_daily_ecdr,
 )
@@ -38,8 +38,11 @@ resolution: Final = "12"
 
 def test_create_ide_file(tmpdir):
     """Verify that initial daily ecdr file can be created."""
-    sample_ide_filepath = get_standard_initial_daily_ecdr_filename(
-        date, hemisphere, resolution, output_directory=Path(tmpdir)
+    sample_ide_filepath = get_idecdr_filepath(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=Path(tmpdir),
     )
 
     test_ide_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
@@ -55,15 +58,18 @@ def test_create_ide_file(tmpdir):
 
 def test_read_with_create_ide_file(tmpdir):
     """Verify that initial daily ecdr file can be created."""
-    sample_ide_filepath = get_standard_initial_daily_ecdr_filename(
-        date, hemisphere, resolution, output_directory=Path(tmpdir)
+    sample_ide_filepath = get_idecdr_filepath(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=Path(tmpdir),
     )
 
     test_ide_ds_with_creation = read_with_create_initial_daily_ecdr(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        ide_dir=Path(tmpdir),
+        ecdr_data_dir=Path(tmpdir),
     )
 
     assert sample_ide_filepath.exists()
@@ -71,7 +77,7 @@ def test_read_with_create_ide_file(tmpdir):
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        ide_dir=Path(tmpdir),
+        ecdr_data_dir=Path(tmpdir),
     )
 
     assert test_ide_ds_with_creation == test_ide_ds_with_reading
@@ -87,18 +93,12 @@ def test_create_tiecdr_file(tmpdir):
     data possible.
     """
     test_date = dt.date(2022, 3, 2)
-    tmpdir_path = Path(tmpdir)
-    initial_daily_dir = tmpdir_path / "initial"
-    initial_daily_dir.mkdir()
-    temporal_daily_dir = tmpdir_path / "temporal"
-    temporal_daily_dir.mkdir()
 
     # For the test, only interpolate up to two days forward/back in time
     make_tiecdr_netcdf(
         date=test_date,
         hemisphere=hemisphere,
         resolution=resolution,
-        output_dir=temporal_daily_dir,
+        ecdr_data_dir=Path(tmpdir),
         interp_range=2,
-        ide_dir=initial_daily_dir,
     )
