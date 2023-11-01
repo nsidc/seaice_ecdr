@@ -4,21 +4,20 @@ from pathlib import Path
 from typing import get_args
 
 import click
-from pm_tb_data.fetch.lance_amsr2 import (
-    download_latest_lance_files,
-    access_local_lance_data,
-)
+from pm_icecon.util import standard_output_filename
 from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
+from pm_tb_data.fetch.lance_amsr2 import (
+    access_local_lance_data,
+    download_latest_lance_files,
+)
 
-from seaice_ecdr.constants import LANCE_NRT_DATA_DIR, NRT_INITIAL_DAILY_OUTPUT_DIR
 from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.constants import LANCE_NRT_DATA_DIR, NRT_INITIAL_DAILY_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
     compute_initial_daily_ecdr_dataset,
     write_ide_netcdf,
 )
-
-from pm_icecon.util import standard_output_filename
 
 
 def compute_nrt_initial_daily_ecdr_dataset(

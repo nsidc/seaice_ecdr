@@ -2,35 +2,32 @@
 
 """
 import copy
-import traceback
 import datetime as dt
 import sys
-from pathlib import Path
-from typing import get_args, Iterable, cast
+import traceback
 from functools import cache
+from pathlib import Path
+from typing import Iterable, cast, get_args
 
 import click
 import numpy as np
 import numpy.typing as npt
 import xarray as xr
 from loguru import logger
-from pm_icecon.util import date_range, standard_output_filename
 from pm_icecon.fill_polehole import fill_pole_hole
-from pm_tb_data._types import Hemisphere, NORTH
+from pm_icecon.util import date_range, standard_output_filename
+from pm_tb_data._types import NORTH, Hemisphere
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
 
-from seaice_ecdr.masks import psn_125_near_pole_hole_mask
+from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
     get_idecdr_filepath,
     initial_daily_ecdr_dataset_for_au_si_tbs,
     make_idecdr_netcdf,
     write_ide_netcdf,
 )
-from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import (
-    STANDARD_BASE_OUTPUT_DIR,
-)
-
+from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 
 # Set the default minimum log notification to "info"
 try:

@@ -1,33 +1,32 @@
 """Routines for generating completely filled daily eCDR files.
 
 """
-import click
-import traceback
-
 import datetime as dt
 import sys
-from loguru import logger
-import numpy as np
-
-import xarray as xr
-from pathlib import Path
-from pm_icecon.util import date_range, standard_output_filename
+import traceback
 from functools import cache
+from pathlib import Path
+from typing import Iterable, cast, get_args
 
-from typing import get_args, Iterable, cast
-
-from pm_tb_data._types import Hemisphere, NORTH, SOUTH
+import click
+import numpy as np
+import xarray as xr
+from loguru import logger
+from pm_icecon.util import date_range, standard_output_filename
+from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
-from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
-from seaice_ecdr.temporal_composite_daily import make_tiecdr_netcdf, get_tie_filepath
 
+from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.constants import (
+    STANDARD_BASE_OUTPUT_DIR,
+)
 from seaice_ecdr.melt import (
-    melting,
+    MELT_ONSET_FILL_VALUE,
     MELT_SEASON_FIRST_DOY,
     MELT_SEASON_LAST_DOY,
-    MELT_ONSET_FILL_VALUE,
+    melting,
 )
+from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
 
 
 @cache
@@ -61,22 +60,6 @@ def get_ecdr_filepath(
     ecdr_filepath = ecdr_dir / ecdr_filename
 
     return ecdr_filepath
-
-
-# TODO: Perhaps this isn't needed?  The necessary precursor files can
-#       be computed recursively rather than iterated from the beginning
-#       of the calendar year.
-def iter_cdecdr_dates(
-    target_date: dt.date,
-    date_step: int = 1,
-):
-    """Return iterator of dates from start of year to a given date."""
-    earliest_date = dt.date(target_date.year, 1, 1)
-
-    date = earliest_date
-    while date <= target_date:
-        yield date
-        date += dt.timedelta(days=date_step)
 
 
 def read_or_create_and_read_tiecdr_ds(

@@ -19,6 +19,8 @@ INITIAL_DAILY_OUTPUT_DIR = STANDARD_BASE_OUTPUT_DIR / "initial_daily"
 # Daily temporally interpolated output for 'standard' ECDR processing
 TEMPORAL_INTERP_DAILY_OUTPUT_DIR = STANDARD_BASE_OUTPUT_DIR / "temporal_interp_daily"
 
+# Complete daily output for 'standard' ECDR processing
+COMPLETE_DAILY_OUTPUT_DIR = BASE_OUTPUT_DIR / "standard"
 
 # Daily initial/intermiedate output for 'Near Real Time' (NRT) ECDR processing
 # (using data from AU_SI12_NRT_R04)

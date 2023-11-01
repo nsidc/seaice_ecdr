@@ -2,20 +2,19 @@
 
 import datetime as dt
 import sys
-from typing import Final
 from pathlib import Path
+from typing import Final
 
 import pytest
 import xarray as xr
 from loguru import logger
+from pm_tb_data._types import NORTH
 
+from seaice_ecdr.initial_daily_ecdr import get_idecdr_filepath
 from seaice_ecdr.initial_daily_ecdr import (
     initial_daily_ecdr_dataset_for_au_si_tbs as compute_idecdr_ds,
-    make_idecdr_netcdf,
-    get_idecdr_filepath,
 )
-
-from pm_tb_data._types import NORTH
+from seaice_ecdr.initial_daily_ecdr import make_idecdr_netcdf
 
 # Set the default minimum log notification to Warning
 logger.remove(0)  # Removes previous logger info

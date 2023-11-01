@@ -20,8 +20,8 @@ from pm_icecon.bt.masks import get_ps_invalid_ice_mask
 from pm_icecon.masks import get_ps_pole_hole_mask
 from pm_icecon.nt.masks import get_ps25_sst_mask
 from pm_icecon.tests.regression import test_nt
+from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 from pm_tb_data.fetch import au_si
-from pm_tb_data._types import Hemisphere, NORTH, SOUTH
 
 from seaice_ecdr.compare.ref_data import get_au_si_bt_conc, get_cdr, get_sea_ice_index
 from seaice_ecdr.initial_daily_ecdr import initial_daily_ecdr_dataset_for_au_si_tbs

@@ -31,7 +31,6 @@ Other notes:
 import numpy as np
 import numpy.typing as npt
 
-
 # Start and end DOYs for the melt season (inclusive)
 MELT_SEASON_FIRST_DOY = 60
 MELT_SEASON_LAST_DOY = 244
