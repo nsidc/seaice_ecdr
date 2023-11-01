@@ -2,8 +2,8 @@
 import click
 
 from seaice_ecdr.initial_daily_ecdr import cli as ecdr_cli
-from seaice_ecdr.temporal_composite_daily import cli as tiecdr_cli
 from seaice_ecdr.nrt import nrt_cli
+from seaice_ecdr.temporal_composite_daily import cli as tiecdr_cli
 
 
 @click.group()
