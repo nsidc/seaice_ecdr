@@ -28,15 +28,17 @@ from pm_icecon.interpolation import spatial_interp_tbs
 from pm_icecon.land_spillover import apply_nt2_land_spillover
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
-from pm_icecon.util import date_range, standard_output_filename
+from pm_icecon.util import date_range
 from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
 
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
 from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
 from seaice_ecdr.masks import psn_125_near_pole_hole_mask
+from seaice_ecdr.util import standard_daily_filename
 
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
 
@@ -185,7 +187,7 @@ def _setup_ecdr_ds(
     date: dt.date,
     xr_tbs: xr.Dataset,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
     # Initialize geo-referenced xarray Dataset
     grid_id = _get_grid_id(
@@ -241,11 +243,13 @@ def _setup_ecdr_ds(
     return ecdr_ide_ds
 
 
-def _get_grid_id(*, hemisphere: Hemisphere, resolution: AU_SI_RESOLUTIONS) -> str:
+def _get_grid_id(
+    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> str:
     # Set the gridid
-    if hemisphere == NORTH and resolution == "12":
+    if hemisphere == NORTH and resolution == "12.5":
         gridid = "psn12.5"
-    elif hemisphere == SOUTH and resolution == "12":
+    elif hemisphere == SOUTH and resolution == "12.5":
         gridid = "pss12.5"
     else:
         raise RuntimeError(
@@ -255,11 +259,21 @@ def _get_grid_id(*, hemisphere: Hemisphere, resolution: AU_SI_RESOLUTIONS) -> st
     return gridid
 
 
+def _au_si_res_str(*, resolution: ECDR_SUPPORTED_RESOLUTIONS) -> AU_SI_RESOLUTIONS:
+    au_si_resolution_str = {
+        "12.5": "12",
+        "25": "25",
+    }[resolution]
+    au_si_resolution_str = cast(AU_SI_RESOLUTIONS, au_si_resolution_str)
+
+    return au_si_resolution_str
+
+
 def compute_initial_daily_ecdr_dataset(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     xr_tbs: xr.Dataset,
     fill_the_pole_hole: bool = False,
 ) -> xr.Dataset:
@@ -424,9 +438,10 @@ def compute_initial_daily_ecdr_dataset(
         )
 
     # Determine the NT fields and coefficients
+    au_si_resolution_str = _au_si_res_str(resolution=resolution)
     nt_params = nt_amsr2_params.get_amsr2_params(
         hemisphere=hemisphere,
-        resolution=resolution,
+        resolution=au_si_resolution_str,
     )
     nt_coefs = NtCoefs(
         nt_tiepoints=nt_params.tiepoints,
@@ -857,14 +872,15 @@ def initial_daily_ecdr_dataset_for_au_si_tbs(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
     """Create xr dataset containing the first pass of daily enhanced CDR."""
     # Get AU_SI TBs
+    au_si_resolution_str = _au_si_res_str(resolution=resolution)
     xr_tbs = get_au_si_tbs(
         date=date,
         hemisphere=hemisphere,
-        resolution=resolution,
+        resolution=au_si_resolution_str,
     )
 
     initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
@@ -925,19 +941,19 @@ def get_idecdr_dir(*, ecdr_data_dir: Path) -> Path:
 def get_idecdr_filepath(
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
 ) -> Path:
     """Yields the filepath of the pass1 -- idecdr -- intermediate file."""
 
     # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
-    idecdr_fn = standard_output_filename(
+    standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
         sat="ausi",
-        algorithm="idecdr",
-        resolution=f"{resolution}km",
+        resolution=resolution,
     )
+    idecdr_fn = "idecdr_" + standard_fn
     idecdr_dir = get_idecdr_dir(ecdr_data_dir=ecdr_data_dir)
     idecdr_path = idecdr_dir / idecdr_fn
 
@@ -948,7 +964,7 @@ def make_idecdr_netcdf(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
     excluded_fields: Iterable[str] = [],
 ) -> None:
@@ -980,7 +996,7 @@ def create_idecdr_for_date_range(
     hemisphere: Hemisphere,
     start_date: dt.date,
     end_date: dt.date,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
     verbose_intermed_ncfile: bool = False,
 ) -> None:
@@ -1076,7 +1092,7 @@ def create_idecdr_for_date_range(
     "-r",
     "--resolution",
     required=True,
-    type=click.Choice(get_args(AU_SI_RESOLUTIONS)),
+    type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
 @click.option(
     "-v",
@@ -1094,7 +1110,7 @@ def cli(
     date: dt.date,
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     verbose_intermed_ncfile: bool,
 ) -> None:
     """Run the initial daily ECDR algorithm with AMSR2 data.

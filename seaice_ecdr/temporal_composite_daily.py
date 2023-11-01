@@ -15,10 +15,10 @@ import numpy.typing as npt
 import xarray as xr
 from loguru import logger
 from pm_icecon.fill_polehole import fill_pole_hole
-from pm_icecon.util import date_range, standard_output_filename
+from pm_icecon.util import date_range
 from pm_tb_data._types import NORTH, Hemisphere
-from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
 
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
@@ -28,6 +28,7 @@ from seaice_ecdr.initial_daily_ecdr import (
     write_ide_netcdf,
 )
 from seaice_ecdr.masks import psn_125_near_pole_hole_mask
+from seaice_ecdr.util import standard_daily_filename
 
 # Set the default minimum log notification to "info"
 try:
@@ -52,18 +53,17 @@ def get_tie_filepath(
     hemisphere,
     resolution,
     ecdr_data_dir: Path,
-    file_label: str,
 ) -> Path:
     """Return the complete daily tie file path."""
-    if "km" not in resolution:
-        resolution = f"{resolution}km"
-    tie_filename = standard_output_filename(
-        algorithm=file_label,
+    standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
         sat="ausi",
         resolution=resolution,
     )
+    # Add `tiecdr` to the beginning of the standard name to distinguish it as a
+    # WIP.
+    tie_filename = "tiecdr_" + standard_fn
     tie_dir = get_tie_dir(ecdr_data_dir=ecdr_data_dir)
 
     tie_filepath = tie_dir / tie_filename
@@ -276,7 +276,7 @@ def read_or_create_and_read_idecdr_ds(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
 ) -> xr.Dataset:
     """Read an idecdr netCDF file, creating it if it doesn't exist."""
@@ -323,7 +323,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     interp_range: int = 5,
     ecdr_data_dir: Path,
     fill_the_pole_hole: bool = True,
@@ -492,7 +492,7 @@ def make_tiecdr_netcdf(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
@@ -510,7 +510,6 @@ def make_tiecdr_netcdf(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        file_label="tiecdr",
         ecdr_data_dir=ecdr_data_dir,
     )
 
@@ -526,7 +525,7 @@ def create_tiecdr_for_date_range(
     hemisphere: Hemisphere,
     start_date: dt.date,
     end_date: dt.date,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
 ) -> None:
     """Generate the temporally composited daily ecdr files for a range of dates."""
@@ -554,7 +553,6 @@ def create_tiecdr_for_date_range(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
-                file_label="tiecdr",
                 ecdr_data_dir=ecdr_data_dir,
             )
             err_filename = err_filepath.name + ".error"
@@ -622,7 +620,7 @@ def create_tiecdr_for_date_range(
     "-r",
     "--resolution",
     required=True,
-    type=click.Choice(get_args(AU_SI_RESOLUTIONS)),
+    type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
 def cli(
     *,
@@ -630,7 +628,7 @@ def cli(
     end_date: dt.date | None,
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.
 
