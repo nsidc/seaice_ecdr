@@ -51,7 +51,7 @@ def get_ecdr_filepath(
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        sat="ausi",
+        sat="am2",
         resolution=resolution,
     )
     ecdr_filename = "cdecdr_" + standard_fn
