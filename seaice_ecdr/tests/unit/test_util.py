@@ -25,6 +25,20 @@ def test_daily_filename_south():
     assert actual == expected
 
 
+def test_daily_aggregate_filename():
+    expected = "sic_psn12.5_20210101-20211231_amsr2_v05r00.nc"
+
+    actual = standard_daily_filename(
+        hemisphere=NORTH,
+        resolution="12.5",
+        sat="amsr2",
+        date=dt.date(2021, 1, 1),
+        end_date=dt.date(2021, 12, 31),
+    )
+
+    assert actual == expected
+
+
 def test_monthly_filename_north():
     expected = "sic_psn12.5_202101_amsr2_v05r00.nc"
 
