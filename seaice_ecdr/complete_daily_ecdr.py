@@ -65,22 +65,6 @@ def get_ecdr_filename(
     return ecdr_filepath
 
 
-# TODO: Perhaps this isn't needed?  The necessary precursor files can
-#       be computed recursively rather than iterated from the beginning
-#       of the calendar year.
-def iter_cdecdr_dates(
-    target_date: dt.date,
-    date_step: int = 1,
-):
-    """Return iterator of dates from start of year to a given date."""
-    earliest_date = dt.date(target_date.year, 1, 1)
-
-    date = earliest_date
-    while date <= target_date:
-        yield date
-        date += dt.timedelta(days=date_step)
-
-
 def read_or_create_and_read_tiecdr_ds(
     *,
     date: dt.date,
