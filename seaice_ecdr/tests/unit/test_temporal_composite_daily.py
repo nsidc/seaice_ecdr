@@ -16,7 +16,7 @@ from seaice_ecdr.temporal_composite_daily import (
     iter_dates_near_date,
     temporally_composite_dataarray,
 )
-from seaice_ecdr.initial_daily_ecdr import get_idecdr_filepath
+from seaice_ecdr.initial_daily_ecdr import get_idecdr_filepath, get_idecdr_dir
 
 
 # Set the default minimum log notification to Warning
@@ -91,13 +91,16 @@ def test_access_to_standard_output_filename(tmpdir):
     date = dt.date(2021, 2, 19)
     resolution: Final = "12"
 
+    cdr_data_dir = Path(tmpdir)
     sample_ide_filepath = get_idecdr_filepath(
         date=date,
         hemisphere=NORTH,
         resolution=resolution,
-        cdr_data_dir=Path(tmpdir),
+        cdr_data_dir=cdr_data_dir,
     )
-    expected_filepath = Path(tmpdir) / "idecdr_NH_20210219_ausi_12km.nc"
+    expected_filepath = (
+        get_idecdr_dir(cdr_data_dir=cdr_data_dir) / "idecdr_NH_20210219_ausi_12km.nc"
+    )
 
     assert sample_ide_filepath == expected_filepath
 
