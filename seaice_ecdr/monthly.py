@@ -90,6 +90,123 @@ def get_daily_ds_for_month(
     return ds
 
 
+QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS = dict(
+    bt_weather_filter_applied=1,
+    nt_weather_filter_applied=2,
+    land_spillover_applied=4,
+    no_input_data=8,
+    valid_ice_mask_applied=16,
+    spatial_interpolation_applied=32,
+    temporal_interpolation_applied=64,
+    # This flag value only occurs in the Arctic.
+    start_of_melt_detected=128,
+)
+
+QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS = dict(
+    average_concentration_exeeds_15=1,
+    average_concentration_exeeds_30=2,
+    at_least_half_the_days_have_sea_ice_conc_exceeds_15=4,
+    at_least_half_the_days_have_sea_ice_conc_exceeds_30=8,
+    region_masked_by_ocean_climatology=16,
+    at_least_one_day_during_month_has_spatial_interpolation=32,
+    at_least_one_day_during_month_has_temporal_interpolation=64,
+    at_least_one_day_during_month_has_melt_detected=128,
+    fill_value=255,
+)
+
+
+def _monthly_qa_field(
+    *,
+    daily_ds_for_month: xr.Dataset,
+    is_sic: xr.DataArray,
+    cdr_seaice_conc_monthly: xr.DataArray,
+) -> xr.DataArray:
+    """Create `qa_of_cdr_seaice_conc_monthly`."""
+    # initialize the variable
+    qa_of_cdr_seaice_conc_monthly = xr.full_like(
+        cdr_seaice_conc_monthly,
+        fill_value=QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["fill_value"],
+    )
+    qa_of_cdr_seaice_conc_monthly.name = "qa_of_cdr_seaice_conc_monthly"
+
+    average_exceeds_15 = is_sic & (cdr_seaice_conc_monthly > 15)
+    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+        ~average_exceeds_15,
+        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exeeds_15"],
+    )
+
+    average_exceeds_30 = is_sic & (cdr_seaice_conc_monthly > 30)
+    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+        ~average_exceeds_30,
+        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exeeds_30"],
+    )
+
+    at_least_half_have_sic_gt_15 = is_sic & (daily_ds_for_month.cdr_conc > 15).any(
+        dim="time"
+    )
+    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+        ~at_least_half_have_sic_gt_15,
+        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+            "at_least_half_the_days_have_sea_ice_conc_exceeds_15"
+        ],
+    )
+
+    at_least_half_have_sic_gt_30 = is_sic & (daily_ds_for_month.cdr_conc > 30).any(
+        dim="time"
+    )
+    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+        ~at_least_half_have_sic_gt_30,
+        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+            "at_least_half_the_days_have_sea_ice_conc_exceeds_30"
+        ],
+    )
+
+    # Use "valid_ice_mask_applied", which is actually the invalid ice mask.
+    region_masked_by_ocean_climatology = (
+        daily_ds_for_month.qa_of_cdr_seaice_conc
+        == QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["valid_ice_mask_applied"]
+    ).any(dim="time")
+    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+        ~region_masked_by_ocean_climatology,
+        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["region_masked_by_ocean_climatology"],
+    )
+
+    at_least_one_day_during_month_has_spatial_interpolation = (
+        daily_ds_for_month.qa_of_cdr_seaice_conc
+        == QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["spatial_interpolation_applied"]
+    ).any(dim="time")
+    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+        ~at_least_one_day_during_month_has_spatial_interpolation,
+        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+            "at_least_one_day_during_month_has_spatial_interpolation"
+        ],
+    )
+
+    at_least_one_day_during_month_has_temporal_interpolation = (
+        daily_ds_for_month.qa_of_cdr_seaice_conc
+        == QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["temporal_interpolation_applied"]
+    ).any(dim="time")
+    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+        ~at_least_one_day_during_month_has_temporal_interpolation,
+        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+            "at_least_one_day_during_month_has_temporal_interpolation"
+        ],
+    )
+
+    at_least_one_day_during_month_has_melt_detected = (
+        daily_ds_for_month.qa_of_cdr_seaice_conc
+        == QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["start_of_melt_detected"]
+    ).any(dim="time")
+    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+        ~at_least_one_day_during_month_has_melt_detected,
+        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+            "at_least_one_day_during_month_has_melt_detected"
+        ],
+    )
+
+    return qa_of_cdr_seaice_conc_monthly
+
+
 def make_monthly_ds(
     *,
     daily_ds_for_month: xr.Dataset,
@@ -144,9 +261,11 @@ def make_monthly_ds(
         daily_ds_for_month.cdr_conc.std(dim="time", ddof=1),
     )
 
-    # Create `qa_of_cdr_seaice_conc_monthly`
-    # TODO
-    ...
+    qa_of_cdr_seaice_conc_monthly = _monthly_qa_field(
+        daily_ds_for_month=daily_ds_for_month,
+        is_sic=is_sic,
+        cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
+    )
 
     # Create `melt_onset_day_cdr_seaice_conc_monthly`. This is the value from
     # the last day of the month.
@@ -167,6 +286,7 @@ def make_monthly_ds(
             nsidc_bt_seaice_conc_monthly=nsidc_bt_seaice_conc_monthly,
             stdv_of_cdr_seaice_conc_monthly=stdv_of_cdr_seaice_conc_monthly,
             melt_onset_day_cdr_seaice_conc_monthly=melt_onset_day_cdr_seaice_conc_monthly,
+            qa_of_cdr_seaice_conc_monthly=qa_of_cdr_seaice_conc_monthly,
         )
     )
 
