@@ -2,14 +2,15 @@ import datetime as dt
 
 from pm_tb_data._types import Hemisphere
 
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 
 
 def standard_daily_filename(
     *,
     hemisphere: Hemisphere,
-    resolution: str,
-    sat: str,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    sat: SUPPORTED_SAT,
     date: dt.date,
     end_date: dt.date | None = None,
 ) -> str:
@@ -37,8 +38,8 @@ def standard_daily_filename(
 def standard_monthly_filename(
     *,
     hemisphere: Hemisphere,
-    resolution: str,
-    sat: str,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    sat: SUPPORTED_SAT,
     year: int,
     month: int,
     end_year: int | None = None,

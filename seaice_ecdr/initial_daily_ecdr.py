@@ -950,7 +950,7 @@ def get_idecdr_filepath(
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        sat="ausi",
+        sat="am2",
         resolution=resolution,
     )
     idecdr_fn = "idecdr_" + standard_fn

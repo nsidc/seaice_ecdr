@@ -6,32 +6,32 @@ from seaice_ecdr.util import standard_daily_filename, standard_monthly_filename
 
 
 def test_daily_filename_north():
-    expected = "sic_psn12.5_20210101_amsr2_v05r00.nc"
+    expected = "sic_psn12.5_20210101_am2_v05r00.nc"
 
     actual = standard_daily_filename(
-        hemisphere=NORTH, resolution="12.5", sat="amsr2", date=dt.date(2021, 1, 1)
+        hemisphere=NORTH, resolution="12.5", sat="am2", date=dt.date(2021, 1, 1)
     )
 
     assert actual == expected
 
 
 def test_daily_filename_south():
-    expected = "sic_pss12.5_20210101_amsr2_v05r00.nc"
+    expected = "sic_pss12.5_20210101_am2_v05r00.nc"
 
     actual = standard_daily_filename(
-        hemisphere=SOUTH, resolution="12.5", sat="amsr2", date=dt.date(2021, 1, 1)
+        hemisphere=SOUTH, resolution="12.5", sat="am2", date=dt.date(2021, 1, 1)
     )
 
     assert actual == expected
 
 
 def test_daily_aggregate_filename():
-    expected = "sic_psn12.5_20210101-20211231_amsr2_v05r00.nc"
+    expected = "sic_psn12.5_20210101-20211231_am2_v05r00.nc"
 
     actual = standard_daily_filename(
         hemisphere=NORTH,
         resolution="12.5",
-        sat="amsr2",
+        sat="am2",
         date=dt.date(2021, 1, 1),
         end_date=dt.date(2021, 12, 31),
     )
@@ -40,12 +40,12 @@ def test_daily_aggregate_filename():
 
 
 def test_monthly_filename_north():
-    expected = "sic_psn12.5_202101_amsr2_v05r00.nc"
+    expected = "sic_psn12.5_202101_am2_v05r00.nc"
 
     actual = standard_monthly_filename(
         hemisphere=NORTH,
         resolution="12.5",
-        sat="amsr2",
+        sat="am2",
         year=2021,
         month=1,
     )
@@ -54,12 +54,12 @@ def test_monthly_filename_north():
 
 
 def test_monthly_filename_south():
-    expected = "sic_pss12.5_202101_amsr2_v05r00.nc"
+    expected = "sic_pss12.5_202101_am2_v05r00.nc"
 
     actual = standard_monthly_filename(
         hemisphere=SOUTH,
         resolution="12.5",
-        sat="amsr2",
+        sat="am2",
         year=2021,
         month=1,
     )
@@ -68,12 +68,12 @@ def test_monthly_filename_south():
 
 
 def test_monthly_aggregate_filename():
-    expected = "sic_pss12.5_202101-202112_amsr2_v05r00.nc"
+    expected = "sic_pss12.5_202101-202112_am2_v05r00.nc"
 
     actual = standard_monthly_filename(
         hemisphere=SOUTH,
         resolution="12.5",
-        sat="amsr2",
+        sat="am2",
         year=2021,
         month=1,
         end_year=2021,

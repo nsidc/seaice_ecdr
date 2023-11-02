@@ -58,7 +58,7 @@ def get_tie_filepath(
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        sat="ausi",
+        sat="am2",
         resolution=resolution,
     )
     # Add `tiecdr` to the beginning of the standard name to distinguish it as a

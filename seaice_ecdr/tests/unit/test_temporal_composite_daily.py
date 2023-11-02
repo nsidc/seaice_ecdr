@@ -100,7 +100,7 @@ def test_access_to_standard_output_filename(tmpdir):
     )
     expected_filepath = (
         get_idecdr_dir(ecdr_data_dir=ecdr_data_dir)
-        / f"idecdr_sic_psn12.5_20210219_ausi_{ECDR_PRODUCT_VERSION}.nc"
+        / f"idecdr_sic_psn12.5_20210219_am2_{ECDR_PRODUCT_VERSION}.nc"
     )
 
     assert sample_ide_filepath == expected_filepath
