@@ -26,6 +26,7 @@ from seaice_ecdr.melt import (
     MELT_SEASON_LAST_DOY,
     melting,
 )
+from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
 
 
@@ -336,7 +337,9 @@ def make_cdecdr_netcdf(
         interp_range=interp_range,
         ecdr_data_dir=ecdr_data_dir,
     )
-    # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
+
+    cde_ds = finalize_cdecdr_ds(cde_ds)
+
     output_path = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
