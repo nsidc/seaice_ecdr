@@ -101,9 +101,9 @@ def filled_ndarray(
 ) -> np.ndarray:
     """Return an array of the shape for this hem/res filled with fill_value."""
     if hemisphere == NORTH and resolution == "12.5":
-        array_shape = (896, 608)
+        array_shape = (1, 896, 608)
     elif hemisphere == SOUTH and resolution == "12.5":
-        array_shape = (664, 632)
+        array_shape = (1, 664, 632)
     else:
         raise RuntimeError(
             f"Could not determine array shape for {hemisphere}" f" and {resolution}"
@@ -129,7 +129,10 @@ def read_melt_onset_field(
         mask_and_scale=False,
     )
 
-    return cde_ds["melt_onset"].to_numpy()
+    # TODO: Perhaps these field names should be in a dictionary somewhere?
+    melt_onset_from_ds = cde_ds["melt_onset_day_cdr_seaice_conc"].to_numpy()
+
+    return melt_onset_from_ds
 
 
 def read_melt_elements(
@@ -267,8 +270,8 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
     )
 
     # Update cde_ds with melt onset info
-    cde_ds["melt_onset"] = (
-        ("y", "x"),
+    cde_ds["melt_onset_day_cdr_seaice_conc"] = (
+        ("time", "y", "x"),
         melt_onset_field,
         {
             "_FillValue": 255,

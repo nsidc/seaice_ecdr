@@ -19,7 +19,6 @@ CDECDR_FIELDS_TO_DROP = [
 
 CDECDR_FIELDS_TO_RENAME = {
     "cdr_conc": "cdr_seaice_conc",
-    # 'melt_onset': 'melt_onset_day_cdr_seaice_conc',  # Only in NH; handle indiv
     "bt_conc_raw": "bootstrap_seaice_conc_raw",
     "nt_conc_raw": "nasateam_seaice_conc_raw",
     "qa_of_cdr_seaice_conc": "qa_of_cdr_seaice_conc",  # Note: unchanged
@@ -46,13 +45,6 @@ def finalize_cdecdr_ds(
 
     # Rename fields
     ds = ds.rename_vars(fields_to_rename)
-
-    # 'melt_onset': 'melt_onset_day_cdr_seaice_conc',  # Only in NH; handle indiv
-    try:
-        ds = ds.rename_vars({"melt_onset": "melt_onset_day_cdr_seaice_conc"})
-    except ValueError:
-        # We do not expect SH files to have melt_onset field
-        pass
 
     # Variables that need special handling...
 
@@ -126,9 +118,10 @@ def finalize_cdecdr_ds(
     )
     # melt onset is set here simply to update attributes
     # TODO: this is NH only
+
     ds["melt_onset_day_cdr_seaice_conc"] = (
         ("time", "y", "x"),
-        np.expand_dims(ds["melt_onset_day_cdr_seaice_conc"].data, axis=0),
+        ds["melt_onset_day_cdr_seaice_conc"].data,
         {
             "standard_name": "status_flag",
             "long_name": "Day of NH Snow Melt Onset On Sea Ice",
