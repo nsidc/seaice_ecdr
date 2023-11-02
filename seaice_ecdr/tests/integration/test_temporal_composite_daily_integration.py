@@ -33,7 +33,7 @@ except ValueError:
 
 date = dt.date(2021, 2, 19)
 hemisphere = NORTH
-resolution: Final = "12"
+resolution: Final = "12.5"
 
 
 def test_create_ide_file(tmpdir):

@@ -7,7 +7,7 @@ visualization code.
 """
 import datetime as dt
 from pathlib import Path
-from typing import get_args
+from typing import cast, get_args
 
 import cartopy.crs as ccrs
 import numpy as np
@@ -23,6 +23,7 @@ from pm_icecon.tests.regression import test_nt
 from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 from pm_tb_data.fetch import au_si
 
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.compare.ref_data import get_au_si_bt_conc, get_cdr, get_sea_ice_index
 from seaice_ecdr.initial_daily_ecdr import initial_daily_ecdr_dataset_for_au_si_tbs
 
@@ -421,9 +422,16 @@ def compare_cdr(
 ):
     cdr_ds = get_cdr(date=date, hemisphere=hemisphere, resolution=resolution)
 
+    seaice_ecdr_resolution = {
+        "12": "12.5",
+        "25": "25",
+    }[resolution]
+    seaice_ecdr_resolution = cast(ECDR_SUPPORTED_RESOLUTIONS, seaice_ecdr_resolution)
     our_cdr_ds = _flip(
         initial_daily_ecdr_dataset_for_au_si_tbs(
-            date=date, hemisphere=hemisphere, resolution=resolution
+            date=date,
+            hemisphere=hemisphere,
+            resolution=seaice_ecdr_resolution,
         )
     )
 
