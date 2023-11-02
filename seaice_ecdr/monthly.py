@@ -24,6 +24,7 @@ Notes about CDR v4:
 * Only determines monthly melt onset day for NH.
 * CDR is not re-calculated from the monthly nt and bt fields. Just the average
   of the CDR conc fields.
+* Uses masks from the first file in the month to apply to monthly fields.
 """
 
 from pathlib import Path
@@ -101,7 +102,42 @@ def make_monthly_ds(
         sat=sat,
     )
 
-    return ds
+    # create `nsidc_{nt|bt}_seaice_conc_monthly`. These are averages of the
+    # daily NT and BT values. These 'raw' fields do not have any flags.
+    nsidc_nt_seaice_conc_monthly = daily_ds_for_month.nt_conc_raw.mean(dim="time")
+    nsidc_nt_seaice_conc_monthly.name = "nsidc_nt_seaice_conc_monthly"
+    nsidc_bt_seaice_conc_monthly = daily_ds_for_month.bt_conc_raw.mean(dim="time")
+    nsidc_bt_seaice_conc_monthly.name = "nsidc_bt_seaice_conc_monthly"
+
+    # create `cdr_seaice_conc_monthly`. This is the combined monthly SIC.
+    # The `cdr_conc` variable has temporally filled data and flags.
+    # TODO: what's `conc`?
+    # TODO: should we handle flags separately? Land mask should be consistent
+    # between files (so the average will still be the land flag), and this code
+    # assumes `NaN` is missing data. CDR v4 copies the flags from the first
+    # daily data file it gets and applies it to the average for the month after
+    # the mean calculation.
+    cdr_seaice_conc_monthly = daily_ds_for_month.cdr_conc.isel(time=0).copy()
+    cdr_seaice_conc_monthly = cdr_seaice_conc_monthly.drop_vars("time")
+    cdr_seaice_conc_monthly.name = "cdr_seaice_conc_monthly"
+    cdr_seaice_conc_monthly = cdr_seaice_conc_monthly.where(
+        # Locations at which to preserve this object’s values. dtype must be
+        # bool. If a callable, the callable is passed this object, and the
+        # result is used as the value for cond
+        ~(cdr_seaice_conc_monthly >= 0) & (cdr_seaice_conc_monthly <= 100),
+        # other
+        daily_ds_for_month.cdr_conc.mean(dim="time"),
+    )
+
+    monthly_ds = xr.Dataset(
+        data_vars=dict(
+            cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
+            nsidc_nt_seaice_conc_monthly=nsidc_nt_seaice_conc_monthly,
+            nsidc_bt_seaice_conc_monthly=nsidc_bt_seaice_conc_monthly,
+        )
+    )
+
+    return monthly_ds
 
 
 if __name__ == "__main__":
@@ -117,7 +153,9 @@ if __name__ == "__main__":
         ecdr_data_dir=STANDARD_BASE_OUTPUT_DIR,
         sat=sat,
     )
-    ds = make_monthly_ds(
+    monthly_ds = make_monthly_ds(
         daily_ds_for_month=daily_ds_for_month,
         sat=sat,
     )
+
+    breakpoint()
