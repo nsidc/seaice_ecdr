@@ -102,6 +102,7 @@ QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS = dict(
     start_of_melt_detected=128,
 )
 
+# TODO: rename. This is actually a bit mask (except the fill_value)
 QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS = dict(
     average_concentration_exeeds_15=1,
     average_concentration_exeeds_30=2,
@@ -125,38 +126,45 @@ def _monthly_qa_field(
     # initialize the variable
     qa_of_cdr_seaice_conc_monthly = xr.full_like(
         cdr_seaice_conc_monthly,
-        fill_value=QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["fill_value"],
+        fill_value=0,
     )
     qa_of_cdr_seaice_conc_monthly.name = "qa_of_cdr_seaice_conc_monthly"
 
     average_exceeds_15 = is_sic & (cdr_seaice_conc_monthly > 15)
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~average_exceeds_15,
-        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exeeds_15"],
+        qa_of_cdr_seaice_conc_monthly
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exeeds_15"],
     )
 
     average_exceeds_30 = is_sic & (cdr_seaice_conc_monthly > 30)
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~average_exceeds_30,
-        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exeeds_30"],
+        qa_of_cdr_seaice_conc_monthly
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exeeds_30"],
     )
 
-    at_least_half_have_sic_gt_15 = is_sic & (daily_ds_for_month.cdr_conc > 15).any(
+    days_in_ds = len(daily_ds_for_month.time)
+    majority_of_days = (days_in_ds + 1) // 2
+
+    at_least_half_have_sic_gt_15 = (is_sic & (daily_ds_for_month.cdr_conc > 15)).sum(
         dim="time"
-    )
+    ) >= majority_of_days
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_half_have_sic_gt_15,
-        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+        qa_of_cdr_seaice_conc_monthly
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
             "at_least_half_the_days_have_sea_ice_conc_exceeds_15"
         ],
     )
 
-    at_least_half_have_sic_gt_30 = is_sic & (daily_ds_for_month.cdr_conc > 30).any(
+    at_least_half_have_sic_gt_30 = (is_sic & (daily_ds_for_month.cdr_conc > 30)).sum(
         dim="time"
-    )
+    ) >= majority_of_days
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_half_have_sic_gt_30,
-        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+        qa_of_cdr_seaice_conc_monthly
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
             "at_least_half_the_days_have_sea_ice_conc_exceeds_30"
         ],
     )
@@ -168,7 +176,8 @@ def _monthly_qa_field(
     ).any(dim="time")
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~region_masked_by_ocean_climatology,
-        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["region_masked_by_ocean_climatology"],
+        qa_of_cdr_seaice_conc_monthly
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["region_masked_by_ocean_climatology"],
     )
 
     at_least_one_day_during_month_has_spatial_interpolation = (
@@ -177,7 +186,8 @@ def _monthly_qa_field(
     ).any(dim="time")
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_one_day_during_month_has_spatial_interpolation,
-        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+        qa_of_cdr_seaice_conc_monthly
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
             "at_least_one_day_during_month_has_spatial_interpolation"
         ],
     )
@@ -188,7 +198,8 @@ def _monthly_qa_field(
     ).any(dim="time")
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_one_day_during_month_has_temporal_interpolation,
-        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+        qa_of_cdr_seaice_conc_monthly
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
             "at_least_one_day_during_month_has_temporal_interpolation"
         ],
     )
@@ -199,9 +210,15 @@ def _monthly_qa_field(
     ).any(dim="time")
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_one_day_during_month_has_melt_detected,
-        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+        qa_of_cdr_seaice_conc_monthly
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
             "at_least_one_day_during_month_has_melt_detected"
         ],
+    )
+
+    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+        qa_of_cdr_seaice_conc_monthly != 0,
+        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["fill_value"],
     )
 
     return qa_of_cdr_seaice_conc_monthly
