@@ -120,13 +120,24 @@ def make_monthly_ds(
     cdr_seaice_conc_monthly = daily_ds_for_month.cdr_conc.isel(time=0).copy()
     cdr_seaice_conc_monthly = cdr_seaice_conc_monthly.drop_vars("time")
     cdr_seaice_conc_monthly.name = "cdr_seaice_conc_monthly"
+    is_sic = (cdr_seaice_conc_monthly >= 0) & (cdr_seaice_conc_monthly <= 100)
     cdr_seaice_conc_monthly = cdr_seaice_conc_monthly.where(
-        # Locations at which to preserve this object’s values. dtype must be
-        # bool. If a callable, the callable is passed this object, and the
-        # result is used as the value for cond
-        ~(cdr_seaice_conc_monthly >= 0) & (cdr_seaice_conc_monthly <= 100),
-        # other
+        # Locations at which to preserve this object’s values.
+        ~is_sic,
+        # TODO: use `drop_attrs=True`?
         daily_ds_for_month.cdr_conc.mean(dim="time"),
+    )
+
+    # Create `stdev_of_cdr_seaice_conc_monthly`, the standard deviation of the
+    # sea ice concentration.
+    stdv_of_cdr_seaice_conc_monthly = daily_ds_for_month.cdr_conc.isel(time=0).copy()
+    stdv_of_cdr_seaice_conc_monthly = stdv_of_cdr_seaice_conc_monthly.drop_vars("time")
+    stdv_of_cdr_seaice_conc_monthly.name = "stdv_of_cdr_seaice_conc_monthly"
+    stdv_of_cdr_seaice_conc_monthly = stdv_of_cdr_seaice_conc_monthly.where(
+        # Locations at which to preserve this object’s values.
+        ~is_sic,
+        # cdr v4 uses a ddof of 1.
+        daily_ds_for_month.cdr_conc.std(dim="time", ddof=1),
     )
 
     monthly_ds = xr.Dataset(
@@ -134,6 +145,7 @@ def make_monthly_ds(
             cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
             nsidc_nt_seaice_conc_monthly=nsidc_nt_seaice_conc_monthly,
             nsidc_bt_seaice_conc_monthly=nsidc_bt_seaice_conc_monthly,
+            stdv_of_cdr_seaice_conc_monthly=stdv_of_cdr_seaice_conc_monthly,
         )
     )
 
