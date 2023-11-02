@@ -117,7 +117,9 @@ def make_monthly_ds(
     # assumes `NaN` is missing data. CDR v4 copies the flags from the first
     # daily data file it gets and applies it to the average for the month after
     # the mean calculation.
-    cdr_seaice_conc_monthly = daily_ds_for_month.cdr_conc.isel(time=0).copy()
+    cdr_seaice_conc_monthly = daily_ds_for_month.cdr_conc.sel(
+        time=daily_ds_for_month.time.min()
+    ).copy()
     cdr_seaice_conc_monthly = cdr_seaice_conc_monthly.drop_vars("time")
     cdr_seaice_conc_monthly.name = "cdr_seaice_conc_monthly"
     is_sic = (cdr_seaice_conc_monthly >= 0) & (cdr_seaice_conc_monthly <= 100)
@@ -130,7 +132,9 @@ def make_monthly_ds(
 
     # Create `stdev_of_cdr_seaice_conc_monthly`, the standard deviation of the
     # sea ice concentration.
-    stdv_of_cdr_seaice_conc_monthly = daily_ds_for_month.cdr_conc.isel(time=0).copy()
+    stdv_of_cdr_seaice_conc_monthly = daily_ds_for_month.cdr_conc.sel(
+        time=daily_ds_for_month.time.min()
+    ).copy()
     stdv_of_cdr_seaice_conc_monthly = stdv_of_cdr_seaice_conc_monthly.drop_vars("time")
     stdv_of_cdr_seaice_conc_monthly.name = "stdv_of_cdr_seaice_conc_monthly"
     stdv_of_cdr_seaice_conc_monthly = stdv_of_cdr_seaice_conc_monthly.where(
@@ -140,12 +144,29 @@ def make_monthly_ds(
         daily_ds_for_month.cdr_conc.std(dim="time", ddof=1),
     )
 
+    # Create `qa_of_cdr_seaice_conc_monthly`
+    # TODO
+    ...
+
+    # Create `melt_onset_day_cdr_seaice_conc_monthly`. This is the value from
+    # the last day of the month.
+    melt_onset_day_cdr_seaice_conc_monthly = daily_ds_for_month.melt_onset.sel(
+        time=daily_ds_for_month.time.max()
+    )
+    melt_onset_day_cdr_seaice_conc_monthly.name = (
+        "melt_onset_day_cdr_seaice_conc_monthly"
+    )
+    melt_onset_day_cdr_seaice_conc_monthly = (
+        melt_onset_day_cdr_seaice_conc_monthly.drop_vars("time")
+    )
+
     monthly_ds = xr.Dataset(
         data_vars=dict(
             cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
             nsidc_nt_seaice_conc_monthly=nsidc_nt_seaice_conc_monthly,
             nsidc_bt_seaice_conc_monthly=nsidc_bt_seaice_conc_monthly,
             stdv_of_cdr_seaice_conc_monthly=stdv_of_cdr_seaice_conc_monthly,
+            melt_onset_day_cdr_seaice_conc_monthly=melt_onset_day_cdr_seaice_conc_monthly,
         )
     )
 
