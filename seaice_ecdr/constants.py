@@ -1,7 +1,7 @@
 from pathlib import Path
 
 # This is the version string for the ECDR product.
-ECDR_PRODUCT_VERSION = "v5"
+ECDR_PRODUCT_VERSION = "v05r00"
 
 # NSIDC infrastructure-specific paths:
 NSIDC_NFS_SHARE_DIR = Path("/share/apps/amsr2-cdr")

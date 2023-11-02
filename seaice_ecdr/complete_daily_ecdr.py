@@ -1,6 +1,7 @@
 """Routines for generating completely filled daily eCDR files.
 
 """
+import copy
 import datetime as dt
 import sys
 import traceback
@@ -12,10 +13,10 @@ import click
 import numpy as np
 import xarray as xr
 from loguru import logger
-from pm_icecon.util import date_range, standard_output_filename
+from pm_icecon.util import date_range
 from pm_tb_data._types import NORTH, SOUTH, Hemisphere
-from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
 
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import (
     STANDARD_BASE_OUTPUT_DIR,
@@ -28,6 +29,7 @@ from seaice_ecdr.melt import (
 )
 from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
+from seaice_ecdr.util import standard_daily_filename
 
 
 @cache
@@ -44,18 +46,17 @@ def get_ecdr_filepath(
     hemisphere,
     resolution,
     ecdr_data_dir: Path,
-    file_label: str,
 ) -> Path:
     """Return the complete daily eCDR file path."""
     if "km" not in resolution:
         resolution = f"{resolution}km"
-    ecdr_filename = standard_output_filename(
-        algorithm=file_label,
+    standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        sat="ausi",
+        sat="am2",
         resolution=resolution,
     )
+    ecdr_filename = "cdecdr_" + standard_fn
     ecdr_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir)
 
     ecdr_filepath = ecdr_dir / ecdr_filename
@@ -67,7 +68,7 @@ def read_or_create_and_read_tiecdr_ds(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
 ) -> xr.Dataset:
     """Read an tiecdr netCDF file, creating it if it doesn't exist."""
@@ -76,7 +77,6 @@ def read_or_create_and_read_tiecdr_ds(
         hemisphere,
         resolution,
         ecdr_data_dir=ecdr_data_dir,
-        file_label="tiecdr",
     )
     # TODO: This only creates if file is missing.  We may want an overwrite opt
     if not tie_filepath.is_file():
@@ -95,14 +95,14 @@ def read_or_create_and_read_tiecdr_ds(
 def filled_ndarray(
     *,
     hemisphere,
-    resolution,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     fill_value,
     dtype=np.uint8,
 ) -> np.ndarray:
     """Return an array of the shape for this hem/res filled with fill_value."""
-    if hemisphere == NORTH and resolution == "12":
+    if hemisphere == NORTH and resolution == "12.5":
         array_shape = (896, 608)
-    elif hemisphere == SOUTH and resolution == "12":
+    elif hemisphere == SOUTH and resolution == "12.5":
         array_shape = (664, 632)
     else:
         raise RuntimeError(
@@ -157,7 +157,7 @@ def create_melt_onset_field(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
     first_melt_doy: int = MELT_SEASON_FIRST_DOY,
     last_melt_doy: int = MELT_SEASON_LAST_DOY,
@@ -241,7 +241,7 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     interp_range: int = 5,
     ecdr_data_dir: Path,
 ) -> xr.Dataset:
@@ -324,7 +324,7 @@ def make_cdecdr_netcdf(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
@@ -344,7 +344,6 @@ def make_cdecdr_netcdf(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        file_label="cdecdr",
         ecdr_data_dir=ecdr_data_dir,
     )
 
@@ -359,7 +358,7 @@ def read_or_create_and_read_cdecdr_ds(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
     mask_and_scale: bool = True,
 ) -> xr.Dataset:
@@ -373,7 +372,6 @@ def read_or_create_and_read_cdecdr_ds(
         hemisphere,
         resolution,
         ecdr_data_dir=ecdr_data_dir,
-        file_label="cdecdr",
     )
     # TODO: This only creates if file is missing.  We may want an overwrite opt
     if not cde_filepath.is_file():
@@ -394,7 +392,7 @@ def create_cdecdr_for_date_range(
     hemisphere: Hemisphere,
     start_date: dt.date,
     end_date: dt.date,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
 ) -> None:
     """Generate the complete daily ecdr files for a range of dates."""
@@ -423,7 +421,6 @@ def create_cdecdr_for_date_range(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
-                file_label="cdecdr",
                 ecdr_data_dir=ecdr_data_dir,
             )
             err_filename = err_filepath.name + ".error"
@@ -446,6 +443,21 @@ def create_cdecdr_for_date_range(
         )
     ),
     callback=datetime_to_date,
+)
+@click.option(
+    "--end-date",
+    required=False,
+    type=click.DateTime(
+        formats=(
+            "%Y-%m-%d",
+            "%Y%m%d",
+            "%Y.%m.%d",
+        )
+    ),
+    # Like `datetime_to_date` but allows `None`.
+    callback=lambda _ctx, _param, value: value if value is None else value.date(),
+    default=None,
+    help="If given, run temporal composite for `--date` through this end date.",
 )
 @click.option(
     "-h",
@@ -476,14 +488,15 @@ def create_cdecdr_for_date_range(
     "-r",
     "--resolution",
     required=True,
-    type=click.Choice(get_args(AU_SI_RESOLUTIONS)),
+    type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
 def cli(
     *,
     date: dt.date,
+    end_date: dt.date | None,
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.
 
@@ -494,10 +507,14 @@ def cli(
     projection, resolution, and bounds), and TBtype (TB type includes source and
     methodology for getting those TBs onto the grid)
     """
+
+    if end_date is None:
+        end_date = copy.copy(date)
+
     create_cdecdr_for_date_range(
         hemisphere=hemisphere,
         start_date=date,
-        end_date=date,
+        end_date=end_date,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )

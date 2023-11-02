@@ -12,6 +12,7 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH
 
+from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.initial_daily_ecdr import get_idecdr_dir, get_idecdr_filepath
 from seaice_ecdr.temporal_composite_daily import (
     iter_dates_near_date,
@@ -88,7 +89,7 @@ def test_date_iterator():
 def test_access_to_standard_output_filename(tmpdir):
     """Verify that standard output file names can be generated."""
     date = dt.date(2021, 2, 19)
-    resolution: Final = "12"
+    resolution: Final = "12.5"
 
     ecdr_data_dir = Path(tmpdir)
     sample_ide_filepath = get_idecdr_filepath(
@@ -98,7 +99,8 @@ def test_access_to_standard_output_filename(tmpdir):
         ecdr_data_dir=ecdr_data_dir,
     )
     expected_filepath = (
-        get_idecdr_dir(ecdr_data_dir=ecdr_data_dir) / "idecdr_NH_20210219_ausi_12km.nc"
+        get_idecdr_dir(ecdr_data_dir=ecdr_data_dir)
+        / f"idecdr_sic_psn12.5_20210219_am2_{ECDR_PRODUCT_VERSION}.nc"
     )
 
     assert sample_ide_filepath == expected_filepath

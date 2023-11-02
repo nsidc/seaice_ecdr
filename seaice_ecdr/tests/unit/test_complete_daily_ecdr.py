@@ -14,7 +14,7 @@ def test_no_melt_onset_for_southern_hemisphere(tmpdir):
         melt_onset_field = cdecdr.create_melt_onset_field(
             date=date,
             hemisphere=SOUTH,
-            resolution="12",
+            resolution="12.5",
             ecdr_data_dir=Path(tmpdir),
         )
         assert melt_onset_field is None
@@ -29,7 +29,7 @@ def test_melt_onset_field_outside_melt_season(tmpdir):
         melt_onset_field = cdecdr.create_melt_onset_field(
             date=date,
             hemisphere=hemisphere,
-            resolution="12",
+            resolution="12.5",
             ecdr_data_dir=Path(tmpdir),
             no_melt_flag=no_melt_flag,
         )
