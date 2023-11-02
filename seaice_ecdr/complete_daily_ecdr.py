@@ -1,6 +1,7 @@
 """Routines for generating completely filled daily eCDR files.
 
 """
+import copy
 import datetime as dt
 import sys
 import traceback
@@ -441,6 +442,21 @@ def create_cdecdr_for_date_range(
     callback=datetime_to_date,
 )
 @click.option(
+    "--end-date",
+    required=False,
+    type=click.DateTime(
+        formats=(
+            "%Y-%m-%d",
+            "%Y%m%d",
+            "%Y.%m.%d",
+        )
+    ),
+    # Like `datetime_to_date` but allows `None`.
+    callback=lambda _ctx, _param, value: value if value is None else value.date(),
+    default=None,
+    help="If given, run temporal composite for `--date` through this end date.",
+)
+@click.option(
     "-h",
     "--hemisphere",
     required=True,
@@ -474,6 +490,7 @@ def create_cdecdr_for_date_range(
 def cli(
     *,
     date: dt.date,
+    end_date: dt.date | None,
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
@@ -487,10 +504,14 @@ def cli(
     projection, resolution, and bounds), and TBtype (TB type includes source and
     methodology for getting those TBs onto the grid)
     """
+
+    if end_date is None:
+        end_date = copy.copy(date)
+
     create_cdecdr_for_date_range(
         hemisphere=hemisphere,
         start_date=date,
-        end_date=date,
+        end_date=end_date,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
