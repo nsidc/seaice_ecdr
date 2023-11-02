@@ -262,6 +262,9 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         ecdr_data_dir=ecdr_data_dir,
     )
     cde_ds = tie_ds.copy()
+
+    # TODO: We need to compute the standard deviation field here too(!)
+
     melt_onset_field = create_melt_onset_field(
         date=date,
         hemisphere=hemisphere,
@@ -270,6 +273,9 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
     )
 
     # Update cde_ds with melt onset info
+    if melt_onset_field is None:
+        return cde_ds
+
     cde_ds["melt_onset_day_cdr_seaice_conc"] = (
         ("time", "y", "x"),
         melt_onset_field,

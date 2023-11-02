@@ -39,9 +39,8 @@ def finalize_cdecdr_ds(
     ds = ds_in.copy(deep=True)
 
     # Drop unnecessary fields
-    # for field_name in fields_to_drop:
-    #     ds = ds.drop_vars(field_name)
-    ds = ds.drop_vars(fields_to_drop)
+    # Setting errors to ignore because SH will not have pole hole or melt_onset vars
+    ds = ds.drop_vars(fields_to_drop, errors="ignore")
 
     # Rename fields
     ds = ds.rename_vars(fields_to_rename)
@@ -119,25 +118,29 @@ def finalize_cdecdr_ds(
     # melt onset is set here simply to update attributes
     # TODO: this is NH only
 
-    ds["melt_onset_day_cdr_seaice_conc"] = (
-        ("time", "y", "x"),
-        ds["melt_onset_day_cdr_seaice_conc"].data,
-        {
-            "standard_name": "status_flag",
-            "long_name": "Day of NH Snow Melt Onset On Sea Ice",
-            "units": "1",
-            "grid_mapping": "crs",
-            "valid_range": np.array((60, 244), dtype=np.uint8),
-            "comment": (
-                "Value of 255 means no melt detected yet or the date is outside"
-                "the melt season.  Other values indicate the day of year when"
-                "melt was first detected at this location."
-            ),
-        },
-        {
-            "zlib": True,
-        },
-    )
+    try:
+        ds["melt_onset_day_cdr_seaice_conc"] = (
+            ("time", "y", "x"),
+            ds["melt_onset_day_cdr_seaice_conc"].data,
+            {
+                "standard_name": "status_flag",
+                "long_name": "Day of NH Snow Melt Onset On Sea Ice",
+                "units": "1",
+                "grid_mapping": "crs",
+                "valid_range": np.array((60, 244), dtype=np.uint8),
+                "comment": (
+                    "Value of 255 means no melt detected yet or the date is outside"
+                    "the melt season.  Other values indicate the day of year when"
+                    "melt was first detected at this location."
+                ),
+            },
+            {
+                "zlib": True,
+            },
+        )
+    except KeyError:
+        # We do not expect melt onset in Southern hemisphere
+        pass
 
     # TODO: Verify that spatial interpolation set properly for pole hole fill
     # TODO: Verify flag mask values and meanings
