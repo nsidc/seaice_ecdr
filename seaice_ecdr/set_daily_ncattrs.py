@@ -32,7 +32,7 @@ CDECDR_FIELDS_TO_RENAME = {
 def finalize_cdecdr_ds(
     ds_in: xr.Dataset,
     fields_to_drop: list = CDECDR_FIELDS_TO_DROP,
-    fields_to_rename: list = CDECDR_FIELDS_TO_RENAME,
+    fields_to_rename: dict = CDECDR_FIELDS_TO_RENAME,
 ) -> xr.Dataset:
     """Create the final, published version of the complete daily dataset."""
     # TODO: It may be best to move these attributes and specifications to
