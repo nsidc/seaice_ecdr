@@ -241,8 +241,8 @@ def finalize_cdecdr_ds(
     # Finally, address global attributes
     new_global_attrs = {
         "title": (
-            "NOAA/NSIDC Climate Data Record of Passive Microwave",
-            "Sea Ice Concentration Version 5",
+            "NOAA-NSIDC Climate Data Record of Passive Microwave"
+            "Sea Ice Concentration Version 5"
         ),
         "Conventions": "CF-1.10, ACDD-1.3",
         "program": "NOAA Climate Data Record Program",
