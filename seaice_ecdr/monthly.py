@@ -147,9 +147,9 @@ def _monthly_qa_field(
     days_in_ds = len(daily_ds_for_month.time)
     majority_of_days = (days_in_ds + 1) // 2
 
-    at_least_half_have_sic_gt_15 = (is_sic & (daily_ds_for_month.cdr_conc > 15)).sum(
-        dim="time"
-    ) >= majority_of_days
+    at_least_half_have_sic_gt_15 = (
+        is_sic & (daily_ds_for_month.cdr_seaice_conc > 15)
+    ).sum(dim="time") >= majority_of_days
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_half_have_sic_gt_15,
         qa_of_cdr_seaice_conc_monthly
@@ -158,9 +158,9 @@ def _monthly_qa_field(
         ],
     )
 
-    at_least_half_have_sic_gt_30 = (is_sic & (daily_ds_for_month.cdr_conc > 30)).sum(
-        dim="time"
-    ) >= majority_of_days
+    at_least_half_have_sic_gt_30 = (
+        is_sic & (daily_ds_for_month.cdr_seaice_conc > 30)
+    ).sum(dim="time") >= majority_of_days
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_half_have_sic_gt_30,
         qa_of_cdr_seaice_conc_monthly
@@ -238,20 +238,24 @@ def make_monthly_ds(
 
     # create `nsidc_{nt|bt}_seaice_conc_monthly`. These are averages of the
     # daily NT and BT values. These 'raw' fields do not have any flags.
-    nsidc_nt_seaice_conc_monthly = daily_ds_for_month.nt_conc_raw.mean(dim="time")
+    nsidc_nt_seaice_conc_monthly = daily_ds_for_month.nasateam_seaice_conc_raw.mean(
+        dim="time"
+    )
     nsidc_nt_seaice_conc_monthly.name = "nsidc_nt_seaice_conc_monthly"
-    nsidc_bt_seaice_conc_monthly = daily_ds_for_month.bt_conc_raw.mean(dim="time")
+    nsidc_bt_seaice_conc_monthly = daily_ds_for_month.bootstrap_seaice_conc_raw.mean(
+        dim="time"
+    )
     nsidc_bt_seaice_conc_monthly.name = "nsidc_bt_seaice_conc_monthly"
 
     # create `cdr_seaice_conc_monthly`. This is the combined monthly SIC.
-    # The `cdr_conc` variable has temporally filled data and flags.
+    # The `cdr_seaice_conc` variable has temporally filled data and flags.
     # TODO: what's `conc`?
     # TODO: should we handle flags separately? Land mask should be consistent
     # between files (so the average will still be the land flag), and this code
     # assumes `NaN` is missing data. CDR v4 copies the flags from the first
     # daily data file it gets and applies it to the average for the month after
     # the mean calculation.
-    cdr_seaice_conc_monthly = daily_ds_for_month.cdr_conc.sel(
+    cdr_seaice_conc_monthly = daily_ds_for_month.cdr_seaice_conc.sel(
         time=daily_ds_for_month.time.min()
     ).copy()
     cdr_seaice_conc_monthly = cdr_seaice_conc_monthly.drop_vars("time")
@@ -261,12 +265,12 @@ def make_monthly_ds(
         # Locations at which to preserve this object’s values.
         ~is_sic,
         # TODO: use `drop_attrs=True`?
-        daily_ds_for_month.cdr_conc.mean(dim="time"),
+        daily_ds_for_month.cdr_seaice_conc.mean(dim="time"),
     )
 
     # Create `stdev_of_cdr_seaice_conc_monthly`, the standard deviation of the
     # sea ice concentration.
-    stdv_of_cdr_seaice_conc_monthly = daily_ds_for_month.cdr_conc.sel(
+    stdv_of_cdr_seaice_conc_monthly = daily_ds_for_month.cdr_seaice_conc.sel(
         time=daily_ds_for_month.time.min()
     ).copy()
     stdv_of_cdr_seaice_conc_monthly = stdv_of_cdr_seaice_conc_monthly.drop_vars("time")
@@ -275,7 +279,7 @@ def make_monthly_ds(
         # Locations at which to preserve this object’s values.
         ~is_sic,
         # cdr v4 uses a ddof of 1.
-        daily_ds_for_month.cdr_conc.std(dim="time", ddof=1),
+        daily_ds_for_month.cdr_seaice_conc.std(dim="time", ddof=1),
     )
 
     qa_of_cdr_seaice_conc_monthly = _monthly_qa_field(
@@ -286,8 +290,10 @@ def make_monthly_ds(
 
     # Create `melt_onset_day_cdr_seaice_conc_monthly`. This is the value from
     # the last day of the month.
-    melt_onset_day_cdr_seaice_conc_monthly = daily_ds_for_month.melt_onset.sel(
-        time=daily_ds_for_month.time.max()
+    melt_onset_day_cdr_seaice_conc_monthly = (
+        daily_ds_for_month.melt_onset_day_cdr_seaice_conc.sel(
+            time=daily_ds_for_month.time.max()
+        )
     )
     melt_onset_day_cdr_seaice_conc_monthly.name = (
         "melt_onset_day_cdr_seaice_conc_monthly"
