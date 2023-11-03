@@ -370,6 +370,14 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         interp_range=interp_range,
     )
 
+    is_temporally_interpolated = (ti_flags > 0) & (ti_flags <= 55)
+    # TODO: this bit mask of 64 added to (equals bitwise "or")
+    #       should be looked up from a map of flag mask values
+    tie_ds["qa_of_cdr_seaice_conc"] = tie_ds["qa_of_cdr_seaice_conc"].where(
+        ~is_temporally_interpolated,
+        other=tie_ds["qa_of_cdr_seaice_conc"] + 64,
+    )
+
     tie_ds["cdr_conc_ti"] = ti_var
 
     # Add the temporal interp flags to the dataset
@@ -445,8 +453,6 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
                 )
 
                 logger.info("Updated spatial_interpolation with pole hole value")
-                breakpoint()
-                print("verify that spatint_bitmask was update with 32s")
             else:
                 raise RuntimeError(
                     "temporally interpolated dataset should have ",

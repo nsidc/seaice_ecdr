@@ -297,6 +297,20 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         },
     )
 
+    # the np.squeeze() function here is to remove the time dim so that
+    # this becomes a 2d array for updating the qa_... field
+    is_melt_has_occurred = np.squeeze(
+        (MELT_SEASON_FIRST_DOY <= cde_ds["melt_onset_day_cdr_seaice_conc"].data)
+        & (cde_ds["melt_onset_day_cdr_seaice_conc"].data <= MELT_SEASON_LAST_DOY)
+    )
+    # TODO: the flag value being "or"ed to the bitmask should be looked
+    #       up as the temporally-interpolation-has-occured value
+    #       rather than hardcoded as '128'.
+    cde_ds["qa_of_cdr_seaice_conc"] = cde_ds["qa_of_cdr_seaice_conc"].where(
+        ~is_melt_has_occurred,
+        other=np.bitwise_or(cde_ds["qa_of_cdr_seaice_conc"], 128),
+    )
+
     return cde_ds
 
 

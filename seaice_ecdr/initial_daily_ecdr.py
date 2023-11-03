@@ -320,7 +320,7 @@ def compute_initial_daily_ecdr_dataset(
     # TB fields were interpolated
     ydim, xdim = ecdr_ide_ds["h18_day_si"].data.shape
     spatint_bitmask_arr = np.zeros((ydim, xdim), dtype=np.uint8)
-    tb_spatint_bitmask_map = {
+    TB_SPATINT_BITMASK_MAP = {
         "v18": 1,
         "h18": 2,
         "v23": 4,
@@ -334,7 +334,7 @@ def compute_initial_daily_ecdr_dataset(
         is_tb_si_diff = (
             ecdr_ide_ds[tb_varname].data != ecdr_ide_ds[si_varname].data
         ) & (~np.isnan(ecdr_ide_ds[si_varname].data))
-        spatint_bitmask_arr[is_tb_si_diff] += tb_spatint_bitmask_map[tbname]
+        spatint_bitmask_arr[is_tb_si_diff] += TB_SPATINT_BITMASK_MAP[tbname]
 
     # Note: Do not use a _FillValue because it will cause values to become NaN
     ecdr_ide_ds["spatint_bitmask"] = (
@@ -752,9 +752,10 @@ def compute_initial_daily_ecdr_dataset(
             logger.info("Filled pole hole")
             is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
             if "spatint_bitmask" in ecdr_ide_ds.variables.keys():
-                ecdr_ide_ds["spatint_bitmask"].data[
-                    is_pole_filled
-                ] += tb_spatint_bitmask_map["pole_filled"]
+                ecdr_ide_ds["spatint_bitmask"] = ecdr_ide_ds["spatint_bitmask"].where(
+                    ~is_pole_filled,
+                    other=TB_SPATINT_BITMASK_MAP["pole_filled"],
+                )
                 logger.info("Updated spatial_interpolation with pole hole value")
 
     # Apply land flag value and clamp max conc to 100.
