@@ -419,6 +419,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
                 near_pole_hole_mask=near_pole_hole_mask,
             )
             logger.info("Filled pole hole")
+            # Need to use not-isnan() here because NaN == NaN evaluates to False
             is_pole_filled = (cdr_conc_pole_filled != cdr_conc_pre_polefill) & (
                 ~np.isnan(cdr_conc_pole_filled)
             )
@@ -429,7 +430,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
                 #      bitmask value should be determined by examining the
                 #      bitmask_flags and bitmask_flag_meanings fields of the
                 #      DataArray variable.
-                tb_spatint_bitmask_map = {
+                TB_SPATINT_BITMASK_MAP = {
                     "v18": 1,
                     "h18": 2,
                     "v23": 4,
@@ -437,10 +438,15 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
                     "h36": 16,
                     "pole_filled": 32,
                 }
-                tie_ds["spatint_bitmask"].data[
-                    is_pole_filled
-                ] += tb_spatint_bitmask_map["pole_filled"]
+                # tie_ds["spatint_bitmask"].data[is_pole_filled]= tie_ds["spatint_bitmask"].data[is_pole_filled] + TB_SPATINT_BITMASK_MAP["pole_filled"]
+                tie_ds["spatint_bitmask"] = tie_ds["spatint_bitmask"].where(
+                    ~is_pole_filled,
+                    other=TB_SPATINT_BITMASK_MAP["pole_filled"],
+                )
+
                 logger.info("Updated spatial_interpolation with pole hole value")
+                breakpoint()
+                print("verify that spatint_bitmask was update with 32s")
             else:
                 raise RuntimeError(
                     "temporally interpolated dataset should have ",

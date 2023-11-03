@@ -336,11 +336,11 @@ def compute_initial_daily_ecdr_dataset(
         ) & (~np.isnan(ecdr_ide_ds[si_varname].data))
         spatint_bitmask_arr[is_tb_si_diff] += tb_spatint_bitmask_map[tbname]
 
+    # Note: Do not use a _FillValue because it will cause values to become NaN
     ecdr_ide_ds["spatint_bitmask"] = (
         ("y", "x"),
         spatint_bitmask_arr,
         {
-            "_FillValue": 0,
             "grid_mapping": "crs",
             "standard_name": "status_flag",
             "long_name": "spatial_interpolation_flag",
@@ -383,7 +383,6 @@ def compute_initial_daily_ecdr_dataset(
         ("y", "x"),
         bt_fields["invalid_ice_mask"],
         {
-            "_FillValue": 0,
             "grid_mapping": "crs",
             "standard_name": "seaice_binary_mask",
             "long_name": "invalid ice mask",
@@ -404,7 +403,6 @@ def compute_initial_daily_ecdr_dataset(
         ("y", "x"),
         bt_fields["land_mask"],
         {
-            "_FillValue": 0,
             "grid_mapping": "crs",
             "standard_name": "land_binary_mask",
             "long_name": "land mask",
@@ -425,7 +423,7 @@ def compute_initial_daily_ecdr_dataset(
             ("y", "x"),
             bt_fields["pole_mask"],
             {
-                "_FillValue": 0,
+                # "_FillValue": 0,
                 "grid_mapping": "crs",
                 "standard_name": "pole_binary_mask",
                 "long_name": "pole mask",
@@ -453,7 +451,7 @@ def compute_initial_daily_ecdr_dataset(
         ("y", "x"),
         nt_params.shoremap,
         {
-            "_FillValue": 0,
+            # "_FillValue": 0,
             "grid_mapping": "crs",
             "standard_name": "surface mask",
             "long_name": "NT shoremap",
@@ -470,7 +468,7 @@ def compute_initial_daily_ecdr_dataset(
         ("y", "x"),
         nt_params.minic,
         {
-            "_FillValue": 0,
+            # "_FillValue": 0,
             "grid_mapping": "crs",
             "standard_name": "sea_ice_area_fraction",
             "long_name": "Minimum ice concentration over observation period",
@@ -497,7 +495,7 @@ def compute_initial_daily_ecdr_dataset(
         ("y", "x"),
         invalid_tb_mask,
         {
-            "_FillValue": 0,
+            # "_FillValue": 0,
             "grid_mapping": "crs",
             "standard_name": "invalid_tb_binary_mask",
             "long_name": "Map of Invalid TBs",
@@ -528,7 +526,7 @@ def compute_initial_daily_ecdr_dataset(
         ("y", "x"),
         bt_weather_mask.data,
         {
-            "_FillValue": 0,
+            # "_FillValue": 0,
             "grid_mapping": "crs",
             "standard_name": "bt_weather_binary_mask",
             "long_name": "Map of weather masquerading as sea ice per BT",
@@ -638,7 +636,7 @@ def compute_initial_daily_ecdr_dataset(
         ("y", "x"),
         nt_weather_mask,
         {
-            "_FillValue": 0,
+            # "_FillValue": 0,
             "grid_mapping": "crs",
             "standard_name": "weather_binary_mask",
             "long_name": "Map of weather masquerading as sea ice per NT",
@@ -772,7 +770,7 @@ def compute_initial_daily_ecdr_dataset(
             ("y", "x"),
             bt_conc,
             {
-                "_FillValue": 255,
+                # "_FillValue": 255,
                 "grid_mapping": "crs",
                 "standard_name": "sea_ice_area_fraction",
                 "long_name": (
@@ -797,7 +795,7 @@ def compute_initial_daily_ecdr_dataset(
             ("y", "x"),
             nt_conc,
             {
-                "_FillValue": 255,
+                # "_FillValue": 255,
                 "grid_mapping": "crs",
                 "standard_name": "sea_ice_area_fraction",
                 "long_name": (
@@ -821,7 +819,7 @@ def compute_initial_daily_ecdr_dataset(
         ("time", "y", "x"),
         np.expand_dims(cdr_conc, axis=0),
         {
-            "_FillValue": 255,
+            # "_FillValue": 255,
             "grid_mapping": "crs",
             "standard_name": "sea_ice_area_fraction",
             "long_name": "Sea ice concentration",
@@ -852,7 +850,7 @@ def compute_initial_daily_ecdr_dataset(
         ("y", "x"),
         qa_bitmask,
         {
-            "_FillValue": 0,
+            # "_FillValue": 0,
             "grid_mapping": "crs",
             "standard_name": "status_flag",
             "long_name": "Sea Ice Concentration QC flags",
