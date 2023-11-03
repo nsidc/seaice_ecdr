@@ -50,7 +50,7 @@ def finalize_cdecdr_ds(
     # cdr_seaice_conc should be ubyte
     ds["cdr_seaice_conc"] = (
         ("time", "y", "x"),
-        ds["cdr_seaice_conc"].data.astype(np.uint8),
+        ds["cdr_seaice_conc"].data.astype(np.uint16),
         {
             "_FillValue": 255,
             "standard_name": "sea_ice_area_fraction",
@@ -64,7 +64,7 @@ def finalize_cdecdr_ds(
             "flag_meanings": "pole_hole lakes coastal land_mask missing_data",
             "reference": "https://nsidc.org/data/g02202/versions/5/",
             "ancillary_variables": "stdev_of_cdr_seaice_conc qa_of_cdr_seaice_conc",
-            "valid_range": np.array((0, 100), dtype=np.uint8),
+            "valid_range": np.array((0, 255), dtype=np.uint8),
             "scale_factor": np.float32(0.01),
             "add_offset": np.float32(0.0),
             # TODO: add packing description

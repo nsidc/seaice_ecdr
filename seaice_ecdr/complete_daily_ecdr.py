@@ -322,20 +322,12 @@ def write_cde_netcdf(
         if varname not in uncompressed_fields:
             nc_encoding[varname] = {"zlib": True}
 
-        # Move scale_factor and add_offset into nc encoding. Without doing this,
-        # the resulting NC file hsa data that, when read, are not scaled
-        # properly (e.g., 255 is 2.55)
-        if "scale_factor" in cde_ds[varname].attrs.keys():
-            logger.info(f"adding scale factor to {varname}")
-            nc_encoding[varname] = {
-                **nc_encoding[varname],
-                "scale_factor": cde_ds[varname].attrs.pop("scale_factor"),
-            }
-        if "add_offset" in cde_ds[varname].attrs.keys():
-            nc_encoding[varname] = {
-                **nc_encoding[varname],
-                "add_offset": cde_ds[varname].attrs.pop("add_offset"),
-            }
+    # scale flag values
+    # TODO: other variables need tihs adjustment?
+    cde_ds["cdr_seaice_conc"] = cde_ds.cdr_seaice_conc.where(
+        cde_ds.cdr_seaice_conc <= 100,
+        cde_ds.cdr_seaice_conc * 100,
+    )
 
     cde_ds.to_netcdf(
         output_filepath,
