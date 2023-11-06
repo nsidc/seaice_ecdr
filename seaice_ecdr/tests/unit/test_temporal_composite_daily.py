@@ -17,6 +17,7 @@ from seaice_ecdr.initial_daily_ecdr import get_idecdr_dir, get_idecdr_filepath
 from seaice_ecdr.temporal_composite_daily import (
     iter_dates_near_date,
     temporally_composite_dataarray,
+    yield_dates_from_temporal_interpolation_flags,
 )
 
 # Set the default minimum log notification to Warning
@@ -275,3 +276,50 @@ def test_temporal_composite_da_multiday():
         temporal_composite.data, expected_temporal_composite_data, equal_nan=True
     )
     assert np.array_equal(temporal_flags, expected_temporal_flags, equal_nan=True)
+
+
+def test_get_days_from_temporinterp_flags():
+    """Verify correct days-to-retrieve per temporal_interpolation_flag."""
+    target_date = dt.date(2022, 3, 3)
+    # Test data...include prior days 0, 2, 3 and next days 0, 1, 4, 5
+    mock_ti_flags = np.array(
+        [
+            [0, 1, 4],
+            [20, 31, 5],
+            [30, 25, 24],
+        ]
+    )
+    mock_date_list = [
+        target_date - dt.timedelta(days=3),  # prior days:  3
+        target_date - dt.timedelta(days=2),  # prior days:  2
+        target_date,  # target date: 0
+        target_date + dt.timedelta(days=1),  # next days:   1
+        target_date + dt.timedelta(days=4),  # next days:   4
+        target_date + dt.timedelta(days=5),  # next days:   5
+    ]
+
+    test_date_list = list(
+        yield_dates_from_temporal_interpolation_flags(target_date, mock_ti_flags)
+    )
+
+    assert mock_date_list == test_date_list
+
+    # Second test: prior only
+    target_date = dt.date(2021, 1, 1)
+    # Test data...include prior days 0, 1, 4 and no next days
+    mock_ti_flags = np.array(
+        [
+            [0, 10, 40],
+        ]
+    )
+    mock_date_list = [
+        target_date - dt.timedelta(days=4),  # prior days:  3
+        target_date - dt.timedelta(days=1),  # prior days:  2
+        target_date,  # target date: 0
+    ]
+
+    test_date_list = list(
+        yield_dates_from_temporal_interpolation_flags(target_date, mock_ti_flags)
+    )
+
+    assert mock_date_list == test_date_list

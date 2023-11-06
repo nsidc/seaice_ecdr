@@ -39,6 +39,23 @@ except ValueError:
     logger.add(sys.stderr, level="INFO")
 
 
+def yield_dates_from_temporal_interpolation_flags(ref_date, ti_flags):
+    """A generator for dates used in temporal interpolation per the flags."""
+    date_offset_list = []
+    ti_flag_set = np.unique(ti_flags)
+    for flag_val in np.nditer(ti_flag_set):
+        tens_val = flag_val // 10
+        if tens_val < 10:
+            date_offset_list.append(ref_date - dt.timedelta(days=int(tens_val)))
+        ones_val = flag_val % 10
+        if ones_val < 10:
+            date_offset_list.append(ref_date + dt.timedelta(days=int(ones_val)))
+
+    date_offset_set = set(date_offset_list)
+    for date in sorted(date_offset_set):
+        yield date
+
+
 @cache
 def get_tie_dir(*, ecdr_data_dir: Path) -> Path:
     """Daily complete output dir for TIE processing"""
