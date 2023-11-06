@@ -328,7 +328,7 @@ def write_cde_netcdf(
         if excluded_field in cde_ds.variables.keys():
             cde_ds = cde_ds.drop_vars(excluded_field)
 
-    nc_encoding = defaultdict(dict)
+    nc_encoding: dict = defaultdict(dict)
     for varname in cde_ds.variables.keys():
         varname = cast(str, varname)
         if varname not in uncompressed_fields:
