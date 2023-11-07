@@ -39,21 +39,81 @@ except ValueError:
     logger.add(sys.stderr, level="INFO")
 
 
-def yield_dates_from_temporal_interpolation_flags(ref_date, ti_flags):
+def yield_dates_from_temporal_interpolation_flags(
+    ref_date: dt.date,
+    ti_flags: np.ndarray,
+):
     """A generator for dates used in temporal interpolation per the flags."""
     date_offset_list = []
     ti_flag_set = np.unique(ti_flags)
     for flag_val in np.nditer(ti_flag_set):
-        tens_val = flag_val // 10
+        tens_val = np.floor_divide(flag_val, 10)
         if tens_val < 10:
             date_offset_list.append(ref_date - dt.timedelta(days=int(tens_val)))
-        ones_val = flag_val % 10
+        ones_val = np.mod(flag_val, 10)
         if ones_val < 10:
             date_offset_list.append(ref_date + dt.timedelta(days=int(ones_val)))
 
     date_offset_set = set(date_offset_list)
     for date in sorted(date_offset_set):
         yield date
+
+
+def temporally_interpolate_dataarray_using_flags(
+    ref_date: dt.date, data_array: xr.DataArray, ti_flags: np.ndarray
+) -> np.ndarray:
+    """Yield the temporal interpolation of a data cube using flag values.
+
+    The tens-place-value of the temporal_interpolation_flag value is the number
+    of days in the past to draw the value, the ones-place-value is the number
+    of days in the future to use for interpolation."""
+
+    initial_value = 255
+    tdim, ydim, xdim = data_array.shape
+    prior_val = np.zeros((ydim, xdim), dtype=float)
+    prior_val[:] = initial_value
+    prior_dist = np.zeros((ydim, xdim), dtype=int)
+    next_val = np.zeros((ydim, xdim), dtype=float)
+    next_val[:] = initial_value
+    next_dist = np.zeros((ydim, xdim), dtype=int)
+
+    for date in data_array.time:
+        date_offset = (date.data - ref_date).days
+        da_slice = np.squeeze(data_array.isel(time=data_array.time == date).copy().data)
+        if date_offset < 0:
+            is_this_prior = (ti_flags // 10) == -date_offset
+            prior_val[is_this_prior] = da_slice[is_this_prior]
+            prior_dist[is_this_prior] = -date_offset
+            next_val[is_this_prior] = da_slice[is_this_prior]
+            next_dist[is_this_prior] = -date_offset
+        elif date_offset > 0:
+            is_this_next = (ti_flags % 10) == date_offset
+            next_val[is_this_next] = da_slice[is_this_next]
+            next_dist[is_this_next] = date_offset
+        else:
+            # date_offset is zero
+            is_this = ti_flags == 0
+            prior_val[is_this] = da_slice[is_this]
+            prior_dist[is_this] = 0
+            next_val[is_this] == da_slice[is_this]
+            next_dist[is_this] = 0
+
+    # Fill in where there was only one side to the interpolation
+    next_val[next_val == initial_value] = prior_val[next_val == initial_value]
+    prior_val[prior_val == initial_value] = next_val[prior_val == initial_value]
+
+    # Linearly interpolate between prior and next values
+    linint_rise = next_val.astype(np.float32) - prior_val.astype(np.float32)
+    linint_run = prior_dist + next_dist
+    linint_run[linint_run == 0] = 1  # avoid div by zero
+
+    filled_array = prior_val + prior_dist * linint_rise / linint_run
+    if data_array.dtype == np.uint8:
+        filled_array = np.round(filled_array).astype(np.uint8)
+    else:
+        filled_array = filled_array.astype(data_array.dtype)
+
+    return filled_array
 
 
 @cache
