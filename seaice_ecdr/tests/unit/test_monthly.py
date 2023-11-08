@@ -12,6 +12,7 @@ from seaice_ecdr.monthly import (
     QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS,
     _get_daily_complete_filepaths_for_month,
     _monthly_qa_field,
+    _qa_field_has_flag,
     check_min_days_for_valid_month,
 )
 
@@ -80,6 +81,39 @@ def test_check_min_day_for_valid_month():
             daily_ds_for_month=_mock_daily_ds_for_month(9),
             sat="n07",
         )
+
+
+def test__qa_field_has_flag():
+    flag_1 = 1
+    flag_2 = 2
+    flag_3 = 4
+    mock_qa_field = xr.DataArray(
+        [flag_1, (flag_1 | flag_2), (flag_1 | flag_2 | flag_3)]
+    )
+
+    # flag 1
+    expected = xr.DataArray([True, True, True])
+    actual = _qa_field_has_flag(
+        qa_field=mock_qa_field,
+        flag_value=flag_1,
+    )
+    npt.assert_array_equal(expected, actual)
+
+    # flag 2
+    expected = xr.DataArray([False, True, True])
+    actual = _qa_field_has_flag(
+        qa_field=mock_qa_field,
+        flag_value=flag_2,
+    )
+    npt.assert_array_equal(expected, actual)
+
+    # flag 3
+    expected = xr.DataArray([False, False, True])
+    actual = _qa_field_has_flag(
+        qa_field=mock_qa_field,
+        flag_value=flag_3,
+    )
+    npt.assert_array_equal(expected, actual)
 
 
 def test__monthly_qa_field():

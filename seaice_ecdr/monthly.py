@@ -116,6 +116,15 @@ QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS = dict(
 )
 
 
+def _qa_field_has_flag(*, qa_field: xr.DataArray, flag_value: int) -> xr.DataArray:
+    qa_field_contains_flag = (
+        qa_field.where(qa_field.isnull(), qa_field.astype(int) & flag_value)
+        == flag_value
+    )
+
+    return qa_field_contains_flag
+
+
 def _monthly_qa_field(
     *,
     daily_ds_for_month: xr.Dataset,
@@ -170,9 +179,9 @@ def _monthly_qa_field(
     )
 
     # Use "valid_ice_mask_applied", which is actually the invalid ice mask.
-    region_masked_by_ocean_climatology = (
-        daily_ds_for_month.qa_of_cdr_seaice_conc
-        == QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["valid_ice_mask_applied"]
+    region_masked_by_ocean_climatology = _qa_field_has_flag(
+        qa_field=daily_ds_for_month.qa_of_cdr_seaice_conc,
+        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["valid_ice_mask_applied"],
     ).any(dim="time")
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~region_masked_by_ocean_climatology,
@@ -180,9 +189,9 @@ def _monthly_qa_field(
         + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["region_masked_by_ocean_climatology"],
     )
 
-    at_least_one_day_during_month_has_spatial_interpolation = (
-        daily_ds_for_month.qa_of_cdr_seaice_conc
-        == QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["spatial_interpolation_applied"]
+    at_least_one_day_during_month_has_spatial_interpolation = _qa_field_has_flag(
+        qa_field=daily_ds_for_month.qa_of_cdr_seaice_conc,
+        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["spatial_interpolation_applied"],
     ).any(dim="time")
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_one_day_during_month_has_spatial_interpolation,
@@ -192,9 +201,9 @@ def _monthly_qa_field(
         ],
     )
 
-    at_least_one_day_during_month_has_temporal_interpolation = (
-        daily_ds_for_month.qa_of_cdr_seaice_conc
-        == QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["temporal_interpolation_applied"]
+    at_least_one_day_during_month_has_temporal_interpolation = _qa_field_has_flag(
+        qa_field=daily_ds_for_month.qa_of_cdr_seaice_conc,
+        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["temporal_interpolation_applied"],
     ).any(dim="time")
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_one_day_during_month_has_temporal_interpolation,
@@ -204,9 +213,9 @@ def _monthly_qa_field(
         ],
     )
 
-    at_least_one_day_during_month_has_melt_detected = (
-        daily_ds_for_month.qa_of_cdr_seaice_conc
-        == QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["start_of_melt_detected"]
+    at_least_one_day_during_month_has_melt_detected = _qa_field_has_flag(
+        qa_field=daily_ds_for_month.qa_of_cdr_seaice_conc,
+        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["start_of_melt_detected"],
     ).any(dim="time")
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_one_day_during_month_has_melt_detected,
