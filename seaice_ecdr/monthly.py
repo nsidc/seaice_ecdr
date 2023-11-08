@@ -130,14 +130,14 @@ def _monthly_qa_field(
     )
     qa_of_cdr_seaice_conc_monthly.name = "qa_of_cdr_seaice_conc_monthly"
 
-    average_exceeds_15 = is_sic & (cdr_seaice_conc_monthly > 15)
+    average_exceeds_15 = is_sic & (cdr_seaice_conc_monthly > 0.15)
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~average_exceeds_15,
         qa_of_cdr_seaice_conc_monthly
         + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exeeds_15"],
     )
 
-    average_exceeds_30 = is_sic & (cdr_seaice_conc_monthly > 30)
+    average_exceeds_30 = is_sic & (cdr_seaice_conc_monthly > 0.30)
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~average_exceeds_30,
         qa_of_cdr_seaice_conc_monthly
@@ -148,7 +148,7 @@ def _monthly_qa_field(
     majority_of_days = (days_in_ds + 1) // 2
 
     at_least_half_have_sic_gt_15 = (
-        is_sic & (daily_ds_for_month.cdr_seaice_conc > 15)
+        is_sic & (daily_ds_for_month.cdr_seaice_conc > 0.15)
     ).sum(dim="time") >= majority_of_days
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_half_have_sic_gt_15,
@@ -159,7 +159,7 @@ def _monthly_qa_field(
     )
 
     at_least_half_have_sic_gt_30 = (
-        is_sic & (daily_ds_for_month.cdr_seaice_conc > 30)
+        is_sic & (daily_ds_for_month.cdr_seaice_conc > 0.30)
     ).sum(dim="time") >= majority_of_days
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_half_have_sic_gt_30,
@@ -260,7 +260,7 @@ def make_monthly_ds(
     ).copy()
     cdr_seaice_conc_monthly = cdr_seaice_conc_monthly.drop_vars("time")
     cdr_seaice_conc_monthly.name = "cdr_seaice_conc_monthly"
-    is_sic = (cdr_seaice_conc_monthly >= 0) & (cdr_seaice_conc_monthly <= 100)
+    is_sic = (cdr_seaice_conc_monthly >= 0) & (cdr_seaice_conc_monthly <= 1)
     cdr_seaice_conc_monthly = cdr_seaice_conc_monthly.where(
         # Locations at which to preserve this object’s values.
         ~is_sic,

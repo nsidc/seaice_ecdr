@@ -87,21 +87,21 @@ def test__monthly_qa_field():
     # time ->
     _mock_data = [
         # average_concentration_exeeds_15 and at_least_half_the_days_have_sea_ice_conc_exceeds_15
-        [20, 20, 20],
+        [0.20, 0.20, 0.20],
         # average_concentration_exeeds_30 and at_least_half_the_days_have_sea_ice_conc_exceeds_30
-        [33, 33, 33],
+        [0.33, 0.33, 0.33],
         # at_least_half_the_days_have_sea_ice_conc_exceeds_15
-        [0, 16, 16],
+        [0, 0.16, 0.16],
         # at_least_half_the_days_have_sea_ice_conc_exceeds_30 and 15 and average_concentration_exeeds_15
-        [0, 31, 31],
+        [0, 0.31, 0.31],
         # region_masked_by_ocean_climatology
         [0, 0, 0],
         # at_least_one_day_during_month_has_spatial_interpolation
-        [3, 2, 1],
+        [0.03, 0.02, 0.01],
         # at_least_one_day_during_month_has_temporal_interpolation
-        [1, 2, 3],
+        [0.01, 0.02, 0.03],
         # at_least_one_day_during_month_has_melt_detected, average_concentration_exeeds_15 and 30
-        [np.nan, 82, np.nan],
+        [np.nan, 0.82, np.nan],
         # Land flag. Do nothing
         [254, 254, 254],
     ]
