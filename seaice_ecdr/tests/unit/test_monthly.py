@@ -181,7 +181,7 @@ def test__monthly_qa_field():
 
     _mock_daily_ds = xr.Dataset(
         data_vars=dict(
-            cdr_conc=(("x", "time"), _mock_data),
+            cdr_seaice_conc=(("x", "time"), _mock_data),
             qa_of_cdr_seaice_conc=(("x", "time"), _mock_daily_qa_fields),
         ),
         coords=dict(
@@ -190,7 +190,7 @@ def test__monthly_qa_field():
         ),
     )
 
-    _mean_daily_conc = _mock_daily_ds.cdr_conc.mean(dim="time")
+    _mean_daily_conc = _mock_daily_ds.cdr_seaice_conc.mean(dim="time")
     is_sic = _mean_daily_conc <= 100
     actual = _monthly_qa_field(
         daily_ds_for_month=_mock_daily_ds,
