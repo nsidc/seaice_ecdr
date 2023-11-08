@@ -5,6 +5,7 @@ import copy
 import datetime as dt
 import sys
 import traceback
+from collections import defaultdict
 from functools import cache
 from pathlib import Path
 from typing import Iterable, cast, get_args
@@ -18,9 +19,7 @@ from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import (
-    STANDARD_BASE_OUTPUT_DIR,
-)
+from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.melt import (
     MELT_ONSET_FILL_VALUE,
     MELT_SEASON_FIRST_DOY,
@@ -299,6 +298,20 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         },
     )
 
+    # the np.squeeze() function here is to remove the time dim so that
+    # this becomes a 2d array for updating the qa_... field
+    is_melt_has_occurred = np.squeeze(
+        (MELT_SEASON_FIRST_DOY <= cde_ds["melt_onset_day_cdr_seaice_conc"].data)
+        & (cde_ds["melt_onset_day_cdr_seaice_conc"].data <= MELT_SEASON_LAST_DOY)
+    )
+    # TODO: the flag value being "or"ed to the bitmask should be looked
+    #       up as the temporally-interpolation-has-occured value
+    #       rather than hardcoded as '128'.
+    cde_ds["qa_of_cdr_seaice_conc"] = cde_ds["qa_of_cdr_seaice_conc"].where(
+        ~is_melt_has_occurred,
+        other=np.bitwise_or(cde_ds["qa_of_cdr_seaice_conc"], 128),
+    )
+
     return cde_ds
 
 
@@ -315,11 +328,26 @@ def write_cde_netcdf(
         if excluded_field in cde_ds.variables.keys():
             cde_ds = cde_ds.drop_vars(excluded_field)
 
-    nc_encoding = {}
+    nc_encoding: dict = defaultdict(dict)
     for varname in cde_ds.variables.keys():
         varname = cast(str, varname)
         if varname not in uncompressed_fields:
             nc_encoding[varname] = {"zlib": True}
+
+        # Move scale_factor and add_offset into nc encoding. Without doing this,
+        # the resulting NC file hsa data that, when read, are not scaled
+        # properly (e.g., 255 is 2.55)
+        if "scale_factor" in cde_ds[varname].attrs.keys():
+            logger.info(f"adding scale factor to {varname}")
+            nc_encoding[varname] = {
+                **nc_encoding[varname],
+                "scale_factor": cde_ds[varname].attrs.pop("scale_factor"),
+            }
+        if "add_offset" in cde_ds[varname].attrs.keys():
+            nc_encoding[varname] = {
+                **nc_encoding[varname],
+                "add_offset": cde_ds[varname].attrs.pop("add_offset"),
+            }
 
     cde_ds.to_netcdf(
         output_filepath,
