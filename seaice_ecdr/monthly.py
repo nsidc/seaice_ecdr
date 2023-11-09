@@ -370,7 +370,7 @@ def calc_melt_onset_day_cdr_seaice_conc_monthly(
     return melt_onset_day_cdr_seaice_conc_monthly
 
 
-def _assing_time_to_monthly_ds(
+def _assign_time_to_monthly_ds(
     *, daily_ds_for_month: xr.Dataset, monthly_ds: xr.Dataset
 ) -> xr.Dataset:
     # TODO: should this step be done in the `calc_*` functions?
@@ -459,7 +459,7 @@ def make_monthly_ds(
         )
     )
 
-    monthly_ds = _assing_time_to_monthly_ds(
+    monthly_ds = _assign_time_to_monthly_ds(
         daily_ds_for_month=daily_ds_for_month,
         monthly_ds=monthly_ds,
     )
