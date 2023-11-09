@@ -428,6 +428,33 @@ def fill_conc_field(
     return np.array((0))
 
 
+def create_sorted_var_timestack(
+    varname: str,
+    date_list: list,
+    ds_function,  # How do I specify a function to mypy?
+    ds_function_kwargs: dict,
+) -> np.ndarray:
+    # Use the first date to initialize the dataset
+    init_date = date_list[0]
+    init_ds = ds_function(
+        date=init_date,
+        **ds_function_kwargs,
+    )
+    var_stack = init_ds.data_vars[varname].copy()
+    for interp_date in date_list[1:]:
+        # interp_ds = read_or_create_and_read_idecdr_ds(
+        interp_ds = ds_function(
+            date=interp_date,
+            **ds_function_kwargs,
+        )
+        this_var = interp_ds.data_vars[varname].copy()
+        var_stack = xr.concat([var_stack, this_var], "time")
+
+    var_stack = var_stack.sortby("time")
+
+    return var_stack
+
+
 def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     *,
     date: dt.date,
@@ -458,6 +485,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
 
     # Update the cdr_conc var with temporally interpolated cdr_conc field
     #   by creating a DataArray with conc fields +/- interp_range around date
+    # ------------- ABSTRACT THIS -----------------
     interp_varname = "conc"
     var_stack = ide_ds.data_vars[interp_varname].copy()
     for interp_date in iter_dates_near_date(target_date=date, day_range=interp_range):
@@ -472,6 +500,45 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
             var_stack = xr.concat([var_stack, this_var], "time")
 
     var_stack = var_stack.sortby("time")
+
+    # ------------- WITH THIS -----------------
+    new_var_stack = create_sorted_var_timestack(
+        varname="conc",
+        date_list=[
+            iter_date
+            for iter_date in iter_dates_near_date(
+                target_date=date, day_range=interp_range
+            )
+        ],
+        ds_function=read_or_create_and_read_idecdr_ds,
+        ds_function_kwargs={
+            "hemisphere": hemisphere,
+            "resolution": resolution,
+            "ecdr_data_dir": ecdr_data_dir,
+        },
+    )
+    """
+    interp_varname = "conc"
+    new_var_stack = ide_ds.data_vars[interp_varname].copy()
+    for interp_date in iter_dates_near_date(target_date=date, day_range=interp_range):
+        if interp_date != date:
+            interp_ds = read_or_create_and_read_idecdr_ds(
+                date=interp_date,
+                hemisphere=hemisphere,
+                resolution=resolution,
+                ecdr_data_dir=ecdr_data_dir,
+            )
+            this_var = interp_ds.data_vars[interp_varname].copy()
+            new_var_stack = xr.concat([new_var_stack, this_var], "time")
+
+    new_var_stack = new_var_stack.sortby("time")
+    """
+    # ------------- CHECK -----------------
+    breakpoint()
+    print("about to assert var stacks are equal ...")
+    assert np.array_equal(var_stack, new_var_stack, equal_nan=True)
+
+    print("check that...")
 
     ti_var, ti_flags = temporally_composite_dataarray(
         target_date=date,
