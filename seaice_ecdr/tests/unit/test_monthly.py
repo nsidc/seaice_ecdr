@@ -401,9 +401,12 @@ def test_calc_melt_onset_day_cdr_seaice_conc_monthly():
     )
 
 
-def test_monthly_ds(monkeypatch):
+def test_monthly_ds(monkeypatch, tmpdir):
     _mock_daily_ds = _mock_daily_ds_for_month()
 
+    # usually we require at least 20 days of data for a valid month. This mock
+    # data is just 3 days in size, so we need to mock the
+    # "check_min_days_for_valid_month" function.
     monkeypatch.setattr(
         monthly, "check_min_days_for_valid_month", lambda *_args, **_kwargs: True
     )
@@ -428,3 +431,11 @@ def test_monthly_ds(monkeypatch):
     actual_vars = sorted([str(var) for var in actual.keys()])
 
     assert expected_vars == actual_vars
+
+    output_fp = tmpdir / "test.nc"
+    actual.to_netcdf(output_fp)
+
+    after_write = xr.open_dataset(output_fp)
+
+    # Assert that all results are close to 0.01 (1% SIC).
+    xr.testing.assert_allclose(actual, after_write, atol=0.009)
