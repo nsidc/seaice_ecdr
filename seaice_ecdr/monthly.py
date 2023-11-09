@@ -108,8 +108,8 @@ QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS = OrderedDict(
 # TODO: rename. This is actually a bit mask (except the fill_value)
 QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS = OrderedDict(
     {
-        "average_concentration_exeeds_15": 1,
-        "average_concentration_exeeds_30": 2,
+        "average_concentration_exceeds_0.15": 1,
+        "average_concentration_exceeds_0.30": 2,
         "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15": 4,
         "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30": 8,
         "region_masked_by_ocean_climatology": 16,
@@ -147,14 +147,14 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~average_exceeds_15,
         qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exeeds_15"],
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exceeds_0.15"],
     )
 
     average_exceeds_30 = cdr_seaice_conc_monthly > 0.30
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~average_exceeds_30,
         qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exeeds_30"],
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exceeds_0.30"],
     )
 
     days_in_ds = len(daily_ds_for_month.time)
