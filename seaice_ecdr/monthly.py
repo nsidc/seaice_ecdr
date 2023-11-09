@@ -337,6 +337,37 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
     return stdv_of_cdr_seaice_conc_monthly
 
 
+def calc_melt_onset_day_cdr_seaice_conc_monthly(
+    *, daily_ds_for_month: xr.Dataset
+) -> xr.DataArray:
+    # Create `melt_onset_day_cdr_seaice_conc_monthly`. This is the value from
+    # the last day of the month.
+    melt_onset_day_cdr_seaice_conc_monthly = (
+        daily_ds_for_month.melt_onset_day_cdr_seaice_conc.sel(
+            time=daily_ds_for_month.time.max()
+        )
+    )
+    melt_onset_day_cdr_seaice_conc_monthly.name = (
+        "melt_onset_day_cdr_seaice_conc_monthly"
+    )
+    melt_onset_day_cdr_seaice_conc_monthly = (
+        melt_onset_day_cdr_seaice_conc_monthly.drop_vars("time")
+    )
+
+    melt_onset_day_cdr_seaice_conc_monthly = melt_onset_day_cdr_seaice_conc_monthly.assing_attrs(
+        long_name="Monthly Day of Snow Melt Onset Over Sea Ice",
+        units="1",
+        valid_range=(np.ubyte(60), np.ubyte(244)),
+        # TODO: missing value? Already taken care of in the FillValue.
+        # missing_value=255,
+    )
+    melt_onset_day_cdr_seaice_conc_monthly.encoding = dict(
+        _FillValue=255,
+    )
+
+    return melt_onset_day_cdr_seaice_conc_monthly
+
+
 def make_monthly_ds(
     *,
     daily_ds_for_month: xr.Dataset,
@@ -376,22 +407,10 @@ def make_monthly_ds(
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
     )
 
-    # Create `melt_onset_day_cdr_seaice_conc_monthly`. This is the value from
-    # TODO: create a `calc` func for melt onset day.
-    # the last day of the month.
     melt_onset_day_cdr_seaice_conc_monthly = (
-        daily_ds_for_month.melt_onset_day_cdr_seaice_conc.sel(
-            time=daily_ds_for_month.time.max()
+        calc_melt_onset_day_cdr_seaice_conc_monthly(
+            daily_ds_for_month=daily_ds_for_month,
         )
-    )
-    melt_onset_day_cdr_seaice_conc_monthly.name = (
-        "melt_onset_day_cdr_seaice_conc_monthly"
-    )
-    melt_onset_day_cdr_seaice_conc_monthly = (
-        melt_onset_day_cdr_seaice_conc_monthly.drop_vars("time")
-    )
-    melt_onset_day_cdr_seaice_conc_monthly.encoding = dict(
-        _FillValue=255,
     )
 
     # TODO: time coordinate, crs
