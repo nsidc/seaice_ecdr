@@ -6,6 +6,7 @@ import numpy.testing as npt
 import pytest
 import xarray as xr
 
+from seaice_ecdr import monthly
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_dir
 from seaice_ecdr.monthly import (
     QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS,
@@ -17,6 +18,7 @@ from seaice_ecdr.monthly import (
     calc_qa_of_cdr_seaice_conc_monthly,
     calc_stdv_of_cdr_seaice_conc_monthly,
     check_min_days_for_valid_month,
+    make_monthly_ds,
 )
 
 
@@ -119,7 +121,7 @@ def test__qa_field_has_flag():
     npt.assert_array_equal(expected, actual)
 
 
-def test_calc_qa_of_cdr_seaice_conc_monthly():
+def _mock_daily_ds_for_month():
     # Each row is one pixel through time.
     # time ->
     _mock_data = [
@@ -176,6 +178,54 @@ def test_calc_qa_of_cdr_seaice_conc_monthly():
         [np.nan, np.nan, np.nan],
     ]
 
+    _mock_daily_melt_onset = [
+        [np.nan, np.nan, np.nan],
+        [np.nan, np.nan, np.nan],
+        [np.nan, np.nan, np.nan],
+        [np.nan, np.nan, np.nan],
+        [
+            np.nan,
+            np.nan,
+            np.nan,
+        ],
+        [
+            np.nan,
+            np.nan,
+            np.nan,
+        ],
+        [
+            np.nan,
+            np.nan,
+            np.nan,
+        ],
+        [np.nan, 61, 61],
+        [np.nan, np.nan, np.nan],
+    ]
+
+    _mock_daily_ds = xr.Dataset(
+        data_vars=dict(
+            cdr_seaice_conc=(("x", "time"), _mock_data),
+            nasateam_seaice_conc_raw=(("x", "time"), _mock_data),
+            bootstrap_seaice_conc_raw=(("x", "time"), _mock_data),
+            qa_of_cdr_seaice_conc=(("x", "time"), _mock_daily_qa_fields),
+            melt_onset_day_cdr_seaice_conc=(("x", "time"), _mock_daily_melt_onset),
+            crs=(("time"), ["a"] * 3),
+        ),
+        coords=dict(
+            x=list(range(9)),
+            # doy 60, 61, 62
+            time=[dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+        ),
+    )
+
+    _mock_daily_ds.attrs["year"] = 2022
+    _mock_daily_ds.attrs["month"] = 3
+
+    return _mock_daily_ds
+
+
+def test_calc_qa_of_cdr_seaice_conc_monthly():
+    _mock_daily_ds = _mock_daily_ds_for_month()
     expected_flags = np.array(
         [
             QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exceeds_0.15"]
@@ -214,17 +264,6 @@ def test_calc_qa_of_cdr_seaice_conc_monthly():
             + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exceeds_0.30"],
             QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["fill_value"],
         ]
-    )
-
-    _mock_daily_ds = xr.Dataset(
-        data_vars=dict(
-            cdr_seaice_conc=(("x", "time"), _mock_data),
-            qa_of_cdr_seaice_conc=(("x", "time"), _mock_daily_qa_fields),
-        ),
-        coords=dict(
-            x=list(range(9)),
-            time=[dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
-        ),
     )
 
     _mean_daily_conc = _mock_daily_ds.cdr_seaice_conc.mean(dim="time")
@@ -360,3 +399,32 @@ def test_calc_melt_onset_day_cdr_seaice_conc_monthly():
             ]
         ),
     )
+
+
+def test_monthly_ds(monkeypatch):
+    _mock_daily_ds = _mock_daily_ds_for_month()
+
+    monkeypatch.setattr(
+        monthly, "check_min_days_for_valid_month", lambda *_args, **_kwargs: True
+    )
+
+    actual = make_monthly_ds(
+        daily_ds_for_month=_mock_daily_ds,
+        sat="am2",
+    )
+
+    expected_vars = sorted(
+        [
+            "cdr_seaice_conc_monthly",
+            "nsidc_nt_seaice_conc_monthly",
+            "nsidc_bt_seaice_conc_monthly",
+            "stdv_of_cdr_seaice_conc_monthly",
+            "melt_onset_day_cdr_seaice_conc_monthly",
+            "qa_of_cdr_seaice_conc_monthly",
+            "crs",
+        ]
+    )
+
+    actual_vars = sorted([str(var) for var in actual.keys()])
+
+    assert expected_vars == actual_vars
