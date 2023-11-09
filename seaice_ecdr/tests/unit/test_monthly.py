@@ -10,6 +10,7 @@ from seaice_ecdr.complete_daily_ecdr import get_ecdr_dir
 from seaice_ecdr.monthly import (
     QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS,
     QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS,
+    _calc_conc_monthly,
     _get_daily_complete_filepaths_for_month,
     _qa_field_has_flag,
     calc_qa_of_cdr_seaice_conc_monthly,
@@ -231,3 +232,45 @@ def test_calc_qa_of_cdr_seaice_conc_monthly():
     )
 
     npt.assert_array_equal(expected_flags, actual.values)
+
+
+def test__calc_conc_monthly():
+    # time ->
+    pixel_one = np.array([0.12, 0.15, 0.23])
+    pixel_two = np.array([0.46, 0.55, 0.54])
+    pixel_three = np.array([0.89, 0.99, 0.89])
+    pixel_four = np.array([0.89, np.nan, 0.89])
+    _mock_data = [
+        pixel_one,
+        pixel_two,
+        pixel_three,
+        pixel_four,
+    ]
+
+    mock_daily_conc = xr.DataArray(
+        data=_mock_data,
+        dims=["y", "time"],
+        coords=dict(
+            time=[dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+            y=list(range(4)),
+        ),
+    )
+
+    actual = _calc_conc_monthly(
+        daily_conc_for_month=mock_daily_conc,
+        long_name="mock_long_name",
+        name="mock_name",
+    )
+
+    assert actual.attrs["long_name"] == "mock_long_name"
+    npt.assert_array_equal(
+        actual.values,
+        np.array(
+            [
+                np.nanmean(pixel_one),
+                np.nanmean(pixel_two),
+                np.nanmean(pixel_three),
+                np.nanmean(pixel_four),
+            ]
+        ),
+    )
