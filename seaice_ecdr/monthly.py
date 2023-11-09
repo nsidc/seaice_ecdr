@@ -333,10 +333,12 @@ def calc_cdr_seaice_conc_monthly(*, daily_ds_for_month: xr.Dataset) -> xr.DataAr
 
 
 def calc_stdv_of_cdr_seaice_conc_monthly(
-    *, daily_ds_for_month: xr.Dataset
+    *,
+    daily_cdr_seaice_conc: xr.Dataset,
 ) -> xr.DataArray:
-    stdv_of_cdr_seaice_conc_monthly = daily_ds_for_month.cdr_seaice_conc.std(
-        dim="time", ddof=1
+    stdv_of_cdr_seaice_conc_monthly = daily_cdr_seaice_conc.std(
+        dim="time",
+        ddof=1,
     )
     stdv_of_cdr_seaice_conc_monthly.name = "stdv_of_cdr_seaice_conc_monthly"
 
@@ -453,6 +455,9 @@ def make_monthly_ds(
 
     # Create `stdev_of_cdr_seaice_conc_monthly`, the standard deviation of the
     # sea ice concentration.
+    stdv_of_cdr_seaice_conc_monthly = calc_stdv_of_cdr_seaice_conc_monthly(
+        daily_cdr_seaice_conc=daily_ds_for_month.cdr_seaice_conc,
+    )
     stdv_of_cdr_seaice_conc_monthly = calc_stdv_of_cdr_seaice_conc_monthly(
         daily_ds_for_month=daily_ds_for_month,
     )

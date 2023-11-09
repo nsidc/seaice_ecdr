@@ -14,6 +14,7 @@ from seaice_ecdr.monthly import (
     _get_daily_complete_filepaths_for_month,
     _qa_field_has_flag,
     calc_qa_of_cdr_seaice_conc_monthly,
+    calc_stdv_of_cdr_seaice_conc_monthly,
     check_min_days_for_valid_month,
 )
 
@@ -271,6 +272,50 @@ def test__calc_conc_monthly():
                 np.nanmean(pixel_two),
                 np.nanmean(pixel_three),
                 np.nanmean(pixel_four),
+            ]
+        ),
+    )
+
+
+def test_calc_stdv_of_cdr_seaice_conc_monthly():
+    # time ->
+    pixel_one = np.array([0.12, 0.15, 0.23])
+    pixel_two = np.array([0.46, 0.55, 0.54])
+    pixel_three = np.array([0.89, 0.99, 0.89])
+    pixel_four = np.array([0.89, np.nan, 0.89])
+    _mock_data = [
+        pixel_one,
+        pixel_two,
+        pixel_three,
+        pixel_four,
+    ]
+
+    mock_daily_conc = xr.DataArray(
+        data=_mock_data,
+        dims=["y", "time"],
+        coords=dict(
+            time=[dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+            y=list(range(4)),
+        ),
+    )
+
+    actual = calc_stdv_of_cdr_seaice_conc_monthly(
+        daily_cdr_seaice_conc=mock_daily_conc,
+    )
+
+    assert (
+        actual.attrs["long_name"]
+        == "Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation"
+    )
+
+    npt.assert_array_equal(
+        actual.values,
+        np.array(
+            [
+                np.nanstd(pixel_one, ddof=1),
+                np.nanstd(pixel_two, ddof=1),
+                np.nanstd(pixel_three, ddof=1),
+                np.nanstd(pixel_four, ddof=1),
             ]
         ),
     )
