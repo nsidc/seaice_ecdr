@@ -125,10 +125,9 @@ def _qa_field_has_flag(*, qa_field: xr.DataArray, flag_value: int) -> xr.DataArr
     return qa_field_contains_flag
 
 
-def _monthly_qa_field(
+def calc_monthly_qa_field(
     *,
     daily_ds_for_month: xr.Dataset,
-    is_sic: xr.DataArray,
     cdr_seaice_conc_monthly: xr.DataArray,
 ) -> xr.DataArray:
     """Create `qa_of_cdr_seaice_conc_monthly`."""
@@ -139,14 +138,14 @@ def _monthly_qa_field(
     )
     qa_of_cdr_seaice_conc_monthly.name = "qa_of_cdr_seaice_conc_monthly"
 
-    average_exceeds_15 = is_sic & (cdr_seaice_conc_monthly > 0.15)
+    average_exceeds_15 = cdr_seaice_conc_monthly > 0.15
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~average_exceeds_15,
         qa_of_cdr_seaice_conc_monthly
         + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exeeds_15"],
     )
 
-    average_exceeds_30 = is_sic & (cdr_seaice_conc_monthly > 0.30)
+    average_exceeds_30 = cdr_seaice_conc_monthly > 0.30
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~average_exceeds_30,
         qa_of_cdr_seaice_conc_monthly
@@ -156,9 +155,9 @@ def _monthly_qa_field(
     days_in_ds = len(daily_ds_for_month.time)
     majority_of_days = (days_in_ds + 1) // 2
 
-    at_least_half_have_sic_gt_15 = (
-        is_sic & (daily_ds_for_month.cdr_seaice_conc > 0.15)
-    ).sum(dim="time") >= majority_of_days
+    at_least_half_have_sic_gt_15 = (daily_ds_for_month.cdr_seaice_conc > 0.15).sum(
+        dim="time"
+    ) >= majority_of_days
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_half_have_sic_gt_15,
         qa_of_cdr_seaice_conc_monthly
@@ -167,9 +166,9 @@ def _monthly_qa_field(
         ],
     )
 
-    at_least_half_have_sic_gt_30 = (
-        is_sic & (daily_ds_for_month.cdr_seaice_conc > 0.30)
-    ).sum(dim="time") >= majority_of_days
+    at_least_half_have_sic_gt_30 = (daily_ds_for_month.cdr_seaice_conc > 0.30).sum(
+        dim="time"
+    ) >= majority_of_days
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_half_have_sic_gt_30,
         qa_of_cdr_seaice_conc_monthly
@@ -233,6 +232,79 @@ def _monthly_qa_field(
     return qa_of_cdr_seaice_conc_monthly
 
 
+def calc_nsidc_nt_seaice_conc_monthly(
+    *, daily_ds_for_month: xr.Dataset
+) -> xr.DataArray:
+    nsidc_nt_seaice_conc_monthly = daily_ds_for_month.nasateam_seaice_conc_raw.mean(
+        dim="time"
+    )
+
+    nsidc_nt_seaice_conc_monthly.name = "nsidc_nt_seaice_conc_monthly"
+    nsidc_nt_seaice_conc_monthly = nsidc_nt_seaice_conc_monthly.assign_attrs(
+        long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration by NASA Team algorithm processed by NSIDC",
+        standard_name="sea_ice_area_fraction",
+        units="1",
+        valid_range=(1, 100),
+    )
+
+    return nsidc_nt_seaice_conc_monthly
+
+
+def calc_nsidc_bt_seaice_conc_monthly(
+    *, daily_ds_for_month: xr.Dataset
+) -> xr.DataArray:
+    nsidc_bt_seaice_conc_monthly = daily_ds_for_month.bootstrap_seaice_conc_raw.mean(
+        dim="time"
+    )
+
+    nsidc_bt_seaice_conc_monthly.name = "nsidc_bt_seaice_conc_monthly"
+    nsidc_bt_seaice_conc_monthly = nsidc_bt_seaice_conc_monthly.assign_attrs(
+        long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration by Bootstrap algorithm processed by NSIDC",
+        standard_name="sea_ice_area_fraction",
+        units="1",
+        valid_range=(1, 100),
+    )
+
+    return nsidc_bt_seaice_conc_monthly
+
+
+def calc_cdr_seaice_conc_monthly(*, daily_ds_for_month: xr.Dataset) -> xr.DataArray:
+    cdr_seaice_conc_monthly = daily_ds_for_month.cdr_seaice_conc.mean(dim="time")
+    cdr_seaice_conc_monthly.name = "cdr_seaice_conc_monthly"
+
+    cdr_seaice_conc_monthly = cdr_seaice_conc_monthly.assign_attrs(
+        long_name="NOAA/NSIDC Climate Data Record of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration",
+        standard_name="sea_ice_area_fraction",
+        units="1",
+        ancillary_variables="stdev_of_cdr_seaice_conc_monthly qa_of_cdr_seaice_conc_monthly",
+    )
+
+    return cdr_seaice_conc_monthly
+
+
+def calc_stdv_of_cdr_seaice_conc_monthly(
+    *, daily_ds_for_month: xr.Dataset
+) -> xr.DataArray:
+    stdv_of_cdr_seaice_conc_monthly = daily_ds_for_month.cdr_seaice_conc.std(
+        dim="time", ddof=1
+    )
+    stdv_of_cdr_seaice_conc_monthly.name = "stdv_of_cdr_seaice_conc_monthly"
+
+    stdv_of_cdr_seaice_conc_monthly = stdv_of_cdr_seaice_conc_monthly.assign_attrs(
+        long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
+        # TODO: do we need the 'missing_value' as per CDR v4? We set the
+        # "missing_value" to -1, but the FillValue also gets set to -1, and in
+        # the handling of the variable here 'missing' values are `np.nan`.
+        # missing_value=-1.0,
+        valid_range=(0.0, 1.0),
+    )
+
+    return stdv_of_cdr_seaice_conc_monthly
+
+
+# TODO: rename to indicate this is a monthly ds _for netcdf_. We get fractional
+# SIC from the daily files, but we want to write out the data as integers with a
+# scale factor for convenience.
 def make_monthly_ds(
     *,
     daily_ds_for_month: xr.Dataset,
@@ -247,53 +319,27 @@ def make_monthly_ds(
 
     # create `nsidc_{nt|bt}_seaice_conc_monthly`. These are averages of the
     # daily NT and BT values. These 'raw' fields do not have any flags.
-    nsidc_nt_seaice_conc_monthly = daily_ds_for_month.nasateam_seaice_conc_raw.mean(
-        dim="time"
+    nsidc_nt_seaice_conc_monthly = calc_nsidc_nt_seaice_conc_monthly(
+        daily_ds_for_month=daily_ds_for_month,
     )
-    nsidc_nt_seaice_conc_monthly.name = "nsidc_nt_seaice_conc_monthly"
-    nsidc_bt_seaice_conc_monthly = daily_ds_for_month.bootstrap_seaice_conc_raw.mean(
-        dim="time"
+    nsidc_bt_seaice_conc_monthly = calc_nsidc_bt_seaice_conc_monthly(
+        daily_ds_for_month=daily_ds_for_month,
     )
-    nsidc_bt_seaice_conc_monthly.name = "nsidc_bt_seaice_conc_monthly"
 
     # create `cdr_seaice_conc_monthly`. This is the combined monthly SIC.
     # The `cdr_seaice_conc` variable has temporally filled data and flags.
-    # TODO: what's `conc`?
-    # TODO: should we handle flags separately? Land mask should be consistent
-    # between files (so the average will still be the land flag), and this code
-    # assumes `NaN` is missing data. CDR v4 copies the flags from the first
-    # daily data file it gets and applies it to the average for the month after
-    # the mean calculation.
-    cdr_seaice_conc_monthly = daily_ds_for_month.cdr_seaice_conc.sel(
-        time=daily_ds_for_month.time.min()
-    ).copy()
-    cdr_seaice_conc_monthly = cdr_seaice_conc_monthly.drop_vars("time")
-    cdr_seaice_conc_monthly.name = "cdr_seaice_conc_monthly"
-    is_sic = (cdr_seaice_conc_monthly >= 0) & (cdr_seaice_conc_monthly <= 1)
-    cdr_seaice_conc_monthly = cdr_seaice_conc_monthly.where(
-        # Locations at which to preserve this object’s values.
-        ~is_sic,
-        # TODO: use `drop_attrs=True`?
-        daily_ds_for_month.cdr_seaice_conc.mean(dim="time"),
+    cdr_seaice_conc_monthly = calc_cdr_seaice_conc_monthly(
+        daily_ds_for_month=daily_ds_for_month,
     )
 
     # Create `stdev_of_cdr_seaice_conc_monthly`, the standard deviation of the
     # sea ice concentration.
-    stdv_of_cdr_seaice_conc_monthly = daily_ds_for_month.cdr_seaice_conc.sel(
-        time=daily_ds_for_month.time.min()
-    ).copy()
-    stdv_of_cdr_seaice_conc_monthly = stdv_of_cdr_seaice_conc_monthly.drop_vars("time")
-    stdv_of_cdr_seaice_conc_monthly.name = "stdv_of_cdr_seaice_conc_monthly"
-    stdv_of_cdr_seaice_conc_monthly = stdv_of_cdr_seaice_conc_monthly.where(
-        # Locations at which to preserve this object’s values.
-        ~is_sic,
-        # cdr v4 uses a ddof of 1.
-        daily_ds_for_month.cdr_seaice_conc.std(dim="time", ddof=1),
+    stdv_of_cdr_seaice_conc_monthly = calc_stdv_of_cdr_seaice_conc_monthly(
+        daily_ds_for_month=daily_ds_for_month,
     )
 
-    qa_of_cdr_seaice_conc_monthly = _monthly_qa_field(
+    qa_of_cdr_seaice_conc_monthly = calc_monthly_qa_field(
         daily_ds_for_month=daily_ds_for_month,
-        is_sic=is_sic,
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
     )
 
@@ -311,6 +357,7 @@ def make_monthly_ds(
         melt_onset_day_cdr_seaice_conc_monthly.drop_vars("time")
     )
 
+    # TODO: time coordinate, crs
     monthly_ds = xr.Dataset(
         data_vars=dict(
             cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
