@@ -360,14 +360,12 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
 
 
 def calc_melt_onset_day_cdr_seaice_conc_monthly(
-    *, daily_ds_for_month: xr.Dataset
+    *, daily_melt_onset_for_month: xr.DataArray
 ) -> xr.DataArray:
     # Create `melt_onset_day_cdr_seaice_conc_monthly`. This is the value from
     # the last day of the month.
-    melt_onset_day_cdr_seaice_conc_monthly = (
-        daily_ds_for_month.melt_onset_day_cdr_seaice_conc.sel(
-            time=daily_ds_for_month.time.max()
-        )
+    melt_onset_day_cdr_seaice_conc_monthly = daily_melt_onset_for_month.sel(
+        time=daily_melt_onset_for_month.time.max()
     )
     melt_onset_day_cdr_seaice_conc_monthly.name = (
         "melt_onset_day_cdr_seaice_conc_monthly"
@@ -467,10 +465,8 @@ def make_monthly_ds(
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
     )
 
-    melt_onset_day_cdr_seaice_conc_monthly = (
-        calc_melt_onset_day_cdr_seaice_conc_monthly(
-            daily_ds_for_month=daily_ds_for_month,
-        )
+    melt_onset_day_cdr_seaice_conc_monthly = calc_melt_onset_day_cdr_seaice_conc_monthly(
+        daily_melt_onset_for_month=daily_ds_for_month.melt_onset_day_cdr_seaice_conc,
     )
 
     monthly_ds = xr.Dataset(

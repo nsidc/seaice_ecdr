@@ -13,6 +13,7 @@ from seaice_ecdr.monthly import (
     _calc_conc_monthly,
     _get_daily_complete_filepaths_for_month,
     _qa_field_has_flag,
+    calc_melt_onset_day_cdr_seaice_conc_monthly,
     calc_qa_of_cdr_seaice_conc_monthly,
     calc_stdv_of_cdr_seaice_conc_monthly,
     check_min_days_for_valid_month,
@@ -316,6 +317,46 @@ def test_calc_stdv_of_cdr_seaice_conc_monthly():
                 np.nanstd(pixel_two, ddof=1),
                 np.nanstd(pixel_three, ddof=1),
                 np.nanstd(pixel_four, ddof=1),
+            ]
+        ),
+    )
+
+
+def test_calc_melt_onset_day_cdr_seaice_conc_monthly():
+    # time ->
+    pixel_one = np.array([60, 60, 60])
+    pixel_two = np.array([np.nan, 200, 200])
+    pixel_three = np.array([np.nan, np.nan, 244])
+    pixel_four = np.array([np.nan, np.nan, np.nan])
+    _mock_data = [
+        pixel_one,
+        pixel_two,
+        pixel_three,
+        pixel_four,
+    ]
+
+    mock_daily_melt = xr.DataArray(
+        data=_mock_data,
+        dims=["y", "time"],
+        coords=dict(
+            time=[dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+            y=list(range(4)),
+        ),
+    )
+
+    actual = calc_melt_onset_day_cdr_seaice_conc_monthly(
+        daily_melt_onset_for_month=mock_daily_melt,
+    )
+
+    assert actual.long_name == "Monthly Day of Snow Melt Onset Over Sea Ice"
+    npt.assert_array_equal(
+        actual.values,
+        np.array(
+            [
+                60,
+                200,
+                244,
+                np.nan,
             ]
         ),
     )
