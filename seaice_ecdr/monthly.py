@@ -270,66 +270,64 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     return qa_of_cdr_seaice_conc_monthly
 
 
-def _encoding_for_sic(sic: xr.DataArray) -> None:
-    sic.encoding.update(
+def _calc_conc_monthly(
+    *,
+    daily_conc_for_month: xr.DataArray,
+    long_name: str,
+    name: str,
+) -> xr.DataArray:
+    conc_monthly = daily_conc_for_month.mean(dim="time")
+
+    conc_monthly.name = name
+    conc_monthly = conc_monthly.assign_attrs(
+        long_name=long_name,
+        standard_name="sea_ice_area_fraction",
+        units="1",
+        valid_range=(1, 100),
+        grid_mapping="crs",
+    )
+
+    conc_monthly.encoding.update(
         scale_factor=0.01,
         dtype=np.uint8,
         _FillValue=255,
     )
 
+    return conc_monthly
+
 
 def calc_nsidc_nt_seaice_conc_monthly(
-    *, daily_ds_for_month: xr.Dataset
+    *,
+    daily_ds_for_month: xr.Dataset,
 ) -> xr.DataArray:
-    nsidc_nt_seaice_conc_monthly = daily_ds_for_month.nasateam_seaice_conc_raw.mean(
-        dim="time"
-    )
-
-    nsidc_nt_seaice_conc_monthly.name = "nsidc_nt_seaice_conc_monthly"
-    nsidc_nt_seaice_conc_monthly = nsidc_nt_seaice_conc_monthly.assign_attrs(
+    nsidc_nt_seaice_conc_monthly = _calc_conc_monthly(
+        daily_conc_for_month=daily_ds_for_month.nasateam_seaice_conc_raw,
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration by NASA Team algorithm processed by NSIDC",
-        standard_name="sea_ice_area_fraction",
-        units="1",
-        valid_range=(1, 100),
-        grid_mapping="crs",
+        name="nsidc_nt_seaice_conc_monthly",
     )
-    _encoding_for_sic(nsidc_nt_seaice_conc_monthly)
 
     return nsidc_nt_seaice_conc_monthly
 
 
 def calc_nsidc_bt_seaice_conc_monthly(
-    *, daily_ds_for_month: xr.Dataset
+    *,
+    daily_ds_for_month: xr.Dataset,
 ) -> xr.DataArray:
-    nsidc_bt_seaice_conc_monthly = daily_ds_for_month.bootstrap_seaice_conc_raw.mean(
-        dim="time"
-    )
-
-    nsidc_bt_seaice_conc_monthly.name = "nsidc_bt_seaice_conc_monthly"
-    nsidc_bt_seaice_conc_monthly = nsidc_bt_seaice_conc_monthly.assign_attrs(
+    nsidc_bt_seaice_conc_monthly = _calc_conc_monthly(
+        daily_conc_for_month=daily_ds_for_month.bootstrap_seaice_conc_raw,
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration by Bootstrap algorithm processed by NSIDC",
-        standard_name="sea_ice_area_fraction",
-        units="1",
-        valid_range=(1, 100),
-        grid_mapping="crs",
+        name="nsidc_bt_seaice_conc_monthly",
     )
-    _encoding_for_sic(nsidc_bt_seaice_conc_monthly)
 
     return nsidc_bt_seaice_conc_monthly
 
 
 def calc_cdr_seaice_conc_monthly(*, daily_ds_for_month: xr.Dataset) -> xr.DataArray:
-    cdr_seaice_conc_monthly = daily_ds_for_month.cdr_seaice_conc.mean(dim="time")
-    cdr_seaice_conc_monthly.name = "cdr_seaice_conc_monthly"
-
-    cdr_seaice_conc_monthly = cdr_seaice_conc_monthly.assign_attrs(
+    cdr_seaice_conc_monthly = _calc_conc_monthly(
+        daily_conc_for_month=daily_ds_for_month.cdr_seaice_conc,
         long_name="NOAA/NSIDC Climate Data Record of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration",
-        standard_name="sea_ice_area_fraction",
-        units="1",
-        ancillary_variables="stdev_of_cdr_seaice_conc_monthly qa_of_cdr_seaice_conc_monthly",
-        grid_mapping="crs",
+        name="cdr_seaice_conc_monthly",
     )
-    _encoding_for_sic(cdr_seaice_conc_monthly)
 
     return cdr_seaice_conc_monthly
 
