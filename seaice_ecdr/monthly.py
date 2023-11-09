@@ -103,6 +103,10 @@ def get_daily_ds_for_month(
     ds.attrs["year"] = year
     ds.attrs["month"] = month
 
+    logger.info(
+        f"Created daily ds for {year=} {month=} from {len(ds.time)} complete daily files."
+    )
+
     return ds
 
 
@@ -625,5 +629,5 @@ def cli(
             output_path,
         )
         logger.info(
-            f"Wrote monthly file for {period.year=} and {period.month=} to {output_path}"
+            f"Wrote monthly file for year={period.year} and month={period.month} to {output_path}"
         )
