@@ -120,13 +120,13 @@ def test_calc_qa_of_cdr_seaice_conc_monthly():
     # Each row is one pixel through time.
     # time ->
     _mock_data = [
-        # average_concentration_exeeds_15 and at_least_half_the_days_have_sea_ice_conc_exceeds_15
+        # average_concentration_exeeds_15 and at_least_half_the_days_have_sea_ice_conc_exceeds_0.15
         [0.20, 0.20, 0.20],
-        # average_concentration_exeeds_30 and at_least_half_the_days_have_sea_ice_conc_exceeds_30
+        # average_concentration_exeeds_30 and at_least_half_the_days_have_sea_ice_conc_exceeds_0.30
         [0.33, 0.33, 0.33],
-        # at_least_half_the_days_have_sea_ice_conc_exceeds_15
+        # at_least_half_the_days_have_sea_ice_conc_exceeds_0.15
         [0, 0.16, 0.16],
-        # at_least_half_the_days_have_sea_ice_conc_exceeds_30 and 15 and average_concentration_exeeds_15
+        # at_least_half_the_days_have_sea_ice_conc_exceeds_0.30 and 15 and average_concentration_exeeds_15
         [0, 0.31, 0.31],
         # region_masked_by_ocean_climatology
         [0, 0, 0],
@@ -145,9 +145,9 @@ def test_calc_qa_of_cdr_seaice_conc_monthly():
         [np.nan, np.nan, np.nan],
         # average_concentration_exeeds_30
         [np.nan, np.nan, np.nan],
-        # at_least_half_the_days_have_sea_ice_conc_exceeds_15
+        # at_least_half_the_days_have_sea_ice_conc_exceeds_0.15
         [np.nan, np.nan, np.nan],
-        # at_least_half_the_days_have_sea_ice_conc_exceeds_30
+        # at_least_half_the_days_have_sea_ice_conc_exceeds_0.30
         [np.nan, np.nan, np.nan],
         # region_masked_by_ocean_climatology
         [
@@ -177,25 +177,25 @@ def test_calc_qa_of_cdr_seaice_conc_monthly():
         [
             QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exeeds_15"]
             + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
-                "at_least_half_the_days_have_sea_ice_conc_exceeds_15"
+                "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ],
             QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exeeds_15"]
             + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
-                "at_least_half_the_days_have_sea_ice_conc_exceeds_15"
+                "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ]
             + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exeeds_30"]
             + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
-                "at_least_half_the_days_have_sea_ice_conc_exceeds_30"
+                "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30"
             ],
             QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
-                "at_least_half_the_days_have_sea_ice_conc_exceeds_15"
+                "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ],
             QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
-                "at_least_half_the_days_have_sea_ice_conc_exceeds_30"
+                "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30"
             ]
             + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exeeds_15"]
             + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
-                "at_least_half_the_days_have_sea_ice_conc_exceeds_15"
+                "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ],
             QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["region_masked_by_ocean_climatology"],
             QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[

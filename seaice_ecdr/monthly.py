@@ -27,6 +27,7 @@ Notes about CDR v4:
 * Uses masks from the first file in the month to apply to monthly fields.
 """
 
+from collections import OrderedDict
 from pathlib import Path
 
 import numpy as np
@@ -92,7 +93,7 @@ def get_daily_ds_for_month(
     return ds
 
 
-QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS = dict(
+QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS = OrderedDict(
     bt_weather_filter_applied=1,
     nt_weather_filter_applied=2,
     land_spillover_applied=4,
@@ -105,16 +106,18 @@ QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS = dict(
 )
 
 # TODO: rename. This is actually a bit mask (except the fill_value)
-QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS = dict(
-    average_concentration_exeeds_15=1,
-    average_concentration_exeeds_30=2,
-    at_least_half_the_days_have_sea_ice_conc_exceeds_15=4,
-    at_least_half_the_days_have_sea_ice_conc_exceeds_30=8,
-    region_masked_by_ocean_climatology=16,
-    at_least_one_day_during_month_has_spatial_interpolation=32,
-    at_least_one_day_during_month_has_temporal_interpolation=64,
-    at_least_one_day_during_month_has_melt_detected=128,
-    fill_value=255,
+QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS = OrderedDict(
+    {
+        "average_concentration_exeeds_15": 1,
+        "average_concentration_exeeds_30": 2,
+        "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15": 4,
+        "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30": 8,
+        "region_masked_by_ocean_climatology": 16,
+        "at_least_one_day_during_month_has_spatial_interpolation": 32,
+        "at_least_one_day_during_month_has_temporal_interpolation": 64,
+        "at_least_one_day_during_month_has_melt_detected": 128,
+        "fill_value": 255,
+    }
 )
 
 
@@ -164,7 +167,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
         ~at_least_half_have_sic_gt_15,
         qa_of_cdr_seaice_conc_monthly
         + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
-            "at_least_half_the_days_have_sea_ice_conc_exceeds_15"
+            "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
         ],
     )
 
@@ -175,7 +178,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
         ~at_least_half_have_sic_gt_30,
         qa_of_cdr_seaice_conc_monthly
         + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
-            "at_least_half_the_days_have_sea_ice_conc_exceeds_30"
+            "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30"
         ],
     )
 
@@ -229,6 +232,17 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         qa_of_cdr_seaice_conc_monthly != 0,
         QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["fill_value"],
+    )
+
+    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.assign_attrs(
+        long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QC flags",
+        standard_name="sea_ice_area_fraction status_flag",
+        flag_meanings=" ".join(k for k in QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS.keys()),
+        flag_values=" ".join(
+            str(int(v)) for v in QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS.values()
+        ),
+        # TODO: do we want to keep missing_value?
+        # missing_value=0,
     )
 
     return qa_of_cdr_seaice_conc_monthly
