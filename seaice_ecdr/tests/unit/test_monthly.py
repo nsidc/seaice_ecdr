@@ -12,7 +12,7 @@ from seaice_ecdr.monthly import (
     QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS,
     _get_daily_complete_filepaths_for_month,
     _qa_field_has_flag,
-    calc_monthly_qa_field,
+    calc_qa_of_cdr_seaice_conc_monthly,
     check_min_days_for_valid_month,
 )
 
@@ -116,7 +116,7 @@ def test__qa_field_has_flag():
     npt.assert_array_equal(expected, actual)
 
 
-def test_calc_monthly_qa_field():
+def test_calc_qa_of_cdr_seaice_conc_monthly():
     # Each row is one pixel through time.
     # time ->
     _mock_data = [
@@ -225,7 +225,7 @@ def test_calc_monthly_qa_field():
     )
 
     _mean_daily_conc = _mock_daily_ds.cdr_seaice_conc.mean(dim="time")
-    actual = calc_monthly_qa_field(
+    actual = calc_qa_of_cdr_seaice_conc_monthly(
         daily_ds_for_month=_mock_daily_ds,
         cdr_seaice_conc_monthly=_mean_daily_conc,
     )
