@@ -428,7 +428,11 @@ def make_monthly_ds(
     daily_ds_for_month: xr.Dataset,
     sat: SUPPORTED_SAT,
 ) -> xr.Dataset:
-    # TODO: some kind of check that `daily_ds_for_month` only has data for one year & month?
+    """Create a monthly dataset from daily data.
+
+    Resulting monthly dataset is ready for writing to NetCDF file as a standard
+    monthly data file.
+    """
     # Min-day check
     check_min_days_for_valid_month(
         daily_ds_for_month=daily_ds_for_month,
