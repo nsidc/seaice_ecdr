@@ -302,9 +302,6 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
     return stdv_of_cdr_seaice_conc_monthly
 
 
-# TODO: rename to indicate this is a monthly ds _for netcdf_. We get fractional
-# SIC from the daily files, but we want to write out the data as integers with a
-# scale factor for convenience.
 def make_monthly_ds(
     *,
     daily_ds_for_month: xr.Dataset,
