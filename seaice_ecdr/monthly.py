@@ -27,10 +27,12 @@ Notes about CDR v4:
 * Uses masks from the first file in the month to apply to monthly fields.
 """
 
+import datetime as dt
 from collections import OrderedDict
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from loguru import logger
 
@@ -368,6 +370,38 @@ def calc_melt_onset_day_cdr_seaice_conc_monthly(
     return melt_onset_day_cdr_seaice_conc_monthly
 
 
+def _assing_time_to_monthly_ds(
+    *, daily_ds_for_month: xr.Dataset, monthly_ds: xr.Dataset
+) -> xr.Dataset:
+    # TODO: should this step be done in the `calc_*` functions?
+    # assign the time dimension
+    with_time = monthly_ds.copy()
+
+    first_date = pd.Timestamp(daily_ds_for_month.time.min().values)
+    with_time = with_time.expand_dims(
+        dim=dict(
+            # Time is the first of the month
+            time=[dt.datetime(first_date.year, first_date.month, 1)],
+        ),
+        # Time should be the first dim.
+        axis=0,
+    )
+
+    with_time["time"] = with_time.time.assign_attrs(
+        dict(
+            long_name="ANSI date",
+            axis="T",
+        )
+    )
+
+    with_time.time.encoding = dict(
+        units="days since 1601-01-01 00:00:00",
+        calendar="gregorian",
+    )
+
+    return with_time
+
+
 def make_monthly_ds(
     *,
     daily_ds_for_month: xr.Dataset,
@@ -413,7 +447,7 @@ def make_monthly_ds(
         )
     )
 
-    # TODO: time coordinate, crs
+    # TODO: crs
     monthly_ds = xr.Dataset(
         data_vars=dict(
             cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
@@ -423,6 +457,11 @@ def make_monthly_ds(
             melt_onset_day_cdr_seaice_conc_monthly=melt_onset_day_cdr_seaice_conc_monthly,
             qa_of_cdr_seaice_conc_monthly=qa_of_cdr_seaice_conc_monthly,
         )
+    )
+
+    monthly_ds = _assing_time_to_monthly_ds(
+        daily_ds_for_month=daily_ds_for_month,
+        monthly_ds=monthly_ds,
     )
 
     return monthly_ds.compute()
