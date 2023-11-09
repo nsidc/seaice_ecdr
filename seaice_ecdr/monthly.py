@@ -243,6 +243,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
         flag_values=" ".join(
             str(int(v)) for v in QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS.values()
         ),
+        grid_mapping="crs",
         # TODO: do we want to keep missing_value?
         # missing_value=0,
     )
@@ -275,6 +276,7 @@ def calc_nsidc_nt_seaice_conc_monthly(
         standard_name="sea_ice_area_fraction",
         units="1",
         valid_range=(1, 100),
+        grid_mapping="crs",
     )
     _encoding_for_sic(nsidc_nt_seaice_conc_monthly)
 
@@ -294,6 +296,7 @@ def calc_nsidc_bt_seaice_conc_monthly(
         standard_name="sea_ice_area_fraction",
         units="1",
         valid_range=(1, 100),
+        grid_mapping="crs",
     )
     _encoding_for_sic(nsidc_bt_seaice_conc_monthly)
 
@@ -309,6 +312,7 @@ def calc_cdr_seaice_conc_monthly(*, daily_ds_for_month: xr.Dataset) -> xr.DataAr
         standard_name="sea_ice_area_fraction",
         units="1",
         ancillary_variables="stdev_of_cdr_seaice_conc_monthly qa_of_cdr_seaice_conc_monthly",
+        grid_mapping="crs",
     )
     _encoding_for_sic(cdr_seaice_conc_monthly)
 
@@ -330,6 +334,7 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
         # the handling of the variable here 'missing' values are `np.nan`.
         # missing_value=-1.0,
         valid_range=(0.0, 1.0),
+        grid_mapping="crs",
     )
 
     stdv_of_cdr_seaice_conc_monthly.encoding = dict(
@@ -362,6 +367,7 @@ def calc_melt_onset_day_cdr_seaice_conc_monthly(
         valid_range=(np.ubyte(60), np.ubyte(244)),
         # TODO: missing value? Already taken care of in the FillValue.
         # missing_value=255,
+        grid_mapping="crs",
     )
     melt_onset_day_cdr_seaice_conc_monthly.encoding = dict(
         _FillValue=255,
@@ -447,7 +453,6 @@ def make_monthly_ds(
         )
     )
 
-    # TODO: crs
     monthly_ds = xr.Dataset(
         data_vars=dict(
             cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
@@ -463,6 +468,8 @@ def make_monthly_ds(
         daily_ds_for_month=daily_ds_for_month,
         monthly_ds=monthly_ds,
     )
+
+    monthly_ds["crs"] = daily_ds_for_month.crs.isel(time=0).drop_vars("time")
 
     return monthly_ds.compute()
 
