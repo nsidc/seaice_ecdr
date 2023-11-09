@@ -354,7 +354,7 @@ def calc_melt_onset_day_cdr_seaice_conc_monthly(
         melt_onset_day_cdr_seaice_conc_monthly.drop_vars("time")
     )
 
-    melt_onset_day_cdr_seaice_conc_monthly = melt_onset_day_cdr_seaice_conc_monthly.assing_attrs(
+    melt_onset_day_cdr_seaice_conc_monthly = melt_onset_day_cdr_seaice_conc_monthly.assign_attrs(
         long_name="Monthly Day of Snow Melt Onset Over Sea Ice",
         units="1",
         valid_range=(np.ubyte(60), np.ubyte(244)),
