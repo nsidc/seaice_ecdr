@@ -439,4 +439,6 @@ def test_monthly_ds(monkeypatch, tmpdir):
     after_write = xr.open_dataset(output_fp)
 
     # Assert that all results are close to 0.01 (1% SIC).
+    # TODO: should this be even closer? The max diff in the conc fields is:
+    #   0.0033333327372868787
     xr.testing.assert_allclose(actual, after_write, atol=0.009)
