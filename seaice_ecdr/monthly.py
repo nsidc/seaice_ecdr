@@ -30,15 +30,19 @@ Notes about CDR v4:
 import datetime as dt
 from collections import OrderedDict
 from pathlib import Path
+from typing import Final, get_args
 
+import click
 import numpy as np
 import pandas as pd
 import xarray as xr
 from loguru import logger
+from pm_tb_data._types import Hemisphere
 
-from seaice_ecdr._types import SUPPORTED_SAT
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_dir
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.util import standard_monthly_filename
 
 
 def check_min_days_for_valid_month(
@@ -91,6 +95,13 @@ def get_daily_ds_for_month(
     )
     # Read all of the complete daily data for the given year and month.
     ds = xr.open_mfdataset(data_list)
+
+    # Assert that we have the year and month that we want.
+    assert np.all([pd.Timestamp(t.values).year == year for t in ds.time])
+    assert np.all([pd.Timestamp(t.values).month == month for t in ds.time])
+
+    ds.attrs["year"] = year
+    ds.attrs["month"] = month
 
     return ds
 
@@ -377,17 +388,19 @@ def calc_melt_onset_day_cdr_seaice_conc_monthly(
 
 
 def _assign_time_to_monthly_ds(
-    *, daily_ds_for_month: xr.Dataset, monthly_ds: xr.Dataset
+    *,
+    monthly_ds: xr.Dataset,
+    year: int,
+    month: int,
 ) -> xr.Dataset:
     # TODO: should this step be done in the `calc_*` functions?
     # assign the time dimension
     with_time = monthly_ds.copy()
 
-    first_date = pd.Timestamp(daily_ds_for_month.time.min().values)
     with_time = with_time.expand_dims(
         dim=dict(
             # Time is the first of the month
-            time=[dt.datetime(first_date.year, first_date.month, 1)],
+            time=[dt.datetime(year, month, 1)],
         ),
         # Time should be the first dim.
         axis=0,
@@ -465,8 +478,9 @@ def make_monthly_ds(
     )
 
     monthly_ds = _assign_time_to_monthly_ds(
-        daily_ds_for_month=daily_ds_for_month,
         monthly_ds=monthly_ds,
+        year=daily_ds_for_month.year,
+        month=daily_ds_for_month.month,
     )
 
     monthly_ds["crs"] = daily_ds_for_month.crs.isel(time=0).drop_vars("time")
@@ -474,33 +488,142 @@ def make_monthly_ds(
     return monthly_ds.compute()
 
 
-if __name__ == "__main__":
-    from typing import Final
+def get_monthly_dir(*, ecdr_data_dir: Path) -> Path:
+    monthly_dir = ecdr_data_dir / "monthly"
+    monthly_dir.mkdir(exist_ok=True)
 
-    year = 2022
-    month = 3
-    sat: Final = "am2"
+    return monthly_dir
 
-    daily_ds_for_month = get_daily_ds_for_month(
+
+def get_monthly_filepath(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    sat: SUPPORTED_SAT,
+    year: int,
+    month: int,
+    ecdr_data_dir: Path,
+) -> Path:
+    output_dir = get_monthly_dir(ecdr_data_dir=ecdr_data_dir)
+
+    output_fn = standard_monthly_filename(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        sat=sat,
         year=year,
         month=month,
-        ecdr_data_dir=STANDARD_BASE_OUTPUT_DIR,
-        sat=sat,
-    )
-    monthly_ds = make_monthly_ds(
-        daily_ds_for_month=daily_ds_for_month,
-        sat=sat,
     )
 
-    output_path = Path("/tmp/foo.nc")
-    if output_path.is_file():
-        output_path.unlink()
+    output_path = output_dir / output_fn
 
-    monthly_ds.to_netcdf(output_path)
-    logger.info(f"Wrote monthly file to {output_path}")
+    return output_path
 
-    after_write = xr.open_dataset(output_path)
 
-    # We encode data to 0.01 (1%) resolution. This assertion ensures that the
-    # absolute differences between all a variables is <= atol (0.009)
-    # xr.testing.assert_allclose(monthly_ds, after_write, atol=0.009)
+@click.command(name="monthly")
+@click.option(
+    "--year",
+    required=True,
+    type=int,
+    help="Year for which to create the monthly file.",
+)
+@click.option(
+    "--month",
+    required=True,
+    type=int,
+    help="Month for which to create the monthly file.",
+)
+@click.option(
+    "--end-year",
+    required=False,
+    default=None,
+    type=int,
+    help="If given, the end year for which to create monthly files.",
+)
+@click.option(
+    "--end-month",
+    required=False,
+    default=None,
+    type=int,
+    help="If given, the end year for which to create monthly files.",
+)
+@click.option(
+    "-h",
+    "--hemisphere",
+    required=True,
+    type=click.Choice(get_args(Hemisphere)),
+)
+@click.option(
+    "--ecdr-data-dir",
+    required=True,
+    type=click.Path(
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        writable=True,
+        resolve_path=True,
+        path_type=Path,
+    ),
+    default=STANDARD_BASE_OUTPUT_DIR,
+    help=(
+        "Base output directory for standard ECDR outputs."
+        " Subdirectories are created for outputs of"
+        " different stages of processing."
+    ),
+    show_default=True,
+)
+@click.option(
+    "-r",
+    "--resolution",
+    required=True,
+    type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
+)
+def cli(
+    *,
+    year: int,
+    month: int,
+    end_year: int | None,
+    end_month: int | None,
+    hemisphere: Hemisphere,
+    ecdr_data_dir: Path,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+):
+    # TODO: support different sat/platforms.
+    sat: Final = "am2"
+
+    if end_year is None:
+        end_year = year
+    if end_month is None:
+        end_month = month
+
+    for period in pd.period_range(
+        start=pd.Period(year=year, month=month, freq="M"),
+        end=pd.Period(year=end_year, month=end_month, freq="M"),
+        freq="M",
+    ):
+        daily_ds_for_month = get_daily_ds_for_month(
+            year=period.year,
+            month=period.month,
+            ecdr_data_dir=ecdr_data_dir,
+            sat=sat,
+        )
+
+        monthly_ds = make_monthly_ds(
+            daily_ds_for_month=daily_ds_for_month,
+            sat=sat,
+        )
+
+        output_path = get_monthly_filepath(
+            hemisphere=hemisphere,
+            resolution=resolution,
+            sat=sat,
+            year=period.year,
+            month=period.month,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+
+        monthly_ds.to_netcdf(
+            output_path,
+        )
+        logger.info(
+            f"Wrote monthly file for {period.year=} and {period.month=} to {output_path}"
+        )
