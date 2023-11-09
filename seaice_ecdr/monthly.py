@@ -29,7 +29,9 @@ Notes about CDR v4:
 
 from pathlib import Path
 
+import numpy as np
 import xarray as xr
+from loguru import logger
 
 from seaice_ecdr._types import SUPPORTED_SAT
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_dir
@@ -125,6 +127,7 @@ def _qa_field_has_flag(*, qa_field: xr.DataArray, flag_value: int) -> xr.DataArr
     return qa_field_contains_flag
 
 
+# TODO: rename for consistency with the other variables, and add attributes!
 def calc_monthly_qa_field(
     *,
     daily_ds_for_month: xr.Dataset,
@@ -232,6 +235,14 @@ def calc_monthly_qa_field(
     return qa_of_cdr_seaice_conc_monthly
 
 
+def _encoding_for_sic(sic: xr.DataArray) -> None:
+    sic.encoding.update(
+        scale_factor=0.01,
+        dtype=np.uint8,
+        _FillValue=255,
+    )
+
+
 def calc_nsidc_nt_seaice_conc_monthly(
     *, daily_ds_for_month: xr.Dataset
 ) -> xr.DataArray:
@@ -246,6 +257,7 @@ def calc_nsidc_nt_seaice_conc_monthly(
         units="1",
         valid_range=(1, 100),
     )
+    _encoding_for_sic(nsidc_nt_seaice_conc_monthly)
 
     return nsidc_nt_seaice_conc_monthly
 
@@ -264,6 +276,7 @@ def calc_nsidc_bt_seaice_conc_monthly(
         units="1",
         valid_range=(1, 100),
     )
+    _encoding_for_sic(nsidc_bt_seaice_conc_monthly)
 
     return nsidc_bt_seaice_conc_monthly
 
@@ -278,6 +291,7 @@ def calc_cdr_seaice_conc_monthly(*, daily_ds_for_month: xr.Dataset) -> xr.DataAr
         units="1",
         ancillary_variables="stdev_of_cdr_seaice_conc_monthly qa_of_cdr_seaice_conc_monthly",
     )
+    _encoding_for_sic(cdr_seaice_conc_monthly)
 
     return cdr_seaice_conc_monthly
 
@@ -299,6 +313,10 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
         valid_range=(0.0, 1.0),
     )
 
+    stdv_of_cdr_seaice_conc_monthly.encoding = dict(
+        _FillValue=-1,
+    )
+
     return stdv_of_cdr_seaice_conc_monthly
 
 
@@ -314,6 +332,7 @@ def make_monthly_ds(
         sat=sat,
     )
 
+    # TODO: the daily fields are currently 0-100, not 0-1 as expected.
     # create `nsidc_{nt|bt}_seaice_conc_monthly`. These are averages of the
     # daily NT and BT values. These 'raw' fields do not have any flags.
     nsidc_nt_seaice_conc_monthly = calc_nsidc_nt_seaice_conc_monthly(
@@ -341,6 +360,7 @@ def make_monthly_ds(
     )
 
     # Create `melt_onset_day_cdr_seaice_conc_monthly`. This is the value from
+    # TODO: create a `calc` func for melt onset day.
     # the last day of the month.
     melt_onset_day_cdr_seaice_conc_monthly = (
         daily_ds_for_month.melt_onset_day_cdr_seaice_conc.sel(
@@ -352,6 +372,9 @@ def make_monthly_ds(
     )
     melt_onset_day_cdr_seaice_conc_monthly = (
         melt_onset_day_cdr_seaice_conc_monthly.drop_vars("time")
+    )
+    melt_onset_day_cdr_seaice_conc_monthly.encoding = dict(
+        _FillValue=255,
     )
 
     # TODO: time coordinate, crs
@@ -366,7 +389,7 @@ def make_monthly_ds(
         )
     )
 
-    return monthly_ds
+    return monthly_ds.compute()
 
 
 if __name__ == "__main__":
@@ -387,4 +410,15 @@ if __name__ == "__main__":
         sat=sat,
     )
 
-    breakpoint()
+    output_path = Path("/tmp/foo.nc")
+    if output_path.is_file():
+        output_path.unlink()
+
+    monthly_ds.to_netcdf(output_path)
+    logger.info(f"Wrote monthly file to {output_path}")
+
+    after_write = xr.open_dataset(output_path)
+
+    # We encode data to 0.01 (1%) resolution. This assertion ensures that the
+    # absolute differences between all a variables is <= atol (0.009)
+    xr.testing.assert_allclose(monthly_ds, after_write, atol=0.009)
