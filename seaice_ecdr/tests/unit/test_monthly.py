@@ -416,6 +416,7 @@ def test_monthly_ds(monkeypatch, tmpdir):
         sat="am2",
     )
 
+    # Test that the dataset only contains the variables we expect.
     expected_vars = sorted(
         [
             "cdr_seaice_conc_monthly",
@@ -427,11 +428,11 @@ def test_monthly_ds(monkeypatch, tmpdir):
             "crs",
         ]
     )
-
     actual_vars = sorted([str(var) for var in actual.keys()])
 
     assert expected_vars == actual_vars
 
+    # Test that we can write out the data and read it back without changing it
     output_fp = tmpdir / "test.nc"
     actual.to_netcdf(output_fp)
 
