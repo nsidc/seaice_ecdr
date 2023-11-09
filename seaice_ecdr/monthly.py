@@ -245,6 +245,10 @@ def calc_qa_of_cdr_seaice_conc_monthly(
         # missing_value=0,
     )
 
+    qa_of_cdr_seaice_conc_monthly.encoding = dict(
+        _FillValue=0,
+    )
+
     return qa_of_cdr_seaice_conc_monthly
 
 
