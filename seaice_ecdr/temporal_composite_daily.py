@@ -396,6 +396,38 @@ def grid_is_psn125(hemisphere, gridshape):
     return is_nh and is_125
 
 
+def get_ti_flag_dates(
+    date: dt.date,
+    flag_field: xr.DataArray,
+) -> list:
+    """Return a list of the dates needed for temporal interp per flags."""
+    unique_flags = np.unique(flag_field)
+    all_dates = []
+    for _, flag_val in np.ndenumerate(unique_flags):
+        tens_val = int(np.floor_divide(flag_val, 10))
+        ones_val = int(np.mod(flag_val, 10))
+        all_dates.append(date - dt.timedelta(days=tens_val))
+        all_dates.append(date + dt.timedelta(days=ones_val))
+
+    unique_dates_list = sorted(set(all_dates))
+
+    return unique_dates_list
+
+
+def fill_conc_field(
+    varname: str,
+    flag_field: xr.DataArray,
+    target_date: dt.date,
+) -> np.ndarray:
+    """Fill the named variable array using flag information."""
+
+    print(f"flag_field:\n{flag_field}")
+    # date_list = get_ti_flag_dates(target_date, flag_field)
+
+    # ti_filled_bt = fill_conc_field('bt_conc_raw', tie_ds['temporal_flag')
+    return np.array((0))
+
+
 def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     *,
     date: dt.date,
@@ -543,6 +575,15 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         # TODO: May want to modify attributes of the cdr_conc field to
         #       distinguish it from the cdr_conc_ti field
         pass
+
+    # Create the cdr_conc standard deviation field
+    # ti_filled_bt = fill_conc_field(
+    #     "bt_conc_raw",
+    #     tie_ds["temporal_flag"],
+    #     date,
+    # )
+    # breakpoint()
+    # print("just created ti_filled_bt")
 
     # Return the tiecdr dataset
     return tie_ds
