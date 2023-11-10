@@ -404,6 +404,15 @@ def create_sorted_var_timestack(
     ds_function: Callable[..., xr.Dataset],
     ds_function_kwargs: dict,
 ) -> xr.DataArray:
+    """Create dataarray indexed by `time` for the given variable.
+
+    The provided `ds_function`: should take `date` and `ds_function_kwargs` as
+    kwargs. This function should return a dataset containing a variable called
+    `varname` for the provided `date`.
+
+    The return value is a dataarray of the varible given by `varname` with a
+    `time` coordinate containing the dates in `date_list`.
+    """
     # Use the first date to initialize the dataset
     init_date = date_list[0]
     init_ds = ds_function(
