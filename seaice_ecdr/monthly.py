@@ -145,7 +145,7 @@ def get_daily_ds_for_month(
 
 # TODO: utilize these in the daily complete processing. Or use constant from
 # that module!
-QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS = OrderedDict(
+QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS = OrderedDict(
     bt_weather_filter_applied=1,
     nt_weather_filter_applied=2,
     land_spillover_applied=4,
@@ -237,7 +237,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     # Use "valid_ice_mask_applied", which is actually the invalid ice mask.
     region_masked_by_ocean_climatology = _qa_field_has_flag(
         qa_field=daily_ds_for_month.qa_of_cdr_seaice_conc,
-        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["valid_ice_mask_applied"],
+        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["valid_ice_mask_applied"],
     ).any(dim="time")
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~region_masked_by_ocean_climatology,
@@ -247,7 +247,9 @@ def calc_qa_of_cdr_seaice_conc_monthly(
 
     at_least_one_day_during_month_has_spatial_interpolation = _qa_field_has_flag(
         qa_field=daily_ds_for_month.qa_of_cdr_seaice_conc,
-        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["spatial_interpolation_applied"],
+        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS[
+            "spatial_interpolation_applied"
+        ],
     ).any(dim="time")
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_one_day_during_month_has_spatial_interpolation,
@@ -259,7 +261,9 @@ def calc_qa_of_cdr_seaice_conc_monthly(
 
     at_least_one_day_during_month_has_temporal_interpolation = _qa_field_has_flag(
         qa_field=daily_ds_for_month.qa_of_cdr_seaice_conc,
-        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["temporal_interpolation_applied"],
+        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS[
+            "temporal_interpolation_applied"
+        ],
     ).any(dim="time")
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_one_day_during_month_has_temporal_interpolation,
@@ -271,7 +275,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
 
     at_least_one_day_during_month_has_melt_detected = _qa_field_has_flag(
         qa_field=daily_ds_for_month.qa_of_cdr_seaice_conc,
-        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["start_of_melt_detected"],
+        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["start_of_melt_detected"],
     ).any(dim="time")
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_one_day_during_month_has_melt_detected,

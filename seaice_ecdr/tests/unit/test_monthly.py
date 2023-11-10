@@ -10,7 +10,7 @@ from pm_tb_data._types import NORTH
 from seaice_ecdr import monthly
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_dir
 from seaice_ecdr.monthly import (
-    QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS,
+    QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS,
     QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS,
     _calc_conc_monthly,
     _get_daily_complete_filepaths_for_month,
@@ -168,13 +168,13 @@ def _mock_daily_ds_for_month():
         [np.nan, np.nan, np.nan],
         # region_masked_by_ocean_climatology
         [
-            QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["valid_ice_mask_applied"],
-            QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["valid_ice_mask_applied"],
-            QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["valid_ice_mask_applied"],
+            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["valid_ice_mask_applied"],
+            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["valid_ice_mask_applied"],
+            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["valid_ice_mask_applied"],
         ],
         # at_least_one_day_during_month_has_spatial_interpolation
         [
-            QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["spatial_interpolation_applied"],
+            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["spatial_interpolation_applied"],
             np.nan,
             np.nan,
         ],
@@ -182,10 +182,14 @@ def _mock_daily_ds_for_month():
         [
             np.nan,
             np.nan,
-            QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["temporal_interpolation_applied"],
+            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["temporal_interpolation_applied"],
         ],
         # at_least_one_day_during_month_has_melt_detected
-        [np.nan, QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS["start_of_melt_detected"], np.nan],
+        [
+            np.nan,
+            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["start_of_melt_detected"],
+            np.nan,
+        ],
         # land flag.
         [np.nan, np.nan, np.nan],
     ]
