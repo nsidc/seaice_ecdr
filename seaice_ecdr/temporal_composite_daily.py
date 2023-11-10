@@ -7,11 +7,12 @@ import sys
 import traceback
 from functools import cache
 from pathlib import Path
-from typing import Iterable, cast, get_args
+from typing import Callable, Iterable, cast, get_args
 
 import click
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import xarray as xr
 from loguru import logger
 from pm_icecon.fill_polehole import fill_pole_hole
@@ -37,6 +38,84 @@ try:
 except ValueError:
     logger.debug(f"Started logging in {__name__}")
     logger.add(sys.stderr, level="INFO")
+
+
+def yield_dates_from_temporal_interpolation_flags(
+    ref_date: dt.date,
+    ti_flags: np.ndarray,
+):
+    """A generator for dates used in temporal interpolation per the flags."""
+    date_offset_list = []
+    ti_flag_set = np.unique(ti_flags)
+    for flag_val in np.nditer(ti_flag_set):
+        tens_val = np.floor_divide(flag_val, 10)
+        if tens_val < 10:
+            date_offset_list.append(ref_date - dt.timedelta(days=int(tens_val)))
+        ones_val = np.mod(flag_val, 10)
+        if ones_val < 10:
+            date_offset_list.append(ref_date + dt.timedelta(days=int(ones_val)))
+
+    date_offset_set = set(date_offset_list)
+    for date in sorted(date_offset_set):
+        yield date
+
+
+def temporally_interpolate_dataarray_using_flags(
+    ref_date: dt.date, data_array: xr.DataArray, ti_flags: np.ndarray
+) -> np.ndarray:
+    """Yield the temporal interpolation of a data cube using flag values.
+
+    The tens-place-value of the temporal_interpolation_flag value is the number
+    of days in the past to draw the value, the ones-place-value is the number
+    of days in the future to use for interpolation."""
+
+    initial_value = 255
+    tdim, ydim, xdim = data_array.shape
+    prior_val = np.zeros((ydim, xdim), dtype=float)
+    prior_val[:] = initial_value
+    prior_dist = np.zeros((ydim, xdim), dtype=int)
+    next_val = np.zeros((ydim, xdim), dtype=float)
+    next_val[:] = initial_value
+    next_dist = np.zeros((ydim, xdim), dtype=int)
+
+    for date in data_array.time:
+        date_offset = (date.data - ref_date).days
+
+        da_slice = np.squeeze(data_array.isel(time=data_array.time == date).copy().data)
+        if date_offset < 0:
+            is_this_prior = (ti_flags // 10) == -date_offset
+            prior_val[is_this_prior] = da_slice[is_this_prior]
+            prior_dist[is_this_prior] = -date_offset
+            next_val[is_this_prior] = da_slice[is_this_prior]
+            next_dist[is_this_prior] = -date_offset
+        elif date_offset > 0:
+            is_this_next = (ti_flags % 10) == date_offset
+            next_val[is_this_next] = da_slice[is_this_next]
+            next_dist[is_this_next] = date_offset
+        else:
+            # date_offset is zero
+            is_this = ti_flags == 0
+            prior_val[is_this] = da_slice[is_this]
+            prior_dist[is_this] = 0
+            next_val[is_this] == da_slice[is_this]
+            next_dist[is_this] = 0
+
+    # Fill in where there was only one side to the interpolation
+    next_val[next_val == initial_value] = prior_val[next_val == initial_value]
+    prior_val[prior_val == initial_value] = next_val[prior_val == initial_value]
+
+    # Linearly interpolate between prior and next values
+    linint_rise = next_val.astype(np.float32) - prior_val.astype(np.float32)
+    linint_run = prior_dist + next_dist
+    linint_run[linint_run == 0] = 1  # avoid div by zero
+
+    filled_array = prior_val + prior_dist * linint_rise / linint_run
+    if data_array.dtype == np.uint8:
+        filled_array = np.round(filled_array).astype(np.uint8)
+    else:
+        filled_array = filled_array.astype(data_array.dtype)
+
+    return filled_array
 
 
 @cache
@@ -122,7 +201,7 @@ def read_with_create_initial_daily_ecdr(
         )
         write_ide_netcdf(ide_ds=created_ide_ds, output_filepath=ide_filepath)
 
-    ide_ds = xr.open_dataset(ide_filepath)
+    ide_ds = xr.load_dataset(ide_filepath)
 
     return ide_ds
 
@@ -307,7 +386,7 @@ def read_or_create_and_read_idecdr_ds(
             excluded_fields=excluded_idecdr_fields,
         )
     logger.info(f"Reading ideCDR file from: {ide_filepath}")
-    ide_ds = xr.open_dataset(ide_filepath)
+    ide_ds = xr.load_dataset(ide_filepath)
 
     return ide_ds
 
@@ -317,6 +396,147 @@ def grid_is_psn125(hemisphere, gridshape):
     is_nh = hemisphere == NORTH
     is_125 = gridshape == (896, 608)
     return is_nh and is_125
+
+
+def create_sorted_var_timestack(
+    varname: str,
+    date_list: list,
+    ds_function: Callable[..., xr.Dataset],
+    ds_function_kwargs: dict,
+) -> xr.DataArray:
+    """Create dataarray indexed by `time` for the given variable.
+
+    The provided `ds_function`: should take `date` and `ds_function_kwargs` as
+    kwargs. This function should return a dataset containing a variable called
+    `varname` for the provided `date`.
+
+    The return value is a dataarray of the varible given by `varname` with a
+    `time` coordinate containing the dates in `date_list`.
+    """
+    # Use the first date to initialize the dataset
+    init_date = date_list[0]
+    init_ds = ds_function(
+        date=init_date,
+        **ds_function_kwargs,
+    )
+    var_stack = init_ds.data_vars[varname].copy()
+    if len(var_stack.shape) == 2:
+        var_stack = var_stack.expand_dims(time=[pd.to_datetime(init_date)])
+
+    for interp_date in date_list[1:]:
+        interp_ds = ds_function(
+            date=interp_date,
+            **ds_function_kwargs,
+        )
+        this_var = interp_ds.data_vars[varname].copy()
+        if len(this_var.shape) == 2:
+            this_var = this_var.expand_dims(time=[pd.to_datetime(interp_date)])
+        var_stack = xr.concat([var_stack, this_var], "time")
+
+    var_stack = var_stack.sortby("time")
+
+    return var_stack
+
+
+def calc_stddev_field(
+    bt_conc,
+    nt_conc,
+    min_valid_value,
+    max_valid_value,
+    fill_value,
+) -> xr.DataArray | None:
+    """Compute std dev field for cdr_conc value using BT and NT fields.
+
+    This value is the standard deviation of a given grid cell along with
+    its eight surrounding grid cells (for nine values total) from both
+    the NASA Team and Bootstrap data fields.
+
+    This means that the standard deviation is computed using a total
+    of 18 values: nine from the BT and nine from tne NT field.
+
+    TODO: This could be generalized to n-fields, instead of 2.
+    """
+
+    bt_conc_masked = np.ma.masked_outside(
+        bt_conc,
+        min_valid_value,
+        max_valid_value,
+    )
+    nt_conc_masked = np.ma.masked_outside(
+        nt_conc,
+        min_valid_value,
+        max_valid_value,
+    )
+
+    # Initialize the aggregation sum and count arrays
+    ydim, xdim = bt_conc.shape
+    agg_array = np.ma.empty((18, ydim, xdim), dtype=np.float64)
+    agg_count = np.ma.zeros((ydim, xdim), dtype=np.int64)
+
+    # Use rolled arrays to add first bt, then nt to aggregation arrays
+    agg_idx = 0
+    for yoff in range(-1, 2):
+        for xoff in range(-1, 2):
+            rolled_array = np.roll(bt_conc_masked, (yoff, xoff), (0, 1))
+            agg_array[agg_idx, :, :] = rolled_array[:, :]
+            agg_count[~np.isnan(rolled_array)] += 1
+            agg_idx += 1
+    for yoff in range(-1, 2):
+        for xoff in range(-1, 2):
+            rolled_array = np.roll(nt_conc_masked, (yoff, xoff), (0, 1))
+            agg_array[agg_idx, :, :] = rolled_array[:, :]
+            agg_count[~np.isnan(rolled_array)] += 1
+            agg_idx += 1
+
+    stddev_raw = np.ma.filled(
+        agg_array.std(axis=0, ddof=1).astype(np.float32),
+        fill_value=-1,
+    )
+
+    stddev = np.ma.empty_like(bt_conc_masked, dtype=np.float32)
+    stddev[:] = stddev_raw[:]
+
+    # Mask any locations with insufficient count
+    stddev[(agg_count >= 0) & (agg_count < 6)] = fill_value
+
+    # Mask out any calculated missing values
+    stddev[stddev == -1] = fill_value
+
+    stddev[0, :] = fill_value
+    stddev[-1, :] = fill_value
+    stddev[:, 0] = fill_value
+    stddev[:, -1] = fill_value
+
+    return stddev
+
+
+def filter_field_via_bitmask(
+    field_da: xr.DataArray,
+    flag_da: xr.DataArray,
+    filter_ids: list,
+) -> xr.DataArray:
+    """Apply filters identified by flag_meaning to a field.
+
+    Currently, application of the filter means set-the-value-to-zero.
+    """
+    output_da = field_da.copy()
+    assert filter_ids is not None  # this simply preserves this arg for use
+
+    # TODO: implement this behavior.
+    """ This is not yet implemented, but it will look something like this...
+    bitmasks_to_filter = []
+    list_of_flags = flag_da.flag_meanings
+    # Parse list_of_flags, compared to filter_ids to set bitmasks_to_filter
+    """
+    bitmasks_to_filter = [1, 2, 16]
+    for bitmask in bitmasks_to_filter:
+        is_to_filter = np.bitwise_and(flag_da.data, bitmask).astype(bool)
+        output_da = output_da.where(
+            ~is_to_filter,
+            other=0,
+        )
+
+    return output_da
 
 
 def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
@@ -349,20 +569,21 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
 
     # Update the cdr_conc var with temporally interpolated cdr_conc field
     #   by creating a DataArray with conc fields +/- interp_range around date
-    interp_varname = "conc"
-    var_stack = ide_ds.data_vars[interp_varname].copy()
-    for interp_date in iter_dates_near_date(target_date=date, day_range=interp_range):
-        if interp_date != date:
-            interp_ds = read_or_create_and_read_idecdr_ds(
-                date=interp_date,
-                hemisphere=hemisphere,
-                resolution=resolution,
-                ecdr_data_dir=ecdr_data_dir,
+    var_stack = create_sorted_var_timestack(
+        varname="conc",
+        date_list=[
+            iter_date
+            for iter_date in iter_dates_near_date(
+                target_date=date, day_range=interp_range
             )
-            this_var = interp_ds.data_vars[interp_varname].copy()
-            var_stack = xr.concat([var_stack, this_var], "time")
-
-    var_stack = var_stack.sortby("time")
+        ],
+        ds_function=read_or_create_and_read_idecdr_ds,
+        ds_function_kwargs={
+            "hemisphere": hemisphere,
+            "resolution": resolution,
+            "ecdr_data_dir": ecdr_data_dir,
+        },
+    )
 
     ti_var, ti_flags = temporally_composite_dataarray(
         target_date=date,
@@ -370,6 +591,9 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         interp_range=interp_range,
     )
 
+    tie_ds["cdr_conc_ti"] = ti_var
+
+    # Update QA flag field
     is_temporally_interpolated = (ti_flags > 0) & (ti_flags <= 55)
     # TODO: this bit mask of 64 added to (equals bitwise "or")
     #       should be looked up from a map of flag mask values
@@ -377,8 +601,6 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         ~is_temporally_interpolated,
         other=tie_ds["qa_of_cdr_seaice_conc"] + 64,
     )
-
-    tie_ds["cdr_conc_ti"] = ti_var
 
     # Add the temporal interp flags to the dataset
     tie_ds["temporal_flag"] = (
@@ -419,45 +641,43 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         #       or not the grid has a pole hole to fill.  In general,
         #       this is an attribute of the grid.
         # Currently, this code expects psn12.5 grids only
-        if grid_is_psn125(hemisphere=hemisphere, gridshape=cdr_conc.shape):
-            cdr_conc_pre_polefill = cdr_conc.copy()
-            near_pole_hole_mask = psn_125_near_pole_hole_mask()
-            cdr_conc_pole_filled = fill_pole_hole(
-                conc=cdr_conc,
-                near_pole_hole_mask=near_pole_hole_mask,
+        if not grid_is_psn125(hemisphere=hemisphere, gridshape=cdr_conc.shape):
+            raise RuntimeError(
+                "temporally interpolated dataset should have ",
+                '"spatint_bitmask_map" field',
             )
-            logger.info("Filled pole hole")
-            # Need to use not-isnan() here because NaN == NaN evaluates to False
-            is_pole_filled = (cdr_conc_pole_filled != cdr_conc_pre_polefill) & (
-                ~np.isnan(cdr_conc_pole_filled)
+        cdr_conc_pre_polefill = cdr_conc.copy()
+        near_pole_hole_mask = psn_125_near_pole_hole_mask()
+        cdr_conc_pole_filled = fill_pole_hole(
+            conc=cdr_conc,
+            near_pole_hole_mask=near_pole_hole_mask,
+        )
+        logger.info("Filled pole hole")
+        # Need to use not-isnan() here because NaN == NaN evaluates to False
+        is_pole_filled = (cdr_conc_pole_filled != cdr_conc_pre_polefill) & (
+            ~np.isnan(cdr_conc_pole_filled)
+        )
+        if "spatint_bitmask" in tie_ds.variables.keys():
+            # TODO: These are constants for the eCDR runs.  They should
+            #       NOT be defined here (and in the idecdr code...(!))
+            # TODO Actually, if this is defined here, the 'pole_filled'
+            #      bitmask value should be determined by examining the
+            #      bitmask_flags and bitmask_flag_meanings fields of the
+            #      DataArray variable.
+            TB_SPATINT_BITMASK_MAP = {
+                "v18": 1,
+                "h18": 2,
+                "v23": 4,
+                "v36": 8,
+                "h36": 16,
+                "pole_filled": 32,
+            }
+            tie_ds["spatint_bitmask"] = tie_ds["spatint_bitmask"].where(
+                ~is_pole_filled,
+                other=TB_SPATINT_BITMASK_MAP["pole_filled"],
             )
-            if "spatint_bitmask" in tie_ds.variables.keys():
-                # TODO: These are constants for the eCDR runs.  They should
-                #       NOT be defined here (and in the idecdr code...(!))
-                # TODO Actually, if this is defined here, the 'pole_filled'
-                #      bitmask value should be determined by examining the
-                #      bitmask_flags and bitmask_flag_meanings fields of the
-                #      DataArray variable.
-                TB_SPATINT_BITMASK_MAP = {
-                    "v18": 1,
-                    "h18": 2,
-                    "v23": 4,
-                    "v36": 8,
-                    "h36": 16,
-                    "pole_filled": 32,
-                }
-                # tie_ds["spatint_bitmask"].data[is_pole_filled]= tie_ds["spatint_bitmask"].data[is_pole_filled] + TB_SPATINT_BITMASK_MAP["pole_filled"]
-                tie_ds["spatint_bitmask"] = tie_ds["spatint_bitmask"].where(
-                    ~is_pole_filled,
-                    other=TB_SPATINT_BITMASK_MAP["pole_filled"],
-                )
 
-                logger.info("Updated spatial_interpolation with pole hole value")
-            else:
-                raise RuntimeError(
-                    "temporally interpolated dataset should have ",
-                    '"spatint_bitmask_map" field',
-                )
+            logger.info("Updated spatial_interpolation with pole hole value")
 
             tie_ds["cdr_conc"].data[0, :, :] = cdr_conc_pole_filled[:, :]
         else:
@@ -467,7 +687,164 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         #       distinguish it from the cdr_conc_ti field
         pass
 
-    # Return the tiecdr dataset
+    # Create the cdr_conc standard deviation field
+    # Create filled bootstrap field
+    bt_var_stack = create_sorted_var_timestack(
+        varname="bt_conc_raw",
+        date_list=[
+            iter_date
+            for iter_date in iter_dates_near_date(
+                target_date=date, day_range=interp_range
+            )
+        ],
+        ds_function=read_or_create_and_read_idecdr_ds,
+        ds_function_kwargs={
+            "hemisphere": hemisphere,
+            "resolution": resolution,
+            "ecdr_data_dir": ecdr_data_dir,
+        },
+    )
+
+    bt_conc, bt_ti_flags = temporally_composite_dataarray(
+        target_date=date,
+        da=bt_var_stack,
+        interp_range=interp_range,
+    )
+
+    # Create filled bootstrap field
+    nt_var_stack = create_sorted_var_timestack(
+        varname="nt_conc_raw",
+        date_list=[
+            iter_date
+            for iter_date in iter_dates_near_date(
+                target_date=date, day_range=interp_range
+            )
+        ],
+        ds_function=read_or_create_and_read_idecdr_ds,
+        ds_function_kwargs={
+            "hemisphere": hemisphere,
+            "resolution": resolution,
+            "ecdr_data_dir": ecdr_data_dir,
+        },
+    )
+
+    nt_conc, nt_ti_flags = temporally_composite_dataarray(
+        target_date=date,
+        da=nt_var_stack,
+        interp_range=interp_range,
+    )
+
+    # Note: this pole-filling code is copy-pasted from the cdr_conc
+    #       methodology above
+    if fill_the_pole_hole and hemisphere == NORTH:
+        bt_conc_2d = np.squeeze(bt_conc.data)
+        nt_conc_2d = np.squeeze(nt_conc.data)
+
+        if grid_is_psn125(hemisphere=hemisphere, gridshape=bt_conc_2d.shape):
+            # Fill pole hole of BT
+            bt_conc_pre_polefill = bt_conc_2d.copy()
+            near_pole_hole_mask = psn_125_near_pole_hole_mask()
+            bt_conc_pole_filled = fill_pole_hole(
+                conc=bt_conc_2d,
+                near_pole_hole_mask=near_pole_hole_mask,
+            )
+            logger.info("Filled pole hole (bt)")
+            # Need to use not-isnan() here because NaN == NaN evaluates to False
+            is_pole_filled = (bt_conc_pole_filled != bt_conc_pre_polefill) & (
+                ~np.isnan(bt_conc_pole_filled)
+            )
+            bt_conc.data[0, :, :] = bt_conc_pole_filled[:, :]
+
+            # Fill pole hole of NT
+            nt_conc_pre_polefill = nt_conc_2d.copy()
+            near_pole_hole_mask = psn_125_near_pole_hole_mask()
+            nt_conc_pole_filled = fill_pole_hole(
+                conc=nt_conc_2d,
+                near_pole_hole_mask=near_pole_hole_mask,
+            )
+            logger.info("Filled pole hole (nt)")
+            # Need to use not-isnan() here because NaN == NaN evaluates to False
+            is_pole_filled = (nt_conc_pole_filled != nt_conc_pre_polefill) & (
+                ~np.isnan(nt_conc_pole_filled)
+            )
+            nt_conc.data[0, :, :] = nt_conc_pole_filled[:, :]
+
+            # TODO: I noticed that NT raw conc here can be > 100 (!)
+            #       So for stdev calc, clamp to 100%
+            nt_conc = nt_conc.where(
+                nt_conc < 100,
+                other=100,
+            )
+
+    stddev_field = calc_stddev_field(
+        bt_conc=bt_conc.data[0, :, :],
+        nt_conc=nt_conc.data[0, :, :],
+        min_valid_value=0,
+        max_valid_value=100,
+        fill_value=-1,
+    )
+
+    # Set this to a data array
+    tie_ds["stdev_of_cdr_seaice_conc_raw"] = (
+        ("y", "x"),
+        stddev_field,
+        {
+            "_FillValue": -1,
+            "long_name": (
+                "Passive Microwave Daily Sea Ice Concentration",
+                " Source Estimated Standard Deviation",
+            ),
+            "grid_mapping": "crs",
+            "valid_range": np.array((0, 300), dtype=np.float32),
+            "units": "K",
+        },
+        {
+            "zlib": True,
+        },
+    )
+
+    # TODO: This should be moved to a CONSTANTS or configuration location
+    filter_flags_to_apply = [
+        "BT_weather_filter_applied",
+        "NT_weather_filter_applied",
+        "valid_ice_mask_applied",
+    ]
+
+    stdev_field_filtered = filter_field_via_bitmask(
+        field_da=tie_ds["stdev_of_cdr_seaice_conc_raw"],
+        flag_da=tie_ds["qa_of_cdr_seaice_conc"],
+        filter_ids=filter_flags_to_apply,
+    )
+
+    # set non-conc values to -1
+    is_non_siconc = np.squeeze(tie_ds["cdr_conc"].data > 100)
+    stdev_field_filtered = stdev_field_filtered.where(
+        ~is_non_siconc,
+        other=-1,
+    )
+
+    # Re-set the stdev data array...
+    # Note: probably need to set land values to -1 here?
+    tie_ds["stdev_of_cdr_seaice_conc"] = (
+        ("y", "x"),
+        stdev_field_filtered.data,
+        {
+            "_FillValue": -1,
+            "long_name": (
+                "Passive Microwave Daily Sea Ice Concentration",
+                " Source Estimated Standard Deviation",
+            ),
+            "grid_mapping": "crs",
+            "valid_range": np.array((0, 300), dtype=np.float32),
+            "units": "K",
+        },
+        {
+            "zlib": True,
+        },
+    )
+
+    tie_ds = tie_ds.drop_vars("stdev_of_cdr_seaice_conc_raw")
+
     return tie_ds
 
 

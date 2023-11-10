@@ -85,7 +85,7 @@ def read_or_create_and_read_tiecdr_ds(
             ecdr_data_dir=ecdr_data_dir,
         )
     logger.info(f"Reading tieCDR file from: {tie_filepath}")
-    tie_ds = xr.open_dataset(tie_filepath)
+    tie_ds = xr.load_dataset(tie_filepath)
 
     return tie_ds
 
@@ -261,8 +261,6 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
     )
     cde_ds = tie_ds.copy()
 
-    # TODO: We need to compute the standard deviation field here too(!)
-
     melt_onset_field = create_melt_onset_field(
         date=date,
         hemisphere=hemisphere,
@@ -382,6 +380,7 @@ def read_or_create_and_read_cdecdr_ds(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
     mask_and_scale: bool = True,
+    overwrite_cde: bool = False,
 ) -> xr.Dataset:
     """Read an cdecdr netCDF file, creating it if it doesn't exist.
 
@@ -394,8 +393,8 @@ def read_or_create_and_read_cdecdr_ds(
         resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
-    # TODO: This only creates if file is missing.  We may want an overwrite opt
-    if not cde_filepath.is_file():
+
+    if overwrite_cde or not cde_filepath.is_file():
         make_cdecdr_netcdf(
             date=date,
             hemisphere=hemisphere,
@@ -403,7 +402,7 @@ def read_or_create_and_read_cdecdr_ds(
             ecdr_data_dir=ecdr_data_dir,
         )
     logger.info(f"Reading cdeCDR file from: {cde_filepath}")
-    cde_ds = xr.open_dataset(cde_filepath, mask_and_scale=mask_and_scale)
+    cde_ds = xr.load_dataset(cde_filepath, mask_and_scale=mask_and_scale)
 
     return cde_ds
 
