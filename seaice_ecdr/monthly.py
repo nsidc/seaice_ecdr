@@ -158,7 +158,7 @@ QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS = OrderedDict(
 )
 
 # TODO: rename. This is actually a bit mask (except the fill_value)
-QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS = OrderedDict(
+QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS = OrderedDict(
     {
         "average_concentration_exceeds_0.15": 1,
         "average_concentration_exceeds_0.30": 2,
@@ -168,7 +168,6 @@ QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS = OrderedDict(
         "at_least_one_day_during_month_has_spatial_interpolation": 32,
         "at_least_one_day_during_month_has_temporal_interpolation": 64,
         "at_least_one_day_during_month_has_melt_detected": 128,
-        "fill_value": 255,
     }
 )
 
@@ -200,14 +199,14 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~average_exceeds_15,
         qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exceeds_0.15"],
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["average_concentration_exceeds_0.15"],
     )
 
     average_exceeds_30 = cdr_seaice_conc_monthly > 0.30
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~average_exceeds_30,
         qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exceeds_0.30"],
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["average_concentration_exceeds_0.30"],
     )
 
     days_in_ds = len(daily_ds_for_month.time)
@@ -219,7 +218,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_half_have_sic_gt_15,
         qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
             "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
         ],
     )
@@ -230,7 +229,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_half_have_sic_gt_30,
         qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
             "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30"
         ],
     )
@@ -243,7 +242,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~region_masked_by_ocean_climatology,
         qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["region_masked_by_ocean_climatology"],
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["region_masked_by_ocean_climatology"],
     )
 
     at_least_one_day_during_month_has_spatial_interpolation = _qa_field_has_flag(
@@ -253,7 +252,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_one_day_during_month_has_spatial_interpolation,
         qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
             "at_least_one_day_during_month_has_spatial_interpolation"
         ],
     )
@@ -265,7 +264,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_one_day_during_month_has_temporal_interpolation,
         qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
             "at_least_one_day_during_month_has_temporal_interpolation"
         ],
     )
@@ -277,24 +276,31 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         ~at_least_one_day_during_month_has_melt_detected,
         qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
             "at_least_one_day_during_month_has_melt_detected"
         ],
     )
 
+    # TODO: is this right? Any cells that don't get flagged end up filled with
+    # 255. This doesn' get encoded in the flag_meanings/masks because it's not a
+    # bitmask. Should this just take the specified fill_value of 0 (and be
+    # treated as nan)?
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
         qa_of_cdr_seaice_conc_monthly != 0,
-        QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["fill_value"],
+        255,
     )
 
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.assign_attrs(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QC flags",
         standard_name="sea_ice_area_fraction status_flag",
-        flag_meanings=" ".join(k for k in QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS.keys()),
+        flag_meanings=" ".join(
+            k for k in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.keys()
+        ),
         flag_masks=" ".join(
-            str(int(v)) for v in QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS.values()
+            str(int(v)) for v in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.values()
         ),
         grid_mapping="crs",
+        valid_range=(1, 255),
         # TODO: do we want to keep missing_value?
         # missing_value=0,
     )

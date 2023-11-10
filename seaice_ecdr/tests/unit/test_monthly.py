@@ -11,7 +11,7 @@ from seaice_ecdr import monthly
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_dir
 from seaice_ecdr.monthly import (
     QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS,
-    QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS,
+    QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS,
     _calc_conc_monthly,
     _get_daily_complete_filepaths_for_month,
     _qa_field_has_flag,
@@ -244,41 +244,51 @@ def test_calc_qa_of_cdr_seaice_conc_monthly():
     _mock_daily_ds = _mock_daily_ds_for_month()
     expected_flags = np.array(
         [
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exceeds_0.15"]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["average_concentration_exceeds_0.15"]
+            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exceeds_0.15"]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["average_concentration_exceeds_0.15"]
+            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exceeds_0.30"]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+                "average_concentration_exceeds_0.30"
+            ]
+            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30"
             ],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30"
             ]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exceeds_0.15"]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+                "average_concentration_exceeds_0.15"
+            ]
+            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["region_masked_by_ocean_climatology"],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+                "region_masked_by_ocean_climatology"
+            ],
+            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
                 "at_least_one_day_during_month_has_spatial_interpolation"
             ],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
                 "at_least_one_day_during_month_has_temporal_interpolation"
             ],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS[
+            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
                 "at_least_one_day_during_month_has_melt_detected"
             ]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exceeds_0.15"]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["average_concentration_exceeds_0.30"],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS["fill_value"],
+            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+                "average_concentration_exceeds_0.15"
+            ]
+            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+                "average_concentration_exceeds_0.30"
+            ],
+            255,
         ]
     )
 
