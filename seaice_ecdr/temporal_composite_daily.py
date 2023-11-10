@@ -522,6 +522,7 @@ def filter_field_via_bitmask(
     output_da = field_da.copy()
     assert filter_ids is not None  # this simply preserves this arg for use
 
+    # TODO: implement this behavior.
     """ This is not yet implemented, but it will look something like this...
     bitmasks_to_filter = []
     list_of_flags = flag_da.flag_meanings
@@ -784,13 +785,6 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         fill_value=-1,
     )
 
-    # TODO: This should be moved to a CONSTANTS or configuration location
-    filter_flags_to_apply = [
-        "BT_weather_filter_applied",
-        "NT_weather_filter_applied",
-        "valid_ice_mask_applied",
-    ]
-
     # Set this to a data array
     tie_ds["stdev_of_cdr_seaice_conc_raw"] = (
         ("y", "x"),
@@ -809,6 +803,13 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
             "zlib": True,
         },
     )
+
+    # TODO: This should be moved to a CONSTANTS or configuration location
+    filter_flags_to_apply = [
+        "BT_weather_filter_applied",
+        "NT_weather_filter_applied",
+        "valid_ice_mask_applied",
+    ]
 
     stdev_field_filtered = filter_field_via_bitmask(
         field_da=tie_ds["stdev_of_cdr_seaice_conc_raw"],
