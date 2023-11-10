@@ -80,6 +80,7 @@ def _get_daily_complete_filepaths_for_month(
     return data_list
 
 
+# TODO: support both hemispheres!!!
 def get_daily_ds_for_month(
     *,
     year: int,
@@ -102,6 +103,10 @@ def get_daily_ds_for_month(
 
     ds.attrs["year"] = year
     ds.attrs["month"] = month
+
+    ds["filepaths"] = xr.DataArray(
+        data=data_list, dims=("time",), coords=dict(time=ds.time)
+    )
 
     logger.info(
         f"Created daily ds for {year=} {month=} from {len(ds.time)} complete daily files."
@@ -488,6 +493,14 @@ def make_monthly_ds(
     )
 
     monthly_ds["crs"] = daily_ds_for_month.crs.isel(time=0).drop_vars("time")
+
+    # Set global attributes
+    # TODO: "source" in the v4 files has the full path to the data on FTP. How should we here?
+    monthly_ds.attrs["soruce"] = ", ".join(
+        [fp.item().name for fp in daily_ds_for_month.filepaths]
+    )
+
+    # TODO: other global attrs
 
     return monthly_ds.compute()
 
