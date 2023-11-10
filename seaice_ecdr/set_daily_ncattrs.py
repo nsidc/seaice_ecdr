@@ -2,7 +2,6 @@
 
 import numpy as np
 import xarray as xr
-from loguru import logger
 
 CDECDR_FIELDS_TO_DROP = [
     "h18_day_si",
@@ -75,22 +74,19 @@ def finalize_cdecdr_ds(
         },
     )
 
-    # **************************************
-    # This needs to get created in tiecdr...
-    # **************************************
-    logger.warning("Creating dummy stdev_of_cdr_seaice_conc variable")
+    # Standard deviation file is converted from 2d to [time, y x] coords
     ds["stdev_of_cdr_seaice_conc"] = (
         ("time", "y", "x"),
-        np.zeros(ds["cdr_seaice_conc"].shape, dtype=np.float32),
+        np.expand_dims(ds["stdev_of_cdr_seaice_conc"].data, axis=0),
         {
             "_FillValue": -1,
             "long_name": (
                 "Passive Microwave Daily Northern Hemisphere Sea Ice"
                 "Concentration Source Estimated Standard Deviation"
             ),
-            "units": "1",
+            "units": "K",
             "grid_mapping": "crs",
-            "valid_range": np.array((0.0, 100.0), dtype=np.float32),
+            "valid_range": np.array((0.0, 300.0), dtype=np.float32),
         },
         {
             "zlib": True,

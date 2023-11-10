@@ -785,7 +785,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         fill_value=-1,
     )
 
-    tie_ds["stddev_of_cdr_conc"] = (
+    tie_ds["stdev_of_cdr_seaice_conc"] = (
         ("y", "x"),
         stddev_field,
         {
@@ -795,7 +795,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
                 " Source Estimated Standard Deviation",
             ),
             "grid_mapping": "crs",
-            "valid_range": [np.float32(0), np.float32(250)],
+            "valid_range": np.array((0, 300), dtype=np.float32),
             "units": "K",
         },
         {
