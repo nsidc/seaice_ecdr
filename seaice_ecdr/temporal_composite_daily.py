@@ -508,13 +508,13 @@ def calc_stddev_field(
         for xoff in range(-1, 2):
             rolled_array = np.roll(bt_conc_masked, (yoff, xoff), (0, 1))
             agg_array[agg_idx, :, :] = rolled_array[:, :]
-            agg_count[~rolled_array.mask] += 1
+            agg_count[~np.isnan(rolled_array)] += 1
             agg_idx += 1
     for yoff in range(-1, 2):
         for xoff in range(-1, 2):
             rolled_array = np.roll(nt_conc_masked, (yoff, xoff), (0, 1))
             agg_array[agg_idx, :, :] = rolled_array[:, :]
-            agg_count[~rolled_array.mask] += 1
+            agg_count[~np.isnan(rolled_array)] += 1
             agg_idx += 1
 
     stddev_raw = np.ma.filled(
