@@ -440,12 +440,14 @@ def _assign_time_to_monthly_ds(
         dict(
             long_name="ANSI date",
             axis="T",
+            coverage_content_type="coordinate",
+            standard_name="time",
         )
     )
 
     with_time.time.encoding = dict(
-        units="days since 1601-01-01 00:00:00",
-        calendar="gregorian",
+        units="days since 1970-01-01 00:00:00",
+        calendar="standard",
     )
 
     return with_time
