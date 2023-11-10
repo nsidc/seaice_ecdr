@@ -99,7 +99,6 @@ def _get_daily_complete_filepaths_for_month(
     return data_list
 
 
-# TODO: support both hemispheres!!!
 def get_daily_ds_for_month(
     *,
     year: int,
