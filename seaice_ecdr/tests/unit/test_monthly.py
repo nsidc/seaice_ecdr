@@ -209,6 +209,10 @@ def _mock_daily_ds_for_month():
             bootstrap_seaice_conc_raw=(("x", "time"), _mock_data),
             qa_of_cdr_seaice_conc=(("x", "time"), _mock_daily_qa_fields),
             melt_onset_day_cdr_seaice_conc=(("x", "time"), _mock_daily_melt_onset),
+            filepaths=(
+                ("time",),
+                [Path("/tmp/foo.nc"), Path("/tmp/bar.nc"), Path("/tmp/baz.nc")],
+            ),
             crs=(("time"), ["a"] * 3),
         ),
         coords=dict(
