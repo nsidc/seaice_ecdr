@@ -5,6 +5,7 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 import xarray as xr
+from pm_tb_data._types import NORTH
 
 from seaice_ecdr import monthly
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_dir
@@ -28,19 +29,28 @@ def test__get_daily_complete_filepaths_for_month(fs):
     complete_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir)
     year = 2022
     month = 3
-    _fake_files_for_test_year_month = [
-        complete_dir / "cdecdr_sic_psn12.5km_20220301_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_psn12.5km_20220302_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_psn12.5km_20220303_am2_v05r00.nc",
+    _fake_files_for_test_year_month_and_hemisphere = [
+        complete_dir / "cdecdr_sic_psn12.5_20220301_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_psn12.5_20220302_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_psn12.5_20220303_am2_v05r00.nc",
     ]
     _fake_files = [
-        complete_dir / "cdecdr_sic_psn12.5km_20220201_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_psn12.5km_20220202_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_psn12.5km_20220203_am2_v05r00.nc",
-        *_fake_files_for_test_year_month,
-        complete_dir / "cdecdr_sic_psn12.5km_20220401_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_psn12.5km_20220402_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_psn12.5km_20220403_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_psn12.5_20220201_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_pss12.5_20220201_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_psn12.5_20220202_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_pss12.5_20220202_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_psn12.5_20220203_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_pss12.5_20220203_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_pss12.5_20220301_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_pss12.5_20220302_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_pss12.5_20220303_am2_v05r00.nc",
+        *_fake_files_for_test_year_month_and_hemisphere,
+        complete_dir / "cdecdr_sic_psn12.5_20220401_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_pss12.5_20220401_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_psn12.5_20220402_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_pss12.5_20220402_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_psn12.5_20220403_am2_v05r00.nc",
+        complete_dir / "cdecdr_sic_pss12.5_20220403_am2_v05r00.nc",
     ]
     for _file in _fake_files:
         fs.create_file(_file)
@@ -50,9 +60,11 @@ def test__get_daily_complete_filepaths_for_month(fs):
         month=month,
         ecdr_data_dir=ecdr_data_dir,
         sat="am2",
+        resolution="12.5",
+        hemisphere=NORTH,
     )
 
-    assert sorted(_fake_files_for_test_year_month) == sorted(actual)
+    assert sorted(_fake_files_for_test_year_month_and_hemisphere) == sorted(actual)
 
 
 def test_check_min_day_for_valid_month():
@@ -418,6 +430,7 @@ def test_monthly_ds(monkeypatch, tmpdir):
     actual = make_monthly_ds(
         daily_ds_for_month=_mock_daily_ds,
         sat="am2",
+        hemisphere=NORTH,
     )
 
     # Test that the dataset only contains the variables we expect.

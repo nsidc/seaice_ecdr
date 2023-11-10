@@ -27,6 +27,7 @@ Notes about CDR v4:
 * Uses masks from the first file in the month to apply to monthly fields.
 """
 
+import calendar
 import datetime as dt
 from collections import OrderedDict
 from pathlib import Path
@@ -37,10 +38,10 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from loguru import logger
-from pm_tb_data._types import Hemisphere
+from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
-from seaice_ecdr.complete_daily_ecdr import get_ecdr_dir
+from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.util import standard_monthly_filename
 
@@ -71,11 +72,29 @@ def _get_daily_complete_filepaths_for_month(
     month: int,
     ecdr_data_dir: Path,
     sat: SUPPORTED_SAT,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
-    data_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir)
-    # TODO: use `get_ecdr_filepath` and iterate over dates in year, month? This
-    # would allow us to log when a date is missing, for example.
-    data_list = list(data_dir.glob(f"*_{year}{month:02}*_{sat}_*.nc"))
+    data_list = []
+    _, last_day_of_month = calendar.monthrange(year, month)
+    for period in pd.period_range(
+        start=dt.date(year, month, 1),
+        end=dt.date(year, month, last_day_of_month),
+        freq="D",
+    ):
+        expected_fp = get_ecdr_filepath(
+            date=period.to_timestamp().date(),
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+        if expected_fp.is_file():
+            data_list.append(expected_fp)
+        else:
+            logger.warning(f"Expected to find {expected_fp} but found none.")
+
+    if len(data_list) == 0:
+        raise RuntimeError("No daily data files found.")
 
     return data_list
 
@@ -87,12 +106,16 @@ def get_daily_ds_for_month(
     month: int,
     sat: SUPPORTED_SAT,
     ecdr_data_dir: Path,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
     data_list = _get_daily_complete_filepaths_for_month(
         year=year,
         month=month,
         sat=sat,
         ecdr_data_dir=ecdr_data_dir,
+        hemisphere=hemisphere,
+        resolution=resolution,
     )
     # Read all of the complete daily data for the given year and month.
     ds = xr.open_mfdataset(data_list)
@@ -432,6 +455,7 @@ def make_monthly_ds(
     *,
     daily_ds_for_month: xr.Dataset,
     sat: SUPPORTED_SAT,
+    hemisphere: Hemisphere,
 ) -> xr.Dataset:
     """Create a monthly dataset from daily data.
 
@@ -471,19 +495,26 @@ def make_monthly_ds(
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
     )
 
-    melt_onset_day_cdr_seaice_conc_monthly = calc_melt_onset_day_cdr_seaice_conc_monthly(
-        daily_melt_onset_for_month=daily_ds_for_month.melt_onset_day_cdr_seaice_conc,
+    monthly_ds_data_vars = dict(
+        cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
+        nsidc_nt_seaice_conc_monthly=nsidc_nt_seaice_conc_monthly,
+        nsidc_bt_seaice_conc_monthly=nsidc_bt_seaice_conc_monthly,
+        stdv_of_cdr_seaice_conc_monthly=stdv_of_cdr_seaice_conc_monthly,
+        qa_of_cdr_seaice_conc_monthly=qa_of_cdr_seaice_conc_monthly,
     )
 
-    monthly_ds = xr.Dataset(
-        data_vars=dict(
-            cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
-            nsidc_nt_seaice_conc_monthly=nsidc_nt_seaice_conc_monthly,
-            nsidc_bt_seaice_conc_monthly=nsidc_bt_seaice_conc_monthly,
-            stdv_of_cdr_seaice_conc_monthly=stdv_of_cdr_seaice_conc_monthly,
-            melt_onset_day_cdr_seaice_conc_monthly=melt_onset_day_cdr_seaice_conc_monthly,
-            qa_of_cdr_seaice_conc_monthly=qa_of_cdr_seaice_conc_monthly,
+    # Add monthly melt onset if the hemisphere is north. We don't detect melt in
+    # the southern hemisphere.
+    if hemisphere == NORTH:
+        melt_onset_day_cdr_seaice_conc_monthly = calc_melt_onset_day_cdr_seaice_conc_monthly(
+            daily_melt_onset_for_month=daily_ds_for_month.melt_onset_day_cdr_seaice_conc,
         )
+        monthly_ds_data_vars[
+            "melt_onset_day_cdr_seaice_conc_monthly"
+        ] = melt_onset_day_cdr_seaice_conc_monthly
+
+    monthly_ds = xr.Dataset(
+        data_vars=monthly_ds_data_vars,
     )
 
     monthly_ds = _assign_time_to_monthly_ds(
@@ -625,11 +656,14 @@ def cli(
             month=period.month,
             ecdr_data_dir=ecdr_data_dir,
             sat=sat,
+            hemisphere=hemisphere,
+            resolution=resolution,
         )
 
         monthly_ds = make_monthly_ds(
             daily_ds_for_month=daily_ds_for_month,
             sat=sat,
+            hemisphere=hemisphere,
         )
 
         output_path = get_monthly_filepath(

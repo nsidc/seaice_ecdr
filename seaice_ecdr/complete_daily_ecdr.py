@@ -40,14 +40,12 @@ def get_ecdr_dir(*, ecdr_data_dir: Path) -> Path:
 
 
 def get_ecdr_filepath(
-    date,
-    hemisphere,
-    resolution,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
 ) -> Path:
     """Return the complete daily eCDR file path."""
-    if "km" not in resolution:
-        resolution = f"{resolution}km"
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
