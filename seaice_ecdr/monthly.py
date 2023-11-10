@@ -74,6 +74,7 @@ def _get_daily_complete_filepaths_for_month(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
+    """Return a list of paths to ECDR daily complete filepaths for the given year and month."""
     data_list = []
     _, last_day_of_month = calendar.monthrange(year, month)
     for period in pd.period_range(
@@ -107,6 +108,12 @@ def get_daily_ds_for_month(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
+    """Create an xr.Dataset wtih ECDR complete daily data for a given year and month.
+
+    The resulting xr.Dataset includes:
+        * `year` and `month` attribtues.
+        * The filepaths of the source data are included in a `filepaths` variable.
+    """
     data_list = _get_daily_complete_filepaths_for_month(
         year=year,
         month=month,
@@ -136,6 +143,8 @@ def get_daily_ds_for_month(
     return ds
 
 
+# TODO: utilize these in the daily complete processing. Or use constant from
+# that module!
 QA_OF_CDR_SEAICE_CONC_DAILY_FLAGS = OrderedDict(
     bt_weather_filter_applied=1,
     nt_weather_filter_applied=2,
@@ -165,6 +174,7 @@ QA_OF_CDR_SEAICE_CONC_MONTHLY_FLAGS = OrderedDict(
 
 
 def _qa_field_has_flag(*, qa_field: xr.DataArray, flag_value: int) -> xr.DataArray:
+    """Returns a boolean DataArray indicating where a flag value occurs in the given `qa_field`."""
     qa_field_contains_flag = (
         qa_field.where(qa_field.isnull(), qa_field.astype(int) & flag_value)
         == flag_value
@@ -326,6 +336,7 @@ def calc_nsidc_nt_seaice_conc_monthly(
     *,
     daily_ds_for_month: xr.Dataset,
 ) -> xr.DataArray:
+    """Create the `nsidc_nt_seaice_conc_monthly` variable."""
     nsidc_nt_seaice_conc_monthly = _calc_conc_monthly(
         daily_conc_for_month=daily_ds_for_month.nasateam_seaice_conc_raw,
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration by NASA Team algorithm processed by NSIDC",
@@ -339,6 +350,7 @@ def calc_nsidc_bt_seaice_conc_monthly(
     *,
     daily_ds_for_month: xr.Dataset,
 ) -> xr.DataArray:
+    """Create the `nsidc_bt_seaice_conc_monthly` variable."""
     nsidc_bt_seaice_conc_monthly = _calc_conc_monthly(
         daily_conc_for_month=daily_ds_for_month.bootstrap_seaice_conc_raw,
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration by Bootstrap algorithm processed by NSIDC",
@@ -348,7 +360,11 @@ def calc_nsidc_bt_seaice_conc_monthly(
     return nsidc_bt_seaice_conc_monthly
 
 
-def calc_cdr_seaice_conc_monthly(*, daily_ds_for_month: xr.Dataset) -> xr.DataArray:
+def calc_cdr_seaice_conc_monthly(
+    *,
+    daily_ds_for_month: xr.Dataset,
+) -> xr.DataArray:
+    """Create the `cdr_seaice_conc_monthly` variable."""
     cdr_seaice_conc_monthly = _calc_conc_monthly(
         daily_conc_for_month=daily_ds_for_month.cdr_seaice_conc,
         long_name="NOAA/NSIDC Climate Data Record of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration",
@@ -362,6 +378,7 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
     *,
     daily_cdr_seaice_conc: xr.DataArray,
 ) -> xr.DataArray:
+    """Create the `stdv_of_cdr_seaice_conc_monthly` variable."""
     stdv_of_cdr_seaice_conc_monthly = daily_cdr_seaice_conc.std(
         dim="time",
         ddof=1,
@@ -386,8 +403,10 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
 
 
 def calc_melt_onset_day_cdr_seaice_conc_monthly(
-    *, daily_melt_onset_for_month: xr.DataArray
+    *,
+    daily_melt_onset_for_month: xr.DataArray,
 ) -> xr.DataArray:
+    """Create the `melt_onset_day_cdr_seaice_conc_monthly` variable."""
     # Create `melt_onset_day_cdr_seaice_conc_monthly`. This is the value from
     # the last day of the month.
     melt_onset_day_cdr_seaice_conc_monthly = daily_melt_onset_for_month.sel(
@@ -421,6 +440,7 @@ def _assign_time_to_monthly_ds(
     year: int,
     month: int,
 ) -> xr.Dataset:
+    """Add the time coordinate/dimension to a monthly dataset."""
     # TODO: should this step be done in the `calc_*` functions?
     # assign the time dimension
     with_time = monthly_ds.copy()
