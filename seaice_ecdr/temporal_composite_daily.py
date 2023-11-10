@@ -247,11 +247,7 @@ def temporally_composite_dataarray(
 
     _, ydim, xdim = da.shape
 
-    try:
-        temp_comp_da = da.isel(time=da.time.dt.date == target_date).copy()
-    except TypeError as e:
-        print(f"Got TypeError:\n{e}")
-        breakpoint()
+    temp_comp_da = da.isel(time=da.time.dt.date == target_date).copy()
 
     if temp_comp_da.size == 0:
         # This time was not in the time slice; need to init to all-missing
