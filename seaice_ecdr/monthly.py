@@ -469,7 +469,6 @@ def make_monthly_ds(
         sat=sat,
     )
 
-    # TODO: the daily fields are currently 0-100, not 0-1 as expected.
     # create `nsidc_{nt|bt}_seaice_conc_monthly`. These are averages of the
     # daily NT and BT values. These 'raw' fields do not have any flags.
     nsidc_nt_seaice_conc_monthly = calc_nsidc_nt_seaice_conc_monthly(
