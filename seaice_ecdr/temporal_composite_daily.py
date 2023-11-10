@@ -7,7 +7,7 @@ import sys
 import traceback
 from functools import cache
 from pathlib import Path
-from typing import Iterable, cast, get_args
+from typing import Callable, Iterable, cast, get_args
 
 import click
 import numpy as np
@@ -401,7 +401,7 @@ def grid_is_psn125(hemisphere, gridshape):
 def create_sorted_var_timestack(
     varname: str,
     date_list: list,
-    ds_function,  # How do I specify a function to mypy?
+    ds_function: Callable[..., xr.Dataset],
     ds_function_kwargs: dict,
 ) -> xr.DataArray:
     # Use the first date to initialize the dataset
