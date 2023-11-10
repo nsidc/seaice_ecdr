@@ -15,7 +15,6 @@ from pm_tb_data._types import NORTH
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.initial_daily_ecdr import get_idecdr_dir, get_idecdr_filepath
 from seaice_ecdr.temporal_composite_daily import (
-    get_ti_flag_dates,
     iter_dates_near_date,
     temporally_composite_dataarray,
     temporally_interpolate_dataarray_using_flags,
@@ -425,33 +424,3 @@ def test_fill_dataarray_with_tiflags():
     )
 
     assert np.array_equal(filled, expected_filled_data, equal_nan=True)
-
-
-def test_get_ti_flag_dates():
-    """Test return of date list from temporal interpolation flag field."""
-    mock_date = dt.date(2022, 3, 2)
-    # Require day of; 1 and 2 days prior; 1, 3, and 4 days after
-    mock_ti_flag_array = np.array(
-        [
-            [0, 10, 21],
-            [11, 13, 14],
-        ]
-    )
-    ydim, xdim = mock_ti_flag_array.shape
-    mock_ti_flag_field = compose_yx_dataarray(
-        mock_ti_flag_array,
-        np.arange(xdim),
-        np.arange(ydim),
-    )
-    expected_dates = [
-        mock_date - dt.timedelta(days=2),
-        mock_date - dt.timedelta(days=1),
-        mock_date,
-        mock_date + dt.timedelta(days=1),
-        mock_date + dt.timedelta(days=3),
-        mock_date + dt.timedelta(days=4),
-    ]
-
-    calculated_ti_flag_dates = get_ti_flag_dates(mock_date, mock_ti_flag_field)
-
-    assert calculated_ti_flag_dates == expected_dates
