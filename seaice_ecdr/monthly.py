@@ -24,7 +24,6 @@ Notes about CDR v4:
 * Only determines monthly melt onset day for NH.
 * CDR is not re-calculated from the monthly nt and bt fields. Just the average
   of the CDR conc fields.
-* Uses masks from the first file in the month to apply to monthly fields.
 """
 
 import calendar
