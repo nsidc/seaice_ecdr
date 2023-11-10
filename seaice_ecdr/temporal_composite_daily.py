@@ -641,44 +641,43 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         #       or not the grid has a pole hole to fill.  In general,
         #       this is an attribute of the grid.
         # Currently, this code expects psn12.5 grids only
-        if grid_is_psn125(hemisphere=hemisphere, gridshape=cdr_conc.shape):
-            cdr_conc_pre_polefill = cdr_conc.copy()
-            near_pole_hole_mask = psn_125_near_pole_hole_mask()
-            cdr_conc_pole_filled = fill_pole_hole(
-                conc=cdr_conc,
-                near_pole_hole_mask=near_pole_hole_mask,
+        if not grid_is_psn125(hemisphere=hemisphere, gridshape=cdr_conc.shape):
+            raise RuntimeError(
+                "temporally interpolated dataset should have ",
+                '"spatint_bitmask_map" field',
             )
-            logger.info("Filled pole hole")
-            # Need to use not-isnan() here because NaN == NaN evaluates to False
-            is_pole_filled = (cdr_conc_pole_filled != cdr_conc_pre_polefill) & (
-                ~np.isnan(cdr_conc_pole_filled)
+        cdr_conc_pre_polefill = cdr_conc.copy()
+        near_pole_hole_mask = psn_125_near_pole_hole_mask()
+        cdr_conc_pole_filled = fill_pole_hole(
+            conc=cdr_conc,
+            near_pole_hole_mask=near_pole_hole_mask,
+        )
+        logger.info("Filled pole hole")
+        # Need to use not-isnan() here because NaN == NaN evaluates to False
+        is_pole_filled = (cdr_conc_pole_filled != cdr_conc_pre_polefill) & (
+            ~np.isnan(cdr_conc_pole_filled)
+        )
+        if "spatint_bitmask" in tie_ds.variables.keys():
+            # TODO: These are constants for the eCDR runs.  They should
+            #       NOT be defined here (and in the idecdr code...(!))
+            # TODO Actually, if this is defined here, the 'pole_filled'
+            #      bitmask value should be determined by examining the
+            #      bitmask_flags and bitmask_flag_meanings fields of the
+            #      DataArray variable.
+            TB_SPATINT_BITMASK_MAP = {
+                "v18": 1,
+                "h18": 2,
+                "v23": 4,
+                "v36": 8,
+                "h36": 16,
+                "pole_filled": 32,
+            }
+            tie_ds["spatint_bitmask"] = tie_ds["spatint_bitmask"].where(
+                ~is_pole_filled,
+                other=TB_SPATINT_BITMASK_MAP["pole_filled"],
             )
-            if "spatint_bitmask" in tie_ds.variables.keys():
-                # TODO: These are constants for the eCDR runs.  They should
-                #       NOT be defined here (and in the idecdr code...(!))
-                # TODO Actually, if this is defined here, the 'pole_filled'
-                #      bitmask value should be determined by examining the
-                #      bitmask_flags and bitmask_flag_meanings fields of the
-                #      DataArray variable.
-                TB_SPATINT_BITMASK_MAP = {
-                    "v18": 1,
-                    "h18": 2,
-                    "v23": 4,
-                    "v36": 8,
-                    "h36": 16,
-                    "pole_filled": 32,
-                }
-                tie_ds["spatint_bitmask"] = tie_ds["spatint_bitmask"].where(
-                    ~is_pole_filled,
-                    other=TB_SPATINT_BITMASK_MAP["pole_filled"],
-                )
 
-                logger.info("Updated spatial_interpolation with pole hole value")
-            else:
-                raise RuntimeError(
-                    "temporally interpolated dataset should have ",
-                    '"spatint_bitmask_map" field',
-                )
+            logger.info("Updated spatial_interpolation with pole hole value")
 
             tie_ds["cdr_conc"].data[0, :, :] = cdr_conc_pole_filled[:, :]
         else:
