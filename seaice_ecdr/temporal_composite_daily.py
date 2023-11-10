@@ -539,6 +539,34 @@ def calc_stddev_field(
     return stddev
 
 
+def filter_field_via_bitmask(
+    field_da: xr.DataArray,
+    flag_da: xr.DataArray,
+    filter_ids: list,
+) -> xr.DataArray:
+    """Apply filters identified by flag_meaning to a field.
+
+    Currently, application of the filter means set-the-value-to-zero.
+    """
+    output_da = field_da.copy()
+    assert filter_ids is not None  # this simply preserves this arg for use
+
+    """ This is not yet implemented, but it will look something like this...
+    bitmasks_to_filter = []
+    list_of_flags = flag_da.flag_meanings
+    # Parse list_of_flags, compared to filter_ids to set bitmasks_to_filter
+    """
+    bitmasks_to_filter = [1, 2, 16]
+    for bitmask in bitmasks_to_filter:
+        is_to_filter = np.bitwise_and(flag_da.data, bitmask).astype(bool)
+        output_da = output_da.where(
+            ~is_to_filter,
+            other=0,
+        )
+
+    return output_da
+
+
 def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     *,
     date: dt.date,
@@ -785,7 +813,15 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         fill_value=-1,
     )
 
-    tie_ds["stdev_of_cdr_seaice_conc"] = (
+    # TODO: This should be moved to a CONSTANTS or configuration location
+    filter_flags_to_apply = [
+        "BT_weather_filter_applied",
+        "NT_weather_filter_applied",
+        "valid_ice_mask_applied",
+    ]
+
+    # Set this to a data array
+    tie_ds["stdev_of_cdr_seaice_conc_raw"] = (
         ("y", "x"),
         stddev_field,
         {
@@ -802,6 +838,41 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
             "zlib": True,
         },
     )
+
+    stdev_field_filtered = filter_field_via_bitmask(
+        field_da=tie_ds["stdev_of_cdr_seaice_conc_raw"],
+        flag_da=tie_ds["qa_of_cdr_seaice_conc"],
+        filter_ids=filter_flags_to_apply,
+    )
+
+    # set non-conc values to -1
+    is_non_siconc = np.squeeze(tie_ds["cdr_conc"].data > 100)
+    stdev_field_filtered = stdev_field_filtered.where(
+        ~is_non_siconc,
+        other=-1,
+    )
+
+    # Re-set the stdev data array...
+    # Note: probably need to set land values to -1 here?
+    tie_ds["stdev_of_cdr_seaice_conc"] = (
+        ("y", "x"),
+        stdev_field_filtered.data,
+        {
+            "_FillValue": -1,
+            "long_name": (
+                "Passive Microwave Daily Sea Ice Concentration",
+                " Source Estimated Standard Deviation",
+            ),
+            "grid_mapping": "crs",
+            "valid_range": np.array((0, 300), dtype=np.float32),
+            "units": "K",
+        },
+        {
+            "zlib": True,
+        },
+    )
+
+    tie_ds = tie_ds.drop_vars("stdev_of_cdr_seaice_conc_raw")
 
     # Return the tiecdr dataset
     return tie_ds
