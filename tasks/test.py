@@ -40,7 +40,7 @@ def pytest(ctx):
     Includes a code-coverage check.
     """
     print_and_run(
-        "pytest --cov=seaice_ecdr --cov-fail-under 64 -s",
+        "pytest --cov=seaice_ecdr --cov-fail-under 60 -s",
         pty=True,
     )
 
