@@ -496,11 +496,14 @@ def make_monthly_ds(
 
     # Set global attributes
     # TODO: "source" in the v4 files has the full path to the data on FTP. How should we here?
-    monthly_ds.attrs["soruce"] = ", ".join(
+    monthly_ds.attrs["source"] = ", ".join(
         [fp.item().name for fp in daily_ds_for_month.filepaths]
     )
 
     # TODO: other global attrs
+    # TODO: are these always start & end of month, or min date and max date of available data?
+    # monthly_ds.attrs["time_coverage_start"] = ...
+    # monthly_ds.attrs["time_coverage_end"] = ...
 
     return monthly_ds.compute()
 
