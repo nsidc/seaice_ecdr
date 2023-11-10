@@ -201,7 +201,6 @@ def read_with_create_initial_daily_ecdr(
         )
         write_ide_netcdf(ide_ds=created_ide_ds, output_filepath=ide_filepath)
 
-    # ide_ds = xr.open_dataset(ide_filepath)
     ide_ds = xr.load_dataset(ide_filepath)
 
     return ide_ds
