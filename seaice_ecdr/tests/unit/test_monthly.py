@@ -397,11 +397,13 @@ def test_calc_melt_onset_day_cdr_seaice_conc_monthly():
     pixel_two = np.array([np.nan, 200, 200])
     pixel_three = np.array([np.nan, np.nan, 244])
     pixel_four = np.array([np.nan, np.nan, np.nan])
+    pixel_five = np.array([0, 0, 0])
     _mock_data = [
         pixel_one,
         pixel_two,
         pixel_three,
         pixel_four,
+        pixel_five,
     ]
 
     mock_daily_melt = xr.DataArray(
@@ -409,7 +411,7 @@ def test_calc_melt_onset_day_cdr_seaice_conc_monthly():
         dims=["y", "time"],
         coords=dict(
             time=[dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
-            y=list(range(4)),
+            y=list(range(5)),
         ),
     )
 
@@ -426,6 +428,7 @@ def test_calc_melt_onset_day_cdr_seaice_conc_monthly():
                 200,
                 244,
                 np.nan,
+                0,
             ]
         ),
     )
