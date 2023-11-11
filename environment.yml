@@ -11,6 +11,7 @@ dependencies:
   ########################################
   - numpy ~=1.22.4
   - xarray ~=2023.6
+  - dask ~=2023.10.1
   - netCDF4 ~=1.6.3
   - loguru ~=0.7
   - scipy ~=1.8.1 # TODO: we should be able to upgrade (.eg., ~=1.11.3) but `seaice` depends on an earlier version. `seaice` isn't _really_ a dependency.
@@ -25,6 +26,7 @@ dependencies:
   - pytest ~=7.1
   - pytest-cov ~=4.1.0
   - mypy ~=1.5.1
+  - pyfakefs ~=5.2.4
 
   # other utilities
   - bump-my-version ~=0.10.0
