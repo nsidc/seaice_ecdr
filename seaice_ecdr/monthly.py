@@ -556,7 +556,9 @@ def make_monthly_ds(
     )
 
     # TODO: other global attrs
-    # TODO: are these always start & end of month, or min date and max date of available data?
+    #
+    # TODO: These should be the start and then end of the month, not of the data. So,
+    # 0:00:00 of 1st of month, and 23:59:59.9999 (or whatever) or last day of month.
     # monthly_ds.attrs["time_coverage_start"] = ...
     # monthly_ds.attrs["time_coverage_end"] = ...
 
