@@ -305,8 +305,6 @@ def calc_qa_of_cdr_seaice_conc_monthly(
         ),
         grid_mapping="crs",
         valid_range=(1, 255),
-        # TODO: do we want to keep missing_value?
-        # missing_value=0,
     )
 
     qa_of_cdr_seaice_conc_monthly.encoding = dict(
@@ -397,10 +395,6 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
 
     stdv_of_cdr_seaice_conc_monthly = stdv_of_cdr_seaice_conc_monthly.assign_attrs(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
-        # TODO: do we need the 'missing_value' as per CDR v4? We set the
-        # "missing_value" to -1, but the FillValue also gets set to -1, and in
-        # the handling of the variable here 'missing' values are `np.nan`.
-        # missing_value=-1.0,
         valid_range=(0.0, 1.0),
         grid_mapping="crs",
     )
@@ -429,13 +423,13 @@ def calc_melt_onset_day_cdr_seaice_conc_monthly(
         melt_onset_day_cdr_seaice_conc_monthly.drop_vars("time")
     )
 
-    melt_onset_day_cdr_seaice_conc_monthly = melt_onset_day_cdr_seaice_conc_monthly.assign_attrs(
-        long_name="Monthly Day of Snow Melt Onset Over Sea Ice",
-        units="1",
-        valid_range=(np.ubyte(60), np.ubyte(244)),
-        # TODO: missing value? Already taken care of in the FillValue.
-        # missing_value=255,
-        grid_mapping="crs",
+    melt_onset_day_cdr_seaice_conc_monthly = (
+        melt_onset_day_cdr_seaice_conc_monthly.assign_attrs(
+            long_name="Monthly Day of Snow Melt Onset Over Sea Ice",
+            units="1",
+            valid_range=(np.ubyte(60), np.ubyte(244)),
+            grid_mapping="crs",
+        )
     )
     melt_onset_day_cdr_seaice_conc_monthly.encoding = dict(
         _FillValue=255,
