@@ -18,15 +18,14 @@ from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import (
-    STANDARD_BASE_OUTPUT_DIR,
-)
+from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.melt import (
     MELT_ONSET_FILL_VALUE,
     MELT_SEASON_FIRST_DOY,
     MELT_SEASON_LAST_DOY,
     melting,
 )
+from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
 from seaice_ecdr.util import standard_daily_filename
 
@@ -86,7 +85,7 @@ def read_or_create_and_read_tiecdr_ds(
             ecdr_data_dir=ecdr_data_dir,
         )
     logger.info(f"Reading tieCDR file from: {tie_filepath}")
-    tie_ds = xr.open_dataset(tie_filepath)
+    tie_ds = xr.load_dataset(tie_filepath)
 
     return tie_ds
 
@@ -100,9 +99,9 @@ def filled_ndarray(
 ) -> np.ndarray:
     """Return an array of the shape for this hem/res filled with fill_value."""
     if hemisphere == NORTH and resolution == "12.5":
-        array_shape = (896, 608)
+        array_shape = (1, 896, 608)
     elif hemisphere == SOUTH and resolution == "12.5":
-        array_shape = (664, 632)
+        array_shape = (1, 664, 632)
     else:
         raise RuntimeError(
             f"Could not determine array shape for {hemisphere}" f" and {resolution}"
@@ -128,7 +127,10 @@ def read_melt_onset_field(
         mask_and_scale=False,
     )
 
-    return cde_ds["melt_onset"].to_numpy()
+    # TODO: Perhaps these field names should be in a dictionary somewhere?
+    melt_onset_from_ds = cde_ds["melt_onset_day_cdr_seaice_conc"].to_numpy()
+
+    return melt_onset_from_ds
 
 
 def read_melt_elements(
@@ -258,6 +260,7 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         ecdr_data_dir=ecdr_data_dir,
     )
     cde_ds = tie_ds.copy()
+
     melt_onset_field = create_melt_onset_field(
         date=date,
         hemisphere=hemisphere,
@@ -266,8 +269,11 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
     )
 
     # Update cde_ds with melt onset info
-    cde_ds["melt_onset"] = (
-        ("y", "x"),
+    if melt_onset_field is None:
+        return cde_ds
+
+    cde_ds["melt_onset_day_cdr_seaice_conc"] = (
+        ("time", "y", "x"),
         melt_onset_field,
         {
             "_FillValue": 255,
@@ -287,6 +293,20 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         {
             "zlib": True,
         },
+    )
+
+    # the np.squeeze() function here is to remove the time dim so that
+    # this becomes a 2d array for updating the qa_... field
+    is_melt_has_occurred = np.squeeze(
+        (MELT_SEASON_FIRST_DOY <= cde_ds["melt_onset_day_cdr_seaice_conc"].data)
+        & (cde_ds["melt_onset_day_cdr_seaice_conc"].data <= MELT_SEASON_LAST_DOY)
+    )
+    # TODO: the flag value being "or"ed to the bitmask should be looked
+    #       up as the temporally-interpolation-has-occured value
+    #       rather than hardcoded as '128'.
+    cde_ds["qa_of_cdr_seaice_conc"] = cde_ds["qa_of_cdr_seaice_conc"].where(
+        ~is_melt_has_occurred,
+        other=np.bitwise_or(cde_ds["qa_of_cdr_seaice_conc"], 128),
     )
 
     return cde_ds
@@ -336,7 +356,9 @@ def make_cdecdr_netcdf(
         interp_range=interp_range,
         ecdr_data_dir=ecdr_data_dir,
     )
-    # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
+
+    cde_ds = finalize_cdecdr_ds(cde_ds)
+
     output_path = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
@@ -358,6 +380,7 @@ def read_or_create_and_read_cdecdr_ds(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
     mask_and_scale: bool = True,
+    overwrite_cde: bool = False,
 ) -> xr.Dataset:
     """Read an cdecdr netCDF file, creating it if it doesn't exist.
 
@@ -370,8 +393,8 @@ def read_or_create_and_read_cdecdr_ds(
         resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
-    # TODO: This only creates if file is missing.  We may want an overwrite opt
-    if not cde_filepath.is_file():
+
+    if overwrite_cde or not cde_filepath.is_file():
         make_cdecdr_netcdf(
             date=date,
             hemisphere=hemisphere,
@@ -379,7 +402,7 @@ def read_or_create_and_read_cdecdr_ds(
             ecdr_data_dir=ecdr_data_dir,
         )
     logger.info(f"Reading cdeCDR file from: {cde_filepath}")
-    cde_ds = xr.open_dataset(cde_filepath, mask_and_scale=mask_and_scale)
+    cde_ds = xr.load_dataset(cde_filepath, mask_and_scale=mask_and_scale)
 
     return cde_ds
 

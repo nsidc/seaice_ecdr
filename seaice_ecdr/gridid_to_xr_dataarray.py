@@ -57,8 +57,9 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
             ytop = 5850000.0
             ybottom = -5350000.0
             crs_attrs["long_name"] = "NSIDC_NH_PolarStereo_{res_km}km"
-            crs_attrs["straight_vertical_longitude_from_pol"] = -45.0
+            crs_attrs["straight_vertical_longitude_from_pole"] = -45.0
             crs_attrs["latitude_of_projection_origin"] = 90.0
+            crs_attrs["longitude_of_prime_meridian"] = 0.0
             crs_attrs["standard_parallel"] = 70.0
             crs_attrs[
                 "proj4text"
@@ -77,8 +78,9 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
             ytop = 4350000.0
             ybottom = -3950000.0
             crs_attrs["long_name"] = "NSIDC_SH_PolarStereo_{res_km}km"
-            crs_attrs["straight_vertical_longitude_from_pol"] = 0.0
+            crs_attrs["straight_vertical_longitude_from_pole"] = 0.0
             crs_attrs["latitude_of_projection_origin"] = -90.0
+            crs_attrs["longitude_of_prime_meridian"] = 0.0
             crs_attrs["standard_parallel"] = -70.0
             crs_attrs[
                 "proj4text"

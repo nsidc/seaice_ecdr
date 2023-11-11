@@ -17,6 +17,8 @@ from seaice_ecdr.initial_daily_ecdr import get_idecdr_dir, get_idecdr_filepath
 from seaice_ecdr.temporal_composite_daily import (
     iter_dates_near_date,
     temporally_composite_dataarray,
+    temporally_interpolate_dataarray_using_flags,
+    yield_dates_from_temporal_interpolation_flags,
 )
 
 # Set the default minimum log notification to Warning
@@ -27,6 +29,36 @@ try:
 except ValueError:
     logger.debug(f"Started logging in {__name__}")
     logger.add(sys.stderr, level="WARNING")
+
+
+def compose_yx_dataarray(
+    data,
+    xvals,
+    yvals,
+) -> xr.DataArray:
+    """Create a simple data array with coords (time, y, x)."""
+    dims = ["y", "x"]
+    coords = dict(
+        y=(
+            [
+                "y",
+            ],
+            yvals,
+        ),
+        x=(
+            [
+                "x",
+            ],
+            xvals,
+        ),
+    )
+    dataarray = xr.DataArray(
+        data=data,
+        dims=dims,
+        coords=coords,
+    )
+
+    return dataarray
 
 
 def compose_tyx_dataarray(
@@ -275,3 +307,120 @@ def test_temporal_composite_da_multiday():
         temporal_composite.data, expected_temporal_composite_data, equal_nan=True
     )
     assert np.array_equal(temporal_flags, expected_temporal_flags, equal_nan=True)
+
+
+def test_get_days_from_temporinterp_flags():
+    """Verify correct days-to-retrieve per temporal_interpolation_flag."""
+    target_date = dt.date(2022, 3, 3)
+    # Test data...include prior days 0, 2, 3 and next days 0, 1, 4, 5
+    mock_ti_flags = np.array(
+        [
+            [0, 1, 4],
+            [20, 31, 5],
+            [30, 25, 24],
+        ]
+    )
+    mock_date_list = [
+        target_date - dt.timedelta(days=3),  # prior days:  3
+        target_date - dt.timedelta(days=2),  # prior days:  2
+        target_date,  # target date: 0
+        target_date + dt.timedelta(days=1),  # next days:   1
+        target_date + dt.timedelta(days=4),  # next days:   4
+        target_date + dt.timedelta(days=5),  # next days:   5
+    ]
+
+    test_date_list = list(
+        yield_dates_from_temporal_interpolation_flags(target_date, mock_ti_flags)
+    )
+
+    assert mock_date_list == test_date_list
+
+    # Second test: prior only
+    target_date = dt.date(2021, 1, 1)
+    # Test data...include prior days 0, 1, 4 and no next days
+    mock_ti_flags = np.array(
+        [
+            [0, 10, 40],
+        ]
+    )
+    mock_date_list = [
+        target_date - dt.timedelta(days=4),  # prior days:  3
+        target_date - dt.timedelta(days=1),  # prior days:  2
+        target_date,  # target date: 0
+    ]
+
+    test_date_list = list(
+        yield_dates_from_temporal_interpolation_flags(target_date, mock_ti_flags)
+    )
+
+    assert mock_date_list == test_date_list
+
+
+def test_fill_dataarray_with_tiflags():
+    """Test the filling of a data array with flags and fields.
+
+    Values to test include flag values of:
+        0: no temporal interpolation
+        10: left (prior) sided interpolation only
+        1, 3: right (next) sided interpolation only
+        11: left and right equal-distance interpolation
+        13: left and right different-distance interpolation
+    """
+
+    left_value = 0
+    right_value = 100
+    dayof_value = 52
+
+    mock_temporal_flags = np.array(
+        [
+            [0, 1, 3],
+            [10, 11, 13],
+        ],
+    )
+    expected_filled_data = np.array([[52, 100, 100], [0, 50, 25]])
+    # You can have invalid values here.  The interpolation flag values
+    # are what sets the final value
+    field_at_date = [
+        [dayof_value, np.nan, -100],
+        [438, 52, 100],
+    ]
+    field_full_lefts = [
+        [left_value, left_value, left_value],
+        [left_value, left_value, left_value],
+    ]
+    field_full_rights = [
+        [right_value, right_value, right_value],
+        [right_value, right_value, right_value],
+    ]
+    mock_data = np.array(
+        [
+            field_full_lefts,  # 1 day prior
+            field_at_date,  # day of
+            field_full_rights,  # 1 day after
+            field_full_rights,  # 3 days after
+        ]
+    )
+
+    ref_date = dt.date(2020, 5, 15)
+    mock_dates = [
+        ref_date - dt.timedelta(days=1),
+        ref_date,
+        ref_date + dt.timedelta(days=1),
+        ref_date + dt.timedelta(days=3),
+    ]
+
+    tdim, ydim, xdim = mock_data.shape
+    mock_xvals = np.arange(xdim)
+    mock_yvals = np.arange(ydim)
+
+    input_data_array = compose_tyx_dataarray(
+        mock_data, mock_xvals, mock_yvals, mock_dates
+    )
+
+    filled = temporally_interpolate_dataarray_using_flags(
+        ref_date=ref_date,
+        data_array=input_data_array,
+        ti_flags=mock_temporal_flags,
+    )
+
+    assert np.array_equal(filled, expected_filled_data, equal_nan=True)
