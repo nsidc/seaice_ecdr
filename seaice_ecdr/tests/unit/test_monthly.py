@@ -221,8 +221,8 @@ def _mock_daily_ds_for_month():
     _mock_daily_ds = xr.Dataset(
         data_vars=dict(
             cdr_seaice_conc=(("x", "time"), _mock_data),
-            nasateam_seaice_conc_raw=(("x", "time"), _mock_data),
-            bootstrap_seaice_conc_raw=(("x", "time"), _mock_data),
+            raw_nasateam_seaice_conc=(("x", "time"), _mock_data),
+            raw_bootstrap_seaice_conc=(("x", "time"), _mock_data),
             qa_of_cdr_seaice_conc=(("x", "time"), _mock_daily_qa_fields),
             melt_onset_day_cdr_seaice_conc=(("x", "time"), _mock_daily_melt_onset),
             filepaths=(
