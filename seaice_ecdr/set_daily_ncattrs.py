@@ -1,8 +1,11 @@
 """Set the netCDF variables and attributes for ecdr data files."""
+import datetime as dt
 
 import numpy as np
+import pandas as pd
 import xarray as xr
-from nc_attrs import get_global_attrs
+
+from seaice_ecdr.nc_attrs import get_global_attrs
 
 CDECDR_FIELDS_TO_DROP = [
     "h18_day_si",
@@ -344,7 +347,20 @@ def finalize_cdecdr_ds(
     )
 
     # Finally, address global attributes
-    new_global_attrs = get_global_attrs()
+    ds_date: dt.date = pd.Timestamp(ds_in.time.values[0]).date()
+    new_global_attrs = get_global_attrs(
+        time_coverage_start=dt.datetime(
+            ds_date.year, ds_date.month, ds_date.day, 0, 0, 0
+        ),
+        time_coverage_end=dt.datetime(
+            ds_date.year, ds_date.month, ds_date.day, 23, 59, 59
+        ),
+        # TODO: support different resolutions, dataset_ids, platforms, and sensors!
+        resolution="12.5",
+        dataset_id="AU_SI12",
+        platform="GCOM-W1 > Global Change Observation Mission 1st-Water",
+        sensor="AMSR2 > Advanced Microwave Scanning Radiometer 2",
+    )
     ds.attrs.update(new_global_attrs)
 
     return ds
