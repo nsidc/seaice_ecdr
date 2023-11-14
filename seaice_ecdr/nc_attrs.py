@@ -1,5 +1,7 @@
 import datetime as dt
+import subprocess
 from collections import OrderedDict
+from functools import cache
 from typing import Any, Final, Literal
 
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
@@ -9,6 +11,29 @@ DATE_STR_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
 
 Temporality = Literal["daily", "monthly"]
+
+
+@cache
+def _get_software_version_id():
+    """Return string representing this software's version.
+
+    Takes the form <git_repo>@<git_hash>
+    """
+    software_git_hash_result = subprocess.run(
+        ["git", "rev-parse", "HEAD"], capture_output=True
+    )
+    software_git_hash_result.check_returncode()
+    software_git_hash = software_git_hash_result.stdout.decode("utf8").strip()
+
+    software_git_url_result = subprocess.run(
+        ["git", "config", "--get", "remote.origin.url"], capture_output=True
+    )
+    software_git_url_result.check_returncode()
+    software_git_url = software_git_url_result.stdout.decode("utf8").strip()
+
+    software_version_id = f"{software_git_url}@{software_git_hash}"
+
+    return software_version_id
 
 
 def _get_time_coverage_duration_resolution(
@@ -107,7 +132,7 @@ def get_global_attrs(
         ),
         program="NOAA Climate Data Record Program",
         # TODO: populate!!
-        software_version_id="TODO",
+        software_version_id=_get_software_version_id(),
         metadata_link="https://nsidc.org/data/g02202/versions/5/",
         product_version=ECDR_PRODUCT_VERSION,
         spatial_resolution=f"{resolution}km",

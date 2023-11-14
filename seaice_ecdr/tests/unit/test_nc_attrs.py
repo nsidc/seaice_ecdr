@@ -1,4 +1,7 @@
-from seaice_ecdr.nc_attrs import _get_time_coverage_duration_resolution
+from seaice_ecdr.nc_attrs import (
+    _get_software_version_id,
+    _get_time_coverage_duration_resolution,
+)
 
 
 def test__get_time_coverage_duration_resolution():
@@ -40,3 +43,10 @@ def test__get_time_coverage_duration_resolution():
         aggregate=True,
     )
     assert expected_monthly_aggregate == actual_monthly_aggregate
+
+
+def test__get_software_version_id():
+    software_ver_id = _get_software_version_id()
+
+    assert "github" in software_ver_id
+    assert "@" in software_ver_id
