@@ -17,7 +17,8 @@ Temporality = Literal["daily", "monthly"]
 def _get_software_version_id():
     """Return string representing this software's version.
 
-    Takes the form <git_repo>@<git_hash>
+    Takes the form <git_repo>@<git_hash>. E.g.,:
+    "git@github.com:nsidc/seaice_ecdr.git@10fdd316452d0d69fbcf4e7915b66c227298b0ec"
     """
     software_git_hash_result = subprocess.run(
         ["git", "rev-parse", "HEAD"], capture_output=True

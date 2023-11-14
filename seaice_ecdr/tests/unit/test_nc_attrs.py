@@ -48,5 +48,7 @@ def test__get_time_coverage_duration_resolution():
 def test__get_software_version_id():
     software_ver_id = _get_software_version_id()
 
+    # The softawre version id should look something like:
+    # git@github.com:nsidc/seaice_ecdr.git@10fdd316452d0d69fbcf4e7915b66c227298b0ec
     assert "github" in software_ver_id
     assert "@" in software_ver_id
