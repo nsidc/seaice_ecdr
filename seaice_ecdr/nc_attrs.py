@@ -87,7 +87,7 @@ def get_global_attrs(
     # `source` attribute. Currently passed through unchanged.
     # For daily files, this will be AU_SI12 for AMSR2,
     # AE_SI12 for AMSR-E, and NSIDC-0001 for SSMIS, SSM/I, and SMMR.
-    # For monthly and aggregate files, `source` is a space-separated string
+    # For monthly and aggregate files, `source` is a comman-space-separated string
     # of source filenames.
     source: str,
 ) -> dict[str, Any]:
