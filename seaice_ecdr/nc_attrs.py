@@ -132,7 +132,6 @@ def get_global_attrs(
             " Sea Ice Concentration Version 5"
         ),
         program="NOAA Climate Data Record Program",
-        # TODO: populate!!
         software_version_id=_get_software_version_id(),
         metadata_link="https://nsidc.org/data/g02202/versions/5/",
         product_version=ECDR_PRODUCT_VERSION,
