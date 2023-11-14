@@ -1,26 +1,30 @@
 import datetime as dt
 from collections import OrderedDict
-from typing import Any, Literal
+from typing import Any, Final
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 
 # Datetime string format for date-related attributes.
 DATE_STR_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
 
-# Input data source ID.
-SourceDatasetId = Literal["AU_SI12", "AE_SI12", "NSIDC-0001"]
-
-
 def get_global_attrs(
     *,
     time_coverage_start: dt.datetime,
     time_coverage_end: dt.datetime,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    # `dataset_id` will be AU_SI12 for AMSR2, AE_SI12 for AMSR-E, and NSIDC-0001 for
+) -> dict[str, Any]:
+    """Return a dictionary containing the global attributes for a standard ECDR NetCDF file.
+
+    Note the `date_created` field is populated with the current UTC datetime. It is
+    assumed the result of this function will be used to set the attributes of an
+    xr.Dataset that will be promptly written to disk as a NetCDF file.
+    """
+
+    # TODO: support different resolutions, dataset_ids, platforms, and sensors!
+    resolution: Final = "12.5"
+    # `source_dataset_id` will be AU_SI12 for AMSR2, AE_SI12 for AMSR-E, and NSIDC-0001 for
     # SSMIS, SSM/I, and SMMR
-    source_dataset_id: SourceDatasetId,
+    source_dataset_id: Final = "AU_SI12"
     # Here’s what the GCMD platform long name should be based on sensor/platform short name:
     # AMRS2: “GCOM-W1 > Global Change Observation Mission 1st-Water”
     # AMRS-E: " Aqua > Earth Observing System, Aqua”
@@ -29,21 +33,14 @@ def get_global_attrs(
     # SSM/I on F11: “DMSP 5D-2/F11 > Defense Meteorological Satellite Program-F11”
     # SSM/I on F8: “DMSP 5D-2/F8 > Defense Meteorological Satellite Program-F8”
     # SMMR: “Nimbus-7”
-    platform: str,
+    platform: Final = "GCOM-W1 > Global Change Observation Mission 1st-Water"
     # Here’s what the GCMD sensor name should be based on sensor short name:
     # AMRS2: “AMSR2 > Advanced Microwave Scanning Radiometer 2”
     # AMRS-E: “AMSR-E > Advanced Microwave Scanning Radiometer-EOS”
     # SSMIS: “SSMIS > Special Sensor Microwave Imager/Sounder”
     # SSM/I: “SSM/I > Special Sensor Microwave/Imager”
     # SMMR: “SMMR > Scanning Multichannel Microwave Radiometer”
-    sensor: str,
-) -> dict[str, Any]:
-    """Return a dictionary containing the global attributes for a standard ECDR NetCDF file.
-
-    Note the `date_created` field is populated with the current UTC datetime. It is
-    assumed the result of this function will be used to set the attributes of an
-    xr.Dataset that will be promptly written to disk as a NetCDF file.
-    """
+    sensor: Final = "AMSR2 > Advanced Microwave Scanning Radiometer 2"
 
     new_global_attrs = OrderedDict(
         # We expect conventions to be the first item in the global attributes.

@@ -355,11 +355,6 @@ def finalize_cdecdr_ds(
         time_coverage_end=dt.datetime(
             ds_date.year, ds_date.month, ds_date.day, 23, 59, 59
         ),
-        # TODO: support different resolutions, dataset_ids, platforms, and sensors!
-        resolution="12.5",
-        source_dataset_id="AU_SI12",
-        platform="GCOM-W1 > Global Change Observation Mission 1st-Water",
-        sensor="AMSR2 > Advanced Microwave Scanning Radiometer 2",
     )
     ds.attrs.update(new_global_attrs)
 
