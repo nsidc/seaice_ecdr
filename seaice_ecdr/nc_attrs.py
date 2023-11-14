@@ -84,6 +84,12 @@ def get_global_attrs(
     temporality: Temporality,
     # Is this an aggregate file, or not?
     aggregate: bool,
+    # `source` attribute. Currently passed through unchanged.
+    # For daily files, this will be AU_SI12 for AMSR2,
+    # AE_SI12 for AMSR-E, and NSIDC-0001 for SSMIS, SSM/I, and SMMR.
+    # For monthly and aggregate files, `source` is a space-separated string
+    # of source filenames.
+    source: str,
 ) -> dict[str, Any]:
     """Return a dictionary containing the global attributes for a standard ECDR NetCDF file.
 
@@ -94,9 +100,6 @@ def get_global_attrs(
 
     # TODO: support different resolutions, dataset_ids, platforms, and sensors!
     resolution: Final = "12.5"
-    # `source_dataset_id` will be AU_SI12 for AMSR2, AE_SI12 for AMSR-E, and NSIDC-0001 for
-    # SSMIS, SSM/I, and SMMR
-    source_dataset_id: Final = "AU_SI12"
     # Here’s what the GCMD platform long name should be based on sensor/platform short name:
     # AMRS2: “GCOM-W1 > Global Change Observation Mission 1st-Water”
     # AMRS-E: " Aqua > Earth Observing System, Aqua”
@@ -152,7 +155,7 @@ def get_global_attrs(
         contributor_name="Walter N. Meier, Florence Fetterer, Ann Windnagel, J. Scott Stewart, Trey Stafford",
         contributor_role="principal investigator, author, author, software developer, software developer",
         acknowledgment="This project was supported in part by a grant from the NOAA Climate Data Record Program. The NASA Team and Bootstrap sea ice concentration algorithms were developed by Donald J. Cavalieri, Josefino C. Comiso, Claire L. Parkinson, and others at the NASA Goddard Space Flight Center in Greenbelt, MD.",
-        source=f"Generated from {source_dataset_id}",
+        source=source,
         platform=platform,
         sensor=sensor,
         # TODO: ideally, these would get dynamically set from the input data's

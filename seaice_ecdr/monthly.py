@@ -42,6 +42,7 @@ from pm_tb_data._types import NORTH, Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.util import standard_monthly_filename
 
 
@@ -550,17 +551,20 @@ def make_monthly_ds(
     monthly_ds["crs"] = daily_ds_for_month.crs.isel(time=0).drop_vars("time")
 
     # Set global attributes
-    # TODO: "source" in the v4 files has the full path to the data on FTP. How should we here?
-    monthly_ds.attrs["source"] = ", ".join(
-        [fp.item().name for fp in daily_ds_for_month.filepaths]
+    monthly_ds_global_attrs = get_global_attrs(
+        # TODO: These should be the start and then end of the month, not of the data. So,
+        # 0:00:00 of 1st of month, and 23:59:59.9999 (or whatever) or last day of month.
+        time_coverage_start=dt.datetime(
+            daily_ds_for_month.year, daily_ds_for_month.month, 1, 0, 0, 0
+        ),
+        time_coverage_end=dt.datetime(
+            daily_ds_for_month.year, daily_ds_for_month.month, 1, 23, 59, 59
+        ),
+        temporality="monthly",
+        aggregate=False,
+        source=", ".join([fp.item().name for fp in daily_ds_for_month.filepaths]),
     )
-
-    # TODO: other global attrs
-    #
-    # TODO: These should be the start and then end of the month, not of the data. So,
-    # 0:00:00 of 1st of month, and 23:59:59.9999 (or whatever) or last day of month.
-    # monthly_ds.attrs["time_coverage_start"] = ...
-    # monthly_ds.attrs["time_coverage_end"] = ...
+    monthly_ds.attrs.update(monthly_ds_global_attrs)
 
     return monthly_ds.compute()
 
