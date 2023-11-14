@@ -98,7 +98,7 @@ def get_global_attrs(
     xr.Dataset that will be promptly written to disk as a NetCDF file.
     """
 
-    # TODO: support different resolutions, dataset_ids, platforms, and sensors!
+    # TODO: support different resolutions, platforms, and sensors!
     resolution: Final = "12.5"
     # Here’s what the GCMD platform long name should be based on sensor/platform short name:
     # AMRS2: “GCOM-W1 > Global Change Observation Mission 1st-Water”
