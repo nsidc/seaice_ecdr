@@ -1,12 +1,16 @@
 import datetime as dt
 from collections import OrderedDict
-from typing import Any
+from typing import Any, Literal
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 
 # Datetime string format for date-related attributes.
 DATE_STR_FMT = "%Y-%m-%dT%H:%M:%SZ"
+
+
+# Input data source ID.
+SourceDatasetId = Literal["AU_SI12", "AE_SI12", "NSIDC-0001"]
 
 
 def get_global_attrs(
@@ -16,7 +20,7 @@ def get_global_attrs(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     # `dataset_id` will be AU_SI12 for AMSR2, AE_SI12 for AMSR-E, and NSIDC-0001 for
     # SSMIS, SSM/I, and SMMR
-    dataset_id: str,
+    source_dataset_id: SourceDatasetId,
     # Here’s what the GCMD platform long name should be based on sensor/platform short name:
     # AMRS2: “GCOM-W1 > Global Change Observation Mission 1st-Water”
     # AMRS-E: " Aqua > Earth Observing System, Aqua”
@@ -84,7 +88,7 @@ def get_global_attrs(
         contributor_name="Walter N. Meier, Florence Fetterer, Ann Windnagel, J. Scott Stewart, Trey Stafford",
         contributor_role="principal investigator, author, author, software developer, software developer",
         acknowledgment="This project was supported in part by a grant from the NOAA Climate Data Record Program. The NASA Team and Bootstrap sea ice concentration algorithms were developed by Donald J. Cavalieri, Josefino C. Comiso, Claire L. Parkinson, and others at the NASA Goddard Space Flight Center in Greenbelt, MD.",
-        source=f"Generated from {dataset_id}",
+        source=f"Generated from {source_dataset_id}",
         platform=platform,
         sensor=sensor,
         # TODO: ideally, these would get dynamically set from the input data's

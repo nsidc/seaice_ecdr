@@ -357,7 +357,7 @@ def finalize_cdecdr_ds(
         ),
         # TODO: support different resolutions, dataset_ids, platforms, and sensors!
         resolution="12.5",
-        dataset_id="AU_SI12",
+        source_dataset_id="AU_SI12",
         platform="GCOM-W1 > Global Change Observation Mission 1st-Water",
         sensor="AMSR2 > Advanced Microwave Scanning Radiometer 2",
     )
