@@ -1,6 +1,6 @@
 import datetime as dt
 from collections import OrderedDict
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 
@@ -8,10 +8,56 @@ from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 DATE_STR_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
 
+Temporality = Literal["daily", "monthly"]
+
+
+def _get_time_coverage_duration_resolution(
+    temporality: Temporality,
+    aggregate: bool,
+) -> dict[str, Any]:
+    """Return a dictionary of time coverage and resolution attrs.
+
+    TODO: verify this function behaves the way we want. See notes below.
+
+    * `time_coverage_duration`:
+       For individual daily files this is P1D, for an aggregated file this is
+       P1Y if it’s a full year. It looks like if it’s a partial year in V4 we
+       do P1Y as well. Should we change that to be PXXD where XX is the
+       number of days until we get a full year? For the monthly aggregate, v4
+       doesn’t have this attribute at all. We should have it. It could say
+       P45Y3M when we have a partial year. Let’s discuss.
+
+    * `time_coverage_resolution`:
+       For monthly file this is P1M. For daily, "P1D"
+    """
+    time_coverage_attrs = {}
+    if temporality == "daily":
+        time_coverage_attrs["time_coverage_duration"] = "P1D"
+        time_coverage_attrs["time_coverage_resolution"] = "P1D"
+
+        if aggregate:
+            # TODO: for partial years, do we use the `PXXD` format where `XX` is
+            # the number of days until we get a full year?
+            time_coverage_attrs["time_coverage_duration"] = "P1Y"
+    else:
+        time_coverage_attrs["time_coverage_duration"] = "P1M"
+        time_coverage_attrs["time_coverage_resolution"] = "P1M"
+        if aggregate:
+            # TODO: aggregate monthly files don't have a
+            # `time_coverage_duration` Should they? We need to discuss.
+            time_coverage_attrs.pop("time_coverage_duration")
+
+    return time_coverage_attrs
+
+
 def get_global_attrs(
     *,
     time_coverage_start: dt.datetime,
     time_coverage_end: dt.datetime,
+    # daily or monthly?
+    temporality: Temporality,
+    # Is this an aggregate file, or not?
+    aggregate: bool,
 ) -> dict[str, Any]:
     """Return a dictionary containing the global attributes for a standard ECDR NetCDF file.
 
@@ -42,6 +88,11 @@ def get_global_attrs(
     # SMMR: “SMMR > Scanning Multichannel Microwave Radiometer”
     sensor: Final = "AMSR2 > Advanced Microwave Scanning Radiometer 2"
 
+    time_coverage_attrs = _get_time_coverage_duration_resolution(
+        temporality=temporality,
+        aggregate=aggregate,
+    )
+
     new_global_attrs = OrderedDict(
         # We expect conventions to be the first item in the global attributes.
         conventions="CF-1.10, ACDD-1.3",
@@ -49,16 +100,7 @@ def get_global_attrs(
         date_created=dt.datetime.utcnow().strftime(DATE_STR_FMT),
         time_coverage_start=time_coverage_start.strftime(DATE_STR_FMT),
         time_coverage_end=time_coverage_end.strftime(DATE_STR_FMT),
-        # TODO: time coverage duration & resolution
-        # For individual daily files this is P1D, for an aggregated file this is
-        # P1Y if it’s a full year. It looks like if it’s a partial year in V4 we
-        # do P1Y as well. Should we change that to be PXXD where XX is the
-        # number of days until we get a full year? For the monthly aggregate, v4
-        # doesn’t have this attribute at all. We should have it. It could say
-        # P45Y3M when we have a partial year. Let’s discuss.
-        time_coverage_duration="TODO",
-        # For monthly file this is P1M. For daily, "P1D"
-        time_coverage_resolution="TODO",
+        **time_coverage_attrs,
         title=(
             "NOAA-NSIDC Climate Data Record of Passive Microwave"
             " Sea Ice Concentration Version 5"

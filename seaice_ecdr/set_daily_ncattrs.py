@@ -355,6 +355,8 @@ def finalize_cdecdr_ds(
         time_coverage_end=dt.datetime(
             ds_date.year, ds_date.month, ds_date.day, 23, 59, 59
         ),
+        temporality="daily",
+        aggregate=False,
     )
     ds.attrs.update(new_global_attrs)
 
