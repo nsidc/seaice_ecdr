@@ -1,8 +1,6 @@
 """Set the netCDF variables and attributes for ecdr data files."""
-import datetime as dt
 
 import numpy as np
-import pandas as pd
 import xarray as xr
 
 from seaice_ecdr.nc_attrs import get_global_attrs
@@ -347,14 +345,8 @@ def finalize_cdecdr_ds(
     )
 
     # Finally, address global attributes
-    ds_date: dt.date = pd.Timestamp(ds_in.time.values[0]).date()
     new_global_attrs = get_global_attrs(
-        time_coverage_start=dt.datetime(
-            ds_date.year, ds_date.month, ds_date.day, 0, 0, 0
-        ),
-        time_coverage_end=dt.datetime(
-            ds_date.year, ds_date.month, ds_date.day, 23, 59, 59
-        ),
+        time=ds.time,
         temporality="daily",
         aggregate=False,
         # TODO: support alternative source datasets. Will be AU_SI12 for AMSR2,

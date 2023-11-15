@@ -1,8 +1,12 @@
+import calendar
 import datetime as dt
 import subprocess
 from collections import OrderedDict
 from functools import cache
-from typing import Any, Final, Literal
+from typing import Any, Final, Literal, get_args
+
+import pandas as pd
+import xarray as xr
 
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 
@@ -37,49 +41,90 @@ def _get_software_version_id():
     return software_version_id
 
 
-def _get_time_coverage_duration_resolution(
+def _get_time_coverage_attrs(
+    time: xr.DataArray,
     temporality: Temporality,
     aggregate: bool,
 ) -> dict[str, Any]:
     """Return a dictionary of time coverage and resolution attrs.
 
-    TODO: verify this function behaves the way we want. See notes below.
-
     * `time_coverage_duration`:
-       For individual daily files this is P1D, for an aggregated file this is
-       P1Y if it’s a full year. It looks like if it’s a partial year in V4 we
-       do P1Y as well. Should we change that to be PXXD where XX is the
-       number of days until we get a full year? For the monthly aggregate, v4
-       doesn’t have this attribute at all. We should have it. It could say
-       P45Y3M when we have a partial year. Let’s discuss.
+        * For the current year’s daily aggregate file, should be PXXD where `XX`
+          is the day of year of the last day of data until we get a full year. A
+          full year's worth of data gets the value `P1Y`.
+
+          For 1978 aggregate daily file, it will always be P75D since data
+          start on Oct 25 1978 (day of year of end date - day of year of the
+          first date + 1)
+
+        * For the monthly files, should be PNM where N is the number of months
+          (e.g., P1M for a single month, P480M for 480 months in an aggregated
+          file).
+
+        * For the 1987-1988 outage, we will plan to call those a full year of
+          data.
 
     * `time_coverage_resolution`:
-       For monthly file this is P1M. For daily, "P1D"
+       * For monthly file this is P1M. For daily, "P1D"
     """
-    time_coverage_attrs = {}
+    assert temporality in get_args(Temporality)
+
+    start_date = pd.Timestamp(time.min().values).date()
+    start_datetime = dt.datetime(
+        start_date.year, start_date.month, start_date.day, 0, 0, 0
+    )
+    end_date = pd.Timestamp(time.max().values).date()
+    if temporality == "monthly":
+        # The coverage end should be the last day of the month.
+        _, last_day_of_month = calendar.monthrange(end_date.year, end_date.month)
+        end_datetime = dt.datetime(
+            end_date.year, end_date.month, last_day_of_month, 23, 59, 59
+        )
+    else:
+        end_datetime = dt.datetime(
+            end_date.year, end_date.month, end_date.day, 23, 59, 59
+        )
+
+    time_coverage_attrs = dict(
+        time_coverage_start=start_datetime.strftime(DATE_STR_FMT),
+        time_coverage_end=end_datetime.strftime(DATE_STR_FMT),
+    )
+
     if temporality == "daily":
         time_coverage_attrs["time_coverage_duration"] = "P1D"
         time_coverage_attrs["time_coverage_resolution"] = "P1D"
 
         if aggregate:
-            # TODO: for partial years, do we use the `PXXD` format where `XX` is
-            # the number of days until we get a full year?
-            time_coverage_attrs["time_coverage_duration"] = "P1Y"
+            # Check if we have a full year of data
+            # TODO: there could be missing days in between Jan 1 and Dec. 31. To
+            # be sure we'd have to check the `time` array for every day of the
+            # year.
+            if (
+                start_date.month == 1
+                and start_date.day == 1
+                and end_date.month == 12
+                and end_date.day == 31
+            ):
+                time_coverage_attrs["time_coverage_duration"] = "P1Y"
+            else:
+                # For partial years, we use the `PXXD` format where `XX` is
+                # the number of days until we get a full year?
+                n_days = (end_date - start_date).days + 1
+                time_coverage_attrs["time_coverage_duration"] = f"P{n_days}D"
     else:
-        time_coverage_attrs["time_coverage_duration"] = "P1M"
         time_coverage_attrs["time_coverage_resolution"] = "P1M"
-        if aggregate:
-            # TODO: aggregate monthly files don't have a
-            # `time_coverage_duration` Should they? We need to discuss.
-            time_coverage_attrs.pop("time_coverage_duration")
+
+        n_months = len(time)
+        if not aggregate:
+            assert n_months == 1
+        time_coverage_attrs["time_coverage_duration"] = f"P{n_months}M"
 
     return time_coverage_attrs
 
 
 def get_global_attrs(
     *,
-    time_coverage_start: dt.datetime,
-    time_coverage_end: dt.datetime,
+    time: xr.DataArray,
     # daily or monthly?
     temporality: Temporality,
     # Is this an aggregate file, or not?
@@ -117,9 +162,10 @@ def get_global_attrs(
     # SMMR: “SMMR > Scanning Multichannel Microwave Radiometer”
     sensor: Final = "AMSR2 > Advanced Microwave Scanning Radiometer 2"
 
-    time_coverage_attrs = _get_time_coverage_duration_resolution(
+    time_coverage_attrs = _get_time_coverage_attrs(
         temporality=temporality,
         aggregate=aggregate,
+        time=time,
     )
 
     new_global_attrs = OrderedDict(
@@ -127,8 +173,6 @@ def get_global_attrs(
         conventions="CF-1.10, ACDD-1.3",
         # Use the current UTC time to set the `date_created` attribute.
         date_created=dt.datetime.utcnow().strftime(DATE_STR_FMT),
-        time_coverage_start=time_coverage_start.strftime(DATE_STR_FMT),
-        time_coverage_end=time_coverage_end.strftime(DATE_STR_FMT),
         **time_coverage_attrs,
         title=(
             "NOAA-NSIDC Climate Data Record of Passive Microwave"

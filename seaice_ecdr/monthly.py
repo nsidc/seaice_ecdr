@@ -552,14 +552,7 @@ def make_monthly_ds(
 
     # Set global attributes
     monthly_ds_global_attrs = get_global_attrs(
-        # TODO: These should be the start and then end of the month, not of the data. So,
-        # 0:00:00 of 1st of month, and 23:59:59.9999 (or whatever) or last day of month.
-        time_coverage_start=dt.datetime(
-            daily_ds_for_month.year, daily_ds_for_month.month, 1, 0, 0, 0
-        ),
-        time_coverage_end=dt.datetime(
-            daily_ds_for_month.year, daily_ds_for_month.month, 1, 23, 59, 59
-        ),
+        time=monthly_ds.time,
         temporality="monthly",
         aggregate=False,
         source=", ".join([fp.item().name for fp in daily_ds_for_month.filepaths]),
