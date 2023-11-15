@@ -18,8 +18,8 @@ CDECDR_FIELDS_TO_DROP = [
 
 CDECDR_FIELDS_TO_RENAME = {
     "cdr_conc": "cdr_seaice_conc",
-    "bt_conc_raw": "raw_bootstrap_seaice_conc",
-    "nt_conc_raw": "raw_nasateam_seaice_conc",
+    # "bt_conc_raw": "raw_bootstrap_seaice_conc",
+    # "nt_conc_raw": "raw_nasateam_seaice_conc",
     "qa_of_cdr_seaice_conc": "qa_of_cdr_seaice_conc",  # Note: unchanged
     "spatint_bitmask": "spatial_interpolation_flag",  # Note: bitmask, not flag?
     "temporal_flag": "temporal_interpolation_flag",
@@ -74,7 +74,8 @@ def finalize_cdecdr_ds(
     # Standard deviation file is converted from 2d to [time, y x] coords
     ds["stdev_of_cdr_seaice_conc"] = (
         ("time", "y", "x"),
-        np.expand_dims(ds["stdev_of_cdr_seaice_conc"].data, axis=0),
+        # np.expand_dims(ds["stdev_of_cdr_seaice_conc"].data, axis=0),
+        ds["stdev_of_cdr_seaice_conc"].data,
         {
             "_FillValue": -1,
             "long_name": (
@@ -93,7 +94,8 @@ def finalize_cdecdr_ds(
     # TODO: Verify that flag mask values have been set properly
     ds["qa_of_cdr_seaice_conc"] = (
         ("time", "y", "x"),
-        np.expand_dims(ds["qa_of_cdr_seaice_conc"].data.astype(np.uint8), axis=0),
+        # np.expand_dims(ds["qa_of_cdr_seaice_conc"].data.astype(np.uint8), axis=0),
+        ds["qa_of_cdr_seaice_conc"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
             "long_name": "Passive Microwave Sea Ice Concentration QC flags",
@@ -159,7 +161,8 @@ def finalize_cdecdr_ds(
     # TODO: Verify flag mask values and meanings
     ds["spatial_interpolation_flag"] = (
         ("time", "y", "x"),
-        np.expand_dims(ds["spatial_interpolation_flag"].data.astype(np.uint8), axis=0),
+        # np.expand_dims(ds["spatial_interpolation_flag"].data.astype(np.uint8), axis=0),
+        ds["spatial_interpolation_flag"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
             "long_name": "Passive Microwave Sea Ice Concentration spatial interpolation flags",
@@ -197,7 +200,8 @@ def finalize_cdecdr_ds(
     #       the values 4, 5, 40, and 50 are not possible
     ds["temporal_interpolation_flag"] = (
         ("time", "y", "x"),
-        np.expand_dims(ds["temporal_interpolation_flag"].data.astype(np.uint8), axis=0),
+        # np.expand_dims(ds["temporal_interpolation_flag"].data.astype(np.uint8), axis=0),
+        ds["temporal_interpolation_flag"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
             "long_name": "Passive Microwave Sea Ice Concentration temporal interpolation flags",
@@ -297,7 +301,8 @@ def finalize_cdecdr_ds(
     # TODO: conversion to ubyte should be done with DataArray encoding dict
     ds["raw_bootstrap_seaice_conc"] = (
         ("time", "y", "x"),
-        np.expand_dims(ds["raw_bootstrap_seaice_conc"].astype(np.uint8), axis=0),
+        # np.expand_dims(ds["raw_bootstrap_seaice_conc"].astype(np.uint8), axis=0),
+        ds["raw_bootstrap_seaice_conc"].data.astype(np.uint8),
         # ds["raw_bootstrap_seaice_conc"].attrs,  # We are overwriting these
         # TODO: These should be a standard dictionary of "conc datavar attrs"
         #       ...except the long_name
@@ -323,7 +328,8 @@ def finalize_cdecdr_ds(
     # TODO: conversion to ubyte should be done with DataArray encoding dict
     ds["raw_nasateam_seaice_conc"] = (
         ("time", "y", "x"),
-        np.expand_dims(ds["raw_nasateam_seaice_conc"].astype(np.uint8), axis=0),
+        # np.expand_dims(ds["raw_nasateam_seaice_conc"].astype(np.uint8), axis=0),
+        ds["raw_nasateam_seaice_conc"].data.astype(np.uint8),
         # NOTE: NOT USING ds["raw_nasateam_seaice_conc"].attrs
         {
             "_FillValue": 255,

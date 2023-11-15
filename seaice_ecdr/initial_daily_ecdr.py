@@ -225,8 +225,8 @@ def _setup_ecdr_ds(
         tb_longname = f"Daily TB {freq}{pol} from AU_SI{resolution}"
         tb_units = "K"
         ecdr_ide_ds[tb_varname] = (
-            ("y", "x"),
-            tbdata,
+            ("time", "y", "x"),
+            np.expand_dims(tbdata, axis=0),
             {
                 "_FillValue": 0,
                 "grid_mapping": "crs",
@@ -297,12 +297,13 @@ def compute_initial_daily_ecdr_dataset(
     for tbname in EXPECTED_TB_NAMES:
         tb_day_name = f"{tbname}_day"
         tb_si_varname = f"{tb_day_name}_si"
-        tb_si_data = spatial_interp_tbs(ecdr_ide_ds[tb_day_name].data)
+        tb_si_data = spatial_interp_tbs(ecdr_ide_ds[tb_day_name].data[0, :, :])
         tb_si_longname = f"Spatially interpolated {ecdr_ide_ds[tb_day_name].long_name}"
         tb_units = "K"
         ecdr_ide_ds[tb_si_varname] = (
-            ("y", "x"),
-            tb_si_data,
+            ("time", "y", "x"),
+            # tb_si_data,
+            np.expand_dims(tb_si_data, axis=0),
             {
                 "_FillValue": 0,
                 "grid_mapping": "crs",
@@ -318,7 +319,7 @@ def compute_initial_daily_ecdr_dataset(
 
     # Set up the spatial interpolation bitmask field where the various
     # TB fields were interpolated
-    ydim, xdim = ecdr_ide_ds["h18_day_si"].data.shape
+    _, ydim, xdim = ecdr_ide_ds["h18_day_si"].data.shape
     spatint_bitmask_arr = np.zeros((ydim, xdim), dtype=np.uint8)
     # TODO: Long term reminder: we want to use "band" labels rather than
     #       exact GHz frequencies -- which vary by satellite -- to ID channels
@@ -334,13 +335,15 @@ def compute_initial_daily_ecdr_dataset(
         tb_varname = f"{tbname}_day"
         si_varname = f"{tbname}_day_si"
         is_tb_si_diff = (
-            ecdr_ide_ds[tb_varname].data != ecdr_ide_ds[si_varname].data
-        ) & (~np.isnan(ecdr_ide_ds[si_varname].data))
+            ecdr_ide_ds[tb_varname].data[0, :, :]
+            != ecdr_ide_ds[si_varname].data[0, :, :]
+        ) & (~np.isnan(ecdr_ide_ds[si_varname].data[0, :, :]))
         spatint_bitmask_arr[is_tb_si_diff] += TB_SPATINT_BITMASK_MAP[tbname]
 
     ecdr_ide_ds["spatint_bitmask"] = (
-        ("y", "x"),
-        spatint_bitmask_arr,
+        ("time", "y", "x"),
+        # spatint_bitmask_arr,
+        np.expand_dims(spatint_bitmask_arr, axis=0),
         {
             "grid_mapping": "crs",
             "standard_name": "status_flag",
@@ -381,8 +384,9 @@ def compute_initial_daily_ecdr_dataset(
 
     # Encode invalid_ice_mask
     ecdr_ide_ds["invalid_ice_mask"] = (
-        ("y", "x"),
-        bt_fields["invalid_ice_mask"],
+        ("time", "y", "x"),
+        # bt_fields["invalid_ice_mask"],
+        np.expand_dims(bt_fields["invalid_ice_mask"], axis=0),
         {
             "grid_mapping": "crs",
             "standard_name": "seaice_binary_mask",
@@ -480,18 +484,19 @@ def compute_initial_daily_ecdr_dataset(
 
     # Compute the invalid TB mask
     invalid_tb_mask = get_bt_tb_mask(
-        tb_v37=ecdr_ide_ds["v36_day_si"].data,
-        tb_h37=ecdr_ide_ds["h36_day_si"].data,
-        tb_v19=ecdr_ide_ds["v18_day_si"].data,
-        tb_v22=ecdr_ide_ds["v23_day_si"].data,
+        tb_v37=ecdr_ide_ds["v36_day_si"].data[0, :, :],
+        tb_h37=ecdr_ide_ds["h36_day_si"].data[0, :, :],
+        tb_v19=ecdr_ide_ds["v18_day_si"].data[0, :, :],
+        tb_v22=ecdr_ide_ds["v23_day_si"].data[0, :, :],
         mintb=bt_coefs_init["mintb"],
         maxtb=bt_coefs_init["maxtb"],
         tb_data_mask_function=bt_coefs_init["bt_tb_data_mask_function"],
     )
 
     ecdr_ide_ds["invalid_tb_mask"] = (
-        ("y", "x"),
-        invalid_tb_mask,
+        ("time", "y", "x"),
+        # invalid_tb_mask,
+        np.expand_dims(invalid_tb_mask, axis=0),
         {
             "grid_mapping": "crs",
             "standard_name": "invalid_tb_binary_mask",
@@ -506,12 +511,12 @@ def compute_initial_daily_ecdr_dataset(
 
     # Compute the BT weather mask
     bt_weather_mask = bt.get_weather_mask(
-        v37=ecdr_ide_ds["v36_day_si"].data,
-        h37=ecdr_ide_ds["h36_day_si"].data,
-        v22=ecdr_ide_ds["v23_day_si"].data,
-        v19=ecdr_ide_ds["v18_day_si"].data,
+        v37=ecdr_ide_ds["v36_day_si"].data[0, :, :],
+        h37=ecdr_ide_ds["h36_day_si"].data[0, :, :],
+        v22=ecdr_ide_ds["v23_day_si"].data[0, :, :],
+        v19=ecdr_ide_ds["v18_day_si"].data[0, :, :],
         land_mask=ecdr_ide_ds["land_mask"].data,
-        tb_mask=ecdr_ide_ds["invalid_tb_mask"].data,
+        tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
         ln1=bt_coefs_init["vh37_lnline"],
         date=date,
         wintrc=bt_coefs_init["wintrc"],
@@ -520,8 +525,8 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     ecdr_ide_ds["bt_weather_mask"] = (
-        ("y", "x"),
-        bt_weather_mask.data,
+        ("time", "y", "x"),
+        np.expand_dims(bt_weather_mask.data, axis=0),
         {
             "grid_mapping": "crs",
             "standard_name": "bt_weather_binary_mask",
@@ -601,11 +606,11 @@ def compute_initial_daily_ecdr_dataset(
     # finally, compute the CDR.
     bt_conc, nt_conc, cdr_conc_raw = calculate_bt_nt_cdr_raw_conc(
         date=date,
-        tb_h19=ecdr_ide_ds["h18_day_si"].data,
-        tb_v37=ecdr_ide_ds["v36_day_si"].data,
-        tb_h37=ecdr_ide_ds["h36_day_si"].data,
-        tb_v19=ecdr_ide_ds["v18_day_si"].data,
-        tb_v22=ecdr_ide_ds["v23_day_si"].data,
+        tb_h19=ecdr_ide_ds["h18_day_si"].data[0, :, :],
+        tb_v37=ecdr_ide_ds["v36_day_si"].data[0, :, :],
+        tb_h37=ecdr_ide_ds["h36_day_si"].data[0, :, :],
+        tb_v19=ecdr_ide_ds["v18_day_si"].data[0, :, :],
+        tb_v22=ecdr_ide_ds["v23_day_si"].data[0, :, :],
         bt_coefs=bt_coefs,
         nt_coefs=nt_coefs,
         missing_flag_value=ecdr_ide_ds.attrs["missing_value"],
@@ -614,12 +619,12 @@ def compute_initial_daily_ecdr_dataset(
     # Apply masks
     # Get Nasateam weather filter
     nt_gr_2219 = nt.compute_ratio(
-        ecdr_ide_ds["v23_day_si"].data,
-        ecdr_ide_ds["v18_day_si"].data,
+        ecdr_ide_ds["v23_day_si"].data[0, :, :],
+        ecdr_ide_ds["v18_day_si"].data[0, :, :],
     )
     nt_gr_3719 = nt.compute_ratio(
-        ecdr_ide_ds["v36_day_si"].data,
-        ecdr_ide_ds["v18_day_si"].data,
+        ecdr_ide_ds["v36_day_si"].data[0, :, :],
+        ecdr_ide_ds["v18_day_si"].data[0, :, :],
     )
     nt_weather_mask = nt.get_weather_filter_mask(
         gr_2219=nt_gr_2219,
@@ -629,8 +634,9 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     ecdr_ide_ds["nt_weather_mask"] = (
-        ("y", "x"),
-        nt_weather_mask,
+        ("time", "y", "x"),
+        # nt_weather_mask,
+        np.expand_dims(nt_weather_mask.data, axis=0),
         {
             "grid_mapping": "crs",
             "standard_name": "weather_binary_mask",
@@ -647,9 +653,9 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     set_to_zero_sic = (
-        ecdr_ide_ds["nt_weather_mask"].data
-        | ecdr_ide_ds["bt_weather_mask"].data
-        | ecdr_ide_ds["invalid_ice_mask"].data
+        ecdr_ide_ds["nt_weather_mask"].data[0, :, :]
+        | ecdr_ide_ds["bt_weather_mask"].data[0, :, :]
+        | ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]
     )
 
     cdr_conc = cdr_conc_raw.copy()
@@ -664,7 +670,7 @@ def compute_initial_daily_ecdr_dataset(
 
     use_only_nt2_spillover = True
 
-    tb_h19 = ecdr_ide_ds["h18_day_si"].data
+    tb_h19 = ecdr_ide_ds["h18_day_si"].data[0, :, :]
     # Will use spillover_applied with values:
     #  1: NT2
     #  2: BT (not yet added)
@@ -762,9 +768,9 @@ def compute_initial_daily_ecdr_dataset(
 
     # Add the BT raw field to the dataset
     if bt_conc is not None:
-        ecdr_ide_ds["bt_conc_raw"] = (
-            ("y", "x"),
-            bt_conc,
+        ecdr_ide_ds["raw_bootstrap_seaice_conc"] = (
+            ("time", "y", "x"),
+            np.expand_dims(bt_conc, axis=0),
             {
                 "grid_mapping": "crs",
                 "standard_name": "sea_ice_area_fraction",
@@ -777,18 +783,22 @@ def compute_initial_daily_ecdr_dataset(
             },
         )
 
-    # Add the BT coefficients to the bt_conc_raw DataArray
+    # Add the BT coefficients to the raw_bootstrap_seaice_conc DataArray
     for attr in sorted(bt_coefs.keys()):
         if type(bt_coefs[attr]) in (float, int):
-            ecdr_ide_ds.variables["bt_conc_raw"].attrs[attr] = bt_coefs[attr]
+            ecdr_ide_ds.variables["raw_bootstrap_seaice_conc"].attrs[attr] = bt_coefs[
+                attr
+            ]
         else:
-            ecdr_ide_ds.variables["bt_conc_raw"].attrs[attr] = str(bt_coefs[attr])
+            ecdr_ide_ds.variables["raw_bootstrap_seaice_conc"].attrs[attr] = str(
+                bt_coefs[attr]
+            )
 
     # Add the NT raw field to the dataset
     if nt_conc is not None:
-        ecdr_ide_ds["nt_conc_raw"] = (
-            ("y", "x"),
-            nt_conc,
+        ecdr_ide_ds["raw_nasateam_seaice_conc"] = (
+            ("time", "y", "x"),
+            np.expand_dims(nt_conc, axis=0),
             {
                 "grid_mapping": "crs",
                 "standard_name": "sea_ice_area_fraction",
@@ -801,12 +811,12 @@ def compute_initial_daily_ecdr_dataset(
             },
         )
 
-    # Add the NT coefficients to the nt_conc_raw DataArray
+    # Add the NT coefficients to the raw_nasateam_seaice_conc DataArray
     for attr in sorted(nt_coefs.keys()):
         if type(nt_coefs[attr]) in (float, int):  # type: ignore[literal-required]
-            ecdr_ide_ds.variables["nt_conc_raw"].attrs[attr] = nt_coefs[attr]  # type: ignore[literal-required]  # noqa
+            ecdr_ide_ds.variables["raw_nasateam_seaice_conc"].attrs[attr] = nt_coefs[attr]  # type: ignore[literal-required]  # noqa
         else:
-            ecdr_ide_ds.variables["nt_conc_raw"].attrs[attr] = str(nt_coefs[attr])  # type: ignore[literal-required]  # noqa
+            ecdr_ide_ds.variables["raw_nasateam_seaice_conc"].attrs[attr] = str(nt_coefs[attr])  # type: ignore[literal-required]  # noqa
 
     # Add the final cdr_conc value to the xarray dataset
     ecdr_ide_ds["conc"] = (
@@ -833,15 +843,15 @@ def compute_initial_daily_ecdr_dataset(
     #  64: Temporal interpolation applied (applied later)
     # 128: Melt onset detected (applied later)
     qa_bitmask = np.zeros((ydim, xdim), dtype=np.uint8)
-    qa_bitmask[ecdr_ide_ds["bt_weather_mask"].data] += 1
-    qa_bitmask[ecdr_ide_ds["nt_weather_mask"].data] += 2
+    qa_bitmask[ecdr_ide_ds["bt_weather_mask"].data[0, :, :]] += 1
+    qa_bitmask[ecdr_ide_ds["nt_weather_mask"].data[0, :, :]] += 2
     qa_bitmask[spillover_applied == 1] += 4
-    qa_bitmask[invalid_tb_mask & ~ecdr_ide_ds["invalid_ice_mask"].data] += 8
-    qa_bitmask[ecdr_ide_ds["invalid_ice_mask"].data] += 16
-    qa_bitmask[ecdr_ide_ds["spatint_bitmask"].data != 0] += 32
+    qa_bitmask[invalid_tb_mask & ~ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 8
+    qa_bitmask[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 16
+    qa_bitmask[ecdr_ide_ds["spatint_bitmask"].data[0, :, :] != 0] += 32
     ecdr_ide_ds["qa_of_cdr_seaice_conc"] = (
-        ("y", "x"),
-        qa_bitmask,
+        ("time", "y", "x"),
+        np.expand_dims(qa_bitmask, axis=0),
         {
             "grid_mapping": "crs",
             "standard_name": "status_flag",

@@ -444,7 +444,7 @@ def calc_stddev_field(
     min_valid_value,
     max_valid_value,
     fill_value,
-) -> xr.DataArray | None:
+) -> xr.DataArray:
     """Compute std dev field for cdr_conc value using BT and NT fields.
 
     This value is the standard deviation of a given grid cell along with
@@ -522,12 +522,6 @@ def filter_field_via_bitmask(
     output_da = field_da.copy()
     assert filter_ids is not None  # this simply preserves this arg for use
 
-    # TODO: implement this behavior.
-    """ This is not yet implemented, but it will look something like this...
-    bitmasks_to_filter = []
-    list_of_flags = flag_da.flag_meanings
-    # Parse list_of_flags, compared to filter_ids to set bitmasks_to_filter
-    """
     bitmasks_to_filter = [1, 2, 16]
     for bitmask in bitmasks_to_filter:
         is_to_filter = np.bitwise_and(flag_da.data, bitmask).astype(bool)
@@ -604,8 +598,9 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
 
     # Add the temporal interp flags to the dataset
     tie_ds["temporal_flag"] = (
-        ("y", "x"),
-        ti_flags,
+        ("time", "y", "x"),
+        # ti_flags,
+        np.expand_dims(ti_flags, axis=0),
         {
             "_FillValue": 255,
             "grid_mapping": "crs",
@@ -690,7 +685,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     # Create the cdr_conc standard deviation field
     # Create filled bootstrap field
     bt_var_stack = create_sorted_var_timestack(
-        varname="bt_conc_raw",
+        varname="raw_bootstrap_seaice_conc",
         date_list=[
             iter_date
             for iter_date in iter_dates_near_date(
@@ -713,7 +708,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
 
     # Create filled bootstrap field
     nt_var_stack = create_sorted_var_timestack(
-        varname="nt_conc_raw",
+        varname="raw_nasateam_seaice_conc",
         date_list=[
             iter_date
             for iter_date in iter_dates_near_date(
@@ -786,8 +781,9 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
 
     # Set this to a data array
     tie_ds["stdev_of_cdr_seaice_conc_raw"] = (
-        ("y", "x"),
-        stddev_field,
+        ("time", "y", "x"),
+        # stddev_field,
+        np.expand_dims(stddev_field.data, axis=0),
         {
             "_FillValue": -1,
             "long_name": (
@@ -817,7 +813,8 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     )
 
     # set non-conc values to -1
-    is_non_siconc = np.squeeze(tie_ds["cdr_conc"].data > 100)
+    # is_non_siconc = np.squeeze(tie_ds["cdr_conc"].data > 100)
+    is_non_siconc = tie_ds["cdr_conc"].data > 100
     stdev_field_filtered = stdev_field_filtered.where(
         ~is_non_siconc,
         other=-1,
@@ -826,7 +823,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     # Re-set the stdev data array...
     # Note: probably need to set land values to -1 here?
     tie_ds["stdev_of_cdr_seaice_conc"] = (
-        ("y", "x"),
+        ("time", "y", "x"),
         stdev_field_filtered.data,
         {
             "_FillValue": -1,
