@@ -88,9 +88,10 @@ def cdr_nasateam(
     tb_v19: npt.NDArray,
     nt_tiepoints: NasateamTiePoints,
 ) -> npt.NDArray:
-    """Generate the raw NASA Team concentration field."""
-    # Compute the NASA Team conc field
-    # Note that concentrations from nasateam may be >100%
+    """Generate the raw NASA Team concentration field.
+
+    Note that concentrations from nasateam may be >100%
+    """
     nt_pr_1919 = nt.compute_ratio(tb_v19, tb_h19)
     nt_gr_3719 = nt.compute_ratio(tb_v37, tb_v19)
     nt_conc = nt.calc_nasateam_conc(
@@ -162,8 +163,7 @@ def calculate_bt_nt_cdr_raw_conc(
         missing_flag_value,
     )
 
-    # Next, get nasateam conc. Note that concentrations from nasateam may be
-    # >100%.
+    # Get nasateam conc. Note that concentrations from nasateam may be >100%.
     nt_conc = cdr_nasateam(
         date,
         tb_h19,
@@ -302,7 +302,6 @@ def compute_initial_daily_ecdr_dataset(
         tb_units = "K"
         ecdr_ide_ds[tb_si_varname] = (
             ("time", "y", "x"),
-            # tb_si_data,
             np.expand_dims(tb_si_data, axis=0),
             {
                 "_FillValue": 0,
@@ -340,9 +339,8 @@ def compute_initial_daily_ecdr_dataset(
         ) & (~np.isnan(ecdr_ide_ds[si_varname].data[0, :, :]))
         spatint_bitmask_arr[is_tb_si_diff] += TB_SPATINT_BITMASK_MAP[tbname]
 
-    ecdr_ide_ds["spatint_bitmask"] = (
+    ecdr_ide_ds["spatial_interpolation_flag"] = (
         ("time", "y", "x"),
-        # spatint_bitmask_arr,
         np.expand_dims(spatint_bitmask_arr, axis=0),
         {
             "grid_mapping": "crs",
@@ -385,7 +383,6 @@ def compute_initial_daily_ecdr_dataset(
     # Encode invalid_ice_mask
     ecdr_ide_ds["invalid_ice_mask"] = (
         ("time", "y", "x"),
-        # bt_fields["invalid_ice_mask"],
         np.expand_dims(bt_fields["invalid_ice_mask"], axis=0),
         {
             "grid_mapping": "crs",
@@ -495,7 +492,6 @@ def compute_initial_daily_ecdr_dataset(
 
     ecdr_ide_ds["invalid_tb_mask"] = (
         ("time", "y", "x"),
-        # invalid_tb_mask,
         np.expand_dims(invalid_tb_mask, axis=0),
         {
             "grid_mapping": "crs",
@@ -635,7 +631,6 @@ def compute_initial_daily_ecdr_dataset(
 
     ecdr_ide_ds["nt_weather_mask"] = (
         ("time", "y", "x"),
-        # nt_weather_mask,
         np.expand_dims(nt_weather_mask.data, axis=0),
         {
             "grid_mapping": "crs",
@@ -752,8 +747,10 @@ def compute_initial_daily_ecdr_dataset(
             )
             logger.info("Filled pole hole")
             is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
-            if "spatint_bitmask" in ecdr_ide_ds.variables.keys():
-                ecdr_ide_ds["spatint_bitmask"] = ecdr_ide_ds["spatint_bitmask"].where(
+            if "spatial_interpolation_bitmask" in ecdr_ide_ds.variables.keys():
+                ecdr_ide_ds["spatial_interpolation_flag"] = ecdr_ide_ds[
+                    "spatial_interpolation_flag"
+                ].where(
                     ~is_pole_filled,
                     other=TB_SPATINT_BITMASK_MAP["pole_filled"],
                 )
@@ -839,16 +836,15 @@ def compute_initial_daily_ecdr_dataset(
     #   8: Missing TBs (exclusive of valid_ice mask)
     #  16: Invalid ice mask
     #  32: Spatial interpolation applied
-    # --
-    #  64: Temporal interpolation applied (applied later)
-    # 128: Melt onset detected (applied later)
+    #  64: *applied later* Temporal interpolation applied
+    # 128: *applied later* Melt onset detected
     qa_bitmask = np.zeros((ydim, xdim), dtype=np.uint8)
     qa_bitmask[ecdr_ide_ds["bt_weather_mask"].data[0, :, :]] += 1
     qa_bitmask[ecdr_ide_ds["nt_weather_mask"].data[0, :, :]] += 2
     qa_bitmask[spillover_applied == 1] += 4
     qa_bitmask[invalid_tb_mask & ~ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 8
     qa_bitmask[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 16
-    qa_bitmask[ecdr_ide_ds["spatint_bitmask"].data[0, :, :] != 0] += 32
+    qa_bitmask[ecdr_ide_ds["spatial_interpolation_flag"].data[0, :, :] != 0] += 32
     ecdr_ide_ds["qa_of_cdr_seaice_conc"] = (
         ("time", "y", "x"),
         np.expand_dims(qa_bitmask, axis=0),
@@ -874,8 +870,9 @@ def initial_daily_ecdr_dataset_for_au_si_tbs(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
-    """Create xr dataset containing the first pass of daily enhanced CDR."""
-    # Get AU_SI TBs
+    """Create xr dataset containing the first pass of daily enhanced CDR.
+
+    This uses AU_SI12 TBs"""
     au_si_resolution_str = _au_si_res_str(resolution=resolution)
     xr_tbs = get_au_si_tbs(
         date=date,
@@ -903,10 +900,6 @@ def write_ide_netcdf(
     """Write the initial_ecdr_ds to a netCDF file and return the path."""
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
 
-    # Here, we should specify details about the initial daily eCDF file, eg:
-    #  exclude unwanted fields
-    #  ensure that fields are compressed
-    # Set netCDF encoding to compress all except excluded fields
     for excluded_field in excluded_fields:
         if excluded_field in ide_ds.variables.keys():
             ide_ds = ide_ds.drop_vars(excluded_field)
@@ -946,7 +939,6 @@ def get_idecdr_filepath(
 ) -> Path:
     """Yields the filepath of the pass1 -- idecdr -- intermediate file."""
 
-    # TODO: Perhaps this function should come from seaice_ecdr, not pm_icecon?
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
@@ -989,8 +981,6 @@ def make_idecdr_netcdf(
     logger.info(f"Wrote intermed daily ncfile: {written_ide_ncfile}")
 
 
-# TODO: add a "verbose_ide" indicator to determine whether to save all the
-#       contributing fields -- eg tb arrays -- in the init daily ecdr ncfile
 def create_idecdr_for_date_range(
     *,
     hemisphere: Hemisphere,

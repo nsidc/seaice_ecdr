@@ -597,9 +597,8 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     )
 
     # Add the temporal interp flags to the dataset
-    tie_ds["temporal_flag"] = (
+    tie_ds["temporal_interpolation_flag"] = (
         ("time", "y", "x"),
-        # ti_flags,
         np.expand_dims(ti_flags, axis=0),
         {
             "_FillValue": 255,
@@ -639,7 +638,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         if not grid_is_psn125(hemisphere=hemisphere, gridshape=cdr_conc.shape):
             raise RuntimeError(
                 "temporally interpolated dataset should have ",
-                '"spatint_bitmask_map" field',
+                ' "spatint_bitmask_map" field',
             )
         cdr_conc_pre_polefill = cdr_conc.copy()
         near_pole_hole_mask = psn_125_near_pole_hole_mask()
@@ -652,7 +651,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         is_pole_filled = (cdr_conc_pole_filled != cdr_conc_pre_polefill) & (
             ~np.isnan(cdr_conc_pole_filled)
         )
-        if "spatint_bitmask" in tie_ds.variables.keys():
+        if "spatial_interpolation_flag" in tie_ds.variables.keys():
             # TODO: These are constants for the eCDR runs.  They should
             #       NOT be defined here (and in the idecdr code...(!))
             # TODO Actually, if this is defined here, the 'pole_filled'
@@ -667,7 +666,9 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
                 "h36": 16,
                 "pole_filled": 32,
             }
-            tie_ds["spatint_bitmask"] = tie_ds["spatint_bitmask"].where(
+            tie_ds["spatial_interpolation_flag"] = tie_ds[
+                "spatial_interpolation_flag"
+            ].where(
                 ~is_pole_filled,
                 other=TB_SPATINT_BITMASK_MAP["pole_filled"],
             )
@@ -782,7 +783,6 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     # Set this to a data array
     tie_ds["stdev_of_cdr_seaice_conc_raw"] = (
         ("time", "y", "x"),
-        # stddev_field,
         np.expand_dims(stddev_field.data, axis=0),
         {
             "_FillValue": -1,

@@ -232,7 +232,6 @@ def create_melt_onset_field(
 
     melt_onset_field[has_new_melt] = day_of_year
 
-    # TODO: Do we want to modify QA flag here too?
     return melt_onset_field
 
 
@@ -274,14 +273,8 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         ("time", "y", "x"),
         melt_onset_field,
         {
-            "_FillValue": 255,
             "grid_mapping": "crs",
             "standard_name": "status_flag",
-            # Am removing valid range because it causes 255 to plot as NaN
-            # "valid_range": [
-            #   np.uint8(MELT_SEASON_FIRST_DOY),
-            #   np.uint8(MELT_SEASON_LAST_DOY)
-            # ],
             "comment": (
                 "Value of 255 means no melt detected yet or the date is"
                 " outside the melt season.  Other values indicate the day"

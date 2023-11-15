@@ -87,7 +87,7 @@ def test_seaice_idecdr_has_crs(
     sample_idecdr_dataset_nh,
     sample_idecdr_dataset_sh,
 ):
-    """Test that idecdr contains a 'conc' field."""
+    """Test that idecdr contains a 'crs' field."""
     assert "crs" in sample_idecdr_dataset_nh.variables
     assert "crs" in sample_idecdr_dataset_sh.variables
 
@@ -110,7 +110,7 @@ def test_seaice_idecdr_has_necessary_fields(
         "bt_weather_mask",
         "nt_weather_mask",
         "invalid_ice_mask",
-        "spatint_bitmask",
+        "spatial_interpolation_flag",
     )
     for field_name in expected_fields:
         assert field_name in sample_idecdr_dataset_nh.variables.keys()
@@ -184,7 +184,7 @@ def test_seaice_idecdr_has_tyx_data_vars(
         "bt_weather_mask",
         "nt_weather_mask",
         "invalid_ice_mask",
-        "spatint_bitmask",
+        "spatial_interpolation_flag",
     )
     for field_name in expected_tyx_fields:
         nh_data_shape = sample_idecdr_dataset_nh[field_name].shape
