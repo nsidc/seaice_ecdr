@@ -771,8 +771,9 @@ def compute_initial_daily_ecdr_dataset(
 
     # Add the BT raw field to the dataset
     if bt_conc is not None:
-        # Remove bt_conc flags
+        # Remove bt_conc flags and
         bt_conc[bt_conc > 200] = np.nan
+        bt_conc = bt_conc / 100.0  # re-set range from 0 to 1
         ecdr_ide_ds["raw_bootstrap_seaice_conc"] = (
             ("time", "y", "x"),
             np.expand_dims(bt_conc, axis=0),
@@ -785,9 +786,9 @@ def compute_initial_daily_ecdr_dataset(
             },
             {
                 "zlib": True,
-                # "dtype": "uint8",
-                # "scale_factor": 0.01,
-                # "_FillValue": 255,
+                "dtype": "uint8",
+                "scale_factor": 0.01,
+                "_FillValue": 255,
             },
         )
 
@@ -806,6 +807,7 @@ def compute_initial_daily_ecdr_dataset(
     if nt_conc is not None:
         # Remove nt_conc flags
         nt_conc[nt_conc > 200] = np.nan
+        nt_conc = nt_conc / 100.0
         ecdr_ide_ds["raw_nasateam_seaice_conc"] = (
             ("time", "y", "x"),
             np.expand_dims(nt_conc, axis=0),
@@ -818,9 +820,9 @@ def compute_initial_daily_ecdr_dataset(
             },
             {
                 "zlib": True,
-                # "dtype": "uint8",
-                # "scale_factor": 0.01,
-                # "_FillValue": 255,
+                "dtype": "uint8",
+                "scale_factor": 0.01,
+                "_FillValue": 255,
             },
         )
 
@@ -834,6 +836,7 @@ def compute_initial_daily_ecdr_dataset(
     # Add the final cdr_conc value to the xarray dataset
     # Remove cdr_conc flags
     cdr_conc[cdr_conc >= 120] = np.nan
+    cdr_conc = cdr_conc / 100.0
 
     ecdr_ide_ds["conc"] = (
         ("time", "y", "x"),
@@ -845,9 +848,9 @@ def compute_initial_daily_ecdr_dataset(
         },
         {
             "zlib": True,
-            # "dtype": "uint8",
-            # "scale_factor": 0.01,
-            # "_FillValue": 255,
+            "dtype": "uint8",
+            "scale_factor": 0.01,
+            "_FillValue": 255,
         },
     )
 
@@ -936,13 +939,18 @@ def write_ide_netcdf(
     for varname in ide_ds.variables.keys():
         varname = cast(str, varname)
         if varname not in uncompressed_fields and varname in conc_fields:
+            pass
+            """
             # Encode conc vars with uint8
+            field = ide_ds[varname]
+            breakpoint()
             nc_encoding[varname] = {
                 "zlib": True,
-                # "dtype": "uint8",
-                # "scale_factor": 0.01,
-                # "_FillValue": 255,
+                "dtype": "uint8",
+                "scale_factor": 0.01,
+                "_FillValue": 255,
             }
+            """
         elif varname not in uncompressed_fields and varname in tb_fields:
             # Encode tb vals with int16
             nc_encoding[varname] = {
