@@ -601,7 +601,6 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         ("time", "y", "x"),
         np.expand_dims(ti_flags, axis=0),
         {
-            "_FillValue": 255,
             "grid_mapping": "crs",
             "standard_name": "status_flag",
             "valid_range": [np.uint8(0), np.uint8(254)],

@@ -228,15 +228,18 @@ def _setup_ecdr_ds(
             ("time", "y", "x"),
             np.expand_dims(tbdata, axis=0),
             {
-                "_FillValue": 0,
+                # "_FillValue": 0,
                 "grid_mapping": "crs",
                 "standard_name": "brightness_temperature",
                 "long_name": tb_longname,
                 "units": tb_units,
-                "valid_range": [np.float64(10.0), np.float64(350.0)],
+                "valid_range": [np.float64(10.0), np.float64(3500.0)],
             },
             {
                 "zlib": True,
+                # "dtype": 'int16',
+                # "scale_factor": 0.1,
+                # "_FillValue": 0,
             },
         )
 
@@ -304,15 +307,18 @@ def compute_initial_daily_ecdr_dataset(
             ("time", "y", "x"),
             np.expand_dims(tb_si_data, axis=0),
             {
-                "_FillValue": 0,
+                # "_FillValue": 0,
                 "grid_mapping": "crs",
                 "standard_name": "brightness_temperature",
                 "long_name": tb_si_longname,
                 "units": tb_units,
-                "valid_range": [np.float64(10.0), np.float64(350.0)],
+                "valid_range": [np.float64(10.0), np.float64(3500.0)],
             },
             {
                 "zlib": True,
+                # "dtype": 'int16',
+                # "scale_factor": 0.1,
+                # "_FillValue": 0,
             },
         )
 
@@ -347,7 +353,7 @@ def compute_initial_daily_ecdr_dataset(
             "standard_name": "status_flag",
             "long_name": "spatial_interpolation_flag",
             "units": 1,
-            "valid_range": [np.uint8(0), np.uint8(63)],
+            # "valid_range": [np.uint8(0), np.uint8(63)],
             "flag_masks": np.array([1, 2, 4, 8, 16, 32], dtype=np.uint8),
             "flag_meanings": (
                 "19v_tb_value_interpolated"
@@ -393,7 +399,7 @@ def compute_initial_daily_ecdr_dataset(
                 " based on climatology"
             ),
             "units": 1,
-            "valid_range": [0, 1],
+            # "valid_range": [0, 1],
         },
         {
             "zlib": True,
@@ -554,30 +560,30 @@ def compute_initial_daily_ecdr_dataset(
 
     bt_coefs["vh37_lnline"] = bt.get_linfit(
         land_mask=ecdr_ide_ds["land_mask"].data,
-        tb_mask=ecdr_ide_ds["invalid_tb_mask"].data,
-        tbx=ecdr_ide_ds["v36_day_si"].data,
-        tby=ecdr_ide_ds["h36_day_si"].data,
+        tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
+        tbx=ecdr_ide_ds["v36_day_si"].data[0, :, :],
+        tby=ecdr_ide_ds["h36_day_si"].data[0, :, :],
         lnline=bt_coefs_init["vh37_lnline"],
         add=bt_coefs["add1"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data,
+        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
     )
 
     bt_coefs["bt_wtp_v37"] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init["bt_wtp_v37"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data,
-        tb=ecdr_ide_ds["v36_day_si"].data,
+        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+        tb=ecdr_ide_ds["v36_day_si"].data[0, :, :],
     )
 
     bt_coefs["bt_wtp_h37"] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init["bt_wtp_h37"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data,
-        tb=ecdr_ide_ds["h36_day_si"].data,
+        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+        tb=ecdr_ide_ds["h36_day_si"].data[0, :, :],
     )
 
     bt_coefs["bt_wtp_v19"] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init["bt_wtp_v19"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data,
-        tb=ecdr_ide_ds["v18_day_si"].data,
+        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+        tb=ecdr_ide_ds["v18_day_si"].data[0, :, :],
     )
 
     bt_coefs["ad_line_offset"] = bt.get_adj_ad_line_offset(
@@ -588,13 +594,13 @@ def compute_initial_daily_ecdr_dataset(
 
     bt_coefs["v1937_lnline"] = bt.get_linfit(
         land_mask=ecdr_ide_ds["land_mask"].data,
-        tb_mask=ecdr_ide_ds["invalid_tb_mask"].data,
-        tbx=ecdr_ide_ds["v36_day_si"].data,
-        tby=ecdr_ide_ds["v18_day_si"].data,
+        tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
+        tbx=ecdr_ide_ds["v36_day_si"].data[0, :, :],
+        tby=ecdr_ide_ds["v18_day_si"].data[0, :, :],
         lnline=bt_coefs_init["v1937_lnline"],
         add=bt_coefs["add2"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data,
-        tba=ecdr_ide_ds["h36_day_si"].data,
+        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+        tba=ecdr_ide_ds["h36_day_si"].data[0, :, :],
         iceline=bt_coefs["vh37_lnline"],
         ad_line_offset=bt_coefs["ad_line_offset"],
     )
@@ -777,6 +783,9 @@ def compute_initial_daily_ecdr_dataset(
             },
             {
                 "zlib": True,
+                "dtype": "uint8",
+                "scale_factor": 0.01,
+                "_FillValue": 255,
             },
         )
 
@@ -805,6 +814,9 @@ def compute_initial_daily_ecdr_dataset(
             },
             {
                 "zlib": True,
+                "dtype": "uint8",
+                "scale_factor": 0.01,
+                "_FillValue": 255,
             },
         )
 
@@ -826,6 +838,9 @@ def compute_initial_daily_ecdr_dataset(
         },
         {
             "zlib": True,
+            "dtype": "uint8",
+            "scale_factor": 0.01,
+            "_FillValue": 255,
         },
     )
 
@@ -904,15 +919,17 @@ def write_ide_netcdf(
         if excluded_field in ide_ds.variables.keys():
             ide_ds = ide_ds.drop_vars(excluded_field)
 
+    """
     nc_encoding = {}
     for varname in ide_ds.variables.keys():
         varname = cast(str, varname)
         if varname not in uncompressed_fields:
             nc_encoding[varname] = {"zlib": True}
+    """
 
     ide_ds.to_netcdf(
         output_filepath,
-        encoding=nc_encoding,
+        # encoding=nc_encoding,
     )
 
     # Return the path if it exists
