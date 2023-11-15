@@ -198,12 +198,12 @@ def _setup_ecdr_ds(
     ecdr_ide_ds = get_dataset_for_gridid(grid_id, date)
 
     # Set initial global attributes
-    ecdr_ide_ds.attrs["description"] = "Initial daily cdr conc file"
+    # ecdr_ide_ds.attrs["description"] = "Initial daily cdr conc file"
 
     # Note: these attributes should probably go with
     #       a variable named "CDR_parameters" or similar
     ecdr_ide_ds.attrs["grid_id"] = grid_id
-    ecdr_ide_ds.attrs["date"] = date.strftime("%Y-%m-%d")
+    # ecdr_ide_ds.attrs["date"] = date.strftime("%Y-%m-%d")
     ecdr_ide_ds.attrs["missing_value"] = DEFAULT_FLAG_VALUES.missing
 
     file_date = dt.date(1970, 1, 1) + dt.timedelta(
@@ -771,6 +771,8 @@ def compute_initial_daily_ecdr_dataset(
 
     # Add the BT raw field to the dataset
     if bt_conc is not None:
+        # Remove bt_conc flags
+        bt_conc[bt_conc > 200] = np.nan
         ecdr_ide_ds["raw_bootstrap_seaice_conc"] = (
             ("time", "y", "x"),
             np.expand_dims(bt_conc, axis=0),
@@ -783,9 +785,9 @@ def compute_initial_daily_ecdr_dataset(
             },
             {
                 "zlib": True,
-                "dtype": "uint8",
-                "scale_factor": 0.01,
-                "_FillValue": 255,
+                # "dtype": "uint8",
+                # "scale_factor": 0.01,
+                # "_FillValue": 255,
             },
         )
 
@@ -802,6 +804,8 @@ def compute_initial_daily_ecdr_dataset(
 
     # Add the NT raw field to the dataset
     if nt_conc is not None:
+        # Remove nt_conc flags
+        nt_conc[nt_conc > 200] = np.nan
         ecdr_ide_ds["raw_nasateam_seaice_conc"] = (
             ("time", "y", "x"),
             np.expand_dims(nt_conc, axis=0),
@@ -814,9 +818,9 @@ def compute_initial_daily_ecdr_dataset(
             },
             {
                 "zlib": True,
-                "dtype": "uint8",
-                "scale_factor": 0.01,
-                "_FillValue": 255,
+                # "dtype": "uint8",
+                # "scale_factor": 0.01,
+                # "_FillValue": 255,
             },
         )
 
@@ -828,6 +832,9 @@ def compute_initial_daily_ecdr_dataset(
             ecdr_ide_ds.variables["raw_nasateam_seaice_conc"].attrs[attr] = str(nt_coefs[attr])  # type: ignore[literal-required]  # noqa
 
     # Add the final cdr_conc value to the xarray dataset
+    # Remove cdr_conc flags
+    cdr_conc[cdr_conc >= 120] = np.nan
+
     ecdr_ide_ds["conc"] = (
         ("time", "y", "x"),
         np.expand_dims(cdr_conc, axis=0),
@@ -838,9 +845,9 @@ def compute_initial_daily_ecdr_dataset(
         },
         {
             "zlib": True,
-            "dtype": "uint8",
-            "scale_factor": 0.01,
-            "_FillValue": 255,
+            # "dtype": "uint8",
+            # "scale_factor": 0.01,
+            # "_FillValue": 255,
         },
     )
 
@@ -911,6 +918,12 @@ def write_ide_netcdf(
     output_filepath: Path,
     uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
     excluded_fields: Iterable[str] = [],
+    conc_fields: Iterable[str] = (
+        "conc",
+        "raw_nasateam_seaice_conc",
+        "raw_bootstrap_seaice_conc",
+    ),
+    tb_fields: Iterable[str] = ("h18_day_si", "h36_day_si"),
 ) -> Path:
     """Write the initial_ecdr_ds to a netCDF file and return the path."""
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
@@ -919,17 +932,33 @@ def write_ide_netcdf(
         if excluded_field in ide_ds.variables.keys():
             ide_ds = ide_ds.drop_vars(excluded_field)
 
-    """
     nc_encoding = {}
     for varname in ide_ds.variables.keys():
         varname = cast(str, varname)
-        if varname not in uncompressed_fields:
-            nc_encoding[varname] = {"zlib": True}
-    """
+        if varname not in uncompressed_fields and varname in conc_fields:
+            # Encode conc vars with uint8
+            nc_encoding[varname] = {
+                "zlib": True,
+                # "dtype": "uint8",
+                # "scale_factor": 0.01,
+                # "_FillValue": 255,
+            }
+        elif varname not in uncompressed_fields and varname in tb_fields:
+            # Encode tb vals with int16
+            nc_encoding[varname] = {
+                "zlib": True,
+                "dtype": "int16",
+                "scale_factor": 0.1,
+                "_FillValue": 0,
+            }
+        else:
+            nc_encoding[varname] = {
+                "zlib": True,
+            }
 
     ide_ds.to_netcdf(
         output_filepath,
-        # encoding=nc_encoding,
+        encoding=nc_encoding,
     )
 
     # Return the path if it exists

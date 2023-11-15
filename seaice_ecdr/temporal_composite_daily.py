@@ -593,7 +593,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     #       should be looked up from a map of flag mask values
     tie_ds["qa_of_cdr_seaice_conc"] = tie_ds["qa_of_cdr_seaice_conc"].where(
         ~is_temporally_interpolated,
-        other=tie_ds["qa_of_cdr_seaice_conc"] + 64,
+        other=np.bitwise_or(tie_ds["qa_of_cdr_seaice_conc"].data, 64),
     )
 
     # Add the temporal interp flags to the dataset
