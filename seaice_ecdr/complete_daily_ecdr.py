@@ -122,7 +122,8 @@ def read_melt_onset_field(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
-        mask_and_scale=False,
+        # mask_and_scale=False,
+        mask_and_scale=True,
     )
 
     # TODO: Perhaps these field names should be in a dictionary somewhere?

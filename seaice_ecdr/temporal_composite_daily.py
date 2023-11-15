@@ -603,7 +603,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         {
             "grid_mapping": "crs",
             "standard_name": "status_flag",
-            "valid_range": [np.uint8(0), np.uint8(254)],
+            # "valid_range": [np.uint8(0), np.uint8(254)],
             "comment": (
                 "Value of 0 indicates no temporal interpolation occurred."
                 "  Values greater than 0 and less than 100 are of the form"
