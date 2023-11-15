@@ -8,7 +8,8 @@ from seaice_ecdr.nc_attrs import (
 )
 
 
-def test__get_time_coverage_attrs():
+def test__get_time_coverage_attrs_daily():
+    # Typical daily complete file
     expected_daily = {
         "time_coverage_start": "2022-03-01T00:00:00Z",
         "time_coverage_end": "2022-03-01T23:59:59Z",
@@ -24,6 +25,9 @@ def test__get_time_coverage_attrs():
     )
     assert expected_daily == actual_daily
 
+
+def test__get_time_coverage_attrs_daily_aggregate():
+    # Daily aggregate for a full year
     expected_daily_aggregate = {
         "time_coverage_start": "2022-01-01T00:00:00Z",
         "time_coverage_end": "2022-12-31T23:59:59Z",
@@ -39,6 +43,9 @@ def test__get_time_coverage_attrs():
     )
     assert expected_daily_aggregate == actual_daily_aggregate
 
+
+def test__get_time_coverage_attrs_daily_aggregate_partial_year():
+    # Daily aggregate for a partial year
     expected_daily_partial_aggregate = {
         "time_coverage_start": "2022-01-01T00:00:00Z",
         "time_coverage_end": "2022-02-01T23:59:59Z",
@@ -54,6 +61,7 @@ def test__get_time_coverage_attrs():
     )
     assert expected_daily_partial_aggregate == actual_daily_partial_aggregate
 
+    # Daily aggregate for a partial year at the beginning of the record
     expected_daily_partial_aggregate_eoy = {
         "time_coverage_start": "1978-10-01T00:00:00Z",
         "time_coverage_end": "1978-12-31T23:59:59Z",
@@ -69,6 +77,9 @@ def test__get_time_coverage_attrs():
     )
     assert expected_daily_partial_aggregate_eoy == actual_daily_partial_aggregate_eoy
 
+
+def test__get_time_coverage_attrs_monthly():
+    # Typical monthly file
     expected_monthly = {
         "time_coverage_start": "2022-03-01T00:00:00Z",
         "time_coverage_end": "2022-03-31T23:59:59Z",
@@ -84,6 +95,9 @@ def test__get_time_coverage_attrs():
     )
     assert expected_monthly == actual_monthly
 
+
+def test__get_time_coverage_attrs_monthly_aggregate():
+    # Monthly aggregate file
     expected_monthly_aggregate = {
         "time_coverage_start": "2022-01-01T00:00:00Z",
         "time_coverage_end": "2022-05-31T23:59:59Z",
