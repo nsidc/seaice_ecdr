@@ -24,9 +24,7 @@ from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
     get_idecdr_filepath,
-    initial_daily_ecdr_dataset_for_au_si_tbs,
     make_idecdr_netcdf,
-    write_ide_netcdf,
 )
 from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 from seaice_ecdr.util import standard_daily_filename
@@ -177,33 +175,6 @@ def iter_dates_near_date(
     while date <= latest_date:
         yield date
         date += dt.timedelta(days=date_step)
-
-
-def read_with_create_initial_daily_ecdr(
-    *,
-    date,
-    hemisphere,
-    resolution,
-    ecdr_data_dir: Path,
-    force_ide_file_creation=False,
-):
-    """Return init daily ecdr field, creating it if necessary."""
-    ide_filepath = get_idecdr_filepath(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-    )
-
-    if not ide_filepath.is_file() or force_ide_file_creation:
-        created_ide_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
-            date=date, hemisphere=hemisphere, resolution=resolution
-        )
-        write_ide_netcdf(ide_ds=created_ide_ds, output_filepath=ide_filepath)
-
-    ide_ds = xr.load_dataset(ide_filepath)
-
-    return ide_ds
 
 
 def is_seaice_conc(
