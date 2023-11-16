@@ -232,10 +232,10 @@ def temporally_composite_dataarray(
     # Initialize arrays
     initial_missing_locs = np.isnan(temp_comp_2d.data)
 
-    pconc = np.zeros((ydim, xdim), dtype=np.uint8)
+    pconc = np.zeros_like(temp_comp_2d)
     pdist = np.zeros((ydim, xdim), dtype=np.uint8)
 
-    nconc = np.zeros((ydim, xdim), dtype=np.uint8)
+    nconc = np.zeros_like(temp_comp_2d)
     ndist = np.zeros((ydim, xdim), dtype=np.uint8)
 
     need_values = initial_missing_locs.copy()
@@ -298,7 +298,7 @@ def temporally_composite_dataarray(
     linint_run = pdist + ndist
     linint_run[linint_run == 0] = 1  # avoid div by zero
     linint = pconc + pdist * linint_rise / linint_run
-    linint = np.round(linint).astype(np.uint8)
+    # linint = np.round(linint).astype(np.uint8)
     temp_comp_2d[have_both_prior_and_next] = linint[have_both_prior_and_next]
 
     # Update the temporal interp flag value
@@ -819,8 +819,16 @@ def write_tie_netcdf(
     *,
     tie_ds: xr.Dataset,
     output_filepath: Path,
-    uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
+    uncompressed_fields: Iterable[str] = ["crs", "time", "y", "x"],
     excluded_fields: Iterable[str] = [],
+    tb_fields: Iterable[str] = ("h18_day_si", "h36_day_si"),
+    conc_fields: Iterable[str] = (
+        "conc",
+        "cdr_conc_ti",
+        "cdr_conc",
+        "raw_bootstrap_seaice_conc",
+        "raw_nasateam_seaice_conc",
+    ),
 ) -> Path:
     """Write the temporally interpolated ECDR to a netCDF file."""
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
@@ -833,7 +841,21 @@ def write_tie_netcdf(
     nc_encoding = {}
     for varname in tie_ds.variables.keys():
         varname = cast(str, varname)
-        if varname not in uncompressed_fields:
+        if varname in tb_fields:
+            nc_encoding[varname] = {
+                "zlib": True,
+                "dtype": "int16",
+                "scale_factor": 0.1,
+                "_FillValue": 0,
+            }
+        elif varname in conc_fields:
+            nc_encoding[varname] = {
+                "zlib": True,
+                "dtype": "uint8",
+                "scale_factor": 0.01,
+                "_FillValue": 255,
+            }
+        elif varname not in uncompressed_fields:
             nc_encoding[varname] = {"zlib": True}
 
     tie_ds.to_netcdf(
