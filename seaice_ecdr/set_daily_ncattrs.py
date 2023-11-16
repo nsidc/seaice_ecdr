@@ -40,12 +40,10 @@ def finalize_cdecdr_ds(
 
     # Variables that need special handling...
 
-    # TODO: scale_factor and add_offset might get set during encoding
     ds["cdr_seaice_conc"] = (
         ("time", "y", "x"),
-        ds["cdr_seaice_conc"].data.astype(np.uint8),
+        ds["cdr_seaice_conc"].data,
         {
-            "_FillValue": 255,
             "standard_name": "sea_ice_area_fraction",
             "units": "1",
             "long_name": (
@@ -56,12 +54,8 @@ def finalize_cdecdr_ds(
             "reference": "https://nsidc.org/data/g02202/versions/5/",
             "ancillary_variables": "stdev_of_cdr_seaice_conc qa_of_cdr_seaice_conc",
             "valid_range": np.array((0, 100), dtype=np.uint8),
-            "scale_factor": np.float32(0.01),
-            "add_offset": np.float32(0.0),
         },
-        {
-            "zlib": True,
-        },
+        # Note: encoding is set when saved to netcdf file
     )
 
     # Standard deviation file is converted from 2d to [time, y x] coords
@@ -149,8 +143,6 @@ def finalize_cdecdr_ds(
         # We do not expect melt onset in Southern hemisphere
         pass
 
-    # TODO: Verify that spatial interpolation set properly for pole hole fill
-    # TODO: Verify flag mask values and meanings
     # TODO: Use common dict with key/vals for flag masks/meanings
     ds["spatial_interpolation_flag"] = (
         ("time", "y", "x"),
@@ -293,9 +285,8 @@ def finalize_cdecdr_ds(
     # TODO: scale_factor and add_offset might get set during encoding
     ds["raw_bootstrap_seaice_conc"] = (
         ("time", "y", "x"),
-        ds["raw_bootstrap_seaice_conc"].data.astype(np.uint8),
+        ds["raw_bootstrap_seaice_conc"].data,
         {
-            "_FillValue": 255,
             "standard_name": "sea_ice_area_fraction",
             "units": "1",
             "long_name": (
@@ -304,10 +295,7 @@ def finalize_cdecdr_ds(
             ),
             "grid_mapping": "crs",
             "valid_range": np.array((0, 100), dtype=np.uint8),
-            "scale_factor": np.float32(0.01),
-            "add_offset": np.float32(0.0),
         },
-        {"zlib": True},
     )
 
     # NOTE: We are overwriting the attrs of the original conc field
@@ -316,9 +304,8 @@ def finalize_cdecdr_ds(
     # TODO: scale_factor and add_offset might get set during encoding
     ds["raw_nasateam_seaice_conc"] = (
         ("time", "y", "x"),
-        ds["raw_nasateam_seaice_conc"].data.astype(np.uint8),
+        ds["raw_nasateam_seaice_conc"].data,
         {
-            "_FillValue": 255,
             "standard_name": "sea_ice_area_fraction",
             "units": "1",
             "long_name": (
@@ -327,10 +314,7 @@ def finalize_cdecdr_ds(
             ),
             "grid_mapping": "crs",
             "valid_range": np.array((0, 100), dtype=np.uint8),
-            "scale_factor": np.float32(0.01),
-            "add_offset": np.float32(0.0),
         },
-        {"zlib": True},
     )
 
     # Finally, address global attributes
