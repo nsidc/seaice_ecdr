@@ -207,6 +207,7 @@ def create_melt_onset_field(
         )
         logger.info(f"using read melt_onset_field for prior for {day_of_year}")
 
+    breakpoint()
     cdr_conc_ti, tb_h19, tb_h37 = read_melt_elements(
         date=date,
         hemisphere=hemisphere,
