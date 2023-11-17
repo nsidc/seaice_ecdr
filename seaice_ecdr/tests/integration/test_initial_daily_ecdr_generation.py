@@ -87,7 +87,7 @@ def test_seaice_idecdr_has_crs(
     sample_idecdr_dataset_nh,
     sample_idecdr_dataset_sh,
 ):
-    """Test that idecdr contains a 'conc' field."""
+    """Test that idecdr contains a 'crs' field."""
     assert "crs" in sample_idecdr_dataset_nh.variables
     assert "crs" in sample_idecdr_dataset_sh.variables
 
@@ -105,12 +105,12 @@ def test_seaice_idecdr_has_necessary_fields(
         "y",
         "conc",
         "qa_of_cdr_seaice_conc",
-        "bt_conc_raw",
-        "nt_conc_raw",
+        "raw_bt_seaice_conc",
+        "raw_nt_seaice_conc",
         "bt_weather_mask",
         "nt_weather_mask",
         "invalid_ice_mask",
-        "spatint_bitmask",
+        "spatial_interpolation_flag",
     )
     for field_name in expected_fields:
         assert field_name in sample_idecdr_dataset_nh.variables.keys()
@@ -169,3 +169,26 @@ def test_can_drop_fields_from_idecdr_netcdf(
 
     ds = xr.open_dataset(output_path)
     assert cdr_conc_fieldname not in ds.variables.keys()
+
+
+def test_seaice_idecdr_has_tyx_data_vars(
+    sample_idecdr_dataset_nh,
+    sample_idecdr_dataset_sh,
+):
+    """Test that idecdr netcdf has (time, y, x) dims for data fields."""
+    expected_tyx_fields = (
+        "conc",
+        "qa_of_cdr_seaice_conc",
+        "raw_bt_seaice_conc",
+        "raw_nt_seaice_conc",
+        "bt_weather_mask",
+        "nt_weather_mask",
+        "invalid_ice_mask",
+        "spatial_interpolation_flag",
+    )
+    for field_name in expected_tyx_fields:
+        nh_data_shape = sample_idecdr_dataset_nh[field_name].shape
+        assert len(nh_data_shape) == 3
+
+        sh_data_shape = sample_idecdr_dataset_sh[field_name].shape
+        assert len(sh_data_shape) == 3
