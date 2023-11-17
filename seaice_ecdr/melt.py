@@ -46,6 +46,9 @@ CONCENTRATION_THRESHOLD_FRACTION = 0.5
 # (19H-37H) is less than this value.
 TB_DELTA_THRESHOLD_K = 2
 
+# Concentrations are provided as sea_ice_area_fraction, a number between 0 and 1
+MAX_VALID_CONCENTRATION = 1.0
+
 
 def melting(
     concentrations: npt.NDArray,
@@ -57,7 +60,8 @@ def melting(
     Expects brightness temperatures in degrees Kelvin.
     """
     is_valid_concentration = np.logical_and(
-        concentrations >= CONCENTRATION_THRESHOLD_FRACTION, concentrations <= 100
+        concentrations >= CONCENTRATION_THRESHOLD_FRACTION,
+        concentrations <= MAX_VALID_CONCENTRATION,
     )
     melting = np.logical_and(
         is_valid_concentration,

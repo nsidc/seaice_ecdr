@@ -188,15 +188,7 @@ def test_seaice_idecdr_has_tyx_data_vars(
     )
     for field_name in expected_tyx_fields:
         nh_data_shape = sample_idecdr_dataset_nh[field_name].shape
-        try:
-            assert len(nh_data_shape) == 3
-        except AssertionError:
-            print(f"NH data var shape error for {field_name}: {nh_data_shape}")
-            raise SystemExit(f"tyx error for {field_name}")
+        assert len(nh_data_shape) == 3
 
         sh_data_shape = sample_idecdr_dataset_sh[field_name].shape
-        try:
-            assert len(sh_data_shape) == 3
-        except AssertionError:
-            print(f"SH data var shape error for {field_name}: {sh_data_shape}")
-            raise SystemExit(f"tyx error for {field_name}")
+        assert len(sh_data_shape) == 3

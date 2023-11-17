@@ -298,7 +298,6 @@ def temporally_composite_dataarray(
     linint_run = pdist + ndist
     linint_run[linint_run == 0] = 1  # avoid div by zero
     linint = pconc + pdist * linint_rise / linint_run
-    # linint = np.round(linint).astype(np.uint8)
     temp_comp_2d[have_both_prior_and_next] = linint[have_both_prior_and_next]
 
     # Update the temporal interp flag value
@@ -783,8 +782,8 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     )
 
     # set non-conc values to -1
-    # is_non_siconc = np.squeeze(tie_ds["cdr_conc"].data > 100)
-    is_non_siconc = tie_ds["cdr_conc"].data > 100
+    # is_non_siconc = tie_ds["cdr_conc"].data > 100
+    is_non_siconc = tie_ds["cdr_conc"].data > 1
     stdev_field_filtered = stdev_field_filtered.where(
         ~is_non_siconc,
         other=-1,
