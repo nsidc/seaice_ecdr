@@ -782,7 +782,6 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     )
 
     # set non-conc values to -1
-    # is_non_siconc = tie_ds["cdr_conc"].data > 100
     is_non_siconc = tie_ds["cdr_conc"].data > 1
     stdev_field_filtered = stdev_field_filtered.where(
         ~is_non_siconc,

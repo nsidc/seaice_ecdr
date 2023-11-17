@@ -198,12 +198,10 @@ def _setup_ecdr_ds(
     ecdr_ide_ds = get_dataset_for_gridid(grid_id, date)
 
     # Set initial global attributes
-    # ecdr_ide_ds.attrs["description"] = "Initial daily cdr conc file"
 
     # Note: these attributes should probably go with
     #       a variable named "CDR_parameters" or similar
     ecdr_ide_ds.attrs["grid_id"] = grid_id
-    # ecdr_ide_ds.attrs["date"] = date.strftime("%Y-%m-%d")
     ecdr_ide_ds.attrs["missing_value"] = DEFAULT_FLAG_VALUES.missing
 
     file_date = dt.date(1970, 1, 1) + dt.timedelta(
@@ -228,7 +226,6 @@ def _setup_ecdr_ds(
             ("time", "y", "x"),
             np.expand_dims(tbdata, axis=0),
             {
-                # "_FillValue": 0,
                 "grid_mapping": "crs",
                 "standard_name": "brightness_temperature",
                 "long_name": tb_longname,
@@ -237,9 +234,6 @@ def _setup_ecdr_ds(
             },
             {
                 "zlib": True,
-                # "dtype": 'int16',
-                # "scale_factor": 0.1,
-                # "_FillValue": 0,
             },
         )
 
@@ -307,7 +301,6 @@ def compute_initial_daily_ecdr_dataset(
             ("time", "y", "x"),
             np.expand_dims(tb_si_data, axis=0),
             {
-                # "_FillValue": 0,
                 "grid_mapping": "crs",
                 "standard_name": "brightness_temperature",
                 "long_name": tb_si_longname,
@@ -316,9 +309,6 @@ def compute_initial_daily_ecdr_dataset(
             },
             {
                 "zlib": True,
-                # "dtype": 'int16',
-                # "scale_factor": 0.1,
-                # "_FillValue": 0,
             },
         )
 
