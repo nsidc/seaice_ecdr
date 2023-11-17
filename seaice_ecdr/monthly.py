@@ -330,8 +330,8 @@ def _calc_conc_monthly(
     )
 
     conc_monthly.encoding.update(
-        scale_factor=0.01,
-        add_offset=0.0,
+        scale_factor=np.float32(0.01),
+        add_offset=np.float32(0.0),
         dtype=np.uint8,
         _FillValue=255,
     )
