@@ -326,7 +326,7 @@ def _calc_conc_monthly(
         long_name=long_name,
         standard_name="sea_ice_area_fraction",
         units="1",
-        valid_range=(1, 100),
+        valid_range=(np.uint8(0), np.uint8(100)),
         grid_mapping="crs",
     )
 
