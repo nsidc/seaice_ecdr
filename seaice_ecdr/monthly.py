@@ -297,15 +297,17 @@ def calc_qa_of_cdr_seaice_conc_monthly(
         flag_meanings=" ".join(
             k for k in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.keys()
         ),
-        flag_masks=" ".join(
-            str(int(v)) for v in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.values()
-        ),
+        flag_masks=[
+            np.uint8(v) for v in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.values()
+        ],
         grid_mapping="crs",
-        valid_range=(1, 255),
+        valid_range=(np.uint8(1), np.uint8(255)),
     )
 
     qa_of_cdr_seaice_conc_monthly.encoding = dict(
         _FillValue=0,
+        dtype=np.uint8,
+        zlib=True,
     )
 
     return qa_of_cdr_seaice_conc_monthly
@@ -329,10 +331,11 @@ def _calc_conc_monthly(
     )
 
     conc_monthly.encoding.update(
-        scale_factor=0.01,
-        add_offset=0.0,
+        scale_factor=np.float32(0.01),
+        add_offset=np.float32(0.0),
         dtype=np.uint8,
         _FillValue=255,
+        zlib=True,
     )
 
     return conc_monthly
@@ -365,12 +368,13 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
 
     stdv_of_cdr_seaice_conc_monthly = stdv_of_cdr_seaice_conc_monthly.assign_attrs(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
-        valid_range=(0.0, 1.0),
+        valid_range=(np.float32(0.0), np.float32(1.0)),
         grid_mapping="crs",
     )
 
     stdv_of_cdr_seaice_conc_monthly.encoding = dict(
         _FillValue=-1,
+        zlib=True,
     )
 
     return stdv_of_cdr_seaice_conc_monthly
@@ -403,6 +407,8 @@ def calc_melt_onset_day_cdr_seaice_conc_monthly(
     )
     melt_onset_day_cdr_seaice_conc_monthly.encoding = dict(
         _FillValue=255,
+        dtype=np.uint8,
+        zlib=True,
     )
 
     return melt_onset_day_cdr_seaice_conc_monthly
