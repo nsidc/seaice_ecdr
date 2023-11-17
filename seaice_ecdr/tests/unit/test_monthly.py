@@ -454,8 +454,6 @@ def test_monthly_ds(monkeypatch, tmpdir):
     expected_vars = sorted(
         [
             "cdr_seaice_conc_monthly",
-            "nsidc_nt_seaice_conc_monthly",
-            "nsidc_bt_seaice_conc_monthly",
             "stdv_of_cdr_seaice_conc_monthly",
             "melt_onset_day_cdr_seaice_conc_monthly",
             "qa_of_cdr_seaice_conc_monthly",
