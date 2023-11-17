@@ -4,10 +4,6 @@ Follows the same procedure as CDR v4.
 
 Variables:
 
-* `nsidc_nt_seaice_conc_monthly`: Average the daily NASA Team sea ice concentration
-  values over each month of data
-* `nsidc_bt_seaice_conc_monthly: Average the daily Bootstrap sea ice concentration
-  values over each month of data
 * `cdr_seaice_conc_monthly`: Create combined monthly sea ice concentration
 * `stdev_of_cdr_seaice_conc_monthly`: Calculate standard deviation of sea ice
   concentration
@@ -342,34 +338,6 @@ def _calc_conc_monthly(
     return conc_monthly
 
 
-def calc_nsidc_nt_seaice_conc_monthly(
-    *,
-    daily_ds_for_month: xr.Dataset,
-) -> xr.DataArray:
-    """Create the `nsidc_nt_seaice_conc_monthly` variable."""
-    nsidc_nt_seaice_conc_monthly = _calc_conc_monthly(
-        daily_conc_for_month=daily_ds_for_month.raw_nt_seaice_conc,
-        long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration by NASA Team algorithm processed by NSIDC",
-        name="nsidc_nt_seaice_conc_monthly",
-    )
-
-    return nsidc_nt_seaice_conc_monthly
-
-
-def calc_nsidc_bt_seaice_conc_monthly(
-    *,
-    daily_ds_for_month: xr.Dataset,
-) -> xr.DataArray:
-    """Create the `nsidc_bt_seaice_conc_monthly` variable."""
-    nsidc_bt_seaice_conc_monthly = _calc_conc_monthly(
-        daily_conc_for_month=daily_ds_for_month.raw_bt_seaice_conc,
-        long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration by Bootstrap algorithm processed by NSIDC",
-        name="nsidc_bt_seaice_conc_monthly",
-    )
-
-    return nsidc_bt_seaice_conc_monthly
-
-
 def calc_cdr_seaice_conc_monthly(
     *,
     daily_ds_for_month: xr.Dataset,
@@ -494,15 +462,6 @@ def make_monthly_ds(
         sat=sat,
     )
 
-    # create `nsidc_{nt|bt}_seaice_conc_monthly`. These are averages of the
-    # daily NT and BT values. These 'raw' fields do not have any flags.
-    nsidc_nt_seaice_conc_monthly = calc_nsidc_nt_seaice_conc_monthly(
-        daily_ds_for_month=daily_ds_for_month,
-    )
-    nsidc_bt_seaice_conc_monthly = calc_nsidc_bt_seaice_conc_monthly(
-        daily_ds_for_month=daily_ds_for_month,
-    )
-
     # create `cdr_seaice_conc_monthly`. This is the combined monthly SIC.
     # The `cdr_seaice_conc` variable has temporally filled data and flags.
     cdr_seaice_conc_monthly = calc_cdr_seaice_conc_monthly(
@@ -522,8 +481,6 @@ def make_monthly_ds(
 
     monthly_ds_data_vars = dict(
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
-        nsidc_nt_seaice_conc_monthly=nsidc_nt_seaice_conc_monthly,
-        nsidc_bt_seaice_conc_monthly=nsidc_bt_seaice_conc_monthly,
         stdv_of_cdr_seaice_conc_monthly=stdv_of_cdr_seaice_conc_monthly,
         qa_of_cdr_seaice_conc_monthly=qa_of_cdr_seaice_conc_monthly,
     )
