@@ -122,7 +122,6 @@ def read_melt_onset_field(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
-        mask_and_scale=False,
     )
 
     # TODO: Perhaps these field names should be in a dictionary somewhere?
@@ -232,7 +231,6 @@ def create_melt_onset_field(
 
     melt_onset_field[has_new_melt] = day_of_year
 
-    # TODO: Do we want to modify QA flag here too?
     return melt_onset_field
 
 
@@ -274,14 +272,8 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         ("time", "y", "x"),
         melt_onset_field,
         {
-            "_FillValue": 255,
             "grid_mapping": "crs",
             "standard_name": "status_flag",
-            # Am removing valid range because it causes 255 to plot as NaN
-            # "valid_range": [
-            #   np.uint8(MELT_SEASON_FIRST_DOY),
-            #   np.uint8(MELT_SEASON_LAST_DOY)
-            # ],
             "comment": (
                 "Value of 255 means no melt detected yet or the date is"
                 " outside the melt season.  Other values indicate the day"
@@ -316,6 +308,11 @@ def write_cde_netcdf(
     output_filepath: Path,
     uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
     excluded_fields: Iterable[str] = [],
+    conc_fields: Iterable[str] = [
+        "raw_bt_seaice_conc",
+        "raw_nt_seaice_conc",
+        "cdr_seaice_conc",
+    ],
 ) -> Path:
     """Write the temporally interpolated ECDR to a netCDF file."""
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
@@ -326,7 +323,15 @@ def write_cde_netcdf(
     nc_encoding = {}
     for varname in cde_ds.variables.keys():
         varname = cast(str, varname)
-        if varname not in uncompressed_fields:
+        if varname in conc_fields:
+            nc_encoding[varname] = {
+                "zlib": True,
+                "dtype": "uint8",
+                "scale_factor": 0.01,
+                "add_offset": 0.0,
+                "_FillValue": 255,
+            }
+        elif varname not in uncompressed_fields:
             nc_encoding[varname] = {"zlib": True}
 
     cde_ds.to_netcdf(
@@ -377,7 +382,6 @@ def read_or_create_and_read_cdecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
-    mask_and_scale: bool = True,
     overwrite_cde: bool = False,
 ) -> xr.Dataset:
     """Read an cdecdr netCDF file, creating it if it doesn't exist.
@@ -400,7 +404,7 @@ def read_or_create_and_read_cdecdr_ds(
             ecdr_data_dir=ecdr_data_dir,
         )
     logger.info(f"Reading cdeCDR file from: {cde_filepath}")
-    cde_ds = xr.load_dataset(cde_filepath, mask_and_scale=mask_and_scale)
+    cde_ds = xr.load_dataset(cde_filepath)
 
     return cde_ds
 

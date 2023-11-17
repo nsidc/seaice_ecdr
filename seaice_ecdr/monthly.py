@@ -348,7 +348,7 @@ def calc_nsidc_nt_seaice_conc_monthly(
 ) -> xr.DataArray:
     """Create the `nsidc_nt_seaice_conc_monthly` variable."""
     nsidc_nt_seaice_conc_monthly = _calc_conc_monthly(
-        daily_conc_for_month=daily_ds_for_month.raw_nasateam_seaice_conc,
+        daily_conc_for_month=daily_ds_for_month.raw_nt_seaice_conc,
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration by NASA Team algorithm processed by NSIDC",
         name="nsidc_nt_seaice_conc_monthly",
     )
@@ -362,7 +362,7 @@ def calc_nsidc_bt_seaice_conc_monthly(
 ) -> xr.DataArray:
     """Create the `nsidc_bt_seaice_conc_monthly` variable."""
     nsidc_bt_seaice_conc_monthly = _calc_conc_monthly(
-        daily_conc_for_month=daily_ds_for_month.raw_bootstrap_seaice_conc,
+        daily_conc_for_month=daily_ds_for_month.raw_bt_seaice_conc,
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration by Bootstrap algorithm processed by NSIDC",
         name="nsidc_bt_seaice_conc_monthly",
     )
