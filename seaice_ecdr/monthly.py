@@ -282,15 +282,6 @@ def calc_qa_of_cdr_seaice_conc_monthly(
         ],
     )
 
-    # TODO: is this right? Any cells that don't get flagged end up filled with
-    # 255. This doesn' get encoded in the flag_meanings/masks because it's not a
-    # bitmask. Should this just take the specified fill_value of 0 (and be
-    # treated as nan)?
-    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
-        qa_of_cdr_seaice_conc_monthly != 0,
-        255,
-    )
-
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.assign_attrs(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QC flags",
         standard_name="sea_ice_area_fraction status_flag",
