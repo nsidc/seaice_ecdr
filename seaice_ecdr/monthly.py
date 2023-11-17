@@ -297,15 +297,16 @@ def calc_qa_of_cdr_seaice_conc_monthly(
         flag_meanings=" ".join(
             k for k in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.keys()
         ),
-        flag_masks=" ".join(
-            str(int(v)) for v in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.values()
-        ),
+        flag_masks=[
+            np.uint8(v) for v in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.values()
+        ],
         grid_mapping="crs",
-        valid_range=(1, 255),
+        valid_range=(np.uint8(1), np.uint8(255)),
     )
 
     qa_of_cdr_seaice_conc_monthly.encoding = dict(
         _FillValue=0,
+        dtype=np.uint8,
     )
 
     return qa_of_cdr_seaice_conc_monthly
