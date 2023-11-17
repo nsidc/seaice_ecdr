@@ -68,7 +68,7 @@ def finalize_cdecdr_ds(
                 "Passive Microwave Sea Ice"
                 "Concentration Source Estimated Standard Deviation"
             ),
-            "units": "K",
+            "units": 1,
             "grid_mapping": "crs",
             "valid_range": np.array((0.0, 300.0), dtype=np.float32),
         },
@@ -283,9 +283,9 @@ def finalize_cdecdr_ds(
     # TODO: conversion to ubyte should be done with DataArray encoding dict
     # NOTE: We are overwriting the attrs of the original conc field
     # TODO: scale_factor and add_offset might get set during encoding
-    ds["raw_bootstrap_seaice_conc"] = (
+    ds["raw_bt_seaice_conc"] = (
         ("time", "y", "x"),
-        ds["raw_bootstrap_seaice_conc"].data,
+        ds["raw_bt_seaice_conc"].data,
         {
             "standard_name": "sea_ice_area_fraction",
             "units": "1",
@@ -302,9 +302,9 @@ def finalize_cdecdr_ds(
     # TODO: adding time dimension should probably happen earlier
     # TODO: conversion to ubyte should be done with DataArray encoding dict
     # TODO: scale_factor and add_offset might get set during encoding
-    ds["raw_nasateam_seaice_conc"] = (
+    ds["raw_nt_seaice_conc"] = (
         ("time", "y", "x"),
-        ds["raw_nasateam_seaice_conc"].data,
+        ds["raw_nt_seaice_conc"].data,
         {
             "standard_name": "sea_ice_area_fraction",
             "units": "1",

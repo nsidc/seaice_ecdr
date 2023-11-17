@@ -207,7 +207,6 @@ def create_melt_onset_field(
         )
         logger.info(f"using read melt_onset_field for prior for {day_of_year}")
 
-    breakpoint()
     cdr_conc_ti, tb_h19, tb_h37 = read_melt_elements(
         date=date,
         hemisphere=hemisphere,
@@ -310,8 +309,8 @@ def write_cde_netcdf(
     uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
     excluded_fields: Iterable[str] = [],
     conc_fields: Iterable[str] = [
-        "raw_bootstrap_seaice_conc",
-        "raw_nasateam_seaice_conc",
+        "raw_bt_seaice_conc",
+        "raw_nt_seaice_conc",
         "cdr_seaice_conc",
     ],
 ) -> Path:

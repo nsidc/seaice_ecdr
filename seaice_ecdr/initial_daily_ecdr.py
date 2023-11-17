@@ -353,7 +353,7 @@ def compute_initial_daily_ecdr_dataset(
             "standard_name": "status_flag",
             "long_name": "spatial_interpolation_flag",
             "units": 1,
-            # "valid_range": [np.uint8(0), np.uint8(63)],
+            "valid_range": [np.uint8(0), np.uint8(63)],
             "flag_masks": np.array([1, 2, 4, 8, 16, 32], dtype=np.uint8),
             "flag_meanings": (
                 "19v_tb_value_interpolated"
@@ -399,7 +399,7 @@ def compute_initial_daily_ecdr_dataset(
                 " based on climatology"
             ),
             "units": 1,
-            # "valid_range": [0, 1],
+            "valid_range": [0, 1],
         },
         {
             "zlib": True,
@@ -774,7 +774,7 @@ def compute_initial_daily_ecdr_dataset(
         # Remove bt_conc flags and
         bt_conc[bt_conc > 200] = np.nan
         bt_conc = bt_conc / 100.0  # re-set range from 0 to 1
-        ecdr_ide_ds["raw_bootstrap_seaice_conc"] = (
+        ecdr_ide_ds["raw_bt_seaice_conc"] = (
             ("time", "y", "x"),
             np.expand_dims(bt_conc, axis=0),
             {
@@ -792,14 +792,12 @@ def compute_initial_daily_ecdr_dataset(
             },
         )
 
-    # Add the BT coefficients to the raw_bootstrap_seaice_conc DataArray
+    # Add the BT coefficients to the raw_bt_seaice_conc DataArray
     for attr in sorted(bt_coefs.keys()):
         if type(bt_coefs[attr]) in (float, int):
-            ecdr_ide_ds.variables["raw_bootstrap_seaice_conc"].attrs[attr] = bt_coefs[
-                attr
-            ]
+            ecdr_ide_ds.variables["raw_bt_seaice_conc"].attrs[attr] = bt_coefs[attr]
         else:
-            ecdr_ide_ds.variables["raw_bootstrap_seaice_conc"].attrs[attr] = str(
+            ecdr_ide_ds.variables["raw_bt_seaice_conc"].attrs[attr] = str(
                 bt_coefs[attr]
             )
 
@@ -808,7 +806,7 @@ def compute_initial_daily_ecdr_dataset(
         # Remove nt_conc flags
         nt_conc[nt_conc > 200] = np.nan
         nt_conc = nt_conc / 100.0
-        ecdr_ide_ds["raw_nasateam_seaice_conc"] = (
+        ecdr_ide_ds["raw_nt_seaice_conc"] = (
             ("time", "y", "x"),
             np.expand_dims(nt_conc, axis=0),
             {
@@ -826,12 +824,12 @@ def compute_initial_daily_ecdr_dataset(
             },
         )
 
-    # Add the NT coefficients to the raw_nasateam_seaice_conc DataArray
+    # Add the NT coefficients to the raw_nt_seaice_conc DataArray
     for attr in sorted(nt_coefs.keys()):
         if type(nt_coefs[attr]) in (float, int):  # type: ignore[literal-required]
-            ecdr_ide_ds.variables["raw_nasateam_seaice_conc"].attrs[attr] = nt_coefs[attr]  # type: ignore[literal-required]  # noqa
+            ecdr_ide_ds.variables["raw_nt_seaice_conc"].attrs[attr] = nt_coefs[attr]  # type: ignore[literal-required]  # noqa
         else:
-            ecdr_ide_ds.variables["raw_nasateam_seaice_conc"].attrs[attr] = str(nt_coefs[attr])  # type: ignore[literal-required]  # noqa
+            ecdr_ide_ds.variables["raw_nt_seaice_conc"].attrs[attr] = str(nt_coefs[attr])  # type: ignore[literal-required]  # noqa
 
     # Add the final cdr_conc value to the xarray dataset
     # Remove cdr_conc flags
@@ -923,8 +921,8 @@ def write_ide_netcdf(
     excluded_fields: Iterable[str] = [],
     conc_fields: Iterable[str] = (
         "conc",
-        "raw_nasateam_seaice_conc",
-        "raw_bootstrap_seaice_conc",
+        "raw_nt_seaice_conc",
+        "raw_bt_seaice_conc",
     ),
     tb_fields: Iterable[str] = ("h18_day_si", "h36_day_si"),
 ) -> Path:
@@ -939,18 +937,9 @@ def write_ide_netcdf(
     for varname in ide_ds.variables.keys():
         varname = cast(str, varname)
         if varname not in uncompressed_fields and varname in conc_fields:
+            # Skip conc_fields here because the encoding is set
+            #   during DataArray assignment
             pass
-            """
-            # Encode conc vars with uint8
-            field = ide_ds[varname]
-            breakpoint()
-            nc_encoding[varname] = {
-                "zlib": True,
-                "dtype": "uint8",
-                "scale_factor": 0.01,
-                "_FillValue": 255,
-            }
-            """
         elif varname not in uncompressed_fields and varname in tb_fields:
             # Encode tb vals with int16
             nc_encoding[varname] = {
@@ -1061,6 +1050,9 @@ def create_idecdr_for_date_range(
                     "v36_day_si",
                     "shoremap",
                     "NT_icecon_min",
+                    "land_mask",
+                    "pole_mask",
+                    "invalid_tb_mask",
                 ]
             make_idecdr_netcdf(
                 date=date,

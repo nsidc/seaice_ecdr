@@ -574,7 +574,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         {
             "grid_mapping": "crs",
             "standard_name": "status_flag",
-            # "valid_range": [np.uint8(0), np.uint8(254)],
+            "valid_range": [np.uint8(0), np.uint8(255)],
             "comment": (
                 "Value of 0 indicates no temporal interpolation occurred."
                 "  Values greater than 0 and less than 100 are of the form"
@@ -656,7 +656,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     # Create the cdr_conc standard deviation field
     # Create filled bootstrap field
     bt_var_stack = create_sorted_var_timestack(
-        varname="raw_bootstrap_seaice_conc",
+        varname="raw_bt_seaice_conc",
         date_list=[
             iter_date
             for iter_date in iter_dates_near_date(
@@ -679,7 +679,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
 
     # Create filled bootstrap field
     nt_var_stack = create_sorted_var_timestack(
-        varname="raw_nasateam_seaice_conc",
+        varname="raw_nt_seaice_conc",
         date_list=[
             iter_date
             for iter_date in iter_dates_near_date(
@@ -762,7 +762,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
             ),
             "grid_mapping": "crs",
             "valid_range": np.array((0, 300), dtype=np.float32),
-            "units": "K",
+            "units": 1,
         },
         {
             "zlib": True,
@@ -803,7 +803,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
             ),
             "grid_mapping": "crs",
             "valid_range": np.array((0, 300), dtype=np.float32),
-            "units": "K",
+            "units": 1,
         },
         {
             "zlib": True,
@@ -826,8 +826,8 @@ def write_tie_netcdf(
         "conc",
         "cdr_conc_ti",
         "cdr_conc",
-        "raw_bootstrap_seaice_conc",
-        "raw_nasateam_seaice_conc",
+        "raw_bt_seaice_conc",
+        "raw_nt_seaice_conc",
     ),
 ) -> Path:
     """Write the temporally interpolated ECDR to a netCDF file."""
