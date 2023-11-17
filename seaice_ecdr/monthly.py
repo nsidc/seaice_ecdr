@@ -307,6 +307,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     qa_of_cdr_seaice_conc_monthly.encoding = dict(
         _FillValue=0,
         dtype=np.uint8,
+        zlib=True,
     )
 
     return qa_of_cdr_seaice_conc_monthly
@@ -334,6 +335,7 @@ def _calc_conc_monthly(
         add_offset=np.float32(0.0),
         dtype=np.uint8,
         _FillValue=255,
+        zlib=True,
     )
 
     return conc_monthly
@@ -372,6 +374,7 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
 
     stdv_of_cdr_seaice_conc_monthly.encoding = dict(
         _FillValue=-1,
+        zlib=True,
     )
 
     return stdv_of_cdr_seaice_conc_monthly
@@ -405,6 +408,7 @@ def calc_melt_onset_day_cdr_seaice_conc_monthly(
     melt_onset_day_cdr_seaice_conc_monthly.encoding = dict(
         _FillValue=255,
         dtype=np.uint8,
+        zlib=True,
     )
 
     return melt_onset_day_cdr_seaice_conc_monthly
