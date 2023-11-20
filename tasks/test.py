@@ -16,6 +16,15 @@ def typecheck(ctx):
 
 
 @task()
+def unit(ctx):
+    """Run unit tests."""
+    print_and_run(
+        f"pytest -s {PROJECT_DIR}/seaice_ecdr/tests/unit",
+        pty=True,
+    )
+
+
+@task()
 def integration(ctx):
     """Run integration tests."""
     print_and_run(
@@ -48,6 +57,7 @@ def pytest(ctx):
 @task(
     pre=[
         typecheck,
+        unit,
     ],
 )
 def ci(ctx):
