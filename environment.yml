@@ -25,7 +25,7 @@ dependencies:
   - pre-commit
   - pytest ~=7.1
   - pytest-cov ~=4.1.0
-  - mypy ==1.5.1
+  - mypy ==1.7.0
   - pyfakefs ~=5.2.4
 
   # other utilities
