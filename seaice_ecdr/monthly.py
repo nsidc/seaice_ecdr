@@ -67,7 +67,6 @@ def _get_daily_complete_filepaths_for_month(
     year: int,
     month: int,
     ecdr_data_dir: Path,
-    sat: SUPPORTED_SAT,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
@@ -100,7 +99,6 @@ def get_daily_ds_for_month(
     *,
     year: int,
     month: int,
-    sat: SUPPORTED_SAT,
     ecdr_data_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
@@ -114,7 +112,6 @@ def get_daily_ds_for_month(
     data_list = _get_daily_complete_filepaths_for_month(
         year=year,
         month=month,
-        sat=sat,
         ecdr_data_dir=ecdr_data_dir,
         hemisphere=hemisphere,
         resolution=resolution,
@@ -631,7 +628,6 @@ def cli(
             year=period.year,
             month=period.month,
             ecdr_data_dir=ecdr_data_dir,
-            sat=sat,
             hemisphere=hemisphere,
             resolution=resolution,
         )
