@@ -296,7 +296,6 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     )
 
     qa_of_cdr_seaice_conc_monthly.encoding = dict(
-        _FillValue=0,
         dtype=np.uint8,
         zlib=True,
     )
