@@ -292,7 +292,7 @@ def test_calc_qa_of_cdr_seaice_conc_monthly():
             + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
                 "average_concentration_exceeds_0.30"
             ],
-            255,
+            0,
         ]
     )
 

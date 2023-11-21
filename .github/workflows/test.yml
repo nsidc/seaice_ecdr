@@ -50,4 +50,4 @@ jobs:
 
       # Unit tests
       - name: "Run typecheck and tests"
-        run: "PYTHONPATH=/home/runner/work/seaice_ecdr/seaice_ecdr/pm_icecon/:/home/runner/work/seaice_ecdr/seaice_ecdr/pm_tb_data/ invoke test.ci"
+        run: "PYTHONPATH=/home/runner/work/seaice_ecdr/seaice_ecdr/:/home/runner/work/seaice_ecdr/seaice_ecdr/pm_icecon/:/home/runner/work/seaice_ecdr/seaice_ecdr/pm_tb_data/ invoke test.ci"
