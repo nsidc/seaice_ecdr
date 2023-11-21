@@ -292,7 +292,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
             np.uint8(v) for v in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.values()
         ],
         grid_mapping="crs",
-        valid_range=(np.uint8(1), np.uint8(255)),
+        valid_range=(np.uint8(0), np.uint8(255)),
     )
 
     qa_of_cdr_seaice_conc_monthly.encoding = dict(
