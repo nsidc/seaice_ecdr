@@ -128,6 +128,8 @@ def make_daily_aggregate_netcdf_for_year(
         resolution=resolution,
     )
 
+    # TODO: add lat/lon fields
+
     output_path = get_daily_aggregate_filepath(
         hemisphere=hemisphere,
         resolution=resolution,
