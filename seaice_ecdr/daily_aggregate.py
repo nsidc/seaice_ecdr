@@ -2,7 +2,9 @@
 """
 import datetime as dt
 from pathlib import Path
+from typing import Final, get_args
 
+import click
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -139,11 +141,58 @@ def make_daily_aggregate_netcdf_for_year(
     logger.info(f"Wrote daily aggregate file for year={year} to {output_path}")
 
 
-if __name__ == "__main__":
+@click.command(name="daily-aggregate")
+@click.option(
+    "--year",
+    required=True,
+    type=int,
+    help="Year for which to create the monthly file.",
+)
+@click.option(
+    "-h",
+    "--hemisphere",
+    required=True,
+    type=click.Choice(get_args(Hemisphere)),
+)
+@click.option(
+    "--ecdr-data-dir",
+    required=True,
+    type=click.Path(
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        writable=True,
+        resolve_path=True,
+        path_type=Path,
+    ),
+    default=STANDARD_BASE_OUTPUT_DIR,
+    help=(
+        "Base output directory for standard ECDR outputs."
+        " Subdirectories are created for outputs of"
+        " different stages of processing."
+    ),
+    show_default=True,
+)
+@click.option(
+    "-r",
+    "--resolution",
+    required=True,
+    type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
+)
+def cli(
+    *,
+    year: int,
+    hemisphere: Hemisphere,
+    ecdr_data_dir: Path,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> None:
+    # TODO: support different sat/platforms.
+    sat: Final = "am2"
+
     make_daily_aggregate_netcdf_for_year(
-        year=2022,
-        hemisphere="north",
-        resolution="12.5",
-        ecdr_data_dir=STANDARD_BASE_OUTPUT_DIR,
-        sat="am2",
+        year=year,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+        sat=sat,
     )
