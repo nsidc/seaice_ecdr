@@ -59,7 +59,6 @@ def test__get_daily_complete_filepaths_for_month(fs):
         year=year,
         month=month,
         ecdr_data_dir=ecdr_data_dir,
-        sat="am2",
         resolution="12.5",
         hemisphere=NORTH,
     )
