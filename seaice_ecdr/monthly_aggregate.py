@@ -75,6 +75,8 @@ def get_monthly_aggregate_ds(
         f" from {len(agg_ds.time)} complete monthly files."
     )
 
+    # TODO: add lat/lon fields
+
     return agg_ds
 
 
@@ -168,3 +170,6 @@ def cli(
     ds.to_netcdf(output_filepath)
 
     logger.info(f"Wrote monthly aggregate file to {output_filepath}")
+
+    # TODO: cleanup old version(s) of this file? We only publish the latest
+    # available aggregate data file.
