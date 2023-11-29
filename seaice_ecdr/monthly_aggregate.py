@@ -171,5 +171,10 @@ def cli(
 
     logger.info(f"Wrote monthly aggregate file to {output_filepath}")
 
-    # TODO: cleanup old version(s) of this file? We only publish the latest
-    # available aggregate data file.
+    # Cleanup previously existing monthly aggregates.
+    existing_fn_pattern = f"sic_ps{hemisphere[0]}{resolution}_??????-??????_*.nc"
+    existing_filepaths = list((ecdr_data_dir / "aggregate").glob(existing_fn_pattern))
+    for existing_filepath in existing_filepaths:
+        if existing_filepath != output_filepath:
+            existing_filepath.unlink()
+            logger.info(f"Removed old monthly aggregate file {existing_filepath}")
