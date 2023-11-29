@@ -69,6 +69,11 @@ def get_daily_ds_for_year(
     )
     ds = xr.open_mfdataset(daily_filepaths)
 
+    # Copy only the first CRS var from the aggregate
+    # TODO: is there a better way to tell xarray that we only want the `time`
+    # dimension on variables that already have it in the individual daily files?
+    ds["crs"] = ds.crs.isel(time=0, drop=True)
+
     assert np.all([pd.Timestamp(t.values).year == year for t in ds.time])
 
     # setup global attrs
