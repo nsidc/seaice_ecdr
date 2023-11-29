@@ -57,7 +57,7 @@ def get_daily_ds_for_year(
     """Create an xr.Dataset wtih ECDR complete daily data for a given year.
 
     The resulting xr.Dataset includes:
-        * `year` attribtue.
+        * `year` attribute.
         * The filepaths of the source data are included in a `filepaths` variable.
     """
     # Read all of the complete daily data for the given year and month.
