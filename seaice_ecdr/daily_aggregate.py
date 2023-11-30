@@ -2,7 +2,7 @@
 """
 import datetime as dt
 from pathlib import Path
-from typing import Final, get_args
+from typing import get_args
 
 import click
 import numpy as np
@@ -11,11 +11,11 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
-from seaice_ecdr.util import standard_daily_filename
+from seaice_ecdr.util import standard_daily_aggregate_filename
 
 
 # TODO: very similar to `monthly._get_daily_complete_filepaths_for_month`. DRY
@@ -97,7 +97,6 @@ def get_daily_aggregate_filepath(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    sat: SUPPORTED_SAT,
     ecdr_data_dir: Path,
     start_date: dt.date,
     end_date: dt.date,
@@ -105,11 +104,10 @@ def get_daily_aggregate_filepath(
     output_dir = ecdr_data_dir / "aggregate"
     output_dir.mkdir(exist_ok=True)
 
-    output_fn = standard_daily_filename(
+    output_fn = standard_daily_aggregate_filename(
         hemisphere=hemisphere,
         resolution=resolution,
-        sat=sat,
-        date=start_date,
+        start_date=start_date,
         end_date=end_date,
     )
 
@@ -124,7 +122,6 @@ def make_daily_aggregate_netcdf_for_year(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
-    sat: SUPPORTED_SAT,
 ) -> None:
     daily_ds = get_daily_ds_for_year(
         year=year,
@@ -138,7 +135,6 @@ def make_daily_aggregate_netcdf_for_year(
     output_path = get_daily_aggregate_filepath(
         hemisphere=hemisphere,
         resolution=resolution,
-        sat=sat,
         start_date=pd.Timestamp(daily_ds.time.min().item()).date(),
         end_date=pd.Timestamp(daily_ds.time.max().item()).date(),
         ecdr_data_dir=ecdr_data_dir,
@@ -193,13 +189,9 @@ def cli(
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> None:
-    # TODO: support different sat/platforms.
-    sat: Final = "am2"
-
     make_daily_aggregate_netcdf_for_year(
         year=year,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
-        sat=sat,
     )
