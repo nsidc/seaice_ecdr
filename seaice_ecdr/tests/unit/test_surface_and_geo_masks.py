@@ -85,3 +85,20 @@ def test_geoarray_latlon():
             for geovar in geovars:
                 geofield = get_geoarray_field(gridid, geovar)
             assert isinstance(geofield, type(xr.DataArray()))
+
+
+def test_surfgeomask_files():
+    """Verify existence of surface and geoarray mask files."""
+    import os
+
+    from seaice_ecdr.create_surface_geo_mask import (
+        SURFGEOMASK_PSN125_FILE,
+        SURFGEOMASK_PSS125_FILE,
+    )
+
+    if os.path.isfile(SURFGEOMASK_PSN125_FILE):
+        surfgeomask_nh_ds = xr.load_dataset(SURFGEOMASK_PSN125_FILE)
+        assert surfgeomask_nh_ds is not None
+    if os.path.isfile(SURFGEOMASK_PSS125_FILE):
+        surfgeomask_sh_ds = xr.load_dataset(SURFGEOMASK_PSS125_FILE)
+        assert surfgeomask_sh_ds is not None
