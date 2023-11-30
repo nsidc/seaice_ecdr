@@ -5,6 +5,7 @@ from pm_tb_data._types import NORTH, SOUTH
 from seaice_ecdr.util import (
     standard_daily_aggregate_filename,
     standard_daily_filename,
+    standard_monthly_aggregate_filename,
     standard_monthly_filename,
 )
 
@@ -71,14 +72,13 @@ def test_monthly_filename_south():
 
 
 def test_monthly_aggregate_filename():
-    expected = "sic_pss12.5_202101-202112_am2_v05r00.nc"
+    expected = "sic_pss12.5_202101-202112_v05r00.nc"
 
-    actual = standard_monthly_filename(
+    actual = standard_monthly_aggregate_filename(
         hemisphere=SOUTH,
         resolution="12.5",
-        sat="am2",
-        year=2021,
-        month=1,
+        start_year=2021,
+        start_month=1,
         end_year=2021,
         end_month=12,
     )

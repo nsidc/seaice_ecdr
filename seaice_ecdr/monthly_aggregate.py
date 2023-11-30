@@ -13,7 +13,7 @@ from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.nc_attrs import get_global_attrs
-from seaice_ecdr.util import standard_monthly_filename
+from seaice_ecdr.util import standard_monthly_aggregate_filename
 
 
 def _get_monthly_complete_filepaths(
@@ -80,7 +80,7 @@ def get_monthly_aggregate_ds(
     return agg_ds
 
 
-def get_daily_aggregate_filepath(
+def get_monthly_aggregate_filepath(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
@@ -93,13 +93,11 @@ def get_daily_aggregate_filepath(
     output_dir = ecdr_data_dir / "aggregate"
     output_dir.mkdir(exist_ok=True)
 
-    output_fn = standard_monthly_filename(
+    output_fn = standard_monthly_aggregate_filename(
         hemisphere=hemisphere,
         resolution=resolution,
-        # TODO: how to represent sat w/ multi sats in timeseries?
-        sat="multiple",  # type: ignore[arg-type]
-        year=start_year,
-        month=start_month,
+        start_year=start_year,
+        start_month=start_month,
         end_year=end_year,
         end_month=end_month,
     )
@@ -158,7 +156,7 @@ def cli(
     start_date = pd.Timestamp(ds.time.min().values).date()
     end_date = pd.Timestamp(ds.time.max().values).date()
 
-    output_filepath = get_daily_aggregate_filepath(
+    output_filepath = get_monthly_aggregate_filepath(
         hemisphere=hemisphere,
         resolution=resolution,
         start_year=start_date.year,
