@@ -2,12 +2,14 @@
 
 import sys
 
+import numpy as np
 import xarray as xr
 from loguru import logger
 
 from seaice_ecdr.create_surface_geo_mask import (
     get_geoarray_coord,
     get_geoarray_field,
+    get_polehole_mask,
     have_geoarray_inputs,
     have_polehole_inputs,
 )
@@ -102,3 +104,15 @@ def test_surfgeomask_files():
     if os.path.isfile(SURFGEOMASK_PSS125_FILE):
         surfgeomask_sh_ds = xr.load_dataset(SURFGEOMASK_PSS125_FILE)
         assert surfgeomask_sh_ds is not None
+
+
+def test_get_polehole_mask():
+    """Test that each sensor returns a pole hole mask."""
+
+    gridids_to_test = ("psn12.5",)
+    sensors_to_test = ("amsr2",)
+
+    for gridid in gridids_to_test:
+        for sensor in sensors_to_test:
+            polemask = get_polehole_mask(gridid, sensor)
+            assert isinstance(polemask, np.ndarray)
