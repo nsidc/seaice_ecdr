@@ -7,8 +7,10 @@ import xarray as xr
 from loguru import logger
 
 from seaice_ecdr.create_surface_geo_mask import (
+    SENSOR_LIST,
     get_geoarray_coord,
     get_geoarray_field,
+    get_polehole_bitmask,
     get_polehole_mask,
     have_geoarray_inputs,
     have_polehole_inputs,
@@ -106,9 +108,16 @@ def test_get_polehole_mask():
     """Test that each sensor returns a pole hole mask."""
 
     gridids_to_test = ("psn12.5",)
-    sensors_to_test = ("amsr2",)
+    sensors_to_test = ("amsr2", "smmr")
 
+    # TODO: Wrap this in a try/except for lack of input files
     for gridid in gridids_to_test:
         for sensor in sensors_to_test:
             polemask = get_polehole_mask(gridid, sensor)
             assert isinstance(polemask, np.ndarray)
+
+
+def test_get_polehole_bitmask():
+    """Test creation of bitmask for  pole hole variable."""
+    polehole_bitmask = get_polehole_bitmask("psn12.5", SENSOR_LIST)
+    assert polehole_bitmask is not None
