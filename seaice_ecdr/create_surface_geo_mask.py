@@ -12,21 +12,15 @@ from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 
 GEO_PSN125 = "/projects/DATASETS/nsidc0771_polarstereo_anc_grid_info/NSIDC0771_LatLon_PS_N12.5km_v1.0.nc"
 GEO_PSS125 = "/projects/DATASETS/nsidc0771_polarstereo_anc_grid_info/NSIDC0771_LatLon_PS_S12.5km_v1.0.nc"
-SAMPLE_0051_DAILY_NH_SMMR = (
-    "/ecs/DP1/PM/NSIDC-0051.002/1978.11.02/NSIDC0051_SEAICE_PS_N25km_19781102_v2.0.nc"
-)
-SAMPLE_0051_DAILY_NH_F08 = (
-    "/ecs/DP1/PM/NSIDC-0051.002/1989.11.02/NSIDC0051_SEAICE_PS_N25km_19891102_v2.0.nc"
-)
-SAMPLE_0051_DAILY_NH_F11 = (
-    "/ecs/DP1/PM/NSIDC-0051.002/1989.11.02/NSIDC0051_SEAICE_PS_N25km_19891102_v2.0.nc"
-)
-SAMPLE_0051_DAILY_NH_F13 = (
-    "/ecs/DP1/PM/NSIDC-0051.002/1989.11.02/NSIDC0051_SEAICE_PS_N25km_19891102_v2.0.nc"
-)
-SAMPLE_0051_DAILY_NH_F17 = (
-    "/ecs/DP1/PM/NSIDC-0051.002/1989.11.02/NSIDC0051_SEAICE_PS_N25km_19891102_v2.0.nc"
-)
+
+SAMPLE_0051_DAILY_NH_NCFN = {
+    "smmr": "/ecs/DP1/PM/NSIDC-0051.002/1978.11.02/NSIDC0051_SEAICE_PS_N25km_19781102_v2.0.nc",
+    "f08": "/ecs/DP1/PM/NSIDC-0051.002/1989.11.02/NSIDC0051_SEAICE_PS_N25km_19891102_v2.0.nc",
+    "f11": "/ecs/DP1/PM/NSIDC-0051.002/1989.11.02/NSIDC0051_SEAICE_PS_N25km_19891102_v2.0.nc",
+    "f13": "/ecs/DP1/PM/NSIDC-0051.002/1989.11.02/NSIDC0051_SEAICE_PS_N25km_19891102_v2.0.nc",
+    "f17": "/ecs/DP1/PM/NSIDC-0051.002/1989.11.02/NSIDC0051_SEAICE_PS_N25km_19891102_v2.1.nc",
+}
+
 SURFGEOMASK_PSN125_FILE = "/share/apps/amsr2-cdr/cdrv5_ancillary/surfgeomask_psn12.5.nc"
 SURFGEOMASK_PSS125_FILE = "/share/apps/amsr2-cdr/cdrv5_ancillary/surfgeomask_pss12.5.nc"
 SURFTYPE_BIN_PSN125_FILE = "/share/apps/amsr2-cdr/cdrv5_ancillary/landmask_psn12.5.dat"
@@ -37,16 +31,9 @@ def have_polehole_inputs(input_type):
     """Verify that the expected input files exist."""
     import os
 
-    if input_type == "smmr":
-        return os.path.isfile(SAMPLE_0051_DAILY_NH_SMMR)
-    elif input_type == "f08":
-        return os.path.isfile(SAMPLE_0051_DAILY_NH_F08)
-    elif input_type == "f11":
-        return os.path.isfile(SAMPLE_0051_DAILY_NH_F11)
-    elif input_type == "f13":
-        return os.path.isfile(SAMPLE_0051_DAILY_NH_F13)
-    elif input_type == "f17":
-        return os.path.isfile(SAMPLE_0051_DAILY_NH_F17)
+    nsidc0051_sources = ("smmr", "f08", "f11", "f13", "f17")
+    if input_type in nsidc0051_sources:
+        return os.path.isfile(SAMPLE_0051_DAILY_NH_NCFN[input_type])
     elif input_type == "amsr2":
         # This is the function for the AMSR2 mask
         return psn_125_near_pole_hole_mask is not None

@@ -33,22 +33,18 @@ def test_polehole_input_file_availability():
     import os
 
     from seaice_ecdr.create_surface_geo_mask import (
-        SAMPLE_0051_DAILY_NH_F08,
-        SAMPLE_0051_DAILY_NH_F11,
-        SAMPLE_0051_DAILY_NH_F13,
-        SAMPLE_0051_DAILY_NH_F17,
-        SAMPLE_0051_DAILY_NH_SMMR,
+        SAMPLE_0051_DAILY_NH_NCFN,
     )
 
-    if os.path.isfile(SAMPLE_0051_DAILY_NH_SMMR):
+    if os.path.isfile(SAMPLE_0051_DAILY_NH_NCFN["smmr"]):
         assert have_polehole_inputs("smmr")
-    if os.path.isfile(SAMPLE_0051_DAILY_NH_F08):
+    if os.path.isfile(SAMPLE_0051_DAILY_NH_NCFN["f08"]):
         assert have_polehole_inputs("f08")
-    if os.path.isfile(SAMPLE_0051_DAILY_NH_F11):
+    if os.path.isfile(SAMPLE_0051_DAILY_NH_NCFN["f11"]):
         assert have_polehole_inputs("f11")
-    if os.path.isfile(SAMPLE_0051_DAILY_NH_F13):
+    if os.path.isfile(SAMPLE_0051_DAILY_NH_NCFN["f13"]):
         assert have_polehole_inputs("f13")
-    if os.path.isfile(SAMPLE_0051_DAILY_NH_F17):
+    if os.path.isfile(SAMPLE_0051_DAILY_NH_NCFN["f17"]):
         assert have_polehole_inputs("f17")
 
 
