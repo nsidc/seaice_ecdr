@@ -1,6 +1,12 @@
 """Create netCDF file with surface type and geolocation arrays.
 
 create_surface_geo_mask.py
+
+By default, both NH and SH ancillary files are created.
+Sample usages:
+    python seaice_ecdr/create_surface_geo_mask.py
+    python seaice_ecdr/create_surface_geo_mask.py north
+    python seaice_ecdr/create_surface_geo_mask.py south
 """
 
 from functools import cache
@@ -11,30 +17,23 @@ from scipy.ndimage import zoom
 
 from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 
-GEO_PSN125 = "/projects/DATASETS/nsidc0771_polarstereo_anc_grid_info/NSIDC0771_LatLon_PS_N12.5km_v1.0.nc"
-GEO_PSS125 = "/projects/DATASETS/nsidc0771_polarstereo_anc_grid_info/NSIDC0771_LatLon_PS_S12.5km_v1.0.nc"
+nh_gridids = ("psn12.5",)
 
-NSIDC0051_SOURCES = ("smmr", "f08", "f11", "f13", "f17")
-SAMPLE_0051_DAILY_NH_NCFN = {
-    "smmr": "/ecs/DP1/PM/NSIDC-0051.002/1978.11.03/NSIDC0051_SEAICE_PS_N25km_19781103_v2.0.nc",
-    "f08": "/ecs/DP1/PM/NSIDC-0051.002/1989.11.02/NSIDC0051_SEAICE_PS_N25km_19891102_v2.0.nc",
-    "f11": "/ecs/DP1/PM/NSIDC-0051.002/1993.11.02/NSIDC0051_SEAICE_PS_N25km_19931102_v2.0.nc",
-    "f13": "/ecs/DP1/PM/NSIDC-0051.002/2000.11.02/NSIDC0051_SEAICE_PS_N25km_20001102_v2.0.nc",
-    "f17": "/ecs/DP1/PM/NSIDC-0051.002/2020.11.02/NSIDC0051_SEAICE_PS_N25km_20201102_v2.0.nc",
+GEO_INFO_FILE = {
+    "psn12.5": "/projects/DATASETS/nsidc0771_polarstereo_anc_grid_info/NSIDC0771_LatLon_PS_N12.5km_v1.0.nc",
+    "pss12.5": "/projects/DATASETS/nsidc0771_polarstereo_anc_grid_info/NSIDC0771_LatLon_PS_S12.5km_v1.0.nc",
 }
-ICVARNAME_0051 = {
-    "smmr": "N07_ICECON",
-    "f08": "F08_ICECON",
-    "f11": "F11_ICECON",
-    "f13": "F13_ICECON",
-    "f17": "F17_ICECON",
+SURFGEOMASK_FILE = {
+    "psn12.5": "/share/apps/amsr2-cdr/cdrv5_ancillary/cdrv5_surfgeo_psn12.5.nc",
+    "pss12.5": "/share/apps/amsr2-cdr/cdrv5_ancillary/cdrv5_surfgeo_pss12.5.nc",
 }
 
-SURFGEOMASK_PSN125_FILE = "/share/apps/amsr2-cdr/cdrv5_ancillary/surfgeomask_psn12.5.nc"
-SURFGEOMASK_PSS125_FILE = "/share/apps/amsr2-cdr/cdrv5_ancillary/surfgeomask_pss12.5.nc"
-SURFTYPE_BIN_PSN125_FILE = "/share/apps/amsr2-cdr/cdrv5_ancillary/landmask_psn12.5.dat"
-SURFTYPE_BIN_PSS125_FILE = "/share/apps/amsr2-cdr/cdrv5_ancillary/landmask_pss12.5.dat"
+SURFTYPE_BIN_FILE = {
+    "psn12.5": "/share/apps/amsr2-cdr/cdrv5_ancillary/landmask_psn12.5.dat",
+    "pss12.5": "/share/apps/amsr2-cdr/cdrv5_ancillary/landmask_pss12.5.dat",
+}
 
+# Note: SENSOR_LIST includes non-0051, eg amsr2
 SENSOR_LIST = [
     "smmr",
     "f08",
@@ -43,6 +42,23 @@ SENSOR_LIST = [
     "f17",
     "amsr2",
 ]
+
+NSIDC0051_SOURCES = ("smmr", "f08", "f11", "f13", "f17")
+ICVARNAME_0051 = {
+    "smmr": "N07_ICECON",
+    "f08": "F08_ICECON",
+    "f11": "F11_ICECON",
+    "f13": "F13_ICECON",
+    "f17": "F17_ICECON",
+}
+
+SAMPLE_0051_DAILY_NH_NCFN = {
+    "smmr": "/ecs/DP1/PM/NSIDC-0051.002/1978.11.03/NSIDC0051_SEAICE_PS_N25km_19781103_v2.0.nc",
+    "f08": "/ecs/DP1/PM/NSIDC-0051.002/1989.11.02/NSIDC0051_SEAICE_PS_N25km_19891102_v2.0.nc",
+    "f11": "/ecs/DP1/PM/NSIDC-0051.002/1993.11.02/NSIDC0051_SEAICE_PS_N25km_19931102_v2.0.nc",
+    "f13": "/ecs/DP1/PM/NSIDC-0051.002/2000.11.02/NSIDC0051_SEAICE_PS_N25km_20001102_v2.0.nc",
+    "f17": "/ecs/DP1/PM/NSIDC-0051.002/2020.11.02/NSIDC0051_SEAICE_PS_N25km_20201102_v2.0.nc",
+}
 
 
 def have_polehole_inputs(input_type):
@@ -62,20 +78,18 @@ def have_geoarray_inputs(gridid):
     """Verify that geolocation files exist for this grid."""
     import os
 
-    if gridid == "psn12.5":
-        return os.path.isfile(GEO_PSN125)
-    elif gridid == "pss12.5":
-        return os.path.isfile(GEO_PSS125)
+    try:
+        return os.path.isfile(GEO_INFO_FILE[gridid])
+    except KeyError:
+        raise RuntimeError(f"No geo_info_file found for: {gridid}")
 
 
 @cache
 def open_geoarray_ds(gridid):
     """Return the geolocation dataset for this gridid."""
-    if gridid == "psn12.5":
-        return xr.load_dataset(GEO_PSN125)
-    elif gridid == "pss12.5":
-        return xr.load_dataset(GEO_PSS125)
-    else:
+    try:
+        return xr.load_dataset(GEO_INFO_FILE[gridid])
+    except KeyError:
         raise RuntimeWarning(f"Do not know how to open geoarray for {gridid}")
 
 
@@ -103,7 +117,6 @@ def get_geoarray_coord(gridid, coord_name):
 def get_polehole_mask(gridid, sensor):
     """Return the polemask for this sensor."""
     if sensor == "amsr2":
-        print(f"Generating polehole mask for {sensor}...")
         polemask_data = psn_125_near_pole_hole_mask()
     elif sensor in NSIDC0051_SOURCES:
         ds0051 = xr.load_dataset(
@@ -165,90 +178,90 @@ def get_polehole_bitmask(
     return bitmask_da
 
 
-if __name__ == "__main__":
-    xvar_nh = get_geoarray_coord("psn12.5", "x")
-    yvar_nh = get_geoarray_coord("psn12.5", "y")
-    xvar_sh = get_geoarray_coord("pss12.5", "x")
-    yvar_sh = get_geoarray_coord("pss12.5", "y")
-    lat_nh = get_geoarray_field("psn12.5", "latitude")
-    lat_sh = get_geoarray_field("pss12.5", "latitude")
-    lon_nh = get_geoarray_field("psn12.5", "longitude")
-    lon_sh = get_geoarray_field("pss12.5", "longitude")
-    crs_nh = get_geoarray_field("psn12.5", "crs")
-    crs_sh = get_geoarray_field("pss12.5", "crs")
+def create_surfgeo_anc_file(gridid, ds_ncfn):
+    """Create the surfgeo ancillary for a given gridid."""
 
-    polemask_amsr2 = get_polehole_mask("psn12.5", "amsr2")
+    print(f"Creating surfgeo ancillary field for gridid: {gridid}")
+    print(f"  {ds_ncfn}")
 
-    land_nh = np.fromfile(SURFTYPE_BIN_PSN125_FILE, dtype=np.uint8).reshape(
-        lat_nh.shape
-    )
-    land_sh = np.fromfile(SURFTYPE_BIN_PSS125_FILE, dtype=np.uint8).reshape(
-        lat_sh.shape
-    )
+    xvar = get_geoarray_coord(gridid, "x")
+    yvar = get_geoarray_coord(gridid, "y")
+    latvar = get_geoarray_field(gridid, "latitude")
+    lonvar = get_geoarray_field(gridid, "longitude")
+    crsvar = get_geoarray_field(gridid, "crs")
 
-    # Create the NH ancillary netCDF file
-    ds_nh_ncfn = "cdrv5_surfgeo_psn12.5.nc"
-    ds_nh = xr.Dataset(
+    land = np.fromfile(SURFTYPE_BIN_FILE[gridid], dtype=np.uint8).reshape(latvar.shape)
+
+    ds = xr.Dataset(
         data_vars=dict(
-            crs=crs_nh,
-            x=xvar_nh,
-            y=yvar_nh,
-            latitude=lat_nh,
-            longitude=lon_nh,
+            crs=crsvar,
+            x=xvar,
+            y=yvar,
+            latitude=latvar,
+            longitude=lonvar,
         ),
         attrs={
-            "comment": "PSN12.5 surface type and geolocation arrays",
+            "comment": f"{gridid} surface type and geolocation arrays",
         },
     )
 
-    # Set encoding dictionary
-    encoding_nh = {
+    encoding = {
         "latitude": {"zlib": True},
         "longitude": {"zlib": True},
         "surface_type": {"zlib": True},
-        "polehole_bitmask": {"zlib": True},
     }
 
-    surftype_nh = land_nh.copy()
-    ds_nh["surface_type"] = xr.DataArray(
+    surftype_flag_values_arr = None
+    surftype_flag_meanings_str = None
+    if gridid in nh_gridids:
+        ds["polehole_bitmask"] = get_polehole_bitmask(gridid, SENSOR_LIST)
+        encoding["polehole_bitmask"] = {"zlib": True}
+    surftype_flag_values_arr = np.array((50, 75, 200, 250), dtype=np.uint8)
+    surftype_flag_meanings_str = "ocean lake coast land"
+
+    surftype = land.copy()
+    ds["surface_type"] = xr.DataArray(
         name="surface_type_mask",
-        data=surftype_nh,
+        data=surftype,
         dims=["y", "x"],
         attrs={
-            "long_name": "nh_surfacetype",
-            "flag_values": np.array((50, 75, 200, 250), dtype=np.uint8),
-            "flag_meanings": "ocean lake polehole_mask coast land",
-        },
-    )
-    ds_nh["polehole_bitmask"] = get_polehole_bitmask("psn12.5", SENSOR_LIST)
-    ds_nh.to_netcdf(ds_nh_ncfn, encoding=encoding_nh)
-
-    # Create the SH ancillary netCDF file
-    ds_sh_ncfn = "cdrv5_surfgeo_pss12.5.nc"
-    ds_sh = xr.Dataset(
-        data_vars=dict(
-            crs=crs_sh,
-            x=xvar_sh,
-            y=yvar_sh,
-            latitude=lat_sh,
-            longitude=lon_sh,
-        ),
-        attrs={
-            "comment": "PSS12.5 surface type and geolocation arrays",
+            "long_name": f"{gridid}_surfacetype",
+            "flag_values": surftype_flag_values_arr,
+            "flag_meanings": surftype_flag_meanings_str,
         },
     )
 
-    surftype_sh = land_sh.copy()
-    ds_sh["surface_type"] = xr.DataArray(
-        name="surface_type_mask",
-        data=surftype_sh,
-        dims=["y", "x"],
-        attrs={
-            "long_name": "sh_surfacetype",
-            "flag_values": np.array((50, 75, 200, 250), dtype=np.uint8),
-            "flag_meanings": "ocean lake coast land",
-        },
-    )
-    encoding_sh = encoding_nh.copy()
-    del encoding_sh["polehole_bitmask"]
-    ds_sh.to_netcdf(ds_sh_ncfn, encoding=encoding_sh)
+    ds.to_netcdf(ds_ncfn, encoding=encoding)
+
+
+if __name__ == "__main__":
+    import sys
+
+    gridid_mapping = {
+        "psn12.5": "psn12.5",
+        "nh": "psn12.5",
+        "north": "psn12.5",
+        "pss12.5": "pss12.5",
+        "sh": "pss12.5",
+        "south": "pss12.5",
+    }
+
+    if len(sys.argv) == 1:
+        # No cmdline args, assume want both
+        gridid = gridid_mapping["nh"]
+        create_surfgeo_anc_file(
+            gridid,
+            SURFGEOMASK_FILE[gridid],
+        )
+        gridid = gridid_mapping["sh"]
+        create_surfgeo_anc_file(
+            gridid,
+            SURFGEOMASK_FILE[gridid],
+        )
+    else:
+        for arg in sys.argv[1:]:
+            gridid = gridid_mapping[arg]
+            create_surfgeo_anc_file(
+                gridid,
+                SURFGEOMASK_FILE[gridid],
+            )
