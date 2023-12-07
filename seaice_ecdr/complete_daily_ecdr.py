@@ -346,6 +346,9 @@ def write_cde_netcdf(
     cde_ds.to_netcdf(
         output_filepath,
         encoding=nc_encoding,
+        unlimited_dims=[
+            "time",
+        ],
     )
 
     return output_filepath

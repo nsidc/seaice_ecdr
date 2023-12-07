@@ -859,6 +859,9 @@ def write_tie_netcdf(
     tie_ds.to_netcdf(
         output_filepath,
         encoding=nc_encoding,
+        unlimited_dims=[
+            "time",
+        ],
     )
 
     return output_filepath
