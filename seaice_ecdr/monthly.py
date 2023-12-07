@@ -24,9 +24,10 @@ Notes about CDR v4:
 
 import calendar
 import datetime as dt
-from collections import OrderedDict
+import re
+from collections import Counter, OrderedDict
 from pathlib import Path
-from typing import Final, get_args
+from typing import get_args
 
 import click
 import numpy as np
@@ -95,6 +96,24 @@ def _get_daily_complete_filepaths_for_month(
     return data_list
 
 
+def _sat_for_month(*, sats: list[str]) -> str:
+    """Returns the satellite from this month given a list of input satellites.
+
+    The sat for monthly files is based on which sat contributes most to the
+    month. If two sats contribute equally, use the latest sat in the series.
+
+    Function assumes the list of satellites is already sorted (i.e., the latest
+    satellite is `sats[-1]`).
+    """
+    # More than one sat, we need to choose the most common/latest in the series.
+    # `Counter` returns a dict keyed by `sat` with counts as values:
+    count = Counter(sats)
+    most_common_sats = count.most_common()
+    most_common_and_latest_sat = most_common_sats[-1][0]
+
+    return most_common_and_latest_sat
+
+
 def get_daily_ds_for_month(
     *,
     year: int,
@@ -129,6 +148,24 @@ def get_daily_ds_for_month(
     ds["filepaths"] = xr.DataArray(
         data=data_list, dims=("time",), coords=dict(time=ds.time)
     )
+
+    # Extract `sat` from the filenames contributing to this
+    # dataset. Ideally, we would use a custom `combine_attrs` when reading the
+    # data with `xr.open_mfdataset` in order to get the sat/sensor from global
+    # attrs in each of the contributing files. Unfortunately this interface is
+    # poorly documented and seems to have limited support. E.g., see
+    # https://github.com/pydata/xarray/issues/6679
+    sats = []
+    pattern = re.compile(r"sic_ps.*_.*_(?P<sat>.*)_.*.nc")
+    for filepath in data_list:
+        match = pattern.match(filepath.name)
+        if not match:
+            raise RuntimeError(f"Failed to parse satellite from {filepath.name}")
+        sats.append(match.group("sat"))
+
+    sat = _sat_for_month(sats=sats)
+
+    ds.attrs["sat"] = sat
 
     logger.info(
         f"Created daily ds for {year=} {month=} from {len(ds.time)} complete daily files."
@@ -611,9 +648,6 @@ def cli(
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ):
-    # TODO: support different sat/platforms.
-    sat: Final = "am2"
-
     if end_year is None:
         end_year = year
     if end_month is None:
@@ -631,6 +665,8 @@ def cli(
             hemisphere=hemisphere,
             resolution=resolution,
         )
+
+        sat = daily_ds_for_month.sat
 
         monthly_ds = make_monthly_ds(
             daily_ds_for_month=daily_ds_for_month,
