@@ -18,7 +18,6 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
     year = 2022
     resolution: Final = "12.5"
     hemisphere: Final = NORTH
-    sat: Final = "am2"
 
     # First, ensure some daily data is created.
     datasets = []
@@ -36,7 +35,6 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
         year=year,
         hemisphere=hemisphere,
         resolution=resolution,
-        sat=sat,
         ecdr_data_dir=tmpdir_path,
     )
 
@@ -44,7 +42,6 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
     aggregate_filepath = get_daily_aggregate_filepath(
         hemisphere=hemisphere,
         resolution=resolution,
-        sat=sat,
         ecdr_data_dir=tmpdir_path,
         start_date=dt.date(year, 3, 1),
         end_date=dt.date(year, 3, 3),
