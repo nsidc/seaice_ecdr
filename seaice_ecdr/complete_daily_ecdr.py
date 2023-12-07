@@ -27,6 +27,9 @@ from seaice_ecdr.melt import (
 )
 from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
+from seaice_ecdr.use_surface_geo_mask import (
+    get_surfacetype_da,
+)
 from seaice_ecdr.util import standard_daily_filename
 
 
@@ -298,6 +301,12 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         ~is_melt_has_occurred,
         other=np.bitwise_or(cde_ds["qa_of_cdr_seaice_conc"], 128),
     )
+
+    # Add the surface-type field
+    cde_ds["surface_type"] = get_surfacetype_da(date, hemisphere, resolution)
+
+    # TODO: Need to ensure that the cdr_seaice_conc field does not have values
+    #       where seaice cannot occur, eg over land or lakes
 
     return cde_ds
 
