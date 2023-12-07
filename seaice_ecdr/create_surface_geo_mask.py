@@ -210,14 +210,13 @@ if __name__ == "__main__":
     }
 
     surftype_nh = land_nh.copy()
-    surftype_nh[polemask_amsr2 == 1] = 100
     ds_nh["surface_type"] = xr.DataArray(
         name="surface_type_mask",
         data=surftype_nh,
         dims=["y", "x"],
         attrs={
             "long_name": "nh_surfacetype",
-            "flag_values": np.array((50, 75, 100, 200, 250), dtype=np.uint8),
+            "flag_values": np.array((50, 75, 200, 250), dtype=np.uint8),
             "flag_meanings": "ocean lake polehole_mask coast land",
         },
     )
