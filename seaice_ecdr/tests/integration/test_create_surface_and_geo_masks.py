@@ -52,17 +52,8 @@ def test_polehole_input_file_availability():
 
 def test_geoarray_input_file_availability():
     """Test that necessary geolocation array input files exist."""
-    import os
-
-    from seaice_ecdr.create_surface_geo_mask import (
-        GEO_PSN125,
-        GEO_PSS125,
-    )
-
-    if os.path.isfile(GEO_PSN125):
-        assert have_geoarray_inputs("psn12.5")
-    if os.path.isfile(GEO_PSS125):
-        assert have_geoarray_inputs("pss12.5")
+    assert have_geoarray_inputs("psn12.5")
+    assert have_geoarray_inputs("pss12.5")
 
 
 def test_geoarray_coords():
