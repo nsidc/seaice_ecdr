@@ -1,11 +1,9 @@
 """Unit tests for fields included in aggregate files."""
 
 import os
-import sys
 
 import numpy as np
 import xarray as xr
-from loguru import logger
 
 from seaice_ecdr.create_surface_geo_mask import (
     SENSOR_LIST,
@@ -17,16 +15,6 @@ from seaice_ecdr.create_surface_geo_mask import (
     have_geoarray_inputs,
     have_polehole_inputs,
 )
-
-# Set the default minimum log notification to Warning
-# TODO: Think about logging holistically...
-try:
-    logger.remove(0)  # Removes previous logger info
-    logger.add(sys.stderr, level="WARNING")
-except ValueError:
-    logger.debug(f"Started logging in {__name__}")
-    logger.add(sys.stderr, level="WARNING")
-
 
 GRID_IDS = ["psn12.5", "pss12.5"]
 
