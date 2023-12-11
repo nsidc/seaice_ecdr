@@ -1,8 +1,10 @@
 import datetime as dt
+from typing import Final
 
 from pm_tb_data._types import NORTH, SOUTH
 
 from seaice_ecdr.util import (
+    sat_from_filename,
     standard_daily_aggregate_filename,
     standard_daily_filename,
     standard_monthly_aggregate_filename,
@@ -84,3 +86,29 @@ def test_monthly_aggregate_filename():
     )
 
     assert actual == expected
+
+
+def test_daily_sat_from_filename():
+    expected_sat: Final = "am2"
+    fn = standard_daily_filename(
+        hemisphere=NORTH, resolution="12.5", sat=expected_sat, date=dt.date(2021, 1, 1)
+    )
+
+    actual_sat = sat_from_filename(fn)
+
+    assert expected_sat == actual_sat
+
+
+def test_monthly_sat_from_filename():
+    expected_sat: Final = "F17"
+    fn = standard_monthly_filename(
+        hemisphere=SOUTH,
+        resolution="12.5",
+        sat=expected_sat,
+        year=2021,
+        month=1,
+    )
+
+    actual_sat = sat_from_filename(fn)
+
+    assert expected_sat == actual_sat

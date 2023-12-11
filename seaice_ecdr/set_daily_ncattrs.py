@@ -327,6 +327,8 @@ def finalize_cdecdr_ds(
         # TODO: support alternative source datasets. Will be AU_SI12 for AMSR2,
         # AE_SI12 for AMSR-E, and NSIDC-0001 for SSMIS, SSM/I, and SMMR
         source="Generated from AU_SI12",
+        # TODO: set sat from source
+        sats=["am2"],
     )
     ds.attrs.update(new_global_attrs)
 

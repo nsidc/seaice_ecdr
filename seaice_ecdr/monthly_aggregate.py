@@ -13,7 +13,7 @@ from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.nc_attrs import get_global_attrs
-from seaice_ecdr.util import standard_monthly_aggregate_filename
+from seaice_ecdr.util import sat_from_filename, standard_monthly_aggregate_filename
 
 
 def _get_monthly_complete_filepaths(
@@ -65,6 +65,7 @@ def get_monthly_aggregate_ds(
         temporality="monthly",
         aggregate=True,
         source=", ".join([fp.name for fp in monthly_filepaths]),
+        sats=[sat_from_filename(fp.name) for fp in monthly_filepaths],
     )
     agg_ds.attrs.update(monthly_aggregate_ds_global_attrs)
 

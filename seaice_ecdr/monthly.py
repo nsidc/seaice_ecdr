@@ -24,7 +24,6 @@ Notes about CDR v4:
 
 import calendar
 import datetime as dt
-import re
 from collections import Counter, OrderedDict
 from pathlib import Path
 from typing import get_args
@@ -40,7 +39,7 @@ from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
-from seaice_ecdr.util import standard_monthly_filename
+from seaice_ecdr.util import sat_from_filename, standard_monthly_filename
 
 
 def check_min_days_for_valid_month(
@@ -96,7 +95,7 @@ def _get_daily_complete_filepaths_for_month(
     return data_list
 
 
-def _sat_for_month(*, sats: list[str]) -> str:
+def _sat_for_month(*, sats: list[SUPPORTED_SAT]) -> SUPPORTED_SAT:
     """Returns the satellite from this month given a list of input satellites.
 
     The sat for monthly files is based on which sat contributes most to the
@@ -156,12 +155,8 @@ def get_daily_ds_for_month(
     # poorly documented and seems to have limited support. E.g., see
     # https://github.com/pydata/xarray/issues/6679
     sats = []
-    pattern = re.compile(r"sic_ps.*_.*_(?P<sat>.*)_.*.nc")
     for filepath in data_list:
-        match = pattern.match(filepath.name)
-        if not match:
-            raise RuntimeError(f"Failed to parse satellite from {filepath.name}")
-        sats.append(match.group("sat"))
+        sats.append(sat_from_filename(filepath.name))
 
     sat = _sat_for_month(sats=sats)
 
@@ -543,6 +538,11 @@ def make_monthly_ds(
         temporality="monthly",
         aggregate=False,
         source=", ".join([fp.item().name for fp in daily_ds_for_month.filepaths]),
+        # TODO: consider providing all sats that went into month? This would be
+        # consistent with how we handle the aggregate filenames. Is it
+        # misleading to indicate that a month is a single sat when it may not
+        # really be?
+        sats=[sat],
     )
     monthly_ds.attrs.update(monthly_ds_global_attrs)
 
