@@ -1,7 +1,5 @@
 """Create netCDF file with surface type and geolocation arrays.
 
-create_surface_geo_mask.py
-
 By default, both NH and SH ancillary files are created.
 Sample usages:
     python seaice_ecdr/create_surface_geo_mask.py

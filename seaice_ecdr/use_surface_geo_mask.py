@@ -1,7 +1,5 @@
 """Create netCDF file with surface type and geolocation arrays.
 
-use_surface_geo_mask.py
-
 The routines here use the output of ./create_surface_geo_mask.py, which are
   given in the SURFGEOMASK_FILE dictionary, eg:
 
