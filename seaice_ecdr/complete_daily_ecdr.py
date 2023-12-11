@@ -49,13 +49,13 @@ def get_ecdr_filepath(
     ecdr_data_dir: Path,
 ) -> Path:
     """Return the complete daily eCDR file path."""
-    standard_fn = standard_daily_filename(
+    ecdr_filename = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
+        # TODO: extract this to kwarg!!!
         sat="am2",
         resolution=resolution,
     )
-    ecdr_filename = "cdecdr_" + standard_fn
     ecdr_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir)
 
     ecdr_filepath = ecdr_dir / ecdr_filename

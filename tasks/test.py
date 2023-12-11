@@ -19,7 +19,7 @@ def typecheck(ctx):
 def unit(ctx):
     """Run unit tests."""
     print_and_run(
-        f"pytest -s {PROJECT_DIR}/seaice_ecdr/tests/unit",
+        f"pytest --cov=seaice_ecdr --cov-fail-under 35 -s {PROJECT_DIR}/seaice_ecdr/tests/unit",
         pty=True,
     )
 
@@ -49,7 +49,7 @@ def pytest(ctx):
     Includes a code-coverage check.
     """
     print_and_run(
-        "pytest --cov=seaice_ecdr --cov-fail-under 60 -s",
+        "pytest --cov=seaice_ecdr --cov-fail-under 65 -s",
         pty=True,
     )
 
