@@ -6,6 +6,7 @@ from seaice_ecdr.nc_attrs import (
     _get_software_version_id,
     _get_time_coverage_attrs,
     get_platforms_for_sats,
+    get_sensors_for_sats,
 )
 
 
@@ -132,6 +133,27 @@ def test_get_platforms_for_sat():
     ]
 
     actual = get_platforms_for_sats(
+        [
+            "F13",
+            "F17",
+            "F17",
+            "am2",
+            "am2",
+            "am2",
+        ]
+    )
+
+    assert expected == actual
+
+
+def test_get_sensors_for_sats():
+    expected = [
+        "SSM/I > Special Sensor Microwave/Imager",
+        "SSMIS > Special Sensor Microwave Imager/Sounder",
+        "AMSR2 > Advanced Microwave Scanning Radiometer 2",
+    ]
+
+    actual = get_sensors_for_sats(
         [
             "F13",
             "F17",

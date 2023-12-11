@@ -135,16 +135,51 @@ PLATFORMS_FOR_SATS: dict[SUPPORTED_SAT, str] = dict(
 )
 
 
+def _unique_sats(sats: list[SUPPORTED_SAT]) -> list[SUPPORTED_SAT]:
+    """Return the unique set of satellites.
+
+    Order is preserved.
+    """
+    # `set` is unordered. This gets the unique list of `sats`.
+    unique_sats = list(dict.fromkeys(sats))
+
+    return unique_sats
+
+
 def get_platforms_for_sats(sats: list[SUPPORTED_SAT]) -> list[str]:
     """Get the unique set of platforms for the given list of sats.
 
     Assumes `sats` is ordered from oldest->newest.
     """
     # `set` is unordered. This gets the unique list of `sats`.
-    unique_sats = list(dict.fromkeys(sats))
+    unique_sats = _unique_sats(sats)
     platforms_for_sat = [PLATFORMS_FOR_SATS[sat] for sat in unique_sats]
 
     return platforms_for_sat
+
+
+# Here’s what the GCMD sensor name should be based on sensor short name:
+SENSORS_FOR_SATS: dict[SUPPORTED_SAT, str] = dict(
+    am2="AMSR2 > Advanced Microwave Scanning Radiometer 2",
+    ame="AMSR-E > Advanced Microwave Scanning Radiometer-EOS",
+    F17="SSMIS > Special Sensor Microwave Imager/Sounder",
+    # TODO: de-dup SSM/I text?
+    F13="SSM/I > Special Sensor Microwave/Imager",
+    F11="SSM/I > Special Sensor Microwave/Imager",
+    F08="SSM/I > Special Sensor Microwave/Imager",
+    n07="SMMR > Scanning Multichannel Microwave Radiometer",
+)
+
+
+def get_sensors_for_sats(sats: list[SUPPORTED_SAT]) -> list[str]:
+    """Get the unique set of sensors for the given list of sats.
+
+    Assumes `sats` is ordered from oldest->newest.
+    """
+    unique_sats = _unique_sats(sats)
+    sensors_for_sat = [SENSORS_FOR_SATS[sat] for sat in unique_sats]
+
+    return sensors_for_sat
 
 
 def get_global_attrs(
@@ -173,13 +208,7 @@ def get_global_attrs(
     # TODO: support different resolutions, platforms, and sensors!
     resolution: Final = "12.5"
     platform = ", ".join(get_platforms_for_sats(sats))
-    # Here’s what the GCMD sensor name should be based on sensor short name:
-    # AMRS2: “AMSR2 > Advanced Microwave Scanning Radiometer 2”
-    # AMRS-E: “AMSR-E > Advanced Microwave Scanning Radiometer-EOS”
-    # SSMIS: “SSMIS > Special Sensor Microwave Imager/Sounder”
-    # SSM/I: “SSM/I > Special Sensor Microwave/Imager”
-    # SMMR: “SMMR > Scanning Multichannel Microwave Radiometer”
-    sensor: Final = "AMSR2 > Advanced Microwave Scanning Radiometer 2"
+    sensor = ", ".join(get_sensors_for_sats(sats))
 
     time_coverage_attrs = _get_time_coverage_attrs(
         temporality=temporality,
