@@ -124,13 +124,6 @@ def _get_time_coverage_attrs(
 
 
 # Here’s what the GCMD platform long name should be based on sensor/platform short name:
-# AMRS2: “GCOM-W1 > Global Change Observation Mission 1st-Water”
-# AMRS-E: " Aqua > Earth Observing System, Aqua”
-# SSMIS on F17: “DMSP 5D-3/F17 > Defense Meteorological Satellite Program-F17”
-# SSM/I on F13: “DMSP 5D-2/F13 > Defense Meteorological Satellite Program-F13”
-# SSM/I on F11: “DMSP 5D-2/F11 > Defense Meteorological Satellite Program-F11”
-# SSM/I on F8: “DMSP 5D-2/F8 > Defense Meteorological Satellite Program-F8”
-# SMMR: “Nimbus-7”
 PLATFORMS_FOR_SATS: dict[SUPPORTED_SAT, str] = dict(
     am2="GCOM-W1 > Global Change Observation Mission 1st-Water",
     ame="Aqua > Earth Observing System, Aqua",
