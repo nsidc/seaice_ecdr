@@ -81,3 +81,13 @@ Can run unit and integration tests -- or manual subsets of -- with:
 Create an Initial Daily ECDR file with e.g.,:
 
     ./scripts/cli.sh idecdr --date 2021-04-05 --hemisphere north --resolution 12 --output-dir /tmp/
+
+
+## Generating ancillary data
+
+Some ancillary data (e.g., surface masks) get created once from input data
+sources.
+
+To create the surface/geo mask netcdf files (containing e.g., `surface_type` and
+`polehole_bitmask` variables), see
+[scripts/surface_geo_masks/README.md](scripts/surface_geo_masks/README.md)

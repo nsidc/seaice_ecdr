@@ -5,7 +5,8 @@ import os
 import numpy as np
 import xarray as xr
 
-from seaice_ecdr.create_surface_geo_mask import (
+from .create_surface_geo_mask import (
+    SAMPLE_0051_DAILY_NH_NCFN,
     SENSOR_LIST,
     SURFGEOMASK_FILE,
     get_geoarray_coord,
@@ -25,10 +26,6 @@ def test_polehole_input_file_availability():
     Note: We only run the tests if the input files exist.  E.g., we don't
     expect the Circle CI process to have access to the input files.
     """
-    from seaice_ecdr.create_surface_geo_mask import (
-        SAMPLE_0051_DAILY_NH_NCFN,
-    )
-
     if os.path.isfile(SAMPLE_0051_DAILY_NH_NCFN["smmr"]):
         assert have_polehole_inputs("smmr")
     if os.path.isfile(SAMPLE_0051_DAILY_NH_NCFN["f08"]):
