@@ -9,6 +9,8 @@ Sample usages:
     python seaice_ecdr/create_surface_geo_mask.py south
 """
 
+import os
+import sys
 from functools import cache
 
 import numpy as np
@@ -63,8 +65,6 @@ SAMPLE_0051_DAILY_NH_NCFN = {
 
 def have_polehole_inputs(input_type):
     """Verify that the expected input files exist."""
-    import os
-
     if input_type in NSIDC0051_SOURCES:
         return os.path.isfile(SAMPLE_0051_DAILY_NH_NCFN[input_type])
     elif input_type == "amsr2":
@@ -76,8 +76,6 @@ def have_polehole_inputs(input_type):
 
 def have_geoarray_inputs(gridid):
     """Verify that geolocation files exist for this grid."""
-    import os
-
     try:
         return os.path.isfile(GEO_INFO_FILE[gridid])
     except KeyError:
@@ -235,8 +233,6 @@ def create_surfgeo_anc_file(gridid, ds_ncfn):
 
 
 if __name__ == "__main__":
-    import sys
-
     gridid_mapping = {
         "psn12.5": "psn12.5",
         "nh": "psn12.5",
