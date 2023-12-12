@@ -41,6 +41,7 @@ def _get_sat_by_date(
 
 
 def get_surfacetype_da(
+    *,
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
