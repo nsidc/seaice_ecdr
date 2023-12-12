@@ -38,7 +38,7 @@ from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
 from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
-from seaice_ecdr.use_surface_geo_mask import nh_polehole_mask
+from seaice_ecdr.masks import nh_polehole_mask
 from seaice_ecdr.util import standard_daily_filename
 
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")

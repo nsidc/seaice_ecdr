@@ -26,7 +26,7 @@ from seaice_ecdr.initial_daily_ecdr import (
     get_idecdr_filepath,
     make_idecdr_netcdf,
 )
-from seaice_ecdr.use_surface_geo_mask import nh_polehole_mask
+from seaice_ecdr.masks import nh_polehole_mask
 from seaice_ecdr.util import standard_daily_filename
 
 # Set the default minimum log notification to "info"

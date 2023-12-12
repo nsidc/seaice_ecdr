@@ -16,7 +16,7 @@ import numpy.typing as npt
 import xarray as xr
 from scipy.ndimage import zoom
 
-from seaice_ecdr.use_surface_geo_mask import get_surfacegeomask_filepath
+from seaice_ecdr.masks import get_surfacegeomask_filepath
 
 nh_gridids = ("psn12.5",)
 
