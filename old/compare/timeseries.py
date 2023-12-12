@@ -14,10 +14,12 @@ from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
 
 from seaice_ecdr.compare.ref_data import cdr_for_date_range
-from seaice_ecdr.constants import CDR_DATA_DIR
+from seaice_ecdr.constants import NSIDC_NFS_SHARE_DIR
 
 OUTPUT_DIR = Path("/tmp/compare_cdr/")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+CDR_DATA_DIR = NSIDC_NFS_SHARE_DIR / "cdr_data"
 
 
 def amsr2_cdr_for_date_range(
