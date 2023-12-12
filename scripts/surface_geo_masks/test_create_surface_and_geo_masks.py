@@ -75,7 +75,7 @@ def test_get_polehole_mask():
     """Test that each sensor returns a pole hole mask."""
 
     gridids_to_test = ("psn12.5",)
-    sensors_to_test = ("amsr2", "smmr")
+    sensors_to_test = ("am2", "smmr")
 
     # TODO: Wrap this in a try/except for lack of input files
     for gridid in gridids_to_test:
