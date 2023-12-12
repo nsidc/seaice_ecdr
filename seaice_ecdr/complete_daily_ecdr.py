@@ -19,6 +19,9 @@ from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.masks import (
+    get_surfacetype_da,
+)
 from seaice_ecdr.melt import (
     MELT_ONSET_FILL_VALUE,
     MELT_SEASON_FIRST_DOY,
@@ -264,6 +267,16 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         ecdr_data_dir=ecdr_data_dir,
     )
 
+    # Add the surface-type field
+    cde_ds["surface_type"] = get_surfacetype_da(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    # TODO: Need to ensure that the cdr_seaice_conc field does not have values
+    #       where seaice cannot occur, eg over land or lakes
+
     # Update cde_ds with melt onset info
     if melt_onset_field is None:
         return cde_ds
@@ -337,6 +350,9 @@ def write_cde_netcdf(
     cde_ds.to_netcdf(
         output_filepath,
         encoding=nc_encoding,
+        unlimited_dims=[
+            "time",
+        ],
     )
 
     return output_filepath
