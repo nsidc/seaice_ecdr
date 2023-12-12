@@ -1,7 +1,5 @@
 """Create netCDF file with surface type and geolocation arrays.
 
-create_surface_geo_mask.py
-
 By default, both NH and SH ancillary files are created.
 Sample usages:
     python seaice_ecdr/create_surface_geo_mask.py
@@ -9,6 +7,8 @@ Sample usages:
     python seaice_ecdr/create_surface_geo_mask.py south
 """
 
+import os
+import sys
 from functools import cache
 
 import numpy as np
@@ -16,6 +16,7 @@ import xarray as xr
 from scipy.ndimage import zoom
 
 from seaice_ecdr.masks import psn_125_near_pole_hole_mask
+from seaice_ecdr.use_surface_geo_mask import get_surfacegeomask_filepath
 
 nh_gridids = ("psn12.5",)
 
@@ -24,8 +25,8 @@ GEO_INFO_FILE = {
     "pss12.5": "/projects/DATASETS/nsidc0771_polarstereo_anc_grid_info/NSIDC0771_LatLon_PS_S12.5km_v1.0.nc",
 }
 SURFGEOMASK_FILE = {
-    "psn12.5": "/share/apps/amsr2-cdr/cdrv5_ancillary/cdrv5_surfgeo_psn12.5.nc",
-    "pss12.5": "/share/apps/amsr2-cdr/cdrv5_ancillary/cdrv5_surfgeo_pss12.5.nc",
+    "psn12.5": get_surfacegeomask_filepath("psn12.5.nc"),
+    "pss12.5": get_surfacegeomask_filepath("pss12.5.nc"),
 }
 
 SURFTYPE_BIN_FILE = {
@@ -63,8 +64,6 @@ SAMPLE_0051_DAILY_NH_NCFN = {
 
 def have_polehole_inputs(input_type):
     """Verify that the expected input files exist."""
-    import os
-
     if input_type in NSIDC0051_SOURCES:
         return os.path.isfile(SAMPLE_0051_DAILY_NH_NCFN[input_type])
     elif input_type == "amsr2":
@@ -76,8 +75,6 @@ def have_polehole_inputs(input_type):
 
 def have_geoarray_inputs(gridid):
     """Verify that geolocation files exist for this grid."""
-    import os
-
     try:
         return os.path.isfile(GEO_INFO_FILE[gridid])
     except KeyError:
@@ -235,8 +232,6 @@ def create_surfgeo_anc_file(gridid, ds_ncfn):
 
 
 if __name__ == "__main__":
-    import sys
-
     gridid_mapping = {
         "psn12.5": "psn12.5",
         "nh": "psn12.5",

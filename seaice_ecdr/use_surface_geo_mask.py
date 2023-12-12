@@ -1,7 +1,5 @@
 """Create netCDF file with surface type and geolocation arrays.
 
-use_surface_geo_mask.py
-
 The routines here use the output of ./create_surface_geo_mask.py, which are
   given in the SURFGEOMASK_FILE dictionary, eg:
 
@@ -14,6 +12,7 @@ SURFGEOMASK_FILE
 
 import datetime as dt
 from functools import cache
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -21,17 +20,19 @@ import xarray as xr
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.constants import CDR_ANCILLARY_DIR
 
-# TODO: Not all of these constants may be needed?
-from seaice_ecdr.create_surface_geo_mask import (
-    SURFGEOMASK_FILE,
-)
+
+def get_surfacegeomask_filepath(grid_id: str) -> Path:
+    filepath = CDR_ANCILLARY_DIR / f"cdrv5_surfgeo_{grid_id}.nc"
+
+    return filepath
 
 
 @cache
 def get_surfgeo_ds(gridid):
     """Return xr Dataset of ancillary surface/geolocation for this grid."""
-    return xr.load_dataset(SURFGEOMASK_FILE[gridid])
+    return xr.load_dataset(get_surfacegeomask_filepath(gridid))
 
 
 def get_polehole_mask(ds, sensor):
