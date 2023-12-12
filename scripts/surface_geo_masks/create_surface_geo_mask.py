@@ -16,6 +16,7 @@ import numpy.typing as npt
 import xarray as xr
 from scipy.ndimage import zoom
 
+from seaice_ecdr.constants import CDR_ANCILLARY_DIR
 from seaice_ecdr.masks import get_surfacegeomask_filepath
 
 nh_gridids = ("psn12.5",)
@@ -30,8 +31,8 @@ SURFGEOMASK_FILE = {
 }
 
 SURFTYPE_BIN_FILE = {
-    "psn12.5": "/share/apps/amsr2-cdr/cdrv5_ancillary/landmask_psn12.5.dat",
-    "pss12.5": "/share/apps/amsr2-cdr/cdrv5_ancillary/landmask_pss12.5.dat",
+    "psn12.5": CDR_ANCILLARY_DIR / "landmask_psn12.5.dat",
+    "pss12.5": CDR_ANCILLARY_DIR / "landmask_pss12.5.dat",
 }
 
 # Note: SENSOR_LIST includes non-0051, eg am2
