@@ -29,11 +29,6 @@ def get_surfgeo_ds(gridid):
     return xr.load_dataset(get_surfacegeomask_filepath(gridid))
 
 
-def get_polehole_mask(ds, sensor):
-    """Return the 2d boolean mask where this sensor's polehole is."""
-    ydim, xdim = ds.variables["latitude"].shape
-
-
 def get_sensor_by_date(
     date: dt.date,
 ) -> str:
