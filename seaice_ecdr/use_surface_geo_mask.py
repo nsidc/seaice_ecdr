@@ -13,8 +13,9 @@ import pandas as pd
 import xarray as xr
 from pm_tb_data._types import Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.constants import CDR_ANCILLARY_DIR
+from seaice_ecdr.grid_id import GRID_ID, get_grid_id
 
 
 def get_surfacegeomask_filepath(grid_id: str) -> Path:
@@ -24,40 +25,34 @@ def get_surfacegeomask_filepath(grid_id: str) -> Path:
 
 
 @cache
-def get_surfgeo_ds(gridid):
+def get_surfgeo_ds(grid_id: GRID_ID) -> xr.Dataset:
     """Return xr Dataset of ancillary surface/geolocation for this grid."""
-    return xr.load_dataset(get_surfacegeomask_filepath(gridid))
+    return xr.load_dataset(get_surfacegeomask_filepath(grid_id))
 
 
 def _get_sat_by_date(
     date: dt.date,
-) -> str:
-    """Return the sensor used for this date."""
+) -> SUPPORTED_SAT:
+    """Return the satellite used for this date."""
     # TODO: these date ranges belong in a config location
     if date >= dt.date(2012, 7, 2) and date <= dt.date(2030, 12, 31):
-        # TODO: this should be `am2` to be consistent with `SUPPORTED_SAT`.
-        return "amsr2"
+        return "am2"
     else:
-        raise RuntimeError(f"Could not determine sensor for date: {date}")
+        raise RuntimeError(f"Could not determine sat for date: {date}")
 
 
 def get_surfacetype_da(
+    *,
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.DataArray:
     """Return a dataarray with surface type information for this date."""
-    if hemisphere == "north" and resolution == "12.5":
-        surfgeo_ds = get_surfgeo_ds("psn12.5")
-    elif hemisphere == "south" and resolution == "12.5":
-        surfgeo_ds = get_surfgeo_ds("pss12.5")
-    else:
-        raise RuntimeError(
-            f"""
-        Could not determine grid for:
-            hemisphere: {hemisphere}
-            resolution: {resolution} ({type(resolution)})"""
-        )
+    grid_id = get_grid_id(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    surfgeo_ds = get_surfgeo_ds(grid_id)
 
     xvar = surfgeo_ds.variables["x"]
     yvar = surfgeo_ds.variables["y"]

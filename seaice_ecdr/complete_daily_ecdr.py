@@ -268,7 +268,11 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
     )
 
     # Add the surface-type field
-    cde_ds["surface_type"] = get_surfacetype_da(date, hemisphere, resolution)
+    cde_ds["surface_type"] = get_surfacetype_da(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
 
     # TODO: Need to ensure that the cdr_seaice_conc field does not have values
     #       where seaice cannot occur, eg over land or lakes

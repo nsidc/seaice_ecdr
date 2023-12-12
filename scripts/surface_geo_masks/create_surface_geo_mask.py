@@ -25,8 +25,8 @@ GEO_INFO_FILE = {
     "pss12.5": "/projects/DATASETS/nsidc0771_polarstereo_anc_grid_info/NSIDC0771_LatLon_PS_S12.5km_v1.0.nc",
 }
 SURFGEOMASK_FILE = {
-    "psn12.5": get_surfacegeomask_filepath("psn12.5.nc"),
-    "pss12.5": get_surfacegeomask_filepath("pss12.5.nc"),
+    "psn12.5": get_surfacegeomask_filepath("psn12.5"),
+    "pss12.5": get_surfacegeomask_filepath("pss12.5"),
 }
 
 SURFTYPE_BIN_FILE = {
@@ -34,14 +34,14 @@ SURFTYPE_BIN_FILE = {
     "pss12.5": "/share/apps/amsr2-cdr/cdrv5_ancillary/landmask_pss12.5.dat",
 }
 
-# Note: SENSOR_LIST includes non-0051, eg amsr2
+# Note: SENSOR_LIST includes non-0051, eg am2
 SENSOR_LIST = [
     "smmr",
     "f08",
     "f11",
     "f13",
     "f17",
-    "amsr2",
+    "am2",
 ]
 
 NSIDC0051_SOURCES = ("smmr", "f08", "f11", "f13", "f17")
@@ -66,8 +66,8 @@ def have_polehole_inputs(input_type):
     """Verify that the expected input files exist."""
     if input_type in NSIDC0051_SOURCES:
         return os.path.isfile(SAMPLE_0051_DAILY_NH_NCFN[input_type])
-    elif input_type == "amsr2":
-        # This is the function for the AMSR2 mask
+    elif input_type == "am2":
+        # This is the function for the AM2 mask
         return psn_125_near_pole_hole_mask is not None
 
     raise RuntimeWarning(f"could not check polehole input for: {input_type}")
@@ -113,7 +113,7 @@ def get_geoarray_coord(gridid, coord_name):
 
 def get_polehole_mask(gridid, sensor):
     """Return the polemask for this sensor."""
-    if sensor == "amsr2":
+    if sensor == "am2":
         polemask_data = psn_125_near_pole_hole_mask()
     elif sensor in NSIDC0051_SOURCES:
         ds0051 = xr.load_dataset(
