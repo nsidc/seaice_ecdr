@@ -685,6 +685,9 @@ def cli(
 
         monthly_ds.to_netcdf(
             output_path,
+            unlimited_dims=[
+                "time",
+            ],
         )
         logger.info(
             f"Wrote monthly file for year={period.year} and month={period.month} to {output_path}"
