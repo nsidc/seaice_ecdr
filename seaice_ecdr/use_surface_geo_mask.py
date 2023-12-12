@@ -1,13 +1,7 @@
 """Create netCDF file with surface type and geolocation arrays.
 
-The routines here use the output of ./create_surface_geo_mask.py, which are
-  given in the SURFGEOMASK_FILE dictionary, eg:
-
-SURFGEOMASK_FILE
-    "psn12.5":
-       "/share/apps/amsr2-cdr/cdrv5_ancillary/cdrv5_surfgeo_psn12.5.nc",
-    "pss12.5":
-       "/share/apps/amsr2-cdr/cdrv5_ancillary/cdrv5_surfgeo_pss12.5.nc",
+The routines here use the output of
+scripts/surface_geo_mask/create_surface_geo_mask.py
 """
 
 import datetime as dt
