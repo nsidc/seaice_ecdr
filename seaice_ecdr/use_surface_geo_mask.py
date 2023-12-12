@@ -1,13 +1,7 @@
 """Create netCDF file with surface type and geolocation arrays.
 
-The routines here use the output of ./create_surface_geo_mask.py, which are
-  given in the SURFGEOMASK_FILE dictionary, eg:
-
-SURFGEOMASK_FILE
-    "psn12.5":
-       "/share/apps/amsr2-cdr/cdrv5_ancillary/cdrv5_surfgeo_psn12.5.nc",
-    "pss12.5":
-       "/share/apps/amsr2-cdr/cdrv5_ancillary/cdrv5_surfgeo_pss12.5.nc",
+The routines here use the output of
+scripts/surface_geo_mask/create_surface_geo_mask.py
 """
 
 import datetime as dt
@@ -19,8 +13,9 @@ import pandas as pd
 import xarray as xr
 from pm_tb_data._types import Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.constants import CDR_ANCILLARY_DIR
+from seaice_ecdr.grid_id import GRID_ID, get_grid_id
 
 
 def get_surfacegeomask_filepath(grid_id: str) -> Path:
@@ -30,46 +25,34 @@ def get_surfacegeomask_filepath(grid_id: str) -> Path:
 
 
 @cache
-def get_surfgeo_ds(gridid):
+def get_surfgeo_ds(grid_id: GRID_ID) -> xr.Dataset:
     """Return xr Dataset of ancillary surface/geolocation for this grid."""
-    return xr.load_dataset(get_surfacegeomask_filepath(gridid))
+    return xr.load_dataset(get_surfacegeomask_filepath(grid_id))
 
 
-def get_polehole_mask(ds, sensor):
-    """Return the 2d boolean mask where this sensor's polehole is."""
-    ydim, xdim = ds.variables["latitude"].shape
-
-
-def get_sensor_by_date(
+def _get_sat_by_date(
     date: dt.date,
-) -> str:
-    """Return the sensor used for this date."""
+) -> SUPPORTED_SAT:
+    """Return the satellite used for this date."""
     # TODO: these date ranges belong in a config location
     if date >= dt.date(2012, 7, 2) and date <= dt.date(2030, 12, 31):
-        return "amsr2"
+        return "am2"
     else:
-        raise RuntimeError(f"Could not determine sensor for date: {date}")
+        raise RuntimeError(f"Could not determine sat for date: {date}")
 
 
 def get_surfacetype_da(
+    *,
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.DataArray:
     """Return a dataarray with surface type information for this date."""
-    sensor = get_sensor_by_date(date)
-
-    if hemisphere == "north" and resolution == "12.5":
-        surfgeo_ds = get_surfgeo_ds("psn12.5")
-    elif hemisphere == "south" and resolution == "12.5":
-        surfgeo_ds = get_surfgeo_ds("pss12.5")
-    else:
-        raise RuntimeError(
-            f"""
-        Could not determine grid for:
-            hemisphere: {hemisphere}
-            resolution: {resolution} ({type(resolution)})"""
-        )
+    grid_id = get_grid_id(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    surfgeo_ds = get_surfgeo_ds(grid_id)
 
     xvar = surfgeo_ds.variables["x"]
     yvar = surfgeo_ds.variables["y"]
@@ -77,7 +60,8 @@ def get_surfacetype_da(
     polehole_surface_type = 100
     if "polehole_bitmask" in surfgeo_ds.data_vars.keys():
         polehole_bitmask = surfgeo_ds.variables["polehole_bitmask"]
-        polehole_bitlabel = f"{sensor}_polemask"
+        sat = _get_sat_by_date(date)
+        polehole_bitlabel = f"{sat}_polemask"
         polehole_index = (
             polehole_bitmask.attrs["flag_meanings"].split(" ").index(polehole_bitlabel)
         )
