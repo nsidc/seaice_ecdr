@@ -12,10 +12,10 @@ import sys
 from functools import cache
 
 import numpy as np
+import numpy.typing as npt
 import xarray as xr
 from scipy.ndimage import zoom
 
-from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 from seaice_ecdr.use_surface_geo_mask import get_surfacegeomask_filepath
 
 nh_gridids = ("psn12.5",)
@@ -66,9 +66,6 @@ def have_polehole_inputs(input_type):
     """Verify that the expected input files exist."""
     if input_type in NSIDC0051_SOURCES:
         return os.path.isfile(SAMPLE_0051_DAILY_NH_NCFN[input_type])
-    elif input_type == "am2":
-        # This is the function for the AM2 mask
-        return psn_125_near_pole_hole_mask is not None
 
     raise RuntimeWarning(f"could not check polehole input for: {input_type}")
 
@@ -111,10 +108,32 @@ def get_geoarray_coord(gridid, coord_name):
         return None
 
 
+def _psn_125_near_pole_hole_mask() -> npt.NDArray[np.bool_]:
+    """Return a mask of the area near the pole hole for the psn125 grid.
+
+    Identify pole hole pixels for psn12.5
+    These pixels were identified by examining AUSI12-derived NH fields in 2021
+       and are one ortho and diag from the commonly no-data pixels near
+       the pole that year from AU_SI12 products
+    """
+    pole_pixels = np.zeros((896, 608), dtype=np.uint8)
+    pole_pixels[461, 304 : 311 + 1] = 1
+    pole_pixels[462, 303 : 312 + 1] = 1
+    pole_pixels[463, 302 : 313 + 1] = 1
+    pole_pixels[464 : 471 + 1, 301 : 314 + 1] = 1
+    pole_pixels[472, 302 : 313 + 1] = 1
+    pole_pixels[473, 303 : 312 + 1] = 1
+    pole_pixels[474, 304 : 311 + 1] = 1
+
+    pole_pixels_bool = pole_pixels.astype(bool)
+
+    return pole_pixels_bool
+
+
 def get_polehole_mask(gridid, sensor):
     """Return the polemask for this sensor."""
     if sensor == "am2":
-        polemask_data = psn_125_near_pole_hole_mask()
+        polemask_data = _psn_125_near_pole_hole_mask()
     elif sensor in NSIDC0051_SOURCES:
         ds0051 = xr.load_dataset(
             SAMPLE_0051_DAILY_NH_NCFN[sensor],

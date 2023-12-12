@@ -26,7 +26,7 @@ from seaice_ecdr.initial_daily_ecdr import (
     get_idecdr_filepath,
     make_idecdr_netcdf,
 )
-from seaice_ecdr.masks import psn_125_near_pole_hole_mask
+from seaice_ecdr.use_surface_geo_mask import nh_polehole_mask
 from seaice_ecdr.util import standard_daily_filename
 
 # Set the default minimum log notification to "info"
@@ -600,53 +600,45 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     # TODO: This is a really coarse way of determining which
     #       grid is having its pole hole filled!
     if fill_the_pole_hole and hemisphere == NORTH:
-        # TODO: Write code that better captures the logic of whether
-        #       or not the grid has a pole hole to fill.  In general,
-        #       this is an attribute of the grid.
-        # Currently, this code expects psn12.5 grids only
-        if not grid_is_psn125(hemisphere=hemisphere, gridshape=cdr_conc.shape):
-            raise RuntimeError(
-                "temporally interpolated dataset should have ",
-                ' "spatint_bitmask_map" field',
-            )
         cdr_conc_pre_polefill = cdr_conc.copy()
-        near_pole_hole_mask = psn_125_near_pole_hole_mask()
+        near_pole_hole_mask = nh_polehole_mask(date=date, resolution=resolution)
         cdr_conc_pole_filled = fill_pole_hole(
             conc=cdr_conc,
-            near_pole_hole_mask=near_pole_hole_mask,
+            near_pole_hole_mask=near_pole_hole_mask.data,
         )
         logger.info("Filled pole hole")
         # Need to use not-isnan() here because NaN == NaN evaluates to False
         is_pole_filled = (cdr_conc_pole_filled != cdr_conc_pre_polefill) & (
             ~np.isnan(cdr_conc_pole_filled)
         )
-        if "spatial_interpolation_flag" in tie_ds.variables.keys():
-            # TODO: These are constants for the eCDR runs.  They should
-            #       NOT be defined here (and in the idecdr code...(!))
-            # TODO Actually, if this is defined here, the 'pole_filled'
-            #      bitmask value should be determined by examining the
-            #      bitmask_flags and bitmask_flag_meanings fields of the
-            #      DataArray variable.
-            TB_SPATINT_BITMASK_MAP = {
-                "v18": 1,
-                "h18": 2,
-                "v23": 4,
-                "v36": 8,
-                "h36": 16,
-                "pole_filled": 32,
-            }
-            tie_ds["spatial_interpolation_flag"] = tie_ds[
-                "spatial_interpolation_flag"
-            ].where(
-                ~is_pole_filled,
-                other=TB_SPATINT_BITMASK_MAP["pole_filled"],
-            )
 
-            logger.info("Updated spatial_interpolation with pole hole value")
+        if "spatial_interpolation_flag" not in tie_ds.variables.keys():
+            raise RuntimeError("Spatial interpolation flag not found in tie_ds.")
 
-            tie_ds["cdr_conc"].data[0, :, :] = cdr_conc_pole_filled[:, :]
-        else:
-            raise RuntimeError("Only the psn12.5 pole filling is implemented")
+        # TODO: These are constants for the eCDR runs.  They should
+        #       NOT be defined here (and in the idecdr code...(!))
+        # TODO Actually, if this is defined here, the 'pole_filled'
+        #      bitmask value should be determined by examining the
+        #      bitmask_flags and bitmask_flag_meanings fields of the
+        #      DataArray variable.
+        TB_SPATINT_BITMASK_MAP = {
+            "v18": 1,
+            "h18": 2,
+            "v23": 4,
+            "v36": 8,
+            "h36": 16,
+            "pole_filled": 32,
+        }
+        tie_ds["spatial_interpolation_flag"] = tie_ds[
+            "spatial_interpolation_flag"
+        ].where(
+            ~is_pole_filled,
+            other=TB_SPATINT_BITMASK_MAP["pole_filled"],
+        )
+
+        logger.info("Updated spatial_interpolation with pole hole value")
+
+        tie_ds["cdr_conc"].data[0, :, :] = cdr_conc_pole_filled[:, :]
     else:
         # TODO: May want to modify attributes of the cdr_conc field to
         #       distinguish it from the cdr_conc_ti field
@@ -705,41 +697,39 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         bt_conc_2d = np.squeeze(bt_conc.data)
         nt_conc_2d = np.squeeze(nt_conc.data)
 
-        if grid_is_psn125(hemisphere=hemisphere, gridshape=bt_conc_2d.shape):
-            # Fill pole hole of BT
-            bt_conc_pre_polefill = bt_conc_2d.copy()
-            near_pole_hole_mask = psn_125_near_pole_hole_mask()
-            bt_conc_pole_filled = fill_pole_hole(
-                conc=bt_conc_2d,
-                near_pole_hole_mask=near_pole_hole_mask,
-            )
-            logger.info("Filled pole hole (bt)")
-            # Need to use not-isnan() here because NaN == NaN evaluates to False
-            is_pole_filled = (bt_conc_pole_filled != bt_conc_pre_polefill) & (
-                ~np.isnan(bt_conc_pole_filled)
-            )
-            bt_conc.data[0, :, :] = bt_conc_pole_filled[:, :]
+        # Fill pole hole of BT
+        bt_conc_pre_polefill = bt_conc_2d.copy()
+        near_pole_hole_mask = nh_polehole_mask(date=date, resolution=resolution)
+        bt_conc_pole_filled = fill_pole_hole(
+            conc=bt_conc_2d,
+            near_pole_hole_mask=near_pole_hole_mask.data,
+        )
+        logger.info("Filled pole hole (bt)")
+        # Need to use not-isnan() here because NaN == NaN evaluates to False
+        is_pole_filled = (bt_conc_pole_filled != bt_conc_pre_polefill) & (
+            ~np.isnan(bt_conc_pole_filled)
+        )
+        bt_conc.data[0, :, :] = bt_conc_pole_filled[:, :]
 
-            # Fill pole hole of NT
-            nt_conc_pre_polefill = nt_conc_2d.copy()
-            near_pole_hole_mask = psn_125_near_pole_hole_mask()
-            nt_conc_pole_filled = fill_pole_hole(
-                conc=nt_conc_2d,
-                near_pole_hole_mask=near_pole_hole_mask,
-            )
-            logger.info("Filled pole hole (nt)")
-            # Need to use not-isnan() here because NaN == NaN evaluates to False
-            is_pole_filled = (nt_conc_pole_filled != nt_conc_pre_polefill) & (
-                ~np.isnan(nt_conc_pole_filled)
-            )
-            nt_conc.data[0, :, :] = nt_conc_pole_filled[:, :]
+        # Fill pole hole of NT
+        nt_conc_pre_polefill = nt_conc_2d.copy()
+        nt_conc_pole_filled = fill_pole_hole(
+            conc=nt_conc_2d,
+            near_pole_hole_mask=near_pole_hole_mask.data,
+        )
+        logger.info("Filled pole hole (nt)")
+        # Need to use not-isnan() here because NaN == NaN evaluates to False
+        is_pole_filled = (nt_conc_pole_filled != nt_conc_pre_polefill) & (
+            ~np.isnan(nt_conc_pole_filled)
+        )
+        nt_conc.data[0, :, :] = nt_conc_pole_filled[:, :]
 
-            # TODO: I noticed that NT raw conc here can be > 100 (!)
-            #       So for stdev calc, clamp to 100%
-            nt_conc = nt_conc.where(
-                nt_conc < 100,
-                other=100,
-            )
+        # TODO: I noticed that NT raw conc here can be > 100 (!)
+        #       So for stdev calc, clamp to 100%
+        nt_conc = nt_conc.where(
+            nt_conc < 100,
+            other=100,
+        )
 
     stddev_field = calc_stddev_field(
         bt_conc=bt_conc.data[0, :, :],

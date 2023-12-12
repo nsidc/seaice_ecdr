@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
-from pm_tb_data._types import Hemisphere
+from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.constants import CDR_ANCILLARY_DIR
@@ -30,6 +30,7 @@ def get_surfgeo_ds(grid_id: GRID_ID) -> xr.Dataset:
     return xr.load_dataset(get_surfacegeomask_filepath(grid_id))
 
 
+# TODO: move to util  module?
 def _get_sat_by_date(
     date: dt.date,
 ) -> SUPPORTED_SAT:
@@ -39,6 +40,13 @@ def _get_sat_by_date(
         return "am2"
     else:
         raise RuntimeError(f"Could not determine sat for date: {date}")
+
+
+def _bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
+    index = var.flag_meanings.split(" ").index(meaning)
+    value = var.flag_values[index]
+
+    return value
 
 
 def get_surfacetype_da(
@@ -59,13 +67,13 @@ def get_surfacetype_da(
     surftypevar = surfgeo_ds.variables["surface_type"].copy()
     polehole_surface_type = 100
     if "polehole_bitmask" in surfgeo_ds.data_vars.keys():
-        polehole_bitmask = surfgeo_ds.variables["polehole_bitmask"]
+        polehole_bitmask = surfgeo_ds.polehole_bitmask
         sat = _get_sat_by_date(date)
         polehole_bitlabel = f"{sat}_polemask"
-        polehole_index = (
-            polehole_bitmask.attrs["flag_meanings"].split(" ").index(polehole_bitlabel)
+        polehole_bitvalue = _bitmask_value_for_meaning(
+            var=polehole_bitmask,
+            meaning=polehole_bitlabel,
         )
-        polehole_bitvalue = polehole_bitmask.attrs["flag_values"][polehole_index]
         polehole_mask = (
             np.bitwise_and(
                 polehole_bitmask.data,
@@ -118,3 +126,32 @@ def get_surfacetype_da(
     surface_mask_da = surface_mask_da.expand_dims(time=[pd.to_datetime(date)])
 
     return surface_mask_da
+
+
+def nh_polehole_mask(
+    *, date: dt.date, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> xr.DataArray:
+    """Return the northern hemisphere pole hole mask for the given date and resolution."""
+    grid_id = get_grid_id(
+        hemisphere=NORTH,
+        resolution=resolution,
+    )
+    surfgeo_ds = get_surfgeo_ds(
+        grid_id=grid_id,
+    )
+
+    polehole_bitmask = surfgeo_ds.polehole_bitmask
+
+    sat = _get_sat_by_date(
+        date=date,
+    )
+
+    polehole_bitlabel = f"{sat}_polemask"
+    polehole_bitvalue = _bitmask_value_for_meaning(
+        var=polehole_bitmask,
+        meaning=polehole_bitlabel,
+    )
+
+    polehole_mask = (polehole_bitmask & polehole_bitvalue) > 0
+
+    return polehole_mask

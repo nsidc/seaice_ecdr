@@ -29,7 +29,7 @@ from pm_icecon.land_spillover import apply_nt2_land_spillover
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_icecon.util import date_range
-from pm_tb_data._types import Hemisphere
+from pm_tb_data._types import NORTH, Hemisphere
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
@@ -38,7 +38,7 @@ from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
 from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
-from seaice_ecdr.masks import psn_125_near_pole_hole_mask
+from seaice_ecdr.use_surface_geo_mask import nh_polehole_mask
 from seaice_ecdr.util import standard_daily_filename
 
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
@@ -718,24 +718,23 @@ def compute_initial_daily_ecdr_dataset(
     # Fill the NH pole hole
     # TODO: Should check for NH and have grid-dependent filling scheme
     # NOTE: Usually, the pole hole will be filled in pass 3, along with melt onset calc.
-    if fill_the_pole_hole:
-        if cdr_conc.shape == (896, 608):
-            cdr_conc_pre_polefill = cdr_conc.copy()
-            near_pole_hole_mask = psn_125_near_pole_hole_mask()
-            cdr_conc = fill_pole_hole(
-                conc=cdr_conc,
-                near_pole_hole_mask=near_pole_hole_mask,
+    if fill_the_pole_hole and hemisphere == NORTH:
+        cdr_conc_pre_polefill = cdr_conc.copy()
+        near_pole_hole_mask = nh_polehole_mask(date=date, resolution=resolution)
+        cdr_conc = fill_pole_hole(
+            conc=cdr_conc,
+            near_pole_hole_mask=near_pole_hole_mask.data,
+        )
+        logger.info("Filled pole hole")
+        is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
+        if "spatial_interpolation_bitmask" in ecdr_ide_ds.variables.keys():
+            ecdr_ide_ds["spatial_interpolation_flag"] = ecdr_ide_ds[
+                "spatial_interpolation_flag"
+            ].where(
+                ~is_pole_filled,
+                other=TB_SPATINT_BITMASK_MAP["pole_filled"],
             )
-            logger.info("Filled pole hole")
-            is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
-            if "spatial_interpolation_bitmask" in ecdr_ide_ds.variables.keys():
-                ecdr_ide_ds["spatial_interpolation_flag"] = ecdr_ide_ds[
-                    "spatial_interpolation_flag"
-                ].where(
-                    ~is_pole_filled,
-                    other=TB_SPATINT_BITMASK_MAP["pole_filled"],
-                )
-                logger.info("Updated spatial_interpolation with pole hole value")
+            logger.info("Updated spatial_interpolation with pole hole value")
 
     # Apply land flag value and clamp max conc to 100.
     # TODO: extract this func from nt and allow override of flag values
@@ -963,6 +962,7 @@ def get_idecdr_filepath(
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
+        # TODO: extract to kwarg!!!
         sat="am2",
         resolution=resolution,
     )
