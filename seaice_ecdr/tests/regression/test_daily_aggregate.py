@@ -59,5 +59,9 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
         selected_from_agg = selected_from_agg.expand_dims("time")
         selected_from_agg["crs"] = selected_from_agg.crs.isel(time=0, drop=True)
 
+        # We add the lat/lon fields to the aggregate dataset. We do not expect
+        # them in the daily fields we're comaring to, so remove them.
+        selected_from_agg = selected_from_agg.drop_vars(["latitude", "longitude"])
+
         # Assert that both datasets are equal
         xr.testing.assert_allclose(selected_from_agg, daily_ds, atol=0.009)

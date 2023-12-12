@@ -11,6 +11,7 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.masks import get_surfgeo_ds
 from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.util import sat_from_filename, standard_monthly_aggregate_filename
@@ -58,6 +59,14 @@ def get_monthly_aggregate_ds(
     # dimension on variables that already have it in the individual daily files?
     agg_ds["crs"] = agg_ds.crs.isel(time=0, drop=True)
 
+    # Add latitude and longitude fields
+    surf_geo_ds = get_surfgeo_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    agg_ds["latitude"] = surf_geo_ds.latitude
+    agg_ds["longitude"] = surf_geo_ds.latitude
+
     # setup global attrs
     # Set global attributes
     monthly_aggregate_ds_global_attrs = get_global_attrs(
@@ -75,8 +84,6 @@ def get_monthly_aggregate_ds(
         f"Created monthly aggregate ds for {start_date:%Y-%m} through {end_date:%Y-%m}"
         f" from {len(agg_ds.time)} complete monthly files."
     )
-
-    # TODO: add lat/lon fields
 
     return agg_ds
 
