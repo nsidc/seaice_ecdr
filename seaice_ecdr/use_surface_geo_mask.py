@@ -13,7 +13,7 @@ import pandas as pd
 import xarray as xr
 from pm_tb_data._types import Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.constants import CDR_ANCILLARY_DIR
 
 
@@ -31,14 +31,13 @@ def get_surfgeo_ds(gridid):
 
 def _get_sat_by_date(
     date: dt.date,
-) -> str:
-    """Return the sensor used for this date."""
+) -> SUPPORTED_SAT:
+    """Return the satellite used for this date."""
     # TODO: these date ranges belong in a config location
     if date >= dt.date(2012, 7, 2) and date <= dt.date(2030, 12, 31):
-        # TODO: this should be `am2` to be consistent with `SUPPORTED_SAT`.
-        return "amsr2"
+        return "am2"
     else:
-        raise RuntimeError(f"Could not determine sensor for date: {date}")
+        raise RuntimeError(f"Could not determine sat for date: {date}")
 
 
 def get_surfacetype_da(
