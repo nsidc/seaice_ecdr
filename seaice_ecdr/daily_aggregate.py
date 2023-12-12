@@ -14,6 +14,7 @@ from pm_tb_data._types import Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.masks import get_surfgeo_ds
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.util import sat_from_filename, standard_daily_aggregate_filename
 
@@ -76,6 +77,13 @@ def get_daily_ds_for_year(
 
     assert np.all([pd.Timestamp(t.values).year == year for t in ds.time])
 
+    surf_geo_ds = get_surfgeo_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    ds["latitude"] = surf_geo_ds.latitude
+    ds["longitude"] = surf_geo_ds.latitude
+
     # setup global attrs
     # Set global attributes
     daily_aggregate_ds_global_attrs = get_global_attrs(
@@ -130,8 +138,6 @@ def make_daily_aggregate_netcdf_for_year(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-
-    # TODO: add lat/lon fields
 
     output_path = get_daily_aggregate_filepath(
         hemisphere=hemisphere,
