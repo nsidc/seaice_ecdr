@@ -27,3 +27,5 @@ CDR_DATA_DIR = NSIDC_NFS_SHARE_DIR / "cdr_data"
 
 # Location of surface mask & geo-information files.
 CDR_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / "cdrv5_ancillary"
+
+NASATEAM2_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / "nasateam2_ancillary"
