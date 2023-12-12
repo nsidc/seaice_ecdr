@@ -29,13 +29,14 @@ from pm_icecon.land_spillover import apply_nt2_land_spillover
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_icecon.util import date_range
-from pm_tb_data._types import NORTH, SOUTH, Hemisphere
+from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
-from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_gridid
+from seaice_ecdr.grid_id import get_grid_id
+from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
 from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
 from seaice_ecdr.masks import psn_125_near_pole_hole_mask
 from seaice_ecdr.util import standard_daily_filename
@@ -190,12 +191,12 @@ def _setup_ecdr_ds(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
     # Initialize geo-referenced xarray Dataset
-    grid_id = _get_grid_id(
+    grid_id = get_grid_id(
         hemisphere=hemisphere,
         resolution=resolution,
     )
 
-    ecdr_ide_ds = get_dataset_for_gridid(grid_id, date)
+    ecdr_ide_ds = get_dataset_for_grid_id(grid_id, date)
 
     # Set initial global attributes
 
@@ -238,22 +239,6 @@ def _setup_ecdr_ds(
         )
 
     return ecdr_ide_ds
-
-
-def _get_grid_id(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
-) -> str:
-    # Set the gridid
-    if hemisphere == NORTH and resolution == "12.5":
-        gridid = "psn12.5"
-    elif hemisphere == SOUTH and resolution == "12.5":
-        gridid = "pss12.5"
-    else:
-        raise RuntimeError(
-            f"Could not determine gridid from:\n" f"{hemisphere} and {resolution}"
-        )
-
-    return gridid
 
 
 def _au_si_res_str(*, resolution: ECDR_SUPPORTED_RESOLUTIONS) -> AU_SI_RESOLUTIONS:
@@ -673,13 +658,13 @@ def compute_initial_daily_ecdr_dataset(
         if tb_h19.shape == (896, 608):
             # NH
             l90c = load_or_create_land90_conc(
-                gridid="psn12.5",
+                grid_id="psn12.5",
                 xdim=608,
                 ydim=896,
                 overwrite=False,
             )
             adj123 = read_adj123_file(
-                gridid="psn12.5",
+                grid_id="psn12.5",
                 xdim=608,
                 ydim=896,
             )
@@ -691,13 +676,13 @@ def compute_initial_daily_ecdr_dataset(
         elif tb_h19.shape == (664, 632):
             # SH
             l90c = load_or_create_land90_conc(
-                gridid="pss12.5",
+                grid_id="pss12.5",
                 xdim=632,
                 ydim=664,
                 overwrite=False,
             )
             adj123 = read_adj123_file(
-                gridid="pss12.5",
+                grid_id="pss12.5",
                 xdim=632,
                 ydim=664,
             )

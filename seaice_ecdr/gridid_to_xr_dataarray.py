@@ -1,9 +1,9 @@
-"""Generate xarray data set from a gridid.
+"""Generate xarray data set from a grid_id.
 
-gridid_to_xr_dataset
+grid_id_to_xr_dataset
 
 Return an xarray dataset with appropriate geolocation variables for
-a given NSIDC gridid
+a given NSIDC grid_id
 """
 
 
@@ -14,8 +14,10 @@ import numpy as np
 import xarray as xr
 from loguru import logger
 
+from seaice_ecdr.grid_id import GRID_ID
 
-def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
+
+def get_dataset_for_grid_id(grid_id: GRID_ID, grid_date, return_dataset=True):
     """Return xarray dataset.
 
     with appropriate geolocation dataarrays:
@@ -27,7 +29,7 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
     Because none of these need compression, no 'encoding' dictionary is
     returned
 
-    valid gridids are:
+    valid grid_ids are:
         psn3.125 psn6.25 psn12.5 psn25
         pss3.125 pss6.25 pss12.5 pss25
         e2n3.125 e2n6.25 e2n12.5 e2n25
@@ -37,18 +39,18 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
     """
     if return_dataset:
         logger.info(
-            f"Creating georeferenced dataset on {gridid} grid for {grid_date}"
+            f"Creating georeferenced dataset on {grid_id} grid for {grid_date}"
         )  # noqa
     crs_attrs: Dict[str, Union[str, float]] = {}
 
     # CRS for polar stereo grids
-    if gridid[:2] == "ps":
+    if grid_id[:2] == "ps":
         crs_attrs["grid_mapping_name"] = "polar_stereographic"
         crs_attrs["false_easting"] = 0.0
         crs_attrs["false_northing"] = 0.0
         crs_attrs["semi_major_axis"] = 6378273.0
         crs_attrs["inverse_flattening"] = 298.279411123064
-        if "psn" in gridid:
+        if "psn" in grid_id:
             # Note: two attrs will need resolution-based updates:
             #  long_name
             #  GeoTransform
@@ -69,7 +71,7 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
                 "crs_wkt"
             ] = 'PROJCS["NSIDC Sea Ice Polar Stereographic North",GEOGCS["Unspecified datum based upon the Hughes 1980 ellipsoid",DATUM["Not_specified_based_on_Hughes_1980_ellipsoid"’,SPHEROID["Hughes 1980",6378273,298.279411123061,AUTHORITY["EPSG","7058"]],AUTHORITY["EPSG","6054"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4054"]],PROJECTION["Polar_Stereographic"],PARAMETER["latitude_of_origin",70],PARAMETER["central_meridian",-45],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["X",EAST],AXIS["Y",NORTH],AUTHORITY["EPSG","3411"]]'  # noqa
             crs_attrs["GeoTransform"] = "{xleft} {res_m} 0 {ytop} 0 -{res_m}"
-        if "pss" in gridid:
+        if "pss" in grid_id:
             # Note: two attrs will need resolution-based updates:
             #  long_name
             #  GeoTransform
@@ -91,7 +93,7 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
             ] = 'PROJCS["NSIDC Sea Ice Polar Stereographic South",GEOGCS["Unspecified datum based upon the Hughes 1980 ellipsoid",DATUM["Not_specified_based_on_Hughes_1980_ellipsoid",SPHEROID["Hughes 1980",6378273,298.279411123061,AUTHORITY["EPSG","7058"]],AUTHORITY["EPSG","6054"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4054"]],PROJECTION["Polar_Stereographic"],PARAMETER["latitude_of_origin",-70],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["X",EAST],AXIS["Y",NORTH],AUTHORITY["EPSG","3412"]]'  # noqa
             crs_attrs["GeoTransform"] = "{xleft} {res_m} 0 {ytop} 0 -{res_m}"
 
-    elif gridid[:3] == "e2t":
+    elif grid_id[:3] == "e2t":
         xleft = -17367530.44
         xright = 17367530.44
         ytop = 6756820.2
@@ -115,7 +117,7 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
             "GeoTransform"
         ] = "-17367530.44 {res_tkm} 0 6756820.2 0 -{res_tkm}"  # noqa
 
-    elif gridid[:2] == "e2":
+    elif grid_id[:2] == "e2":
         xleft = -9000000.0
         xright = 9000000.0
         ytop = 9000000.0
@@ -128,7 +130,7 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
         crs_attrs["inverse_flattening"] = 298.257223563
         crs_attrs["GeoTransform"] = "-9000000 {res_m} 0 9000000 0 -{res_m}"
 
-        if gridid[:3] == "e2n":
+        if grid_id[:3] == "e2n":
             crs_attrs["long_name"] = "NSIDC_EASE2_N{res_km}km"
             crs_attrs["latitude_of_projection_origin"] = 90.0
             crs_attrs[
@@ -138,7 +140,7 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
             crs_attrs[
                 "crs_wkt"
             ] = 'PROJCS["unnamed",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9108"]],AUTHORITY["EPSG","4326"]],PROJECTION["Lambert_Azimuthal_Equal_Area"],PARAMETER["latitude_of_center",90],PARAMETER["longitude_of_center",0],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["Meter",1],AUTHORITY["epsg","6931"]]atitude_of_center",90],PARAMETER["longitude_of_center",0],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["Meter",1],AUTHORITY["epsg","6931"]]'  # noqa
-        elif gridid[:3] == "e2s":
+        elif grid_id[:3] == "e2s":
             crs_attrs["long_name"] = "NSIDC_EASE2_S{res_km}km"
             crs_attrs["latitude_of_projection_origin"] = -90.0
             crs_attrs[
@@ -149,12 +151,12 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
                 "crs_wkt"
             ] = 'PROJCS["unnamed",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9108"]],AUTHORITY["EPSG","4326"]],PROJECTION["Lambert_Azimuthal_Equal_Area"],PARAMETER["latitude_of_center",-90],PARAMETER["longitude_of_center",0],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["Meter",1],AUTHORITY["epsg","6932"]]'  # noqa
         else:
-            raise ValueError(f"Could not determine EASE2 hemisphere: {gridid}")
+            raise ValueError(f"Could not determine EASE2 hemisphere: {grid_id}")
 
-    res_km = gridid[3:]
+    res_km = grid_id[3:]
     res_m = int(float(res_km) * 1000)
     crs_attrs["long_name"] = crs_attrs["long_name"].format(res_km=res_km)  # type: ignore[union-attr]  # noqa
-    if gridid[:3] == "e2t":
+    if grid_id[:3] == "e2t":
         res_m = 1.0010104 * res_m  # type: ignore[assignment]
         res_tkm = 1.0010104 * float(res_km)
         crs_attrs["GeoTransform"] = crs_attrs["GeoTransform"].format(  # type: ignore[union-attr]  # noqa
@@ -243,7 +245,7 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
                 "x": x_da,
             },
             attrs={
-                "description": f"Geolocation for gridid {gridid}",
+                "description": f"Geolocation for grid_id {grid_id}",
             },
         )
 
@@ -257,14 +259,15 @@ def get_dataset_for_gridid(gridid, grid_date, return_dataset=True):
         }
 
 
+# TODO: do we need this `__main__` logic? If so, document it.
 if __name__ == "__main__":
     import sys
 
     try:
-        gridid = sys.argv[1]
+        grid_id = sys.argv[1]
     except IndexError:
-        gridid = "psn25"
-        print(f"Using default gridid: {gridid}")
+        grid_id = "psn25"
+        print(f"Using default grid_id: {grid_id}")
 
     try:
         grid_date = dt.datetime.strptime(sys.argv[2], "%Y%m%d").date()
@@ -277,7 +280,7 @@ if __name__ == "__main__":
     else:
         add_random_field = False
 
-    ds = get_dataset_for_gridid(gridid, grid_date)
+    ds = get_dataset_for_grid_id(grid_id, grid_date)  # type: ignore[arg-type]
 
     if add_random_field:
         # Generate an appropriate time value
@@ -335,7 +338,7 @@ if __name__ == "__main__":
         ds.attrs["comment"] = "This version has a sample data field"
 
     try:
-        ofn = f"geolocation_{gridid}.nc"
+        ofn = f"geolocation_{grid_id}.nc"
         ds.to_netcdf(ofn, unlimited_dims=["time"])
         print(f"Wrote: {ofn}")
     except AttributeError:

@@ -11,14 +11,14 @@ from pm_icecon.land_spillover import create_land90
 
 
 def read_adj123_file(
-    gridid: str = "psn12.5",
+    grid_id: str = "psn12.5",
     xdim: int = 608,
     ydim: int = 896,
     anc_dir: str = "/share/apps/amsr2-cdr/nasateam2_ancillary",
-    adj123_fn_template: str = "{anc_dir}/coastal_adj_diag123_{gridid}.dat",
+    adj123_fn_template: str = "{anc_dir}/coastal_adj_diag123_{grid_id}.dat",
 ):
     """Read the diagonal adjacency 123 file."""
-    coast_adj_fn = adj123_fn_template.format(anc_dir=anc_dir, gridid=gridid)
+    coast_adj_fn = adj123_fn_template.format(anc_dir=anc_dir, grid_id=grid_id)
     assert os.path.isfile(coast_adj_fn)
     adj123 = np.fromfile(coast_adj_fn, dtype=np.uint8).reshape(ydim, xdim)
 
@@ -26,13 +26,13 @@ def read_adj123_file(
 
 
 def create_land90_conc_file(
-    gridid: str = "psn12.5",
+    grid_id: str = "psn12.5",
     xdim: int = 608,
     ydim: int = 896,
     anc_dir: str = "/share/apps/amsr2-cdr/nasateam2_ancillary",
-    adj123_fn_template: str = "{anc_dir}/coastal_adj_diag123_{gridid}.dat",
+    adj123_fn_template: str = "{anc_dir}/coastal_adj_diag123_{grid_id}.dat",
     write_l90c_file: bool = True,
-    l90c_fn_template: str = "{anc_dir}/land90_conc_{gridid}.dat",
+    l90c_fn_template: str = "{anc_dir}/land90_conc_{grid_id}.dat",
 ):
     """Create the land90-conc file.
 
@@ -44,11 +44,11 @@ def create_land90_conc_file(
     concentration of 90%.  The average of the 49 grid cells in the 7x7 array
     yields the `land90` concentration value.
     """
-    adj123 = read_adj123_file(gridid, xdim, ydim, anc_dir, adj123_fn_template)
+    adj123 = read_adj123_file(grid_id, xdim, ydim, anc_dir, adj123_fn_template)
     land90 = create_land90(adj123=adj123)
 
     if write_l90c_file:
-        l90c_fn = l90c_fn_template.format(anc_dir=anc_dir, gridid=gridid)
+        l90c_fn = l90c_fn_template.format(anc_dir=anc_dir, grid_id=grid_id)
         land90.tofile(l90c_fn)
         print(f"Wrote: {l90c_fn}\n  {land90.dtype}  {land90.shape}")
 
@@ -56,18 +56,18 @@ def create_land90_conc_file(
 
 
 def load_or_create_land90_conc(
-    gridid: str = "psn12.5",
+    grid_id: str = "psn12.5",
     xdim: int = 608,
     ydim: int = 896,
     anc_dir: str = "/share/apps/amsr2-cdr/nasateam2_ancillary",
-    l90c_fn_template: str = "{anc_dir}/land90_conc_{gridid}.dat",
+    l90c_fn_template: str = "{anc_dir}/land90_conc_{grid_id}.dat",
     overwrite: bool = False,
 ):
     # Attempt to load the land90_conc field, and if fail, create it
-    l90c_fn = l90c_fn_template.format(anc_dir=anc_dir, gridid=gridid)
+    l90c_fn = l90c_fn_template.format(anc_dir=anc_dir, grid_id=grid_id)
     if overwrite or not os.path.isfile(l90c_fn):
         data = create_land90_conc_file(
-            gridid, xdim, ydim, anc_dir=anc_dir, l90c_fn_template=l90c_fn_template
+            grid_id, xdim, ydim, anc_dir=anc_dir, l90c_fn_template=l90c_fn_template
         )
     else:
         data = np.fromfile(l90c_fn, dtype=np.float32).reshape(ydim, xdim)
