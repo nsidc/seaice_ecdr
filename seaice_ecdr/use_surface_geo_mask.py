@@ -29,12 +29,13 @@ def get_surfgeo_ds(gridid):
     return xr.load_dataset(get_surfacegeomask_filepath(gridid))
 
 
-def get_sensor_by_date(
+def _get_sat_by_date(
     date: dt.date,
 ) -> str:
     """Return the sensor used for this date."""
     # TODO: these date ranges belong in a config location
     if date >= dt.date(2012, 7, 2) and date <= dt.date(2030, 12, 31):
+        # TODO: this should be `am2` to be consistent with `SUPPORTED_SAT`.
         return "amsr2"
     else:
         raise RuntimeError(f"Could not determine sensor for date: {date}")
@@ -46,8 +47,6 @@ def get_surfacetype_da(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.DataArray:
     """Return a dataarray with surface type information for this date."""
-    sensor = get_sensor_by_date(date)
-
     if hemisphere == "north" and resolution == "12.5":
         surfgeo_ds = get_surfgeo_ds("psn12.5")
     elif hemisphere == "south" and resolution == "12.5":
@@ -66,7 +65,8 @@ def get_surfacetype_da(
     polehole_surface_type = 100
     if "polehole_bitmask" in surfgeo_ds.data_vars.keys():
         polehole_bitmask = surfgeo_ds.variables["polehole_bitmask"]
-        polehole_bitlabel = f"{sensor}_polemask"
+        sat = _get_sat_by_date(date)
+        polehole_bitlabel = f"{sat}_polemask"
         polehole_index = (
             polehole_bitmask.attrs["flag_meanings"].split(" ").index(polehole_bitlabel)
         )
