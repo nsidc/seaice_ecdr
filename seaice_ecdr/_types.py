@@ -11,5 +11,5 @@ SUPPORTED_SAT = Literal[
     "F13",  # SSMI F13
     "F11",  # SSMI F11
     "F08",  # SSMI F08
-    "n07",  # Nimus SMMR
+    "n07",  # Nimbus-7 SMMR
 ]

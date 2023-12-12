@@ -8,6 +8,7 @@ from typing import Any, Final, Literal, get_args
 import pandas as pd
 import xarray as xr
 
+from seaice_ecdr._types import SUPPORTED_SAT
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 
 # Datetime string format for date-related attributes.
@@ -122,6 +123,65 @@ def _get_time_coverage_attrs(
     return time_coverage_attrs
 
 
+# Here’s what the GCMD platform long name should be based on sensor/platform short name:
+PLATFORMS_FOR_SATS: dict[SUPPORTED_SAT, str] = dict(
+    am2="GCOM-W1 > Global Change Observation Mission 1st-Water",
+    ame="Aqua > Earth Observing System, Aqua",
+    F17="DMSP 5D-3/F17 > Defense Meteorological Satellite Program-F17",
+    F13="DMSP 5D-2/F13 > Defense Meteorological Satellite Program-F13",
+    F11="DMSP 5D-2/F11 > Defense Meteorological Satellite Program-F11",
+    F08="DMSP 5D-2/F8 > Defense Meteorological Satellite Program-F8",
+    n07="Nimbus-7",
+)
+
+
+def _unique_sats(sats: list[SUPPORTED_SAT]) -> list[SUPPORTED_SAT]:
+    """Return the unique set of satellites.
+
+    Order is preserved.
+    """
+    # `set` is unordered. This gets the unique list of `sats`.
+    unique_sats = list(dict.fromkeys(sats))
+
+    return unique_sats
+
+
+def get_platforms_for_sats(sats: list[SUPPORTED_SAT]) -> list[str]:
+    """Get the unique set of platforms for the given list of sats.
+
+    Assumes `sats` is ordered from oldest->newest.
+    """
+    # `set` is unordered. This gets the unique list of `sats`.
+    unique_sats = _unique_sats(sats)
+    platforms_for_sat = [PLATFORMS_FOR_SATS[sat] for sat in unique_sats]
+
+    return platforms_for_sat
+
+
+# Here’s what the GCMD sensor name should be based on sensor short name:
+SENSORS_FOR_SATS: dict[SUPPORTED_SAT, str] = dict(
+    am2="AMSR2 > Advanced Microwave Scanning Radiometer 2",
+    ame="AMSR-E > Advanced Microwave Scanning Radiometer-EOS",
+    F17="SSMIS > Special Sensor Microwave Imager/Sounder",
+    # TODO: de-dup SSM/I text?
+    F13="SSM/I > Special Sensor Microwave/Imager",
+    F11="SSM/I > Special Sensor Microwave/Imager",
+    F08="SSM/I > Special Sensor Microwave/Imager",
+    n07="SMMR > Scanning Multichannel Microwave Radiometer",
+)
+
+
+def get_sensors_for_sats(sats: list[SUPPORTED_SAT]) -> list[str]:
+    """Get the unique set of sensors for the given list of sats.
+
+    Assumes `sats` is ordered from oldest->newest.
+    """
+    unique_sats = _unique_sats(sats)
+    sensors_for_sat = [SENSORS_FOR_SATS[sat] for sat in unique_sats]
+
+    return sensors_for_sat
+
+
 def get_global_attrs(
     *,
     time: xr.DataArray,
@@ -135,6 +195,8 @@ def get_global_attrs(
     # For monthly and aggregate files, `source` is a comman-space-separated string
     # of source filenames.
     source: str,
+    # List of satellites that provided data for the given netcdf file.
+    sats: list[SUPPORTED_SAT],
 ) -> dict[str, Any]:
     """Return a dictionary containing the global attributes for a standard ECDR NetCDF file.
 
@@ -145,22 +207,8 @@ def get_global_attrs(
 
     # TODO: support different resolutions, platforms, and sensors!
     resolution: Final = "12.5"
-    # Here’s what the GCMD platform long name should be based on sensor/platform short name:
-    # AMRS2: “GCOM-W1 > Global Change Observation Mission 1st-Water”
-    # AMRS-E: " Aqua > Earth Observing System, Aqua”
-    # SSMIS on F17: “DMSP 5D-3/F17 > Defense Meteorological Satellite Program-F17”
-    # SSM/I on F13: “DMSP 5D-2/F13 > Defense Meteorological Satellite Program-F13”
-    # SSM/I on F11: “DMSP 5D-2/F11 > Defense Meteorological Satellite Program-F11”
-    # SSM/I on F8: “DMSP 5D-2/F8 > Defense Meteorological Satellite Program-F8”
-    # SMMR: “Nimbus-7”
-    platform: Final = "GCOM-W1 > Global Change Observation Mission 1st-Water"
-    # Here’s what the GCMD sensor name should be based on sensor short name:
-    # AMRS2: “AMSR2 > Advanced Microwave Scanning Radiometer 2”
-    # AMRS-E: “AMSR-E > Advanced Microwave Scanning Radiometer-EOS”
-    # SSMIS: “SSMIS > Special Sensor Microwave Imager/Sounder”
-    # SSM/I: “SSM/I > Special Sensor Microwave/Imager”
-    # SMMR: “SMMR > Scanning Multichannel Microwave Radiometer”
-    sensor: Final = "AMSR2 > Advanced Microwave Scanning Radiometer 2"
+    platform = ", ".join(get_platforms_for_sats(sats))
+    sensor = ", ".join(get_sensors_for_sats(sats))
 
     time_coverage_attrs = _get_time_coverage_attrs(
         temporality=temporality,

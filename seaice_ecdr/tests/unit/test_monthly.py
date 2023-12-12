@@ -479,8 +479,8 @@ def test_monthly_ds(monkeypatch, tmpdir):
 def test__sat_for_month():
     assert "am2" == _sat_for_month(sats=["am2", "am2", "am2", "am2"])
 
-    assert "am2" == _sat_for_month(sats=["f17", "f17", "am2", "am2"])
+    assert "am2" == _sat_for_month(sats=["F17", "F17", "am2", "am2"])
 
-    assert "f17" == _sat_for_month(sats=["f16", "f16", "f16", "f17"])
+    assert "F17" == _sat_for_month(sats=["F13", "F13", "F13", "F17"])
 
-    assert "am2" == _sat_for_month(sats=["f16", "f17", "am2"])
+    assert "am2" == _sat_for_month(sats=["F13", "F17", "am2"])

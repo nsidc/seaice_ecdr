@@ -1,4 +1,6 @@
 import datetime as dt
+import re
+from typing import cast, get_args
 
 from pm_tb_data._types import Hemisphere
 
@@ -77,3 +79,22 @@ def standard_monthly_aggregate_filename(
     fn = f"sic_ps{hemisphere[0]}{resolution}_{date_str}_{ECDR_PRODUCT_VERSION}.nc"
 
     return fn
+
+
+# This regex works for both daily and monthly filenames.
+STANDARD_FN_REGEX = re.compile(r"sic_ps.*_.*_(?P<sat>.*)_.*.nc")
+
+
+def sat_from_filename(filename: str) -> SUPPORTED_SAT:
+    match = STANDARD_FN_REGEX.match(filename)
+
+    if not match:
+        raise RuntimeError(f"Failed to parse satellite from {filename}")
+
+    sat = match.group("sat")
+
+    # Ensure the sat is expected.
+    assert sat in get_args(SUPPORTED_SAT)
+    sat = cast(SUPPORTED_SAT, sat)
+
+    return sat

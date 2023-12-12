@@ -15,7 +15,7 @@ from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
-from seaice_ecdr.util import standard_daily_aggregate_filename
+from seaice_ecdr.util import sat_from_filename, standard_daily_aggregate_filename
 
 
 # TODO: very similar to `monthly._get_daily_complete_filepaths_for_month`. DRY
@@ -83,6 +83,7 @@ def get_daily_ds_for_year(
         temporality="daily",
         aggregate=True,
         source=", ".join([fp.name for fp in daily_filepaths]),
+        sats=[sat_from_filename(fp.name) for fp in daily_filepaths],
     )
     ds.attrs.update(daily_aggregate_ds_global_attrs)
 
