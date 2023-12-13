@@ -59,6 +59,14 @@ def _get_sat_by_date(
 
 def _bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
     index = var.flag_meanings.split(" ").index(meaning)
+    # TODO: should this be `flag_masks`?
+    value = var.flag_values[index]
+
+    return value
+
+
+def _flag_value_for_meaning(*, var: xr.DataArray, meaning: str):
+    index = var.flag_meanings.split(" ").index(meaning)
     value = var.flag_values[index]
 
     return value
@@ -165,4 +173,63 @@ def nh_polehole_mask(
 
     polehole_mask = (polehole_bitmask & polehole_bitvalue) > 0
 
+    polehole_mask.attrs = dict(
+        grid_mapping="crs",
+        standard_name="pole_binary_mask",
+        long_name="pole mask",
+        comment="Mask indicating where pole hole might be",
+        units="1",
+    )
+
     return polehole_mask
+
+
+def get_invalid_ice_mask(
+    *, hemisphere: Hemisphere, month: int, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> xr.DataArray:
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    invalid_ice_mask = ancillary_ds.invalid_ice_mask.sel(month=month)
+
+    return invalid_ice_mask
+
+
+def get_land_mask(
+    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> xr.DataArray:
+    """Return a binary mask where True values represent `land`.
+
+    This mask includes both land & coast.
+    """
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    surface_type = ancillary_ds.surface_type
+
+    land_val = _flag_value_for_meaning(
+        var=surface_type,
+        meaning="land",
+    )
+    coast_val = _flag_value_for_meaning(
+        var=surface_type,
+        meaning="coast",
+    )
+
+    land_mask = (surface_type == land_val) | (surface_type == coast_val)
+
+    land_mask.attrs = dict(
+        grid_mapping="crs",
+        standard_name="land_binary_mask",
+        long_name="land mask",
+        comment="Mask indicating where land is",
+        units="1",
+    )
+
+    land_mask.encoding = dict(zlib=True)
+
+    return land_mask

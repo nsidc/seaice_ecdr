@@ -91,6 +91,13 @@ def ecdr_invalid_ice_masks_12km(
             grid_mapping="crs",
             flag_meanings="valid_seaice_location invalid_seaice_location",
             flag_values=[np.byte(0), np.byte(1)],
+            valid_range=(0, 1),
+            units="1",
+            comment=(
+                "Mask indicating where seaice will not exist on this day"
+                " based on climatology"
+            ),
+            long_name="invalid ice mask",
         ),
     )
 

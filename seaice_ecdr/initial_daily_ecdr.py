@@ -21,7 +21,6 @@ import pm_icecon.nt.compute_nt_ic as nt
 import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import xarray as xr
 from loguru import logger
-from pm_icecon.bt.fields import get_bootstrap_fields
 from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
@@ -38,7 +37,7 @@ from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
 from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
-from seaice_ecdr.masks import nh_polehole_mask
+from seaice_ecdr.masks import get_invalid_ice_mask, get_land_mask, nh_polehole_mask
 from seaice_ecdr.util import standard_daily_filename
 
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
@@ -355,67 +354,32 @@ def compute_initial_daily_ecdr_dataset(
     bt_coefs_init["bt_tb_data_mask_function"] = bt.tb_data_mask
 
     # Get the bootstrap fields and assign them to ide_ds DataArrays
-    bt_fields = get_bootstrap_fields(
-        date=date,
-        satellite="amsr2",
-        gridid=ecdr_ide_ds.grid_id,
+    invalid_ice_mask = get_invalid_ice_mask(
+        hemisphere=hemisphere,
+        month=date.month,
+        resolution=resolution,
     )
 
-    # Encode invalid_ice_mask
-    ecdr_ide_ds["invalid_ice_mask"] = (
-        ("time", "y", "x"),
-        np.expand_dims(bt_fields["invalid_ice_mask"], axis=0),
-        {
-            "grid_mapping": "crs",
-            "standard_name": "seaice_binary_mask",
-            "long_name": "invalid ice mask",
-            "comment": (
-                "Mask indicating where seaice will not exist on this day"
-                " based on climatology"
-            ),
-            "units": 1,
-            "valid_range": [0, 1],
-        },
-        {
-            "zlib": True,
-        },
+    land_mask = get_land_mask(
+        hemisphere=hemisphere,
+        resolution=resolution,
     )
+
+    ecdr_ide_ds["invalid_ice_mask"] = invalid_ice_mask.expand_dims(dim="time")
 
     # Encode land_mask
-    ecdr_ide_ds["land_mask"] = (
-        ("y", "x"),
-        bt_fields["land_mask"],
-        {
-            "grid_mapping": "crs",
-            "standard_name": "land_binary_mask",
-            "long_name": "land mask",
-            "comment": "Mask indicating where land is",
-            "units": 1,
-        },
-        {
-            "zlib": True,
-        },
-    )
+    ecdr_ide_ds["land_mask"] = land_mask
 
     # Encode pole_mask
     # TODO: I think this is currently unused
     # ...but it should be coordinated with pole hole filling routines below
     # ...and the pole filling should occur after temporal interpolation
-    if bt_fields["pole_mask"] is not None:
-        ecdr_ide_ds["pole_mask"] = (
-            ("y", "x"),
-            bt_fields["pole_mask"],
-            {
-                "grid_mapping": "crs",
-                "standard_name": "pole_binary_mask",
-                "long_name": "pole mask",
-                "comment": "Mask indicating where pole hole might be",
-                "units": 1,
-            },
-            {
-                "zlib": True,
-            },
+    if hemisphere == NORTH:
+        pole_mask = nh_polehole_mask(
+            date=date,
+            resolution=resolution,
         )
+        ecdr_ide_ds["pole_mask"] = pole_mask
 
     # Determine the NT fields and coefficients
     au_si_resolution_str = _au_si_res_str(resolution=resolution)
