@@ -18,20 +18,31 @@ from seaice_ecdr.constants import CDR_ANCILLARY_DIR
 from seaice_ecdr.grid_id import get_grid_id
 
 
-def get_surfacegeomask_filepath(grid_id: str) -> Path:
-    filepath = CDR_ANCILLARY_DIR / f"cdrv5_surfgeo_{grid_id}.nc"
+def get_ancillary_filepath(
+    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> Path:
+    grid_id = get_grid_id(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}.nc"
 
     return filepath
 
 
 @cache
-def get_surfgeo_ds(*, hemisphere, resolution) -> xr.Dataset:
-    """Return xr Dataset of ancillary surface/geolocation for this grid."""
-    grid_id = get_grid_id(
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-    return xr.load_dataset(get_surfacegeomask_filepath(grid_id))
+def get_ancillary_ds(
+    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> xr.Dataset:
+    """Return xr Dataset of ancillary data for this hemisphere/resolution."""
+    if resolution != "12.5":
+        raise NotImplementedError("ECDR currently only supports 12.5km resolution.")
+
+    filepath = get_ancillary_filepath(hemisphere=hemisphere, resolution=resolution)
+    ds = xr.load_dataset(filepath)
+
+    return ds
 
 
 # TODO: move to util  module?
@@ -60,17 +71,17 @@ def get_surfacetype_da(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.DataArray:
     """Return a dataarray with surface type information for this date."""
-    surfgeo_ds = get_surfgeo_ds(
+    ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
     )
 
-    xvar = surfgeo_ds.variables["x"]
-    yvar = surfgeo_ds.variables["y"]
-    surftypevar = surfgeo_ds.variables["surface_type"].copy()
+    xvar = ancillary_ds.variables["x"]
+    yvar = ancillary_ds.variables["y"]
+    surftypevar = ancillary_ds.variables["surface_type"].copy()
     polehole_surface_type = 100
-    if "polehole_bitmask" in surfgeo_ds.data_vars.keys():
-        polehole_bitmask = surfgeo_ds.polehole_bitmask
+    if "polehole_bitmask" in ancillary_ds.data_vars.keys():
+        polehole_bitmask = ancillary_ds.polehole_bitmask
         sat = _get_sat_by_date(date)
         polehole_bitlabel = f"{sat}_polemask"
         polehole_bitvalue = _bitmask_value_for_meaning(
@@ -135,12 +146,12 @@ def nh_polehole_mask(
     *, date: dt.date, resolution: ECDR_SUPPORTED_RESOLUTIONS
 ) -> xr.DataArray:
     """Return the northern hemisphere pole hole mask for the given date and resolution."""
-    surfgeo_ds = get_surfgeo_ds(
+    ancillary_ds = get_ancillary_ds(
         hemisphere=NORTH,
         resolution=resolution,
     )
 
-    polehole_bitmask = surfgeo_ds.polehole_bitmask
+    polehole_bitmask = ancillary_ds.polehole_bitmask
 
     sat = _get_sat_by_date(
         date=date,

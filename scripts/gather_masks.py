@@ -21,15 +21,34 @@ cells away from coast (3-5). Used by nasateam.
 """
 
 import datetime as dt
+from pathlib import Path
 
 import numpy as np
 import xarray as xr
+from loguru import logger
 from pm_icecon.bt.masks import get_ps_invalid_ice_mask
 from pm_icecon.nt.params.amsr2 import get_amsr2_params
 from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 
-from seaice_ecdr.constants import CDR_ANCILLARY_DIR
-from seaice_ecdr.masks import get_surfgeo_ds
+from seaice_ecdr.grid_id import get_grid_id
+from seaice_ecdr.masks import get_ancillary_filepath
+
+THIS_DIR = Path(__file__).resolve().parent
+
+
+def get_surfacegeomask_filepath(grid_id: str) -> Path:
+    filepath = THIS_DIR / "surface_geo_masks" / f"cdrv5_surfgeo_{grid_id}.nc"
+
+    return filepath
+
+
+def get_surfgeo_ds(*, hemisphere, resolution) -> xr.Dataset:
+    """Return xr Dataset of ancillary surface/geolocation for this grid."""
+    grid_id = get_grid_id(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    return xr.load_dataset(get_surfacegeomask_filepath(grid_id))
 
 
 def ecdr_invalid_ice_masks_12km(
@@ -135,6 +154,7 @@ if __name__ == "__main__":
             # TODO: should this have `flag_masks` instead of `flag_meanings`?
             ancillary_ds["polehole_bitmask"] = surfgeo_ds.polehole_bitmask
 
-        ancillary_ds.to_netcdf(
-            CDR_ANCILLARY_DIR / f"ecdr-ancillary-{hemisphere[0]}h.nc"
-        )
+        filepath = get_ancillary_filepath(hemisphere=hemisphere, resolution="12.5")
+        ancillary_ds.to_netcdf(filepath)
+
+        logger.info(f"wrote {filepath}")
