@@ -641,7 +641,6 @@ def compute_initial_daily_ecdr_dataset(
             logger.info("Updated spatial_interpolation with pole hole value")
 
     # Apply land flag value and clamp max conc to 100.
-    # TODO: extract this func from nt and allow override of flag values
     cdr_conc[cdr_conc > 100] = 100
     cdr_conc[land_mask.data] = DEFAULT_FLAG_VALUES.land
 
