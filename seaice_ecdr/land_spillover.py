@@ -1,8 +1,10 @@
-import os
+from pathlib import Path
 
 import numpy as np
 from loguru import logger
 from pm_icecon.land_spillover import create_land90
+
+from seaice_ecdr.constants import NASATEAM2_ANCILLARY_DIR
 
 # TODO: The various directory vars, eg anc_dir, should be either abstracted
 #   as a constant or passed as a configuration parameter.
@@ -14,12 +16,12 @@ def read_adj123_file(
     grid_id: str = "psn12.5",
     xdim: int = 608,
     ydim: int = 896,
-    anc_dir: str = "/share/apps/amsr2-cdr/nasateam2_ancillary",
+    anc_dir: Path = NASATEAM2_ANCILLARY_DIR,
     adj123_fn_template: str = "{anc_dir}/coastal_adj_diag123_{grid_id}.dat",
 ):
     """Read the diagonal adjacency 123 file."""
     coast_adj_fn = adj123_fn_template.format(anc_dir=anc_dir, grid_id=grid_id)
-    assert os.path.isfile(coast_adj_fn)
+    assert Path(coast_adj_fn).is_file()
     adj123 = np.fromfile(coast_adj_fn, dtype=np.uint8).reshape(ydim, xdim)
 
     return adj123
@@ -29,7 +31,7 @@ def create_land90_conc_file(
     grid_id: str = "psn12.5",
     xdim: int = 608,
     ydim: int = 896,
-    anc_dir: str = "/share/apps/amsr2-cdr/nasateam2_ancillary",
+    anc_dir: Path = NASATEAM2_ANCILLARY_DIR,
     adj123_fn_template: str = "{anc_dir}/coastal_adj_diag123_{grid_id}.dat",
     write_l90c_file: bool = True,
     l90c_fn_template: str = "{anc_dir}/land90_conc_{grid_id}.dat",
@@ -59,13 +61,13 @@ def load_or_create_land90_conc(
     grid_id: str = "psn12.5",
     xdim: int = 608,
     ydim: int = 896,
-    anc_dir: str = "/share/apps/amsr2-cdr/nasateam2_ancillary",
+    anc_dir: Path = NASATEAM2_ANCILLARY_DIR,
     l90c_fn_template: str = "{anc_dir}/land90_conc_{grid_id}.dat",
     overwrite: bool = False,
 ):
     # Attempt to load the land90_conc field, and if fail, create it
     l90c_fn = l90c_fn_template.format(anc_dir=anc_dir, grid_id=grid_id)
-    if overwrite or not os.path.isfile(l90c_fn):
+    if overwrite or not Path(l90c_fn).is_file():
         data = create_land90_conc_file(
             grid_id, xdim, ydim, anc_dir=anc_dir, l90c_fn_template=l90c_fn_template
         )
