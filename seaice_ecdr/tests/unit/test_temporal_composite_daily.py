@@ -112,7 +112,7 @@ def test_temporal_composite_max_interp_range_9():
     """interp_range > 9 should yield runtime error."""
 
     with pytest.raises(RuntimeError, match=r"interp_range"):
-        tempcomp_array, tempcomp_flags = temporally_composite_dataarray(
+        temporally_composite_dataarray(
             target_date=dt.date(2020, 1, 1),
             da=xr.DataArray(coords=(range(2), range(3), range(4))),
             interp_range=10,
