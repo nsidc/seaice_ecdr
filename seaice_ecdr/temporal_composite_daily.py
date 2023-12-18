@@ -345,7 +345,6 @@ def read_or_create_and_read_idecdr_ds(
             "v23_day_si",
             # "h36_day_si",  # include this field for melt onset calculation
             "v36_day_si",
-            "shoremap",
             "NT_icecon_min",
         ]
         make_idecdr_netcdf(

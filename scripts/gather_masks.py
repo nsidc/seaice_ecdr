@@ -11,13 +11,6 @@ CDR v4 has ancillary files with the following variables:
 * `valid_ice_mask`
 * `x`
 * `y`
-
-
-NOTE: this code assumes `pm_icecon` v0.2.0 and `seaice_ecdr` git hash 27e5c09.
-
-
-TODO: Add shoremap? The shoremap has values 1-5 that indicate land, coast, and
-cells away from coast (3-5). Used by nasateam.
 """
 
 import datetime as dt
