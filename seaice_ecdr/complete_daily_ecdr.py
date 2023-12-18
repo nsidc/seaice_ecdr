@@ -72,9 +72,9 @@ def read_or_create_and_read_tiecdr_ds(
 ) -> xr.Dataset:
     """Read an tiecdr netCDF file, creating it if it doesn't exist."""
     tie_filepath = get_tie_filepath(
-        date,
-        hemisphere,
-        resolution,
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
     # TODO: This only creates if file is missing.  We may want an overwrite opt

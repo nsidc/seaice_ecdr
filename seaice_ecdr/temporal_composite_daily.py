@@ -126,6 +126,7 @@ def get_tie_dir(*, ecdr_data_dir: Path) -> Path:
 
 
 def get_tie_filepath(
+    *,
     date,
     hemisphere,
     resolution,
@@ -331,7 +332,10 @@ def read_or_create_and_read_idecdr_ds(
 ) -> xr.Dataset:
     """Read an idecdr netCDF file, creating it if it doesn't exist."""
     ide_filepath = get_idecdr_filepath(
-        date, hemisphere, resolution, ecdr_data_dir=ecdr_data_dir
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
     )
     if overwrite_ide or not ide_filepath.is_file():
         excluded_idecdr_fields = [

@@ -47,11 +47,10 @@ EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
 
 
 def cdr_bootstrap(
-    date: dt.date,
+    *,
     tb_v37: npt.NDArray,
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
-    tb_v22: npt.NDArray,
     bt_coefs,
     missing_flag_value: float,
 ):
@@ -85,7 +84,7 @@ def cdr_bootstrap(
 
 
 def cdr_nasateam(
-    date: dt.date,
+    *,
     tb_h19: npt.NDArray,
     tb_v37: npt.NDArray,
     tb_v19: npt.NDArray,
@@ -107,6 +106,7 @@ def cdr_nasateam(
 
 
 def get_bt_tb_mask(
+    *,
     tb_v37,
     tb_h37,
     tb_v19,
@@ -144,12 +144,11 @@ class NtCoefs(TypedDict):
 
 
 def calculate_bt_nt_cdr_raw_conc(
-    date: dt.date,
+    *,
     tb_h19: npt.NDArray,
     tb_v37: npt.NDArray,
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
-    tb_v22: npt.NDArray,
     bt_coefs: dict,
     nt_coefs: NtCoefs,
     missing_flag_value: float | int,
@@ -157,22 +156,19 @@ def calculate_bt_nt_cdr_raw_conc(
     """Run the CDR algorithm."""
     # First, get bootstrap conc.
     bt_conc = cdr_bootstrap(
-        date,
-        tb_v37,
-        tb_h37,
-        tb_v19,
-        tb_v22,
-        bt_coefs,
-        missing_flag_value,
+        tb_v37=tb_v37,
+        tb_h37=tb_h37,
+        tb_v19=tb_v19,
+        bt_coefs=bt_coefs,
+        missing_flag_value=missing_flag_value,
     )
 
     # Get nasateam conc. Note that concentrations from nasateam may be >100%.
     nt_conc = cdr_nasateam(
-        date,
-        tb_h19,
-        tb_v37,
-        tb_v19,
-        nt_coefs["nt_tiepoints"],
+        tb_h19=tb_h19,
+        tb_v37=tb_v37,
+        tb_v19=tb_v19,
+        nt_tiepoints=nt_coefs["nt_tiepoints"],
     )
 
     # Now calculate CDR SIC
@@ -515,12 +511,10 @@ def compute_initial_daily_ecdr_dataset(
 
     # finally, compute the CDR.
     bt_conc, nt_conc, cdr_conc_raw = calculate_bt_nt_cdr_raw_conc(
-        date=date,
         tb_h19=ecdr_ide_ds["h18_day_si"].data[0, :, :],
         tb_v37=ecdr_ide_ds["v36_day_si"].data[0, :, :],
         tb_h37=ecdr_ide_ds["h36_day_si"].data[0, :, :],
         tb_v19=ecdr_ide_ds["v18_day_si"].data[0, :, :],
-        tb_v22=ecdr_ide_ds["v23_day_si"].data[0, :, :],
         bt_coefs=bt_coefs,
         nt_coefs=nt_coefs,
         missing_flag_value=ecdr_ide_ds.attrs["missing_value"],
@@ -853,6 +847,7 @@ def get_idecdr_dir(*, ecdr_data_dir: Path) -> Path:
 
 
 def get_idecdr_filepath(
+    *,
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
