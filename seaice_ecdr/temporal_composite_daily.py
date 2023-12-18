@@ -364,13 +364,6 @@ def read_or_create_and_read_idecdr_ds(
     return ide_ds
 
 
-def grid_is_psn125(hemisphere, gridshape):
-    """Return True if this is the 12.5km NSIDC NH polar stereo grid."""
-    is_nh = hemisphere == NORTH
-    is_125 = gridshape == (896, 608)
-    return is_nh and is_125
-
-
 def create_sorted_var_timestack(
     varname: str,
     date_list: list,

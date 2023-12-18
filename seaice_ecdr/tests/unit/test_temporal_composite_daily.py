@@ -31,36 +31,6 @@ except ValueError:
     logger.add(sys.stderr, level="WARNING")
 
 
-def compose_yx_dataarray(
-    data,
-    xvals,
-    yvals,
-) -> xr.DataArray:
-    """Create a simple data array with coords (time, y, x)."""
-    dims = ["y", "x"]
-    coords = dict(
-        y=(
-            [
-                "y",
-            ],
-            yvals,
-        ),
-        x=(
-            [
-                "x",
-            ],
-            xvals,
-        ),
-    )
-    dataarray = xr.DataArray(
-        data=data,
-        dims=dims,
-        coords=coords,
-    )
-
-    return dataarray
-
-
 def compose_tyx_dataarray(
     data,
     xvals,
