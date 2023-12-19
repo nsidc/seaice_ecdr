@@ -527,7 +527,7 @@ def make_monthly_ds(
     monthly_ds = _assign_time_to_monthly_ds(
         monthly_ds=monthly_ds,
         year=daily_ds_for_month.year,
-        month=int(daily_ds_for_month.month.values),
+        month=daily_ds_for_month.month,
     )
 
     monthly_ds["crs"] = daily_ds_for_month.crs.isel(time=0).drop_vars("time")

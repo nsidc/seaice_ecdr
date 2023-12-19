@@ -195,6 +195,10 @@ def get_invalid_ice_mask(
 
     invalid_ice_mask = ancillary_ds.invalid_ice_mask.sel(month=month)
 
+    # The invalid ice mask is indexed by month in the ancillary dataset. Drop
+    # that coordinate.
+    invalid_ice_mask = invalid_ice_mask.drop_vars("month")
+
     return invalid_ice_mask
 
 
