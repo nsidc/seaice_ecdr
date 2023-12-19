@@ -814,10 +814,7 @@ def write_ide_netcdf(
     )
 
     # Return the path if it exists
-    if output_filepath.exists():
-        return output_filepath
-    else:
-        return Path("")
+    return output_filepath
 
 
 @cache
