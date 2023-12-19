@@ -227,7 +227,7 @@ def create_melt_onset_field(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    is_melted_today[land_mask] = False
+    is_melted_today[0, land_mask.data] = False
 
     have_prior_melt_values = prior_melt_onset_field != no_melt_flag
     is_missing_prior = prior_melt_onset_field == no_melt_flag
