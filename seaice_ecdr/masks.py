@@ -233,3 +233,29 @@ def get_land_mask(
     land_mask.encoding = dict(zlib=True)
 
     return land_mask
+
+
+def get_land90_conc_field(
+    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> xr.DataArray:
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    land90_da = ancillary_ds.l90c
+
+    return land90_da
+
+
+def get_adj123_field(
+    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> xr.DataArray:
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    adj123_da = ancillary_ds.adj123
+
+    return adj123_da

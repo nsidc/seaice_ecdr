@@ -39,8 +39,13 @@ from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
-from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
-from seaice_ecdr.masks import get_invalid_ice_mask, get_land_mask, nh_polehole_mask
+from seaice_ecdr.masks import (
+    get_adj123_field,
+    get_invalid_ice_mask,
+    get_land90_conc_field,
+    get_land_mask,
+    nh_polehole_mask,
+)
 from seaice_ecdr.util import standard_daily_filename
 
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
@@ -564,7 +569,6 @@ def compute_initial_daily_ecdr_dataset(
     cdr_conc = cdr_conc_raw.copy()
     cdr_conc[set_to_zero_sic] = 0
 
-    tb_h19 = ecdr_ide_ds["h18_day_si"].data[0, :, :]
     # Will use spillover_applied with values:
     #  1: NT2
     #  2: BT (not yet added)
@@ -572,45 +576,20 @@ def compute_initial_daily_ecdr_dataset(
     spillover_applied = np.zeros((ydim, xdim), dtype=np.uint8)
     cdr_conc_pre_spillover = cdr_conc.copy()
     logger.info("Applying NT2 land spillover technique...")
-    if tb_h19.shape == (896, 608):
-        # NH
-        l90c = load_or_create_land90_conc(
-            grid_id="psn12.5",
-            xdim=608,
-            ydim=896,
-            overwrite=False,
-        )
-        adj123 = read_adj123_file(
-            grid_id="psn12.5",
-            xdim=608,
-            ydim=896,
-        )
-        cdr_conc = apply_nt2_land_spillover(
-            conc=cdr_conc,
-            adj123=adj123,
-            l90c=l90c,
-        )
-    elif tb_h19.shape == (664, 632):
-        # SH
-        l90c = load_or_create_land90_conc(
-            grid_id="pss12.5",
-            xdim=632,
-            ydim=664,
-            overwrite=False,
-        )
-        adj123 = read_adj123_file(
-            grid_id="pss12.5",
-            xdim=632,
-            ydim=664,
-        )
-        cdr_conc = apply_nt2_land_spillover(
-            conc=cdr_conc,
-            adj123=adj123,
-            l90c=l90c,
-        )
+    l90c = get_land90_conc_field(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    adj123 = get_adj123_field(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    cdr_conc = apply_nt2_land_spillover(
+        conc=cdr_conc,
+        adj123=adj123.data,
+        l90c=l90c.data,
+    )
 
-    else:
-        raise SystemExit("Could not determine hemisphere from tb shape: {tb_h19.shape}")
     spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = 1
 
     # Fill the NH pole hole
