@@ -1,7 +1,8 @@
-"""Create netCDF file with surface type and geolocation arrays.
+"""Code for interacting with ancillary data required by the ECDR.
 
-The routines here use the output of
-scripts/surface_geo_mask/create_surface_geo_mask.py
+Ancillary fields (e.g., land mask, invalid ice masks, l90c field, etc) required
+for ECDR processing are stored in an ancillary NetCDF file that is published
+alongside the ECDR.
 """
 
 import datetime as dt

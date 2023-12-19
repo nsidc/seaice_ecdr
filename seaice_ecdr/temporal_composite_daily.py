@@ -20,13 +20,13 @@ from pm_icecon.util import date_range
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.ancillary import nh_polehole_mask
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
     get_idecdr_filepath,
     make_idecdr_netcdf,
 )
-from seaice_ecdr.masks import nh_polehole_mask
 from seaice_ecdr.util import standard_daily_filename
 
 # Set the default minimum log notification to "info"

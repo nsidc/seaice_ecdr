@@ -17,11 +17,11 @@ from pm_icecon.util import date_range
 from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
-from seaice_ecdr.masks import (
+from seaice_ecdr.ancillary import (
     get_surfacetype_da,
 )
+from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.melt import (
     MELT_ONSET_FILL_VALUE,
     MELT_SEASON_FIRST_DOY,
