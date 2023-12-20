@@ -10,7 +10,11 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr.initial_daily_ecdr import get_idecdr_filepath, make_idecdr_netcdf
+from seaice_ecdr.initial_daily_ecdr import (
+    get_idecdr_filepath,
+    make_idecdr_netcdf,
+    write_ide_netcdf,
+)
 from seaice_ecdr.initial_daily_ecdr import (
     initial_daily_ecdr_dataset_for_au_si_tbs as compute_idecdr_ds,
 )
@@ -65,13 +69,21 @@ def test_seaice_idecdr_can_output_to_netcdf(
 
     # NH
     sample_output_filepath_nh = tmp_path / "sample_idecdr_nh.nc"
-    sample_idecdr_dataset_nh.to_netcdf(sample_output_filepath_nh)
-    assert sample_output_filepath_nh.is_file()
+    written_path = write_ide_netcdf(
+        ide_ds=sample_idecdr_dataset_nh,
+        output_filepath=sample_output_filepath_nh,
+    )
+    assert sample_output_filepath_nh == written_path
+    assert sample_output_filepath_nh.exists()
 
     # SH
     sample_output_filepath_sh = tmp_path / "sample_idecdr_sh.nc"
-    sample_idecdr_dataset_sh.to_netcdf(sample_output_filepath_sh)
-    assert sample_output_filepath_sh.is_file()
+    written_path = write_ide_netcdf(
+        ide_ds=sample_idecdr_dataset_sh,
+        output_filepath=sample_output_filepath_sh,
+    )
+    assert sample_output_filepath_sh == written_path
+    assert sample_output_filepath_sh.exists()
 
 
 def test_seaice_idecdr_is_Dataset(
