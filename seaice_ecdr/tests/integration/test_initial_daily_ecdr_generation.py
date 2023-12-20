@@ -1,7 +1,6 @@
 """Tests for initial daily ECDR generation."""
 
 import datetime as dt
-import sys
 from pathlib import Path
 from typing import Final
 
@@ -18,10 +17,6 @@ from seaice_ecdr.initial_daily_ecdr import (
 from seaice_ecdr.initial_daily_ecdr import (
     initial_daily_ecdr_dataset_for_au_si_tbs as compute_idecdr_ds,
 )
-
-# Set the default minimum log notification to Warning
-logger.remove(0)  # Removes previous logger info
-logger.add(sys.stderr, level="WARNING")
 
 cdr_conc_fieldname = "conc"
 
