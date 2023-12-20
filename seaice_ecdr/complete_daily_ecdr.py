@@ -249,7 +249,6 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    interp_range: int = 5,
     ecdr_data_dir: Path,
 ) -> xr.Dataset:
     """Create xr dataset containing the complete daily enhanced CDR.
@@ -371,15 +370,12 @@ def make_cdecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
-    interp_range: int = 5,
-    fill_the_pole_hole: bool = True,
 ) -> None:
     logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
     cde_ds = complete_daily_ecdr_dataset_for_au_si_tbs(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        interp_range=interp_range,
         ecdr_data_dir=ecdr_data_dir,
     )
 
