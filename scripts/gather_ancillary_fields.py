@@ -24,9 +24,9 @@ from pm_icecon.land_spillover import create_land90
 from pm_icecon.nt.params.amsr2 import get_amsr2_params
 from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 
+from seaice_ecdr.ancillary import get_ancillary_filepath
 from seaice_ecdr.constants import NSIDC_NFS_SHARE_DIR
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.masks import get_ancillary_filepath
 
 # originally from `pm_icecon`
 BOOTSTRAP_MASKS_DIR = NSIDC_NFS_SHARE_DIR / "bootstrap_masks"
