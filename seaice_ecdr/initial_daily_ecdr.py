@@ -711,6 +711,8 @@ def compute_initial_daily_ecdr_dataset(
     #  32: Spatial interpolation applied
     #  64: *applied later* Temporal interpolation applied
     # 128: *applied later* Melt onset detected
+    # TODO: dynamically read the bitmask values from the source dataset
+    # (`flag_masks` & `flag_meanings`)
     qa_bitmask = np.zeros((ydim, xdim), dtype=np.uint8)
     qa_bitmask[ecdr_ide_ds["bt_weather_mask"].data[0, :, :]] += 1
     qa_bitmask[ecdr_ide_ds["nt_weather_mask"].data[0, :, :]] += 2
