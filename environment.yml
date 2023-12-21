@@ -27,6 +27,7 @@ dependencies:
   - pytest-cov ~=4.1.0
   - mypy ==1.7.0
   - pyfakefs ~=5.2.4
+  - pytest-order ~=1.0.1
 
   # other utilities
   - bump-my-version ~=0.10.0

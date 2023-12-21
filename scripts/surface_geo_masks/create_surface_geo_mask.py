@@ -10,6 +10,7 @@ Sample usages:
 import os
 import sys
 from functools import cache
+from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
@@ -17,17 +18,17 @@ import xarray as xr
 from scipy.ndimage import zoom
 
 from seaice_ecdr.constants import CDR_ANCILLARY_DIR
-from seaice_ecdr.masks import get_surfacegeomask_filepath
 
 nh_gridids = ("psn12.5",)
+THIS_DIR = Path(__file__).resolve().parent
 
 GEO_INFO_FILE = {
     "psn12.5": "/projects/DATASETS/nsidc0771_polarstereo_anc_grid_info/NSIDC0771_LatLon_PS_N12.5km_v1.0.nc",
     "pss12.5": "/projects/DATASETS/nsidc0771_polarstereo_anc_grid_info/NSIDC0771_LatLon_PS_S12.5km_v1.0.nc",
 }
 SURFGEOMASK_FILE = {
-    "psn12.5": get_surfacegeomask_filepath("psn12.5"),
-    "pss12.5": get_surfacegeomask_filepath("pss12.5"),
+    "psn12.5": THIS_DIR / "cdrv5_surfgeo_psn12.5.nc",
+    "pss12.5": THIS_DIR / "cdrv5_surfgeo_pss12.5.nc",
 }
 
 SURFTYPE_BIN_FILE = {

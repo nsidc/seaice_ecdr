@@ -10,8 +10,8 @@ from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.ancillary import get_ancillary_ds
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
-from seaice_ecdr.masks import get_surfgeo_ds
 from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.util import sat_from_filename, standard_monthly_aggregate_filename
@@ -60,7 +60,7 @@ def get_monthly_aggregate_ds(
     agg_ds["crs"] = agg_ds.crs.isel(time=0, drop=True)
 
     # Add latitude and longitude fields
-    surf_geo_ds = get_surfgeo_ds(
+    surf_geo_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
     )

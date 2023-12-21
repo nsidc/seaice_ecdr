@@ -17,11 +17,12 @@ from pm_icecon.util import date_range
 from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
-from seaice_ecdr.masks import (
+from seaice_ecdr.ancillary import (
+    get_land_mask,
     get_surfacetype_da,
 )
+from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.melt import (
     MELT_ONSET_FILL_VALUE,
     MELT_SEASON_FIRST_DOY,
@@ -72,9 +73,9 @@ def read_or_create_and_read_tiecdr_ds(
 ) -> xr.Dataset:
     """Read an tiecdr netCDF file, creating it if it doesn't exist."""
     tie_filepath = get_tie_filepath(
-        date,
-        hemisphere,
-        resolution,
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
     # TODO: This only creates if file is missing.  We may want an overwrite opt
@@ -221,6 +222,12 @@ def create_melt_onset_field(
         tb_h19=tb_h19,
         tb_h37=tb_h37,
     )
+    # Apply land mask
+    land_mask = get_land_mask(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    is_melted_today[0, land_mask.data] = False
 
     have_prior_melt_values = prior_melt_onset_field != no_melt_flag
     is_missing_prior = prior_melt_onset_field == no_melt_flag
@@ -242,7 +249,6 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    interp_range: int = 5,
     ecdr_data_dir: Path,
 ) -> xr.Dataset:
     """Create xr dataset containing the complete daily enhanced CDR.
@@ -364,15 +370,12 @@ def make_cdecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
-    interp_range: int = 5,
-    fill_the_pole_hole: bool = True,
-) -> None:
+) -> Path:
     logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
     cde_ds = complete_daily_ecdr_dataset_for_au_si_tbs(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        interp_range=interp_range,
         ecdr_data_dir=ecdr_data_dir,
     )
 
@@ -390,6 +393,8 @@ def make_cdecdr_netcdf(
         output_filepath=output_path,
     )
     logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
+
+    return output_path
 
 
 def read_or_create_and_read_cdecdr_ds(
