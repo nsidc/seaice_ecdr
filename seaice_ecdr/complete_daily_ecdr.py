@@ -370,7 +370,7 @@ def make_cdecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
-) -> None:
+) -> Path:
     logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
     cde_ds = complete_daily_ecdr_dataset_for_au_si_tbs(
         date=date,
@@ -393,6 +393,8 @@ def make_cdecdr_netcdf(
         output_filepath=output_path,
     )
     logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
+
+    return output_path
 
 
 def read_or_create_and_read_cdecdr_ds(
