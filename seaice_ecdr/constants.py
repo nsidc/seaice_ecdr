@@ -24,4 +24,4 @@ NRT_BASE_OUTPUT_DIR = BASE_OUTPUT_DIR / "nrt"
 LANCE_NRT_DATA_DIR = NSIDC_NFS_SHARE_DIR / "lance_amsr2_nrt_data"
 
 # Location of surface mask & geo-information files.
-CDR_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / "cdrv5_ancillary"
+CDR_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / f"ecdr_{ECDR_PRODUCT_VERSION}_ancillary"
