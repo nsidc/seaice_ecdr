@@ -20,17 +20,20 @@ import numpy as np
 import numpy.typing as npt
 import xarray as xr
 from loguru import logger
+from pm_icecon.land_spillover import create_land90
 from pm_icecon.nt.params.amsr2 import get_amsr2_params
 from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 
+from seaice_ecdr.ancillary import get_ancillary_filepath
 from seaice_ecdr.constants import NSIDC_NFS_SHARE_DIR
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.masks import get_ancillary_filepath
 
 # originally from `pm_icecon`
 BOOTSTRAP_MASKS_DIR = NSIDC_NFS_SHARE_DIR / "bootstrap_masks"
 CDR_TESTDATA_DIR = NSIDC_NFS_SHARE_DIR / "cdr_testdata"
 BT_GODDARD_ANCILLARY_DIR = CDR_TESTDATA_DIR / "bt_goddard_ANCILLARY"
+
+NASATEAM2_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / "nasateam2_ancillary"
 
 THIS_DIR = Path(__file__).resolve().parent
 
@@ -201,11 +204,87 @@ def ecdr_min_ice_concentration_12km(
     return da
 
 
+def read_adj123_file(
+    grid_id: str = "psn12.5",
+    xdim: int = 608,
+    ydim: int = 896,
+    anc_dir: Path = NASATEAM2_ANCILLARY_DIR,
+    adj123_fn_template: str = "{anc_dir}/coastal_adj_diag123_{grid_id}.dat",
+):
+    """Read the diagonal adjacency 123 file."""
+    coast_adj_fn = adj123_fn_template.format(anc_dir=anc_dir, grid_id=grid_id)
+    assert Path(coast_adj_fn).is_file()
+    adj123 = np.fromfile(coast_adj_fn, dtype=np.uint8).reshape(ydim, xdim)
+
+    return adj123
+
+
+def create_land90_conc_file(
+    grid_id: str = "psn12.5",
+    xdim: int = 608,
+    ydim: int = 896,
+    anc_dir: Path = NASATEAM2_ANCILLARY_DIR,
+    adj123_fn_template: str = "{anc_dir}/coastal_adj_diag123_{grid_id}.dat",
+    write_l90c_file: bool = True,
+    l90c_fn_template: str = "{anc_dir}/land90_conc_{grid_id}.dat",
+):
+    """Create the land90-conc file.
+
+    The 'land90' array is a mock sea ice concentration array that is calculated
+    from the land mask.  It assumes that the mock concentration value will be
+    the average of a 7x7 array of local surface mask values centered on the
+    center pixel.  Water grid cells are considered to have a sea ice
+    concentration of zero.  Land grid cells are considered to have a sea ice
+    concentration of 90%.  The average of the 49 grid cells in the 7x7 array
+    yields the `land90` concentration value.
+    """
+    adj123 = read_adj123_file(grid_id, xdim, ydim, anc_dir, adj123_fn_template)
+    land90 = create_land90(adj123=adj123)
+
+    if write_l90c_file:
+        l90c_fn = l90c_fn_template.format(anc_dir=anc_dir, grid_id=grid_id)
+        land90.tofile(l90c_fn)
+        print(f"Wrote: {l90c_fn}\n  {land90.dtype}  {land90.shape}")
+
+    return land90
+
+
+def load_or_create_land90_conc(
+    grid_id: str = "psn12.5",
+    xdim: int = 608,
+    ydim: int = 896,
+    anc_dir: Path = NASATEAM2_ANCILLARY_DIR,
+    l90c_fn_template: str = "{anc_dir}/land90_conc_{grid_id}.dat",
+    overwrite: bool = False,
+):
+    # Attempt to load the land90_conc field, and if fail, create it
+    l90c_fn = l90c_fn_template.format(anc_dir=anc_dir, grid_id=grid_id)
+    if overwrite or not Path(l90c_fn).is_file():
+        data = create_land90_conc_file(
+            grid_id, xdim, ydim, anc_dir=anc_dir, l90c_fn_template=l90c_fn_template
+        )
+    else:
+        data = np.fromfile(l90c_fn, dtype=np.float32).reshape(ydim, xdim)
+        logger.info(f"Read NT2 land90 mask from:\n  {l90c_fn}")
+
+    return data
+
+
 if __name__ == "__main__":
+    grid_id = "psn12.5"
+    resolution = "12.5"
     for hemisphere in (NORTH, SOUTH):
+        x_dim_size, y_dim_size = {
+            "north": (608, 896),
+            "south": (632, 664),
+        }[hemisphere]
         surfgeo_ds = get_surfgeo_ds(
             hemisphere=hemisphere,
-            resolution="12.5",
+            resolution=resolution,
+        )
+        grid_id = get_grid_id(
+            hemisphere=hemisphere,
+            resolution=resolution,
         )
         invalid_ice_masks = ecdr_invalid_ice_masks_12km(
             hemisphere=hemisphere, surfgeo_ds=surfgeo_ds
@@ -214,8 +293,54 @@ if __name__ == "__main__":
             hemisphere=hemisphere, surfgeo_ds=surfgeo_ds
         )
 
+        l90c = load_or_create_land90_conc(
+            grid_id=grid_id,
+            xdim=x_dim_size,
+            ydim=y_dim_size,
+            overwrite=False,
+        )
+        adj123 = read_adj123_file(
+            grid_id=grid_id,
+            xdim=x_dim_size,
+            ydim=y_dim_size,
+        )
+
+        l90c_da = xr.DataArray(
+            data=l90c.copy(),
+            coords=dict(
+                y=surfgeo_ds.y.data,
+                x=surfgeo_ds.x.data,
+            ),
+            attrs=dict(
+                grid_mapping="crs",
+                comment=(
+                    "The 'land90' array is a mock sea ice concentration array that is calculated"
+                    "from the land mask.  It assumes that the mock concentration value will be"
+                    "the average of a 7x7 array of local surface mask values centered on the"
+                    "center pixel.  Water grid cells are considered to have a sea ice"
+                    "concentration of zero.  Land grid cells are considered to have a sea ice"
+                    "concentration of 90%.  The average of the 49 grid cells in the 7x7 array"
+                    "yields the `land90` concentration value."
+                ),
+            ),
+        )
+
+        adj123_da = xr.DataArray(
+            data=adj123.copy(),
+            coords=dict(
+                y=surfgeo_ds.y.data,
+                x=surfgeo_ds.x.data,
+            ),
+            attrs=dict(
+                grid_mapping="crs",
+                comment="Diagonal adjacency 123 field",
+            ),
+        )
+
         data_vars = dict(
             crs=surfgeo_ds.crs,
+            l90c=l90c_da,
+            adj123=adj123_da,
             surface_type=surfgeo_ds.surface_type,
             latitude=surfgeo_ds.latitude,
             longitude=surfgeo_ds.longitude,
@@ -232,6 +357,7 @@ if __name__ == "__main__":
             ancillary_ds["polehole_bitmask"] = surfgeo_ds.polehole_bitmask
 
         filepath = get_ancillary_filepath(hemisphere=hemisphere, resolution="12.5")
+        ancillary_ds.compute()
         ancillary_ds.to_netcdf(filepath)
 
         logger.info(f"wrote {filepath}")

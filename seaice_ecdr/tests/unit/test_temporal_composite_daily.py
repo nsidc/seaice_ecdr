@@ -31,36 +31,6 @@ except ValueError:
     logger.add(sys.stderr, level="WARNING")
 
 
-def compose_yx_dataarray(
-    data,
-    xvals,
-    yvals,
-) -> xr.DataArray:
-    """Create a simple data array with coords (time, y, x)."""
-    dims = ["y", "x"]
-    coords = dict(
-        y=(
-            [
-                "y",
-            ],
-            yvals,
-        ),
-        x=(
-            [
-                "x",
-            ],
-            xvals,
-        ),
-    )
-    dataarray = xr.DataArray(
-        data=data,
-        dims=dims,
-        coords=coords,
-    )
-
-    return dataarray
-
-
 def compose_tyx_dataarray(
     data,
     xvals,
@@ -142,10 +112,11 @@ def test_temporal_composite_max_interp_range_9():
     """interp_range > 9 should yield runtime error."""
 
     with pytest.raises(RuntimeError, match=r"interp_range"):
-        tempcomp_array, tempcomp_flags = temporally_composite_dataarray(
+        temporally_composite_dataarray(
             target_date=dt.date(2020, 1, 1),
             da=xr.DataArray(coords=(range(2), range(3), range(4))),
             interp_range=10,
+            land_mask=xr.DataArray([False, False, False]),
         )
 
 
@@ -182,10 +153,11 @@ def test_temporal_composite_da_oneday():
 
     # Note: the key is to test that if interp_range is zero,
     #       then the output will equal the input
-    temporal_composite, temporal_flags = temporally_composite_dataarray(
+    temporal_composite, _ = temporally_composite_dataarray(
         target_date=mock_date,
         da=initial_data_array,
         interp_range=0,
+        land_mask=xr.full_like(initial_data_array.isel(time=0), False, dtype=bool),
     )
 
     assert np.array_equal(temporal_composite, initial_data_array, equal_nan=True)
@@ -301,6 +273,7 @@ def test_temporal_composite_da_multiday():
         target_date=mock_date,
         da=input_data_array,
         interp_range=time_spread,
+        land_mask=xr.full_like(input_data_array.isel(time=0), False, dtype=bool),
     )
 
     assert np.array_equal(

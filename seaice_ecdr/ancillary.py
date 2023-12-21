@@ -1,7 +1,8 @@
-"""Create netCDF file with surface type and geolocation arrays.
+"""Code for interacting with ancillary data required by the ECDR.
 
-The routines here use the output of
-scripts/surface_geo_mask/create_surface_geo_mask.py
+Ancillary fields (e.g., land mask, invalid ice masks, l90c field, etc) required
+for ECDR processing are stored in an ancillary NetCDF file that is published
+alongside the ECDR.
 """
 
 import datetime as dt
@@ -194,6 +195,10 @@ def get_invalid_ice_mask(
 
     invalid_ice_mask = ancillary_ds.invalid_ice_mask.sel(month=month)
 
+    # The invalid ice mask is indexed by month in the ancillary dataset. Drop
+    # that coordinate.
+    invalid_ice_mask = invalid_ice_mask.drop_vars("month")
+
     return invalid_ice_mask
 
 
@@ -233,3 +238,29 @@ def get_land_mask(
     land_mask.encoding = dict(zlib=True)
 
     return land_mask
+
+
+def get_land90_conc_field(
+    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> xr.DataArray:
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    land90_da = ancillary_ds.l90c
+
+    return land90_da
+
+
+def get_adj123_field(
+    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> xr.DataArray:
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    adj123_da = ancillary_ds.adj123
+
+    return adj123_da

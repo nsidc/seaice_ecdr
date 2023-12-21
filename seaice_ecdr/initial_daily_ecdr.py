@@ -35,23 +35,27 @@ from pm_tb_data._types import NORTH, Hemisphere
 from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.ancillary import (
+    get_adj123_field,
+    get_invalid_ice_mask,
+    get_land90_conc_field,
+    get_land_mask,
+    nh_polehole_mask,
+)
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
-from seaice_ecdr.land_spillover import load_or_create_land90_conc, read_adj123_file
-from seaice_ecdr.masks import get_invalid_ice_mask, get_land_mask, nh_polehole_mask
 from seaice_ecdr.util import standard_daily_filename
 
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
 
 
 def cdr_bootstrap(
-    date: dt.date,
+    *,
     tb_v37: npt.NDArray,
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
-    tb_v22: npt.NDArray,
     bt_coefs,
     missing_flag_value: float,
 ):
@@ -85,7 +89,7 @@ def cdr_bootstrap(
 
 
 def cdr_nasateam(
-    date: dt.date,
+    *,
     tb_h19: npt.NDArray,
     tb_v37: npt.NDArray,
     tb_v19: npt.NDArray,
@@ -107,6 +111,7 @@ def cdr_nasateam(
 
 
 def get_bt_tb_mask(
+    *,
     tb_v37,
     tb_h37,
     tb_v19,
@@ -144,12 +149,11 @@ class NtCoefs(TypedDict):
 
 
 def calculate_bt_nt_cdr_raw_conc(
-    date: dt.date,
+    *,
     tb_h19: npt.NDArray,
     tb_v37: npt.NDArray,
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
-    tb_v22: npt.NDArray,
     bt_coefs: dict,
     nt_coefs: NtCoefs,
     missing_flag_value: float | int,
@@ -157,22 +161,19 @@ def calculate_bt_nt_cdr_raw_conc(
     """Run the CDR algorithm."""
     # First, get bootstrap conc.
     bt_conc = cdr_bootstrap(
-        date,
-        tb_v37,
-        tb_h37,
-        tb_v19,
-        tb_v22,
-        bt_coefs,
-        missing_flag_value,
+        tb_v37=tb_v37,
+        tb_h37=tb_h37,
+        tb_v19=tb_v19,
+        bt_coefs=bt_coefs,
+        missing_flag_value=missing_flag_value,
     )
 
     # Get nasateam conc. Note that concentrations from nasateam may be >100%.
     nt_conc = cdr_nasateam(
-        date,
-        tb_h19,
-        tb_v37,
-        tb_v19,
-        nt_coefs["nt_tiepoints"],
+        tb_h19=tb_h19,
+        tb_v37=tb_v37,
+        tb_v19=tb_v19,
+        nt_tiepoints=nt_coefs["nt_tiepoints"],
     )
 
     # Now calculate CDR SIC
@@ -321,6 +322,8 @@ def compute_initial_daily_ecdr_dataset(
             != ecdr_ide_ds[si_varname].data[0, :, :]
         ) & (~np.isnan(ecdr_ide_ds[si_varname].data[0, :, :]))
         spatint_bitmask_arr[is_tb_si_diff] += TB_SPATINT_BITMASK_MAP[tbname]
+        land_mask = get_land_mask(hemisphere=hemisphere, resolution=resolution)
+        spatint_bitmask_arr[land_mask.data] = 0
 
     ecdr_ide_ds["spatial_interpolation_flag"] = (
         ("time", "y", "x"),
@@ -515,12 +518,10 @@ def compute_initial_daily_ecdr_dataset(
 
     # finally, compute the CDR.
     bt_conc, nt_conc, cdr_conc_raw = calculate_bt_nt_cdr_raw_conc(
-        date=date,
         tb_h19=ecdr_ide_ds["h18_day_si"].data[0, :, :],
         tb_v37=ecdr_ide_ds["v36_day_si"].data[0, :, :],
         tb_h37=ecdr_ide_ds["h36_day_si"].data[0, :, :],
         tb_v19=ecdr_ide_ds["v18_day_si"].data[0, :, :],
-        tb_v22=ecdr_ide_ds["v23_day_si"].data[0, :, :],
         bt_coefs=bt_coefs,
         nt_coefs=nt_coefs,
         missing_flag_value=ecdr_ide_ds.attrs["missing_value"],
@@ -570,7 +571,6 @@ def compute_initial_daily_ecdr_dataset(
     cdr_conc = cdr_conc_raw.copy()
     cdr_conc[set_to_zero_sic] = 0
 
-    tb_h19 = ecdr_ide_ds["h18_day_si"].data[0, :, :]
     # Will use spillover_applied with values:
     #  1: NT2
     #  2: BT (not yet added)
@@ -578,45 +578,20 @@ def compute_initial_daily_ecdr_dataset(
     spillover_applied = np.zeros((ydim, xdim), dtype=np.uint8)
     cdr_conc_pre_spillover = cdr_conc.copy()
     logger.info("Applying NT2 land spillover technique...")
-    if tb_h19.shape == (896, 608):
-        # NH
-        l90c = load_or_create_land90_conc(
-            grid_id="psn12.5",
-            xdim=608,
-            ydim=896,
-            overwrite=False,
-        )
-        adj123 = read_adj123_file(
-            grid_id="psn12.5",
-            xdim=608,
-            ydim=896,
-        )
-        cdr_conc = apply_nt2_land_spillover(
-            conc=cdr_conc,
-            adj123=adj123,
-            l90c=l90c,
-        )
-    elif tb_h19.shape == (664, 632):
-        # SH
-        l90c = load_or_create_land90_conc(
-            grid_id="pss12.5",
-            xdim=632,
-            ydim=664,
-            overwrite=False,
-        )
-        adj123 = read_adj123_file(
-            grid_id="pss12.5",
-            xdim=632,
-            ydim=664,
-        )
-        cdr_conc = apply_nt2_land_spillover(
-            conc=cdr_conc,
-            adj123=adj123,
-            l90c=l90c,
-        )
+    l90c = get_land90_conc_field(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    adj123 = get_adj123_field(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    cdr_conc = apply_nt2_land_spillover(
+        conc=cdr_conc,
+        adj123=adj123.data,
+        l90c=l90c.data,
+    )
 
-    else:
-        raise SystemExit("Could not determine hemisphere from tb shape: {tb_h19.shape}")
     spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = 1
 
     # Fill the NH pole hole
@@ -736,6 +711,8 @@ def compute_initial_daily_ecdr_dataset(
     #  32: Spatial interpolation applied
     #  64: *applied later* Temporal interpolation applied
     # 128: *applied later* Melt onset detected
+    # TODO: dynamically read the bitmask values from the source dataset
+    # (`flag_masks` & `flag_meanings`)
     qa_bitmask = np.zeros((ydim, xdim), dtype=np.uint8)
     qa_bitmask[ecdr_ide_ds["bt_weather_mask"].data[0, :, :]] += 1
     qa_bitmask[ecdr_ide_ds["nt_weather_mask"].data[0, :, :]] += 2
@@ -743,6 +720,8 @@ def compute_initial_daily_ecdr_dataset(
     qa_bitmask[invalid_tb_mask & ~ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 8
     qa_bitmask[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 16
     qa_bitmask[ecdr_ide_ds["spatial_interpolation_flag"].data[0, :, :] != 0] += 32
+    qa_bitmask[land_mask] = 0
+
     ecdr_ide_ds["qa_of_cdr_seaice_conc"] = (
         ("time", "y", "x"),
         np.expand_dims(qa_bitmask, axis=0),
@@ -837,10 +816,7 @@ def write_ide_netcdf(
     )
 
     # Return the path if it exists
-    if output_filepath.exists():
-        return output_filepath
-    else:
-        return Path("")
+    return output_filepath
 
 
 @cache
@@ -853,6 +829,7 @@ def get_idecdr_dir(*, ecdr_data_dir: Path) -> Path:
 
 
 def get_idecdr_filepath(
+    *,
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
