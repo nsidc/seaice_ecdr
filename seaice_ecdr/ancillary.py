@@ -60,8 +60,7 @@ def _get_sat_by_date(
 
 def _bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
     index = var.flag_meanings.split(" ").index(meaning)
-    # TODO: should this be `flag_masks`?
-    value = var.flag_values[index]
+    value = var.flag_masks[index]
 
     return value
 

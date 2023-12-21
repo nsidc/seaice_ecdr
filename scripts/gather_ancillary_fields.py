@@ -354,7 +354,11 @@ if __name__ == "__main__":
         ancillary_ds = xr.Dataset(data_vars=data_vars)
         if hemisphere == NORTH:
             # TODO: should this have `flag_masks` instead of `flag_meanings`?
-            ancillary_ds["polehole_bitmask"] = surfgeo_ds.polehole_bitmask
+            polehole_bitmask = surfgeo_ds.polehole_bitmask
+            bitmask_attrs = polehole_bitmask.attrs
+            bitmask_attrs["flag_masks"] = bitmask_attrs.pop("flag_values")
+            polehole_bitmask.attrs = bitmask_attrs
+            ancillary_ds["polehole_bitmask"] = polehole_bitmask
 
         filepath = get_ancillary_filepath(hemisphere=hemisphere, resolution="12.5")
         ancillary_ds.compute()
