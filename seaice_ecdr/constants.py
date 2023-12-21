@@ -9,7 +9,7 @@ NSIDC_NFS_SHARE_DIR = Path("/share/apps/amsr2-cdr")
 # TODO: dev-specific directories for the outputs!
 
 # Outputs from the `seaice_ecdr` go to these locations.
-BASE_OUTPUT_DIR = NSIDC_NFS_SHARE_DIR / f"ecdr_{ECDR_PRODUCT_VERSION}_outputs"
+BASE_OUTPUT_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_outputs"
 
 # Daily initial/intermiedate output for 'standard' (not NRT) ECDR processing
 # (e.g, using input data from AU_SI12)
@@ -24,4 +24,4 @@ NRT_BASE_OUTPUT_DIR = BASE_OUTPUT_DIR / "nrt"
 LANCE_NRT_DATA_DIR = NSIDC_NFS_SHARE_DIR / "lance_amsr2_nrt_data"
 
 # Location of surface mask & geo-information files.
-CDR_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / "cdrv5_ancillary"
+CDR_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_ancillary"

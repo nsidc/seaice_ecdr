@@ -322,6 +322,8 @@ def compute_initial_daily_ecdr_dataset(
             != ecdr_ide_ds[si_varname].data[0, :, :]
         ) & (~np.isnan(ecdr_ide_ds[si_varname].data[0, :, :]))
         spatint_bitmask_arr[is_tb_si_diff] += TB_SPATINT_BITMASK_MAP[tbname]
+        land_mask = get_land_mask(hemisphere=hemisphere, resolution=resolution)
+        spatint_bitmask_arr[land_mask.data] = 0
 
     ecdr_ide_ds["spatial_interpolation_flag"] = (
         ("time", "y", "x"),
@@ -709,6 +711,8 @@ def compute_initial_daily_ecdr_dataset(
     #  32: Spatial interpolation applied
     #  64: *applied later* Temporal interpolation applied
     # 128: *applied later* Melt onset detected
+    # TODO: dynamically read the bitmask values from the source dataset
+    # (`flag_masks` & `flag_meanings`)
     qa_bitmask = np.zeros((ydim, xdim), dtype=np.uint8)
     qa_bitmask[ecdr_ide_ds["bt_weather_mask"].data[0, :, :]] += 1
     qa_bitmask[ecdr_ide_ds["nt_weather_mask"].data[0, :, :]] += 2
@@ -716,6 +720,8 @@ def compute_initial_daily_ecdr_dataset(
     qa_bitmask[invalid_tb_mask & ~ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 8
     qa_bitmask[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 16
     qa_bitmask[ecdr_ide_ds["spatial_interpolation_flag"].data[0, :, :] != 0] += 32
+    qa_bitmask[land_mask] = 0
+
     ecdr_ide_ds["qa_of_cdr_seaice_conc"] = (
         ("time", "y", "x"),
         np.expand_dims(qa_bitmask, axis=0),
@@ -810,10 +816,7 @@ def write_ide_netcdf(
     )
 
     # Return the path if it exists
-    if output_filepath.exists():
-        return output_filepath
-    else:
-        return Path("")
+    return output_filepath
 
 
 @cache
