@@ -580,6 +580,50 @@ def get_monthly_filepath(
     return output_path
 
 
+def make_monthly_nc(
+    *,
+    year: int,
+    month: int,
+    hemisphere: Hemisphere,
+    ecdr_data_dir: Path,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> Path:
+    daily_ds_for_month = get_daily_ds_for_month(
+        year=year,
+        month=month,
+        ecdr_data_dir=ecdr_data_dir,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    sat = daily_ds_for_month.sat
+
+    monthly_ds = make_monthly_ds(
+        daily_ds_for_month=daily_ds_for_month,
+        sat=sat,
+        hemisphere=hemisphere,
+    )
+
+    output_path = get_monthly_filepath(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        sat=sat,
+        year=year,
+        month=month,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+
+    monthly_ds.to_netcdf(
+        output_path,
+        unlimited_dims=[
+            "time",
+        ],
+    )
+    logger.info(f"Wrote monthly file for {year=} and {month=} to {output_path}")
+
+    return output_path
+
+
 @click.command(name="monthly")
 @click.option(
     "--year",
@@ -658,37 +702,10 @@ def cli(
         end=pd.Period(year=end_year, month=end_month, freq="M"),
         freq="M",
     ):
-        daily_ds_for_month = get_daily_ds_for_month(
+        make_monthly_nc(
             year=period.year,
             month=period.month,
             ecdr_data_dir=ecdr_data_dir,
             hemisphere=hemisphere,
             resolution=resolution,
-        )
-
-        sat = daily_ds_for_month.sat
-
-        monthly_ds = make_monthly_ds(
-            daily_ds_for_month=daily_ds_for_month,
-            sat=sat,
-            hemisphere=hemisphere,
-        )
-
-        output_path = get_monthly_filepath(
-            hemisphere=hemisphere,
-            resolution=resolution,
-            sat=sat,
-            year=period.year,
-            month=period.month,
-            ecdr_data_dir=ecdr_data_dir,
-        )
-
-        monthly_ds.to_netcdf(
-            output_path,
-            unlimited_dims=[
-                "time",
-            ],
-        )
-        logger.info(
-            f"Wrote monthly file for year={period.year} and month={period.month} to {output_path}"
         )
