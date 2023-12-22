@@ -16,6 +16,15 @@ def typecheck(ctx):
 
 
 @task()
+def unit(ctx):
+    """Run unit tests."""
+    print_and_run(
+        f"pytest --cov=seaice_ecdr --cov-fail-under 35 -s {PROJECT_DIR}/seaice_ecdr/tests/unit",
+        pty=True,
+    )
+
+
+@task()
 def integration(ctx):
     """Run integration tests."""
     print_and_run(
@@ -40,7 +49,7 @@ def pytest(ctx):
     Includes a code-coverage check.
     """
     print_and_run(
-        "pytest --cov=seaice_ecdr --cov-fail-under 60 -s",
+        "pytest --cov=seaice_ecdr --cov-fail-under 65 -s",
         pty=True,
     )
 
@@ -48,6 +57,7 @@ def pytest(ctx):
 @task(
     pre=[
         typecheck,
+        unit,
     ],
 )
 def ci(ctx):

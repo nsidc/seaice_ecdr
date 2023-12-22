@@ -17,6 +17,10 @@ from pm_icecon.util import date_range
 from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.ancillary import (
+    get_land_mask,
+    get_surfacetype_da,
+)
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.melt import (
@@ -46,13 +50,13 @@ def get_ecdr_filepath(
     ecdr_data_dir: Path,
 ) -> Path:
     """Return the complete daily eCDR file path."""
-    standard_fn = standard_daily_filename(
+    ecdr_filename = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
+        # TODO: extract this to kwarg!!!
         sat="am2",
         resolution=resolution,
     )
-    ecdr_filename = "cdecdr_" + standard_fn
     ecdr_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir)
 
     ecdr_filepath = ecdr_dir / ecdr_filename
@@ -69,9 +73,9 @@ def read_or_create_and_read_tiecdr_ds(
 ) -> xr.Dataset:
     """Read an tiecdr netCDF file, creating it if it doesn't exist."""
     tie_filepath = get_tie_filepath(
-        date,
-        hemisphere,
-        resolution,
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
     # TODO: This only creates if file is missing.  We may want an overwrite opt
@@ -122,7 +126,6 @@ def read_melt_onset_field(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
-        mask_and_scale=False,
     )
 
     # TODO: Perhaps these field names should be in a dictionary somewhere?
@@ -219,6 +222,12 @@ def create_melt_onset_field(
         tb_h19=tb_h19,
         tb_h37=tb_h37,
     )
+    # Apply land mask
+    land_mask = get_land_mask(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    is_melted_today[0, land_mask.data] = False
 
     have_prior_melt_values = prior_melt_onset_field != no_melt_flag
     is_missing_prior = prior_melt_onset_field == no_melt_flag
@@ -232,7 +241,6 @@ def create_melt_onset_field(
 
     melt_onset_field[has_new_melt] = day_of_year
 
-    # TODO: Do we want to modify QA flag here too?
     return melt_onset_field
 
 
@@ -241,7 +249,6 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    interp_range: int = 5,
     ecdr_data_dir: Path,
 ) -> xr.Dataset:
     """Create xr dataset containing the complete daily enhanced CDR.
@@ -266,6 +273,16 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         ecdr_data_dir=ecdr_data_dir,
     )
 
+    # Add the surface-type field
+    cde_ds["surface_type"] = get_surfacetype_da(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    # TODO: Need to ensure that the cdr_seaice_conc field does not have values
+    #       where seaice cannot occur, eg over land or lakes
+
     # Update cde_ds with melt onset info
     if melt_onset_field is None:
         return cde_ds
@@ -274,14 +291,8 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         ("time", "y", "x"),
         melt_onset_field,
         {
-            "_FillValue": 255,
             "grid_mapping": "crs",
             "standard_name": "status_flag",
-            # Am removing valid range because it causes 255 to plot as NaN
-            # "valid_range": [
-            #   np.uint8(MELT_SEASON_FIRST_DOY),
-            #   np.uint8(MELT_SEASON_LAST_DOY)
-            # ],
             "comment": (
                 "Value of 255 means no melt detected yet or the date is"
                 " outside the melt season.  Other values indicate the day"
@@ -316,6 +327,11 @@ def write_cde_netcdf(
     output_filepath: Path,
     uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
     excluded_fields: Iterable[str] = [],
+    conc_fields: Iterable[str] = [
+        "raw_bt_seaice_conc",
+        "raw_nt_seaice_conc",
+        "cdr_seaice_conc",
+    ],
 ) -> Path:
     """Write the temporally interpolated ECDR to a netCDF file."""
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
@@ -326,12 +342,23 @@ def write_cde_netcdf(
     nc_encoding = {}
     for varname in cde_ds.variables.keys():
         varname = cast(str, varname)
-        if varname not in uncompressed_fields:
+        if varname in conc_fields:
+            nc_encoding[varname] = {
+                "zlib": True,
+                "dtype": "uint8",
+                "scale_factor": 0.01,
+                "add_offset": 0.0,
+                "_FillValue": 255,
+            }
+        elif varname not in uncompressed_fields:
             nc_encoding[varname] = {"zlib": True}
 
     cde_ds.to_netcdf(
         output_filepath,
         encoding=nc_encoding,
+        unlimited_dims=[
+            "time",
+        ],
     )
 
     return output_filepath
@@ -343,15 +370,12 @@ def make_cdecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
-    interp_range: int = 5,
-    fill_the_pole_hole: bool = True,
-) -> None:
+) -> Path:
     logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
     cde_ds = complete_daily_ecdr_dataset_for_au_si_tbs(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        interp_range=interp_range,
         ecdr_data_dir=ecdr_data_dir,
     )
 
@@ -370,6 +394,8 @@ def make_cdecdr_netcdf(
     )
     logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
 
+    return output_path
+
 
 def read_or_create_and_read_cdecdr_ds(
     *,
@@ -377,7 +403,6 @@ def read_or_create_and_read_cdecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
-    mask_and_scale: bool = True,
     overwrite_cde: bool = False,
 ) -> xr.Dataset:
     """Read an cdecdr netCDF file, creating it if it doesn't exist.
@@ -400,7 +425,7 @@ def read_or_create_and_read_cdecdr_ds(
             ecdr_data_dir=ecdr_data_dir,
         )
     logger.info(f"Reading cdeCDR file from: {cde_filepath}")
-    cde_ds = xr.load_dataset(cde_filepath, mask_and_scale=mask_and_scale)
+    cde_ds = xr.load_dataset(cde_filepath)
 
     return cde_ds
 

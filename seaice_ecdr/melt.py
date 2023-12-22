@@ -40,11 +40,14 @@ MELT_SEASON_LAST_DOY = 244
 MELT_ONSET_FILL_VALUE = 255
 
 # Melt detection requires a SIC of >= this value
-CONCENTRATION_THRESHOLD_PERCENT = 50
+CONCENTRATION_THRESHOLD_FRACTION = 0.5
 
 # One of the conditions for melt detection is that the delta between 19H and 37H
 # (19H-37H) is less than this value.
 TB_DELTA_THRESHOLD_K = 2
+
+# Concentrations are provided as sea_ice_area_fraction, a number between 0 and 1
+MAX_VALID_CONCENTRATION = 1.0
 
 
 def melting(
@@ -57,7 +60,8 @@ def melting(
     Expects brightness temperatures in degrees Kelvin.
     """
     is_valid_concentration = np.logical_and(
-        concentrations >= CONCENTRATION_THRESHOLD_PERCENT, concentrations <= 100
+        concentrations >= CONCENTRATION_THRESHOLD_FRACTION,
+        concentrations <= MAX_VALID_CONCENTRATION,
     )
     melting = np.logical_and(
         is_valid_concentration,

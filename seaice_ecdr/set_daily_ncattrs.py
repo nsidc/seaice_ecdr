@@ -3,6 +3,8 @@
 import numpy as np
 import xarray as xr
 
+from seaice_ecdr.nc_attrs import get_global_attrs
+
 CDECDR_FIELDS_TO_DROP = [
     "h18_day_si",
     "h36_day_si",
@@ -18,12 +20,6 @@ CDECDR_FIELDS_TO_DROP = [
 
 CDECDR_FIELDS_TO_RENAME = {
     "cdr_conc": "cdr_seaice_conc",
-    "bt_conc_raw": "raw_bootstrap_seaice_conc",
-    "nt_conc_raw": "raw_nasateam_seaice_conc",
-    "qa_of_cdr_seaice_conc": "qa_of_cdr_seaice_conc",  # Note: unchanged
-    "spatint_bitmask": "spatial_interpolation_flag",  # Note: bitmask, not flag?
-    "temporal_flag": "temporal_interpolation_flag",
-    # 'stdev_of_seaice_conc': 'stdev_of_cdr_seaice_conc',  # this should be in tiecdr
 }
 
 
@@ -46,12 +42,10 @@ def finalize_cdecdr_ds(
 
     # Variables that need special handling...
 
-    # cdr_seaice_conc should be ubyte
     ds["cdr_seaice_conc"] = (
         ("time", "y", "x"),
-        ds["cdr_seaice_conc"].data.astype(np.uint8),
+        ds["cdr_seaice_conc"].data,
         {
-            "_FillValue": 255,
             "standard_name": "sea_ice_area_fraction",
             "units": "1",
             "long_name": (
@@ -59,29 +53,24 @@ def finalize_cdecdr_ds(
                 " Sea Ice Concentration"
             ),
             "grid_mapping": "crs",
-            # TODO: We may add more flag values later
             "reference": "https://nsidc.org/data/g02202/versions/5/",
             "ancillary_variables": "stdev_of_cdr_seaice_conc qa_of_cdr_seaice_conc",
             "valid_range": np.array((0, 100), dtype=np.uint8),
-            "scale_factor": np.float32(0.01),
-            "add_offset": np.float32(0.0),
         },
-        {
-            "zlib": True,
-        },
+        # Note: encoding is set when saved to netcdf file
     )
 
     # Standard deviation file is converted from 2d to [time, y x] coords
     ds["stdev_of_cdr_seaice_conc"] = (
         ("time", "y", "x"),
-        np.expand_dims(ds["stdev_of_cdr_seaice_conc"].data, axis=0),
+        ds["stdev_of_cdr_seaice_conc"].data,
         {
             "_FillValue": -1,
             "long_name": (
                 "Passive Microwave Sea Ice"
                 "Concentration Source Estimated Standard Deviation"
             ),
-            "units": "K",
+            "units": 1,
             "grid_mapping": "crs",
             "valid_range": np.array((0.0, 300.0), dtype=np.float32),
         },
@@ -91,9 +80,10 @@ def finalize_cdecdr_ds(
     )
 
     # TODO: Verify that flag mask values have been set properly
+    # TODO: Use common dict with key/vals for flag masks/meanings
     ds["qa_of_cdr_seaice_conc"] = (
         ("time", "y", "x"),
-        np.expand_dims(ds["qa_of_cdr_seaice_conc"].data.astype(np.uint8), axis=0),
+        ds["qa_of_cdr_seaice_conc"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
             "long_name": "Passive Microwave Sea Ice Concentration QC flags",
@@ -155,11 +145,10 @@ def finalize_cdecdr_ds(
         # We do not expect melt onset in Southern hemisphere
         pass
 
-    # TODO: Verify that spatial interpolation set properly for pole hole fill
-    # TODO: Verify flag mask values and meanings
+    # TODO: Use common dict with key/vals for flag masks/meanings
     ds["spatial_interpolation_flag"] = (
         ("time", "y", "x"),
-        np.expand_dims(ds["spatial_interpolation_flag"].data.astype(np.uint8), axis=0),
+        ds["spatial_interpolation_flag"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
             "long_name": "Passive Microwave Sea Ice Concentration spatial interpolation flags",
@@ -195,9 +184,10 @@ def finalize_cdecdr_ds(
 
     # Note: cannot have one-sided interpolations of 4- or 5- days, so
     #       the values 4, 5, 40, and 50 are not possible
+    # TODO: Use common dict with key/vals for flag masks/meanings
     ds["temporal_interpolation_flag"] = (
         ("time", "y", "x"),
-        np.expand_dims(ds["temporal_interpolation_flag"].data.astype(np.uint8), axis=0),
+        ds["temporal_interpolation_flag"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
             "long_name": "Passive Microwave Sea Ice Concentration temporal interpolation flags",
@@ -292,17 +282,13 @@ def finalize_cdecdr_ds(
         },
     )
 
-    # bootstrap: add time dim and convert to ubyte
-    # TODO: adding time dimension should probably happen earlier
     # TODO: conversion to ubyte should be done with DataArray encoding dict
-    ds["raw_bootstrap_seaice_conc"] = (
+    # NOTE: We are overwriting the attrs of the original conc field
+    # TODO: scale_factor and add_offset might get set during encoding
+    ds["raw_bt_seaice_conc"] = (
         ("time", "y", "x"),
-        np.expand_dims(ds["raw_bootstrap_seaice_conc"].astype(np.uint8), axis=0),
-        # ds["raw_bootstrap_seaice_conc"].attrs,  # We are overwriting these
-        # TODO: These should be a standard dictionary of "conc datavar attrs"
-        #       ...except the long_name
+        ds["raw_bt_seaice_conc"].data,
         {
-            "_FillValue": 255,
             "standard_name": "sea_ice_area_fraction",
             "units": "1",
             "long_name": (
@@ -311,22 +297,17 @@ def finalize_cdecdr_ds(
             ),
             "grid_mapping": "crs",
             "valid_range": np.array((0, 100), dtype=np.uint8),
-            # TODO: scale_factor and add_offset might get set during encoding
-            "scale_factor": np.float32(0.01),
-            "add_offset": np.float32(0.0),
         },
-        {"zlib": True},
     )
 
-    # nasateam: add time dim and convert to ubyte
+    # NOTE: We are overwriting the attrs of the original conc field
     # TODO: adding time dimension should probably happen earlier
     # TODO: conversion to ubyte should be done with DataArray encoding dict
-    ds["raw_nasateam_seaice_conc"] = (
+    # TODO: scale_factor and add_offset might get set during encoding
+    ds["raw_nt_seaice_conc"] = (
         ("time", "y", "x"),
-        np.expand_dims(ds["raw_nasateam_seaice_conc"].astype(np.uint8), axis=0),
-        # NOTE: NOT USING ds["raw_nasateam_seaice_conc"].attrs
+        ds["raw_nt_seaice_conc"].data,
         {
-            "_FillValue": 255,
             "standard_name": "sea_ice_area_fraction",
             "units": "1",
             "long_name": (
@@ -335,49 +316,20 @@ def finalize_cdecdr_ds(
             ),
             "grid_mapping": "crs",
             "valid_range": np.array((0, 100), dtype=np.uint8),
-            # TODO: scale_factor and add_offset might get set during encoding?
-            "scale_factor": np.float32(0.01),
-            "add_offset": np.float32(0.0),
         },
-        {"zlib": True},
     )
 
     # Finally, address global attributes
-    new_global_attrs = {
-        "title": (
-            "NOAA-NSIDC Climate Data Record of Passive Microwave"
-            "Sea Ice Concentration Version 5"
-        ),
-        "Conventions": "CF-1.10, ACDD-1.3",
-        "program": "NOAA Climate Data Record Program",
-        "cdr_variable": "cdr_seaice_conc",
-        "software_version_id": "tbd",
-        "metadata_link": "tbd",
-        "product_version": "v05r00",
-        "spatial_resolution": "25km",
-        "standard_name_vocabulary": "CF Standard Name Table (v16, 11 October 2010)",
-        "id": "tbd",
-        "naming_authority": "org.doi.dx",
-        "license": "No constraints on data access or use",
-        "summary": (
-            "<tbd> This data set provides a passive microwave sea ice concentration"
-            "climate data record (CDR)...."
-        ),
-        "keywords": "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE CONCENTRATION, Continent > North America > Canada > Hudson Bay, Geographic Region > Arctic, Geographic Region > Polar, Geographic Region > Northern Hemisphere, Ocean > Arctic Ocean, Ocean > Arctic Ocean > Barents Sea, Ocean > Arctic Ocean > Beaufort Sea, Ocean > Arctic Ocean > Chukchi Sea, CONTINENT > NORTH AMERICA > CANADA > HUDSON BAY, Ocean > Atlantic Ocean > North Atlantic Ocean > Davis Straight, OCEAN > ATLANTIC OCEAN > NORTH ATLANTIC OCEAN > GULF OF ST LAWRENCE, Ocean > Atlantic Ocean > North Atlantic Ocean > North Sea, Ocean > Atlantic Ocean > North Atlantic Ocean > Norwegian Sea, OCEAN > ATLANTIC OCEAN > NORTH ATLANTIC OCEAN > SVALBARD AND JAN MAYEN, Ocean > Pacific Ocean, Ocean > Pacific Ocean > North Pacific Ocean > Bering Sea, Ocean > Pacific Ocean > North Pacific Ocean > Sea Of Okhotsk",
-        "keywords_vocabulary": "NASA Global Change Master Directory (GCMD) Keywords, Version 7.0.0",
-        "cdm_data_type": "Grid",
-        "project": "NOAA/NSIDC passive microwave sea ice concentration climate data record",
-        "creator_url": "http://nsidc.org/",
-        "creator_email": "nsidc@nsidc.org",
-        "institution": "NSIDC > National Snow and Ice Data Center",
-        "processing_level": "NOAA Level 3",
-        "contributor_name": "tbd",
-        "contributor_role": "tbd",
-        "acknowledgment": "tbd",
-        "source": "tbd",
-        "platform": "tbd",
-        "sensor": "tbd",
-    }
+    new_global_attrs = get_global_attrs(
+        time=ds.time,
+        temporality="daily",
+        aggregate=False,
+        # TODO: support alternative source datasets. Will be AU_SI12 for AMSR2,
+        # AE_SI12 for AMSR-E, and NSIDC-0001 for SSMIS, SSM/I, and SMMR
+        source="Generated from AU_SI12",
+        # TODO: set sat from source
+        sats=["am2"],
+    )
     ds.attrs.update(new_global_attrs)
 
     return ds

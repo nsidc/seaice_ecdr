@@ -1,8 +1,15 @@
 import datetime as dt
+from typing import Final
 
 from pm_tb_data._types import NORTH, SOUTH
 
-from seaice_ecdr.util import standard_daily_filename, standard_monthly_filename
+from seaice_ecdr.util import (
+    sat_from_filename,
+    standard_daily_aggregate_filename,
+    standard_daily_filename,
+    standard_monthly_aggregate_filename,
+    standard_monthly_filename,
+)
 
 
 def test_daily_filename_north():
@@ -26,13 +33,12 @@ def test_daily_filename_south():
 
 
 def test_daily_aggregate_filename():
-    expected = "sic_psn12.5_20210101-20211231_am2_v05r00.nc"
+    expected = "sic_psn12.5_20210101-20211231_v05r00.nc"
 
-    actual = standard_daily_filename(
+    actual = standard_daily_aggregate_filename(
         hemisphere=NORTH,
         resolution="12.5",
-        sat="am2",
-        date=dt.date(2021, 1, 1),
+        start_date=dt.date(2021, 1, 1),
         end_date=dt.date(2021, 12, 31),
     )
 
@@ -68,16 +74,41 @@ def test_monthly_filename_south():
 
 
 def test_monthly_aggregate_filename():
-    expected = "sic_pss12.5_202101-202112_am2_v05r00.nc"
+    expected = "sic_pss12.5_202101-202112_v05r00.nc"
 
-    actual = standard_monthly_filename(
+    actual = standard_monthly_aggregate_filename(
         hemisphere=SOUTH,
         resolution="12.5",
-        sat="am2",
-        year=2021,
-        month=1,
+        start_year=2021,
+        start_month=1,
         end_year=2021,
         end_month=12,
     )
 
     assert actual == expected
+
+
+def test_daily_sat_from_filename():
+    expected_sat: Final = "am2"
+    fn = standard_daily_filename(
+        hemisphere=NORTH, resolution="12.5", sat=expected_sat, date=dt.date(2021, 1, 1)
+    )
+
+    actual_sat = sat_from_filename(fn)
+
+    assert expected_sat == actual_sat
+
+
+def test_monthly_sat_from_filename():
+    expected_sat: Final = "F17"
+    fn = standard_monthly_filename(
+        hemisphere=SOUTH,
+        resolution="12.5",
+        sat=expected_sat,
+        year=2021,
+        month=1,
+    )
+
+    actual_sat = sat_from_filename(fn)
+
+    assert expected_sat == actual_sat

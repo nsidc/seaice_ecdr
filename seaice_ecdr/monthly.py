@@ -4,10 +4,6 @@ Follows the same procedure as CDR v4.
 
 Variables:
 
-* `nsidc_nt_seaice_conc_monthly`: Average the daily NASA Team sea ice concentration
-  values over each month of data
-* `nsidc_bt_seaice_conc_monthly: Average the daily Bootstrap sea ice concentration
-  values over each month of data
 * `cdr_seaice_conc_monthly`: Create combined monthly sea ice concentration
 * `stdev_of_cdr_seaice_conc_monthly`: Calculate standard deviation of sea ice
   concentration
@@ -28,9 +24,9 @@ Notes about CDR v4:
 
 import calendar
 import datetime as dt
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from pathlib import Path
-from typing import Final, get_args
+from typing import get_args
 
 import click
 import numpy as np
@@ -42,7 +38,8 @@ from pm_tb_data._types import NORTH, Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
-from seaice_ecdr.util import standard_monthly_filename
+from seaice_ecdr.nc_attrs import get_global_attrs
+from seaice_ecdr.util import sat_from_filename, standard_monthly_filename
 
 
 def check_min_days_for_valid_month(
@@ -70,7 +67,6 @@ def _get_daily_complete_filepaths_for_month(
     year: int,
     month: int,
     ecdr_data_dir: Path,
-    sat: SUPPORTED_SAT,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
@@ -99,11 +95,28 @@ def _get_daily_complete_filepaths_for_month(
     return data_list
 
 
+def _sat_for_month(*, sats: list[SUPPORTED_SAT]) -> SUPPORTED_SAT:
+    """Returns the satellite from this month given a list of input satellites.
+
+    The sat for monthly files is based on which sat contributes most to the
+    month. If two sats contribute equally, use the latest sat in the series.
+
+    Function assumes the list of satellites is already sorted (i.e., the latest
+    satellite is `sats[-1]`).
+    """
+    # More than one sat, we need to choose the most common/latest in the series.
+    # `Counter` returns a dict keyed by `sat` with counts as values:
+    count = Counter(sats)
+    most_common_sats = count.most_common()
+    most_common_and_latest_sat = most_common_sats[-1][0]
+
+    return most_common_and_latest_sat
+
+
 def get_daily_ds_for_month(
     *,
     year: int,
     month: int,
-    sat: SUPPORTED_SAT,
     ecdr_data_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
@@ -117,7 +130,6 @@ def get_daily_ds_for_month(
     data_list = _get_daily_complete_filepaths_for_month(
         year=year,
         month=month,
-        sat=sat,
         ecdr_data_dir=ecdr_data_dir,
         hemisphere=hemisphere,
         resolution=resolution,
@@ -135,6 +147,20 @@ def get_daily_ds_for_month(
     ds["filepaths"] = xr.DataArray(
         data=data_list, dims=("time",), coords=dict(time=ds.time)
     )
+
+    # Extract `sat` from the filenames contributing to this
+    # dataset. Ideally, we would use a custom `combine_attrs` when reading the
+    # data with `xr.open_mfdataset` in order to get the sat/sensor from global
+    # attrs in each of the contributing files. Unfortunately this interface is
+    # poorly documented and seems to have limited support. E.g., see
+    # https://github.com/pydata/xarray/issues/6679
+    sats = []
+    for filepath in data_list:
+        sats.append(sat_from_filename(filepath.name))
+
+    sat = _sat_for_month(sats=sats)
+
+    ds.attrs["sat"] = sat
 
     logger.info(
         f"Created daily ds for {year=} {month=} from {len(ds.time)} complete daily files."
@@ -192,6 +218,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     qa_of_cdr_seaice_conc_monthly = xr.full_like(
         cdr_seaice_conc_monthly,
         fill_value=0,
+        dtype=np.uint8,
     )
     qa_of_cdr_seaice_conc_monthly.name = "qa_of_cdr_seaice_conc_monthly"
 
@@ -285,30 +312,22 @@ def calc_qa_of_cdr_seaice_conc_monthly(
         ],
     )
 
-    # TODO: is this right? Any cells that don't get flagged end up filled with
-    # 255. This doesn' get encoded in the flag_meanings/masks because it's not a
-    # bitmask. Should this just take the specified fill_value of 0 (and be
-    # treated as nan)?
-    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
-        qa_of_cdr_seaice_conc_monthly != 0,
-        255,
-    )
-
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.assign_attrs(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QC flags",
         standard_name="sea_ice_area_fraction status_flag",
         flag_meanings=" ".join(
             k for k in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.keys()
         ),
-        flag_masks=" ".join(
-            str(int(v)) for v in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.values()
-        ),
+        flag_masks=[
+            np.uint8(v) for v in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.values()
+        ],
         grid_mapping="crs",
-        valid_range=(1, 255),
+        valid_range=(np.uint8(0), np.uint8(255)),
     )
 
     qa_of_cdr_seaice_conc_monthly.encoding = dict(
-        _FillValue=0,
+        dtype=np.uint8,
+        zlib=True,
     )
 
     return qa_of_cdr_seaice_conc_monthly
@@ -327,46 +346,19 @@ def _calc_conc_monthly(
         long_name=long_name,
         standard_name="sea_ice_area_fraction",
         units="1",
-        valid_range=(1, 100),
+        valid_range=(np.uint8(0), np.uint8(100)),
         grid_mapping="crs",
     )
 
     conc_monthly.encoding.update(
-        scale_factor=0.01,
-        add_offset=0.0,
+        scale_factor=np.float32(0.01),
+        add_offset=np.float32(0.0),
         dtype=np.uint8,
         _FillValue=255,
+        zlib=True,
     )
 
     return conc_monthly
-
-
-def calc_nsidc_nt_seaice_conc_monthly(
-    *,
-    daily_ds_for_month: xr.Dataset,
-) -> xr.DataArray:
-    """Create the `nsidc_nt_seaice_conc_monthly` variable."""
-    nsidc_nt_seaice_conc_monthly = _calc_conc_monthly(
-        daily_conc_for_month=daily_ds_for_month.raw_nasateam_seaice_conc,
-        long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration by NASA Team algorithm processed by NSIDC",
-        name="nsidc_nt_seaice_conc_monthly",
-    )
-
-    return nsidc_nt_seaice_conc_monthly
-
-
-def calc_nsidc_bt_seaice_conc_monthly(
-    *,
-    daily_ds_for_month: xr.Dataset,
-) -> xr.DataArray:
-    """Create the `nsidc_bt_seaice_conc_monthly` variable."""
-    nsidc_bt_seaice_conc_monthly = _calc_conc_monthly(
-        daily_conc_for_month=daily_ds_for_month.raw_bootstrap_seaice_conc,
-        long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration by Bootstrap algorithm processed by NSIDC",
-        name="nsidc_bt_seaice_conc_monthly",
-    )
-
-    return nsidc_bt_seaice_conc_monthly
 
 
 def calc_cdr_seaice_conc_monthly(
@@ -396,12 +388,13 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
 
     stdv_of_cdr_seaice_conc_monthly = stdv_of_cdr_seaice_conc_monthly.assign_attrs(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
-        valid_range=(0.0, 1.0),
+        valid_range=(np.float32(0.0), np.float32(1.0)),
         grid_mapping="crs",
     )
 
     stdv_of_cdr_seaice_conc_monthly.encoding = dict(
         _FillValue=-1,
+        zlib=True,
     )
 
     return stdv_of_cdr_seaice_conc_monthly
@@ -434,6 +427,8 @@ def calc_melt_onset_day_cdr_seaice_conc_monthly(
     )
     melt_onset_day_cdr_seaice_conc_monthly.encoding = dict(
         _FillValue=255,
+        dtype=np.uint8,
+        zlib=True,
     )
 
     return melt_onset_day_cdr_seaice_conc_monthly
@@ -493,15 +488,6 @@ def make_monthly_ds(
         sat=sat,
     )
 
-    # create `nsidc_{nt|bt}_seaice_conc_monthly`. These are averages of the
-    # daily NT and BT values. These 'raw' fields do not have any flags.
-    nsidc_nt_seaice_conc_monthly = calc_nsidc_nt_seaice_conc_monthly(
-        daily_ds_for_month=daily_ds_for_month,
-    )
-    nsidc_bt_seaice_conc_monthly = calc_nsidc_bt_seaice_conc_monthly(
-        daily_ds_for_month=daily_ds_for_month,
-    )
-
     # create `cdr_seaice_conc_monthly`. This is the combined monthly SIC.
     # The `cdr_seaice_conc` variable has temporally filled data and flags.
     cdr_seaice_conc_monthly = calc_cdr_seaice_conc_monthly(
@@ -521,8 +507,6 @@ def make_monthly_ds(
 
     monthly_ds_data_vars = dict(
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
-        nsidc_nt_seaice_conc_monthly=nsidc_nt_seaice_conc_monthly,
-        nsidc_bt_seaice_conc_monthly=nsidc_bt_seaice_conc_monthly,
         stdv_of_cdr_seaice_conc_monthly=stdv_of_cdr_seaice_conc_monthly,
         qa_of_cdr_seaice_conc_monthly=qa_of_cdr_seaice_conc_monthly,
     )
@@ -550,17 +534,18 @@ def make_monthly_ds(
     monthly_ds["crs"] = daily_ds_for_month.crs.isel(time=0).drop_vars("time")
 
     # Set global attributes
-    # TODO: "source" in the v4 files has the full path to the data on FTP. How should we here?
-    monthly_ds.attrs["source"] = ", ".join(
-        [fp.item().name for fp in daily_ds_for_month.filepaths]
+    monthly_ds_global_attrs = get_global_attrs(
+        time=monthly_ds.time,
+        temporality="monthly",
+        aggregate=False,
+        source=", ".join([fp.item().name for fp in daily_ds_for_month.filepaths]),
+        # TODO: consider providing all sats that went into month? This would be
+        # consistent with how we handle the aggregate filenames. Is it
+        # misleading to indicate that a month is a single sat when it may not
+        # really be?
+        sats=[sat],
     )
-
-    # TODO: other global attrs
-    #
-    # TODO: These should be the start and then end of the month, not of the data. So,
-    # 0:00:00 of 1st of month, and 23:59:59.9999 (or whatever) or last day of month.
-    # monthly_ds.attrs["time_coverage_start"] = ...
-    # monthly_ds.attrs["time_coverage_end"] = ...
+    monthly_ds.attrs.update(monthly_ds_global_attrs)
 
     return monthly_ds.compute()
 
@@ -592,6 +577,50 @@ def get_monthly_filepath(
     )
 
     output_path = output_dir / output_fn
+
+    return output_path
+
+
+def make_monthly_nc(
+    *,
+    year: int,
+    month: int,
+    hemisphere: Hemisphere,
+    ecdr_data_dir: Path,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> Path:
+    daily_ds_for_month = get_daily_ds_for_month(
+        year=year,
+        month=month,
+        ecdr_data_dir=ecdr_data_dir,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    sat = daily_ds_for_month.sat
+
+    monthly_ds = make_monthly_ds(
+        daily_ds_for_month=daily_ds_for_month,
+        sat=sat,
+        hemisphere=hemisphere,
+    )
+
+    output_path = get_monthly_filepath(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        sat=sat,
+        year=year,
+        month=month,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+
+    monthly_ds.to_netcdf(
+        output_path,
+        unlimited_dims=[
+            "time",
+        ],
+    )
+    logger.info(f"Wrote monthly file for {year=} and {month=} to {output_path}")
 
     return output_path
 
@@ -664,9 +693,6 @@ def cli(
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ):
-    # TODO: support different sat/platforms.
-    sat: Final = "am2"
-
     if end_year is None:
         end_year = year
     if end_month is None:
@@ -677,33 +703,10 @@ def cli(
         end=pd.Period(year=end_year, month=end_month, freq="M"),
         freq="M",
     ):
-        daily_ds_for_month = get_daily_ds_for_month(
+        make_monthly_nc(
             year=period.year,
             month=period.month,
             ecdr_data_dir=ecdr_data_dir,
-            sat=sat,
             hemisphere=hemisphere,
             resolution=resolution,
-        )
-
-        monthly_ds = make_monthly_ds(
-            daily_ds_for_month=daily_ds_for_month,
-            sat=sat,
-            hemisphere=hemisphere,
-        )
-
-        output_path = get_monthly_filepath(
-            hemisphere=hemisphere,
-            resolution=resolution,
-            sat=sat,
-            year=period.year,
-            month=period.month,
-            ecdr_data_dir=ecdr_data_dir,
-        )
-
-        monthly_ds.to_netcdf(
-            output_path,
-        )
-        logger.info(
-            f"Wrote monthly file for year={period.year} and month={period.month} to {output_path}"
         )

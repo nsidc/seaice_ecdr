@@ -15,6 +15,7 @@ from seaice_ecdr.monthly import (
     _calc_conc_monthly,
     _get_daily_complete_filepaths_for_month,
     _qa_field_has_flag,
+    _sat_for_month,
     calc_melt_onset_day_cdr_seaice_conc_monthly,
     calc_qa_of_cdr_seaice_conc_monthly,
     calc_stdv_of_cdr_seaice_conc_monthly,
@@ -30,27 +31,27 @@ def test__get_daily_complete_filepaths_for_month(fs):
     year = 2022
     month = 3
     _fake_files_for_test_year_month_and_hemisphere = [
-        complete_dir / "cdecdr_sic_psn12.5_20220301_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_psn12.5_20220302_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_psn12.5_20220303_am2_v05r00.nc",
+        complete_dir / "sic_psn12.5_20220301_am2_v05r00.nc",
+        complete_dir / "sic_psn12.5_20220302_am2_v05r00.nc",
+        complete_dir / "sic_psn12.5_20220303_am2_v05r00.nc",
     ]
     _fake_files = [
-        complete_dir / "cdecdr_sic_psn12.5_20220201_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_pss12.5_20220201_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_psn12.5_20220202_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_pss12.5_20220202_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_psn12.5_20220203_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_pss12.5_20220203_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_pss12.5_20220301_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_pss12.5_20220302_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_pss12.5_20220303_am2_v05r00.nc",
+        complete_dir / "sic_psn12.5_20220201_am2_v05r00.nc",
+        complete_dir / "sic_pss12.5_20220201_am2_v05r00.nc",
+        complete_dir / "sic_psn12.5_20220202_am2_v05r00.nc",
+        complete_dir / "sic_pss12.5_20220202_am2_v05r00.nc",
+        complete_dir / "sic_psn12.5_20220203_am2_v05r00.nc",
+        complete_dir / "sic_pss12.5_20220203_am2_v05r00.nc",
+        complete_dir / "sic_pss12.5_20220301_am2_v05r00.nc",
+        complete_dir / "sic_pss12.5_20220302_am2_v05r00.nc",
+        complete_dir / "sic_pss12.5_20220303_am2_v05r00.nc",
         *_fake_files_for_test_year_month_and_hemisphere,
-        complete_dir / "cdecdr_sic_psn12.5_20220401_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_pss12.5_20220401_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_psn12.5_20220402_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_pss12.5_20220402_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_psn12.5_20220403_am2_v05r00.nc",
-        complete_dir / "cdecdr_sic_pss12.5_20220403_am2_v05r00.nc",
+        complete_dir / "sic_psn12.5_20220401_am2_v05r00.nc",
+        complete_dir / "sic_pss12.5_20220401_am2_v05r00.nc",
+        complete_dir / "sic_psn12.5_20220402_am2_v05r00.nc",
+        complete_dir / "sic_pss12.5_20220402_am2_v05r00.nc",
+        complete_dir / "sic_psn12.5_20220403_am2_v05r00.nc",
+        complete_dir / "sic_pss12.5_20220403_am2_v05r00.nc",
     ]
     for _file in _fake_files:
         fs.create_file(_file)
@@ -59,7 +60,6 @@ def test__get_daily_complete_filepaths_for_month(fs):
         year=year,
         month=month,
         ecdr_data_dir=ecdr_data_dir,
-        sat="am2",
         resolution="12.5",
         hemisphere=NORTH,
     )
@@ -221,8 +221,8 @@ def _mock_daily_ds_for_month():
     _mock_daily_ds = xr.Dataset(
         data_vars=dict(
             cdr_seaice_conc=(("x", "time"), _mock_data),
-            raw_nasateam_seaice_conc=(("x", "time"), _mock_data),
-            raw_bootstrap_seaice_conc=(("x", "time"), _mock_data),
+            raw_nt_seaice_conc=(("x", "time"), _mock_data),
+            raw_bt_seaice_conc=(("x", "time"), _mock_data),
             qa_of_cdr_seaice_conc=(("x", "time"), _mock_daily_qa_fields),
             melt_onset_day_cdr_seaice_conc=(("x", "time"), _mock_daily_melt_onset),
             filepaths=(
@@ -292,7 +292,7 @@ def test_calc_qa_of_cdr_seaice_conc_monthly():
             + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
                 "average_concentration_exceeds_0.30"
             ],
-            255,
+            0,
         ]
     )
 
@@ -454,8 +454,6 @@ def test_monthly_ds(monkeypatch, tmpdir):
     expected_vars = sorted(
         [
             "cdr_seaice_conc_monthly",
-            "nsidc_nt_seaice_conc_monthly",
-            "nsidc_bt_seaice_conc_monthly",
             "stdv_of_cdr_seaice_conc_monthly",
             "melt_onset_day_cdr_seaice_conc_monthly",
             "qa_of_cdr_seaice_conc_monthly",
@@ -476,3 +474,13 @@ def test_monthly_ds(monkeypatch, tmpdir):
     # TODO: should this be even closer? The max diff in the conc fields is:
     #   0.0033333327372868787
     xr.testing.assert_allclose(actual, after_write, atol=0.009)
+
+
+def test__sat_for_month():
+    assert "am2" == _sat_for_month(sats=["am2", "am2", "am2", "am2"])
+
+    assert "am2" == _sat_for_month(sats=["F17", "F17", "am2", "am2"])
+
+    assert "F17" == _sat_for_month(sats=["F13", "F13", "F13", "F17"])
+
+    assert "am2" == _sat_for_month(sats=["F13", "F17", "am2"])

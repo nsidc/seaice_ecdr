@@ -12,14 +12,10 @@ from typing import Final
 from loguru import logger
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr.initial_daily_ecdr import (
-    get_idecdr_filepath,
-    initial_daily_ecdr_dataset_for_au_si_tbs,
-    write_ide_netcdf,
-)
+from seaice_ecdr.initial_daily_ecdr import get_idecdr_filepath
 from seaice_ecdr.temporal_composite_daily import (
     make_tiecdr_netcdf,
-    read_with_create_initial_daily_ecdr,
+    read_or_create_and_read_idecdr_ds,
 )
 
 # Set the default minimum log notification to Warning
@@ -36,8 +32,9 @@ hemisphere = NORTH
 resolution: Final = "12.5"
 
 
-def test_create_ide_file(tmpdir):
+def test_read_or_create_and_read_idecdr_ds(tmpdir):
     """Verify that initial daily ecdr file can be created."""
+
     sample_ide_filepath = get_idecdr_filepath(
         date=date,
         hemisphere=hemisphere,
@@ -45,27 +42,7 @@ def test_create_ide_file(tmpdir):
         ecdr_data_dir=Path(tmpdir),
     )
 
-    test_ide_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
-        date=date, hemisphere=hemisphere, resolution=resolution
-    )
-    written_path = write_ide_netcdf(
-        ide_ds=test_ide_ds,
-        output_filepath=sample_ide_filepath,
-    )
-    assert sample_ide_filepath == written_path
-    assert sample_ide_filepath.exists()
-
-
-def test_read_with_create_ide_file(tmpdir):
-    """Verify that initial daily ecdr file can be created."""
-    sample_ide_filepath = get_idecdr_filepath(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=Path(tmpdir),
-    )
-
-    test_ide_ds_with_creation = read_with_create_initial_daily_ecdr(
+    test_ide_ds_with_creation = read_or_create_and_read_idecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
@@ -73,7 +50,7 @@ def test_read_with_create_ide_file(tmpdir):
     )
 
     assert sample_ide_filepath.exists()
-    test_ide_ds_with_reading = read_with_create_initial_daily_ecdr(
+    test_ide_ds_with_reading = read_or_create_and_read_idecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,

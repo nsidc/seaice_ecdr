@@ -1,7 +1,6 @@
 """Tests for initial daily ECDR generation."""
 
 import datetime as dt
-import sys
 from pathlib import Path
 from typing import Final
 
@@ -10,14 +9,14 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr.initial_daily_ecdr import get_idecdr_filepath, make_idecdr_netcdf
+from seaice_ecdr.initial_daily_ecdr import (
+    get_idecdr_filepath,
+    make_idecdr_netcdf,
+    write_ide_netcdf,
+)
 from seaice_ecdr.initial_daily_ecdr import (
     initial_daily_ecdr_dataset_for_au_si_tbs as compute_idecdr_ds,
 )
-
-# Set the default minimum log notification to Warning
-logger.remove(0)  # Removes previous logger info
-logger.add(sys.stderr, level="WARNING")
 
 cdr_conc_fieldname = "conc"
 
@@ -65,13 +64,21 @@ def test_seaice_idecdr_can_output_to_netcdf(
 
     # NH
     sample_output_filepath_nh = tmp_path / "sample_idecdr_nh.nc"
-    sample_idecdr_dataset_nh.to_netcdf(sample_output_filepath_nh)
-    assert sample_output_filepath_nh.is_file()
+    written_path = write_ide_netcdf(
+        ide_ds=sample_idecdr_dataset_nh,
+        output_filepath=sample_output_filepath_nh,
+    )
+    assert sample_output_filepath_nh == written_path
+    assert sample_output_filepath_nh.exists()
 
     # SH
     sample_output_filepath_sh = tmp_path / "sample_idecdr_sh.nc"
-    sample_idecdr_dataset_sh.to_netcdf(sample_output_filepath_sh)
-    assert sample_output_filepath_sh.is_file()
+    written_path = write_ide_netcdf(
+        ide_ds=sample_idecdr_dataset_sh,
+        output_filepath=sample_output_filepath_sh,
+    )
+    assert sample_output_filepath_sh == written_path
+    assert sample_output_filepath_sh.exists()
 
 
 def test_seaice_idecdr_is_Dataset(
@@ -87,7 +94,7 @@ def test_seaice_idecdr_has_crs(
     sample_idecdr_dataset_nh,
     sample_idecdr_dataset_sh,
 ):
-    """Test that idecdr contains a 'conc' field."""
+    """Test that idecdr contains a 'crs' field."""
     assert "crs" in sample_idecdr_dataset_nh.variables
     assert "crs" in sample_idecdr_dataset_sh.variables
 
@@ -105,12 +112,12 @@ def test_seaice_idecdr_has_necessary_fields(
         "y",
         "conc",
         "qa_of_cdr_seaice_conc",
-        "bt_conc_raw",
-        "nt_conc_raw",
+        "raw_bt_seaice_conc",
+        "raw_nt_seaice_conc",
         "bt_weather_mask",
         "nt_weather_mask",
         "invalid_ice_mask",
-        "spatint_bitmask",
+        "spatial_interpolation_flag",
     )
     for field_name in expected_fields:
         assert field_name in sample_idecdr_dataset_nh.variables.keys()
@@ -169,3 +176,26 @@ def test_can_drop_fields_from_idecdr_netcdf(
 
     ds = xr.open_dataset(output_path)
     assert cdr_conc_fieldname not in ds.variables.keys()
+
+
+def test_seaice_idecdr_has_tyx_data_vars(
+    sample_idecdr_dataset_nh,
+    sample_idecdr_dataset_sh,
+):
+    """Test that idecdr netcdf has (time, y, x) dims for data fields."""
+    expected_tyx_fields = (
+        "conc",
+        "qa_of_cdr_seaice_conc",
+        "raw_bt_seaice_conc",
+        "raw_nt_seaice_conc",
+        "bt_weather_mask",
+        "nt_weather_mask",
+        "invalid_ice_mask",
+        "spatial_interpolation_flag",
+    )
+    for field_name in expected_tyx_fields:
+        nh_data_shape = sample_idecdr_dataset_nh[field_name].shape
+        assert len(nh_data_shape) == 3
+
+        sh_data_shape = sample_idecdr_dataset_sh[field_name].shape
+        assert len(sh_data_shape) == 3
