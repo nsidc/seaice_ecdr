@@ -218,6 +218,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     qa_of_cdr_seaice_conc_monthly = xr.full_like(
         cdr_seaice_conc_monthly,
         fill_value=0,
+        dtype=np.uint8,
     )
     qa_of_cdr_seaice_conc_monthly.name = "qa_of_cdr_seaice_conc_monthly"
 
