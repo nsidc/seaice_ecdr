@@ -202,6 +202,15 @@ def create_melt_onset_field(
             dtype=np.uint8,
         )
         logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
+    elif (date.year == 2012) and (date <= dt.date(2012, 7, 2)):
+        # These are melt season days in first year of AMSR2 data
+        prior_melt_onset_field = filled_ndarray(
+            hemisphere=hemisphere,
+            resolution=resolution,
+            fill_value=no_melt_flag,
+            dtype=np.uint8,
+        )
+        logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
     else:
         prior_melt_onset_field = read_melt_onset_field(
             date=date - dt.timedelta(days=1),

@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
+from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
@@ -53,6 +54,9 @@ def _get_sat_by_date(
     """Return the satellite used for this date."""
     # TODO: these date ranges belong in a config location
     if date >= dt.date(2012, 7, 2) and date <= dt.date(2030, 12, 31):
+        return "am2"
+    elif date >= dt.date(2012, 6, 27) and date <= dt.date(2012, 7, 1):
+        logger.warning(f"WARNING: Using AMSR2 pole hole for date: {date}")
         return "am2"
     else:
         raise RuntimeError(f"Could not determine sat for date: {date}")
