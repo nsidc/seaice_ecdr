@@ -296,7 +296,7 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         resolution=resolution,
     )
     cde_ds["surface_type"] = xr.DataArray(
-        name="surface_mask",
+        name="surface_type",
         data=surfacetype_da.data,
         dims=["time", "y", "x"],
         coords=dict(

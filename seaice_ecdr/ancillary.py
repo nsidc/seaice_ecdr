@@ -124,7 +124,7 @@ def get_surfacetype_da(
     )
 
     surface_mask_da = xr.DataArray(
-        name="surface_mask",
+        name="surface_type",
         data=surftypevar.data,
         dims=["y", "x"],
         coords=dict(
