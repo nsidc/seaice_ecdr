@@ -218,7 +218,7 @@ def get_global_attrs(
 
     new_global_attrs = OrderedDict(
         # We expect conventions to be the first item in the global attributes.
-        conventions="CF-1.10, ACDD-1.3",
+        Conventions="CF-1.10, ACDD-1.3",
         # Use the current UTC time to set the `date_created` attribute.
         date_created=dt.datetime.utcnow().strftime(DATE_STR_FMT),
         **time_coverage_attrs,
