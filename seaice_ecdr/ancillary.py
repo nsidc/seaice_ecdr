@@ -128,18 +128,8 @@ def get_surfacetype_da(
         data=surftypevar.data,
         dims=["y", "x"],
         coords=dict(
-            y=(
-                [
-                    "y",
-                ],
-                yvar.data,
-            ),
-            x=(
-                [
-                    "x",
-                ],
-                xvar.data,
-            ),
+            y=yvar,
+            x=xvar,
         ),
         attrs={
             "grid_mapping": "crs",
@@ -149,6 +139,8 @@ def get_surfacetype_da(
     )
 
     # Add the date
+    # NOTE: This date variable will NOT have any associated attributes
+    #       and will not conform to CF-conventions.
     surface_mask_da = surface_mask_da.expand_dims(time=[pd.to_datetime(date)])
 
     return surface_mask_da

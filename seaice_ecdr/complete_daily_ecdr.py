@@ -283,10 +283,28 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
     )
 
     # Add the surface-type field
-    cde_ds["surface_type"] = get_surfacetype_da(
+    # TODO: Setting a DataArray directly into a Dataset changes the
+    #       coordinate variables of the Dataset.  Eg, here, if the
+    #       surfacetype dataarray is set directly, the x, y, and time
+    #       variables/coords/dims of the cde_ds are reset.
+    #       The methodology here should be reviewed to see if there is
+    #       a "better" way to add a geo-referenced dataarray to an existing
+    #       xr Dataset.
+    surfacetype_da = get_surfacetype_da(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
+    )
+    cde_ds["surface_type"] = xr.DataArray(
+        name="surface_mask",
+        data=surfacetype_da.data,
+        dims=["time", "y", "x"],
+        coords=dict(
+            time=cde_ds.time,
+            y=cde_ds.variables["y"],
+            x=cde_ds.variables["x"],
+        ),
+        attrs=surfacetype_da.attrs,
     )
 
     # TODO: Need to ensure that the cdr_seaice_conc field does not have values
@@ -388,6 +406,7 @@ def make_cdecdr_netcdf(
         ecdr_data_dir=ecdr_data_dir,
     )
 
+    # TODO: Here, there are no x var attrs
     cde_ds = finalize_cdecdr_ds(cde_ds)
 
     output_path = get_ecdr_filepath(
