@@ -4,7 +4,7 @@ from pathlib import Path
 ECDR_PRODUCT_VERSION = "v05r00"
 
 # NSIDC infrastructure-specific paths:
-NSIDC_NFS_SHARE_DIR = Path("/share/apps/amsr2-cdr")
+NSIDC_NFS_SHARE_DIR = Path("/share/apps/G02202_V5")
 
 # TODO: dev-specific directories for the outputs!
 

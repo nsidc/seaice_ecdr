@@ -3,8 +3,8 @@
 This directory includes a script for creating the following ancillary files
 based on representative inputs from nsidc0771 and nsidc0051:
 
-* `/share/apps/amsr2-cdr/cdrv5_ancillary/cdrv5_surfgeo_psn12.5.nc`
-* `/share/apps/amsr2-cdr/cdrv5_ancillary/cdrv5_surfgeo_pss12.5.nc`
+* `/share/apps/G02202_V5/cdrv5_ancillary/cdrv5_surfgeo_psn12.5.nc`
+* `/share/apps/G02202_V5/cdrv5_ancillary/cdrv5_surfgeo_pss12.5.nc`
 
 These surface/geo files include the following variables:
 
@@ -30,7 +30,7 @@ Then, run the script:
 ```
 $ python scripts/surface_geo_masks/create_surface_geo_mask.py
 Creating surfgeo ancillary field for gridid: psn12.5
-  /share/apps/amsr2-cdr/cdrv5_ancillary/cdrv5_surfgeo_psn12.5.nc
+  /share/apps/G02202_V5/cdrv5_ancillary/cdrv5_surfgeo_psn12.5.nc
 Creating surfgeo ancillary field for gridid: pss12.5
-  /share/apps/amsr2-cdr/cdrv5_ancillary/cdrv5_surfgeo_pss12.5.nc
+  /share/apps/G02202_V5/cdrv5_ancillary/cdrv5_surfgeo_pss12.5.nc
 ```
