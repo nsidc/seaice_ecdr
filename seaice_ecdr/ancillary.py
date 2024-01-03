@@ -55,8 +55,16 @@ def _get_sat_by_date(
     # TODO: these date ranges belong in a config location
     if date >= dt.date(2012, 7, 2) and date <= dt.date(2030, 12, 31):
         return "am2"
+    # TODO: Remove this logic when SSMIS satellites are used.
     elif date >= dt.date(2012, 6, 27) and date <= dt.date(2012, 7, 1):
-        logger.warning(f"WARNING: Using AMSR2 pole hole for date: {date}")
+        logger.warning(
+            "_get_sat_by_date() override implemented so that"
+            f" AMSR2 is considered the 'satellite for this date' ({date})"
+            "while this product is under development.  When another"
+            " SSMIS satellite (eg F17 or F18) is used through 7/1/2012,"
+            " this override should be removed.  This call was needed for"
+            " to determine the pole hole mask for this date."
+        )
         return "am2"
     else:
         raise RuntimeError(f"Could not determine sat for date: {date}")
