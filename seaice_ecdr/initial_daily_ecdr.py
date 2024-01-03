@@ -758,10 +758,10 @@ def create_null_au_si_tbs(
         "v89": "89.0 GHz vertical daily average Tbs",
     }
 
-    if hemisphere == "north" and resolution == "12":
+    if hemisphere == "north" and resolution == "12.5":
         xdim = 608
         ydim = 896
-    elif hemisphere == "south" and resolution == "12":
+    elif hemisphere == "south" and resolution == "12.5":
         xdim = 632
         ydim = 664
     else:
@@ -853,7 +853,7 @@ def initial_daily_ecdr_dataset_for_au_si_tbs(
     except FileNotFoundError:
         xr_tbs = create_null_au_si_tbs(
             hemisphere=hemisphere,
-            resolution=au_si_resolution_str,
+            resolution=resolution,
         )
         logger.warning(
             f"Used all-null TBS for date={date},"
