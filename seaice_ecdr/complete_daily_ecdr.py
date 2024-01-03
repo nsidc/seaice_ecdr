@@ -202,6 +202,13 @@ def create_melt_onset_field(
             dtype=np.uint8,
         )
         logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
+    # TODO: Currently, only AMSR2 is used for this product.  The first data
+    #       for AMSR2 are on July 2, 2012.  The melt_onset_field requires
+    #       the previous day's melt onset field during the melt season.
+    #       This 'elif' condition captures the case where a prior day's
+    #       melt onset field is required to create the daily file for AMSR2
+    #       but no such onset field is available because pre-AMSR2
+    #       observations are not yet available.
     elif (date.year == 2012) and (date <= dt.date(2012, 7, 2)):
         # These are melt season days in first year of AMSR2 data
         prior_melt_onset_field = filled_ndarray(
@@ -295,17 +302,17 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    cde_ds["surface_type"] = xr.DataArray(
-        name="surface_type",
-        data=surfacetype_da.data,
-        dims=["time", "y", "x"],
-        coords=dict(
-            time=cde_ds.time,
-            y=cde_ds.variables["y"],
-            x=cde_ds.variables["x"],
-        ),
-        attrs=surfacetype_da.attrs,
+    # Force use of the cde_ds coords instead of the x, y, time vars
+    # from the ancillary file (which *should* be compatible...but we
+    # don't want coords changing in cde_ds as a result of external files).
+    surfacetype_da.assign_coords(
+        {
+            "time": cde_ds.time,
+            "y": cde_ds.y,
+            "x": cde_ds.x,
+        }
     )
+    cde_ds = cde_ds.merge(surfacetype_da)
 
     # TODO: Need to ensure that the cdr_seaice_conc field does not have values
     #       where seaice cannot occur, eg over land or lakes
@@ -406,7 +413,6 @@ def make_cdecdr_netcdf(
         ecdr_data_dir=ecdr_data_dir,
     )
 
-    # TODO: Here, there are no x var attrs
     cde_ds = finalize_cdecdr_ds(cde_ds)
 
     output_path = get_ecdr_filepath(
