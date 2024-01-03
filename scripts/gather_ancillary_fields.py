@@ -140,7 +140,7 @@ def ecdr_invalid_ice_masks_12km(
 
     In the Northern Hemisphere, invalid ice masks are based on SST mask files
     originally found in
-    `/share/apps/amsr2-cdr/cdr_testdata/bt_goddard_ANCILLARY/`.
+    `/share/apps/G02202_V5/cdr_testdata/bt_goddard_ANCILLARY/`.
     """
     invalid_icemasks = []
     months = range(1, 12 + 1)
