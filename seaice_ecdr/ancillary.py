@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import xarray as xr
+from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
@@ -53,6 +54,17 @@ def _get_sat_by_date(
     """Return the satellite used for this date."""
     # TODO: these date ranges belong in a config location
     if date >= dt.date(2012, 7, 2) and date <= dt.date(2030, 12, 31):
+        return "am2"
+    # TODO: Remove this logic when SSMIS satellites are used.
+    elif date >= dt.date(2012, 6, 27) and date <= dt.date(2012, 7, 1):
+        logger.warning(
+            "_get_sat_by_date() override implemented so that"
+            f" AMSR2 is considered the 'satellite for this date' ({date})"
+            "while this product is under development.  When another"
+            " SSMIS satellite (eg F17 or F18) is used through 7/1/2012,"
+            " this override should be removed.  This call was needed for"
+            " to determine the pole hole mask for this date."
+        )
         return "am2"
     else:
         raise RuntimeError(f"Could not determine sat for date: {date}")
@@ -120,22 +132,12 @@ def get_surfacetype_da(
     )
 
     surface_mask_da = xr.DataArray(
-        name="surface_mask",
+        name="surface_type",
         data=surftypevar.data,
         dims=["y", "x"],
         coords=dict(
-            y=(
-                [
-                    "y",
-                ],
-                yvar.data,
-            ),
-            x=(
-                [
-                    "x",
-                ],
-                xvar.data,
-            ),
+            y=yvar,
+            x=xvar,
         ),
         attrs={
             "grid_mapping": "crs",
@@ -145,6 +147,8 @@ def get_surfacetype_da(
     )
 
     # Add the date
+    # NOTE: This date variable will NOT have any associated attributes
+    #       and will not conform to CF-conventions.
     surface_mask_da = surface_mask_da.expand_dims(time=[pd.to_datetime(date)])
 
     return surface_mask_da

@@ -741,6 +741,99 @@ def compute_initial_daily_ecdr_dataset(
     return ecdr_ide_ds
 
 
+def create_null_au_si_tbs(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> xr.Dataset:
+    """Create xr dataset containing all null-value data for all tbs."""
+    chan_desc = {
+        "h18": "18.7 GHz horizontal daily average Tbs",
+        "v18": "18.7 GHz vertical daily average Tbs",
+        "h23": "23.8 GHz horizontal daily average Tbs",
+        "v23": "23.8 GHz vertical daily average Tbs",
+        "h36": "36.5 GHz horizontal daily average Tbs",
+        "v36": "36.5 GHz vertical daily average Tbs",
+        "h89": "89.0 GHz horizontal daily average Tbs",
+        "v89": "89.0 GHz vertical daily average Tbs",
+    }
+
+    if hemisphere == "north" and resolution == "12.5":
+        xdim = 608
+        ydim = 896
+    elif hemisphere == "south" and resolution == "12.5":
+        xdim = 632
+        ydim = 664
+    else:
+        value_error_string = f"""
+        Could not create null_set of TBs for
+          hemisphere: {hemisphere}
+          resolution: {resolution}
+        """
+        raise ValueError(value_error_string)
+
+    null_array = np.zeros((ydim, xdim), dtype=np.float64)
+    null_array[:] = np.nan
+    common_tb_attrs = {
+        "_FillValue": 0,
+        "units": "degree_kelvin",
+        "standard_name": "brightness_temperature",
+        "packing_convention": "netCDF",
+        "packing_convention_description": "unpacked = scale_factor x packed + add_offset",
+        "scale_factor": 0.1,
+        "add_offset": 0.0,
+    }
+    null_tbs = xr.Dataset(
+        data_vars=dict(
+            h18=(
+                ["YDim", "XDim"],
+                null_array,
+                common_tb_attrs,
+            ),
+            v18=(
+                ["YDim", "XDim"],
+                null_array,
+                common_tb_attrs,
+            ),
+            h23=(
+                ["YDim", "XDim"],
+                null_array,
+                common_tb_attrs,
+            ),
+            v23=(
+                ["YDim", "XDim"],
+                null_array,
+                common_tb_attrs,
+            ),
+            h36=(
+                ["YDim", "XDim"],
+                null_array,
+                common_tb_attrs,
+            ),
+            v36=(
+                ["YDim", "XDim"],
+                null_array,
+                common_tb_attrs,
+            ),
+            h89=(
+                ["YDim", "XDim"],
+                null_array,
+                common_tb_attrs,
+            ),
+            v89=(
+                ["YDim", "XDim"],
+                null_array,
+                common_tb_attrs,
+            ),
+        ),
+    )
+
+    for key in chan_desc.keys():
+        null_tbs.data_vars[key].attrs.update({"long_name": chan_desc[key]})
+
+    return null_tbs
+
+
 def initial_daily_ecdr_dataset_for_au_si_tbs(
     *,
     date: dt.date,
@@ -751,11 +844,22 @@ def initial_daily_ecdr_dataset_for_au_si_tbs(
 
     This uses AU_SI12 TBs"""
     au_si_resolution_str = _au_si_res_str(resolution=resolution)
-    xr_tbs = get_au_si_tbs(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=au_si_resolution_str,
-    )
+    try:
+        xr_tbs = get_au_si_tbs(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=au_si_resolution_str,
+        )
+    except FileNotFoundError:
+        xr_tbs = create_null_au_si_tbs(
+            hemisphere=hemisphere,
+            resolution=resolution,
+        )
+        logger.warning(
+            f"Used all-null TBS for date={date},"
+            f" hemisphere={hemisphere},"
+            f" resolution={resolution}"
+        )
 
     initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,

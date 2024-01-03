@@ -332,4 +332,9 @@ def finalize_cdecdr_ds(
     )
     ds.attrs.update(new_global_attrs)
 
+    # Coordinate values should not have _FillValue set
+    ds.time.encoding["_FillValue"] = None
+    ds.x.encoding["_FillValue"] = None
+    ds.y.encoding["_FillValue"] = None
+
     return ds
