@@ -77,7 +77,7 @@ def _bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
     return value
 
 
-def _flag_value_for_meaning(*, var: xr.DataArray, meaning: str):
+def flag_value_for_meaning(*, var: xr.DataArray, meaning: str):
     index = var.flag_meanings.split(" ").index(meaning)
     value = var.flag_values[index]
 
@@ -219,11 +219,11 @@ def get_land_mask(
 
     surface_type = ancillary_ds.surface_type
 
-    land_val = _flag_value_for_meaning(
+    land_val = flag_value_for_meaning(
         var=surface_type,
         meaning="land",
     )
-    coast_val = _flag_value_for_meaning(
+    coast_val = flag_value_for_meaning(
         var=surface_type,
         meaning="coast",
     )

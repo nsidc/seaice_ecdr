@@ -36,6 +36,7 @@ from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr.ancillary import flag_value_for_meaning
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
@@ -481,8 +482,9 @@ def calc_surface_type_mask_monthly(
 
     # The monthly surface mask should have a pole-hole that is the combination
     # of all contributing pole-holes.
-    # TODO: extract pole hole value from surface type mask flag attrs!
-    pole_hole_value = 100
+    pole_hole_value = flag_value_for_meaning(
+        var=daily_surf_mask, meaning="polehole_mask"
+    )
     monthly_surface_mask = monthly_surface_mask.where(
         cond=~(daily_surf_mask == pole_hole_value).any(dim="time"),
         other=pole_hole_value,
