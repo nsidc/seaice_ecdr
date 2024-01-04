@@ -490,6 +490,8 @@ def calc_surface_type_mask_monthly(
         other=pole_hole_value,
     )
 
+    monthly_surface_mask = monthly_surface_mask.drop_vars("time")
+
     return monthly_surface_mask
 
 
