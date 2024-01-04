@@ -471,6 +471,26 @@ def _assign_time_to_monthly_ds(
     return with_time
 
 
+def calc_surface_type_mask_monthly(
+    *,
+    daily_ds_for_month: xr.Dataset,
+) -> xr.DataArray:
+    daily_surf_mask = daily_ds_for_month.surface_type_mask
+    # initialize the surface mask w/ the latest surface mask.
+    monthly_surface_mask = daily_surf_mask.isel(time=-1)
+
+    # The monthly surface mask should have a pole-hole that is the combination
+    # of all contributing pole-holes.
+    # TODO: extract pole hole value from surface type mask flag attrs!
+    pole_hole_value = 100
+    monthly_surface_mask = monthly_surface_mask.where(
+        cond=~(daily_surf_mask == pole_hole_value).any(dim="time"),
+        other=pole_hole_value,
+    )
+
+    return monthly_surface_mask
+
+
 def make_monthly_ds(
     *,
     daily_ds_for_month: xr.Dataset,
@@ -505,10 +525,15 @@ def make_monthly_ds(
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
     )
 
+    surface_type_mask_monthly = calc_surface_type_mask_monthly(
+        daily_ds_for_month=daily_ds_for_month,
+    )
+
     monthly_ds_data_vars = dict(
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
         stdv_of_cdr_seaice_conc_monthly=stdv_of_cdr_seaice_conc_monthly,
         qa_of_cdr_seaice_conc_monthly=qa_of_cdr_seaice_conc_monthly,
+        surface_type_mask=surface_type_mask_monthly,
     )
 
     # Add monthly melt onset if the hemisphere is north. We don't detect melt in

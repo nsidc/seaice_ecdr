@@ -157,6 +157,27 @@ def _mock_daily_ds_for_month():
         [np.nan, np.nan, np.nan],
     ]
 
+    _mock_surface_type_mask = [
+        # average_concentration_exceeds_0.15 and at_least_half_the_days_have_sea_ice_conc_exceeds_0.15
+        [50, 50, 50],
+        # average_concentration_exceeds_0.30 and at_least_half_the_days_have_sea_ice_conc_exceeds_0.30
+        [50, 50, 50],
+        # at_least_half_the_days_have_sea_ice_conc_exceeds_0.15
+        [50, 50, 50],
+        # at_least_half_the_days_have_sea_ice_conc_exceeds_0.30 and 15 and average_concentration_exceeds_0.15
+        [50, 50, 50],
+        # region_masked_by_ocean_climatology
+        [50, 50, 50],
+        # at_least_one_day_during_month_has_spatial_interpolation
+        [50, 50, 50],
+        # at_least_one_day_during_month_has_temporal_interpolation
+        [50, 50, 50],
+        # at_least_one_day_during_month_has_melt_detected, average_concentration_exceeds_0.15 and 30
+        [50, 50, 50],
+        # Land flag. All nan.
+        [250, 250, 250],
+    ]
+
     _mock_daily_qa_fields = [
         # average_concentration_exceeds_0.15
         [np.nan, np.nan, np.nan],
@@ -225,6 +246,7 @@ def _mock_daily_ds_for_month():
             raw_bt_seaice_conc=(("x", "time"), _mock_data),
             qa_of_cdr_seaice_conc=(("x", "time"), _mock_daily_qa_fields),
             melt_onset_day_cdr_seaice_conc=(("x", "time"), _mock_daily_melt_onset),
+            surface_type_mask=(("x", "time"), _mock_surface_type_mask),
             filepaths=(
                 ("time",),
                 [Path("/tmp/foo.nc"), Path("/tmp/bar.nc"), Path("/tmp/baz.nc")],
@@ -458,6 +480,7 @@ def test_monthly_ds(monkeypatch, tmpdir):
             "melt_onset_day_cdr_seaice_conc_monthly",
             "qa_of_cdr_seaice_conc_monthly",
             "crs",
+            "surface_type_mask",
         ]
     )
     actual_vars = sorted([str(var) for var in actual.keys()])
