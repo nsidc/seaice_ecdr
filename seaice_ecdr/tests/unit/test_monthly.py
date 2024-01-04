@@ -19,6 +19,7 @@ from seaice_ecdr.monthly import (
     calc_melt_onset_day_cdr_seaice_conc_monthly,
     calc_qa_of_cdr_seaice_conc_monthly,
     calc_stdv_of_cdr_seaice_conc_monthly,
+    calc_surface_type_mask_monthly,
     check_min_days_for_valid_month,
     make_monthly_ds,
 )
@@ -511,3 +512,59 @@ def test__sat_for_month():
     assert "F17" == _sat_for_month(sats=["F13", "F13", "F13", "F17"])
 
     assert "am2" == _sat_for_month(sats=["F13", "F17", "am2"])
+
+
+def test_calc_surface_mask_monthly():
+    # Each row is one pixel through time.
+    # time ->
+    _mock_surface_type_data = [
+        # all ocean
+        [50, 50, 50],
+        # Second element in time marked pole hole
+        [50, 100, 50],
+        # All pole-hole thru time
+        [100, 100, 100],
+        # Coast is consistent thru time:
+        [200, 200, 200],
+        # Land is consistent thru time:
+        [250, 250, 250],
+        # Lake is consistent thru time:
+        [75, 75, 75],
+    ]
+
+    mock_daily_ds_for_month = xr.Dataset(
+        data_vars=dict(
+            surface_type_mask=(("x", "time"), _mock_surface_type_data),
+        ),
+        coords=dict(
+            x=list(range(6)),
+            # doy 60, 61, 62
+            time=[dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+        ),
+    )
+
+    mock_daily_ds_for_month.surface_type_mask.attrs = dict(
+        flag_values=np.array([50, 75, 100, 200, 250], dtype=np.byte),
+        flag_meanings="ocean lake polehole_mask coast land",
+    )
+
+    actual = calc_surface_type_mask_monthly(
+        daily_ds_for_month=mock_daily_ds_for_month,
+    )
+
+    expected_surface_type_data = [
+        # all ocean
+        50,
+        # Second element in time marked pole hole
+        100,
+        # All pole-hole thru time
+        100,
+        # Coast is consistent thru time:
+        200,
+        # Land is consistent thru time:
+        250,
+        # Lake is consistent thru time:
+        75,
+    ]
+
+    assert (actual.data == expected_surface_type_data).all()
