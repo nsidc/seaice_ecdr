@@ -19,6 +19,7 @@ from seaice_ecdr.monthly import (
     calc_melt_onset_day_cdr_seaice_conc_monthly,
     calc_qa_of_cdr_seaice_conc_monthly,
     calc_stdv_of_cdr_seaice_conc_monthly,
+    calc_surface_type_mask_monthly,
     check_min_days_for_valid_month,
     make_monthly_ds,
 )
@@ -157,6 +158,27 @@ def _mock_daily_ds_for_month():
         [np.nan, np.nan, np.nan],
     ]
 
+    _mock_surface_type_mask = [
+        # average_concentration_exceeds_0.15 and at_least_half_the_days_have_sea_ice_conc_exceeds_0.15
+        [50, 50, 50],
+        # average_concentration_exceeds_0.30 and at_least_half_the_days_have_sea_ice_conc_exceeds_0.30
+        [50, 50, 50],
+        # at_least_half_the_days_have_sea_ice_conc_exceeds_0.15
+        [50, 50, 50],
+        # at_least_half_the_days_have_sea_ice_conc_exceeds_0.30 and 15 and average_concentration_exceeds_0.15
+        [50, 50, 50],
+        # region_masked_by_ocean_climatology
+        [50, 50, 50],
+        # at_least_one_day_during_month_has_spatial_interpolation
+        [50, 50, 50],
+        # at_least_one_day_during_month_has_temporal_interpolation
+        [50, 50, 50],
+        # at_least_one_day_during_month_has_melt_detected, average_concentration_exceeds_0.15 and 30
+        [50, 50, 50],
+        # Land flag. All nan.
+        [250, 250, 250],
+    ]
+
     _mock_daily_qa_fields = [
         # average_concentration_exceeds_0.15
         [np.nan, np.nan, np.nan],
@@ -225,6 +247,7 @@ def _mock_daily_ds_for_month():
             raw_bt_seaice_conc=(("x", "time"), _mock_data),
             qa_of_cdr_seaice_conc=(("x", "time"), _mock_daily_qa_fields),
             melt_onset_day_cdr_seaice_conc=(("x", "time"), _mock_daily_melt_onset),
+            surface_type_mask=(("x", "time"), _mock_surface_type_mask),
             filepaths=(
                 ("time",),
                 [Path("/tmp/foo.nc"), Path("/tmp/bar.nc"), Path("/tmp/baz.nc")],
@@ -240,6 +263,10 @@ def _mock_daily_ds_for_month():
 
     _mock_daily_ds.attrs["year"] = 2022
     _mock_daily_ds.attrs["month"] = 3
+    _mock_daily_ds.surface_type_mask.attrs = dict(
+        flag_values=np.array([50, 75, 100, 200, 250], dtype=np.byte),
+        flag_meanings="ocean lake polehole_mask coast land",
+    )
 
     return _mock_daily_ds
 
@@ -458,6 +485,7 @@ def test_monthly_ds(monkeypatch, tmpdir):
             "melt_onset_day_cdr_seaice_conc_monthly",
             "qa_of_cdr_seaice_conc_monthly",
             "crs",
+            "surface_type_mask",
         ]
     )
     actual_vars = sorted([str(var) for var in actual.keys()])
@@ -484,3 +512,59 @@ def test__sat_for_month():
     assert "F17" == _sat_for_month(sats=["F13", "F13", "F13", "F17"])
 
     assert "am2" == _sat_for_month(sats=["F13", "F17", "am2"])
+
+
+def test_calc_surface_mask_monthly():
+    # Each row is one pixel through time.
+    # time ->
+    _mock_surface_type_data = [
+        # all ocean
+        [50, 50, 50],
+        # Second element in time marked pole hole
+        [50, 100, 50],
+        # All pole-hole thru time
+        [100, 100, 100],
+        # Coast is consistent thru time:
+        [200, 200, 200],
+        # Land is consistent thru time:
+        [250, 250, 250],
+        # Lake is consistent thru time:
+        [75, 75, 75],
+    ]
+
+    mock_daily_ds_for_month = xr.Dataset(
+        data_vars=dict(
+            surface_type_mask=(("x", "time"), _mock_surface_type_data),
+        ),
+        coords=dict(
+            x=list(range(6)),
+            # doy 60, 61, 62
+            time=[dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+        ),
+    )
+
+    mock_daily_ds_for_month.surface_type_mask.attrs = dict(
+        flag_values=np.array([50, 75, 100, 200, 250], dtype=np.byte),
+        flag_meanings="ocean lake polehole_mask coast land",
+    )
+
+    actual = calc_surface_type_mask_monthly(
+        daily_ds_for_month=mock_daily_ds_for_month,
+    )
+
+    expected_surface_type_data = [
+        # all ocean
+        50,
+        # Second element in time marked pole hole
+        100,
+        # All pole-hole thru time
+        100,
+        # Coast is consistent thru time:
+        200,
+        # Land is consistent thru time:
+        250,
+        # Lake is consistent thru time:
+        75,
+    ]
+
+    assert (actual.data == expected_surface_type_data).all()
