@@ -20,17 +20,19 @@ Specifically:
            latitude: latlon
           longitude: latlon
        surface_type: regions
+             adj123: <code>
   min_concentration: ecdr_anc
    invalid_ice_mask: ecdr_anc
    polehole_bitmask: ecdr_anc
                l90c: <external code>
-             adj123: <external code>
 """
 
 import datetime as dt
 
 import numpy as np
 import xarray as xr
+from pm_icecon.land_spillover import create_land90
+from scipy.signal import convolve2d
 
 ecdr_anc_fn = {
     "psn12.5": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-psn12.5.nc",
@@ -56,8 +58,6 @@ nsidc0780_fn = {
 
 def find_coast(mask, ocean_values=(50,), land_values=(75, 250)):
     """Find indices where land values are adjacent to ocean values."""
-    from scipy.signal import convolve2d
-
     is_ocean = np.zeros(mask.shape, dtype=bool)
     for val in ocean_values:
         is_ocean[mask == val] = True
@@ -75,8 +75,13 @@ def find_coast(mask, ocean_values=(50,), land_values=(75, 250)):
     return is_coast
 
 
-def calc_surfacetype_da(ds):
+def calc_surfacetype_np(ds):
     """Calculate the DataArray for the CDRv5 surface_type given a regions DS.
+
+    Note: Input is a Dataset that we can test for various surfacetype field
+          names.
+          Output is a numpy array, so that the data can be assigned to a
+          DataArray with the overall Datasets coord variables.
 
     For the CDRv5 field, the ancillary surface types are:
         50: ocean
@@ -121,7 +126,56 @@ def calc_surfacetype_da(ds):
         land_values=(75, 250),
     )
     surface_mask[is_coast] = 200
-    breakpoint()  # here
+
+    return surface_mask
+
+
+def calc_adj123_np(surftype_da, ocean_val=50, coast_val=200):
+    """Compute the land-adjacency field for this surfacetype mask.
+    Input:
+        DataArray with values:
+            ocean: ocean_val (default 50)
+            coast: coast_val (default 200)
+    Output:
+        Numpy array with adjacency values of 1, 2, 3
+    """
+    surftype = surftype_da.as_numpy()
+    is_ocean = surftype == ocean_val
+    is_coast = surftype == coast_val
+    is_land = (~is_ocean) & (~is_coast)
+
+    kernel = [
+        [
+            1,
+            1,
+            1,
+        ],
+        [1, 1, 1],
+        [
+            1,
+            1,
+            1,
+        ],
+    ]
+    adj123_arr = np.zeros(surftype.shape, dtype=np.uint8)
+    adj123_arr[is_land] = 255
+    for adj_val in range(1, 4):
+        is_unlabeled = adj123_arr == 0
+        is_labeled = (adj123_arr == 255) | ((~is_unlabeled) & (adj123_arr < adj_val))
+        convolved = convolve2d(
+            is_labeled.astype(np.uint8),
+            kernel,
+            mode="same",
+            boundary="fill",
+            fillvalue=0,
+        )
+        is_newly_labeled = is_unlabeled & (convolved > 0)
+        adj123_arr[is_newly_labeled] = adj_val
+
+    # Remove the land grid cells from the adjacency matrix
+    adj123_arr[adj123_arr == 255] = 0
+
+    return adj123_arr
 
 
 def generate_ecdr_anc_file(gridid):
@@ -155,7 +209,13 @@ def generate_ecdr_anc_file(gridid):
             longitude=ds_latlon.variables["longitude"],
         ),
         coords=dict(
-            month=(["month"], months),
+            month=(
+                ["month"],
+                months,
+                {
+                    "long_name": "month of the year",
+                },
+            ),
             x=ds_latlon.variables["x"],
             y=ds_latlon.variables["y"],
         ),
@@ -181,10 +241,13 @@ def generate_ecdr_anc_file(gridid):
             geospatial_lon_units=ds_latlon.attrs["geospatial_lon_units"],
         ),
     )
+    # Ensure that dimensions do not have a _FillValue
+    ds.x.encoding["_FillValue"] = None
+    ds.y.encoding["_FillValue"] = None
 
     # Add in the region values
     ds_regions = xr.load_dataset(region_fn)
-    surfacetype_np = calc_surfacetype_da(ds_regions)
+    surfacetype_np = calc_surfacetype_np(ds_regions)
     ds["surface_type"] = xr.DataArray(
         name="surface_type",
         data=surfacetype_np,
@@ -195,22 +258,84 @@ def generate_ecdr_anc_file(gridid):
         ),
         attrs=dict(
             long_name=f"{gridid}_surfacetype",
+            grid_mapping="crs",
             flag_values=np.uint8((50, 75, 200, 250)),
             flag_meanings="ocean lake coast land",
         ),
     )
 
+    # Find the land-adjacency matrix which indicates whether grid cells are
+    #  1, 2, or 3 grid cells away from land (coast).
+    adj123_np = calc_adj123_np(ds["surface_type"])
+    ds["adj123"] = xr.DataArray(
+        name="adj123",
+        data=adj123_np,
+        dims=["y", "x"],
+        coords=dict(
+            y=ds.variables["y"],
+            x=ds.variables["x"],
+        ),
+        attrs=dict(
+            short_name="adj123",
+            long_name=f"{gridid}_adjacency_field",
+            grid_mapping="crs",
+            flag_values=np.uint8((0, 1, 2, 3)),
+            flag_meanings="not_near_land one_gridcell_from_land two_gridcells_from_land three_gridcell_from_land",
+        ),
+    )
+
+    # Calculate the land90conc field
+    l90c_np = create_land90(adj123=ds["adj123"].data)
+    ds["l90c"] = xr.DataArray(
+        name="l90c_np",
+        data=l90c_np,
+        dims=["y", "x"],
+        coords=dict(
+            y=ds.variables["y"],
+            x=ds.variables["x"],
+        ),
+        attrs=dict(
+            short_name="l90c",
+            long_name=f"{gridid}_land-as-90-percent-concentration_field",
+            grid_mapping="crs",
+            comment="The 'land90' array is a mock sea ice concentration"
+            " array that is calculatedfrom the land mask.  It assumes that"
+            " the mock concentration value will bethe average of a 7x7 array"
+            " of local surface mask values centered on thecenter pixel."
+            "  Water grid cells are considered to have a sea iceconcentration"
+            " of zero.  Land grid cells are considered to have a sea"
+            " iceconcentration of 90%.  The average of the 49 grid cells"
+            " in the 7x7 arrayyields the `land90` concentration value.",
+        ),
+    )
+
     # Downscale fields from 12.5km fields for consistency
-    # Downscale:  min_concentration is max of underlying min_concentration vals
+    # Downscale:  min_concentration is mean of underlying min_concentration vals
     # Downscale:  invalid_ice_mask is True if any underlying val is True
     # Downscale:  polehole_bitmask has bit set if any underlying bit is set
     # WIP: Here: want to add minconc, inval, polemask derived from 12.5km file
     ds_hires_anc = xr.load_dataset(hires_anc_fn)
 
+    # Compute min_concentration field
+    # NOTE: The min_concentration field will only be defined for ocean grid
+    #       cells that are 1, 2, or 3 grid cells away from land
+    # NOTE: The methodology used here is an approximation.
+    #       The min-concentration field is intended
+    #       to represent the minimum concentration observed at a grid cell when
+    #       the grid cell has no sea ice.  This approximates what "sea ice
+    #       concentration" the nearby land appears to have.  Properly, this
+    #       should be re-computed for each sensor and each grid.
+    hires_minconc = ds_hires_anc.data_vars["min_concentration"]
+
     assert scale_factor == 2
+    assert hires_minconc is not None
 
     # Write out ancillary file
-    ds_hires_anc.to_netcdr(newres_anc_fn)
+    ds.to_netcdf(newres_anc_fn)
+    print(f"Wrote new dataset to: {newres_anc_fn}")
+
+    breakpoint()
+    print(f"Finished with generate_ecdr_anc_file() for gridid: {gridid}")
 
 
 if __name__ == "__main__":
