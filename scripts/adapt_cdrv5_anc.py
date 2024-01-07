@@ -219,6 +219,60 @@ def calc_new_minconc(
     return new_minconc
 
 
+def calc_invalid_ice_mask(
+    hires_iim,
+    hires_surftype,
+    scale_factor,
+    surftype,
+):
+    """Create an invalid ice mask from a higher resolution mask."""
+    # Create a hires version of the surftype matrix
+    ydim, xdim = surftype.shape
+    xdim_f = scale_factor * xdim
+    ydim_f = scale_factor * ydim
+    surftype_f = np.zeros((ydim_f, xdim_f), dtype=surftype.dtype)
+    for joff in range(scale_factor):
+        for ioff in range(scale_factor):
+            surftype_f[joff::scale_factor, ioff::scale_factor] = surftype.data[:]
+    # Convert to float32; set non-ocean to NaN; set invalid to 1 and not to 0
+    is_non_ocean = surftype_f != 50
+    hires_iim_float = hires_iim.data.astype(np.float32)
+    # Set lakes to invalid ice
+    n_months, _, _ = hires_iim_float.shape
+    new_iim_bool = np.zeros((n_months, ydim, xdim), dtype=bool)
+    new_iim_bool[:] = False
+
+    xdim_rescaled = hires_iim_float.shape[-1] // scale_factor
+    for m in range(n_months):
+        hires_iim_slice = hires_iim_float[m, :, :]
+        hires_iim_slice[is_non_ocean] = np.nan
+        # Note that the invalid ice mask is set to invalid for lakes
+        # but we don't want to allow that here
+        hires_iim_slice[hires_surftype.data == 75] = np.nan
+        hires_iim_slice[hires_surftype.data == 200] = np.nan
+
+        # Re-arrange the high resolution array by the scale factor...
+        hires_grouped = hires_iim_slice.reshape(
+            -1, scale_factor, xdim_rescaled, scale_factor
+        )
+        with warnings.catch_warnings():
+            # Ignore the many regions where there are no values
+            warnings.filterwarnings("ignore", r"Mean of empty slice")
+            new_iim_slice = np.nansum(hires_grouped, (-1, -3))
+        new_iim_bool_slice = new_iim_bool[m, :, :]
+        new_iim_bool_slice[new_iim_slice > 0] = True
+
+        # Manual correction noticed in QC
+        if xdim == 304:
+            # NH
+            new_iim_bool_slice[359:380, 53:70] = 0
+            if (m <= 5) or (m == 12):
+                new_iim_bool_slice[297, 295] = 0
+                new_iim_bool_slice[302, 297] = 0
+
+    return new_iim_bool
+
+
 def generate_ecdr_anc_file(gridid):
     """Create the cdrv5 ancillary ile for this GridId.
     Note that this may use pre-existing cdrv5 ancillary fields
@@ -387,6 +441,36 @@ def generate_ecdr_anc_file(gridid):
             " concentration value observed at near-land pixels during"
             " no-sea-ice conditions.  It represents the amount of apparent"
             " sea ice concentration attributable to land spillover effect.",
+        ),
+    )
+
+    # Set up the invalid ice mask
+    # This will be: we want invalid ice if any of the underlying
+    # ocean grid cells are invalid
+    invalid_ice_mask_np = calc_invalid_ice_mask(
+        ds_hires_anc.data_vars["invalid_ice_mask"],
+        ds_hires_anc.data_vars["surface_type"],
+        scale_factor,
+        ds.data_vars["surface_type"],
+    )
+    ds["invalid_ice_mask"] = xr.DataArray(
+        name="invalid_ice_mask",
+        data=invalid_ice_mask_np,
+        dims=["month", "y", "x"],
+        coords=dict(
+            month=ds.variables["month"],
+            y=ds.variables["y"],
+            x=ds.variables["x"],
+        ),
+        attrs=dict(
+            short_name="invalid_ice_mask",
+            long_name=f"{gridid} invalid sea ice mask",
+            grid_mapping="crs",
+            flag_values=np.uint8((0, 1)),
+            flag_meanings="valid_seaice_location invalid_seaice_location",
+            valid_range=np.uint8((0, 1)),
+            units="1",
+            comment="Mask indicating where seaice will not exist on this day based on climatology",
         ),
     )
 
