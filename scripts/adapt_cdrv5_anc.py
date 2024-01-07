@@ -273,6 +273,31 @@ def calc_invalid_ice_mask(
     return new_iim_bool
 
 
+def calc_polehole_bitmask(
+    hires_polehole_bitmask_da,
+    scale_factor,
+):
+    """Calculate the lower resolution pole hole bit mask."""
+    hires_bitmask = hires_polehole_bitmask_da.data
+    ydim, xdim = hires_bitmask.shape
+    xdim_lowres = xdim // scale_factor
+    ydim_lowres = ydim // scale_factor
+    new_polehole_bitmask = np.zeros(
+        (ydim_lowres, xdim_lowres), dtype=hires_bitmask.dtype
+    )
+    bitmask_values = hires_polehole_bitmask_da.attrs["flag_masks"]
+    for val in bitmask_values:
+        for joff in range(scale_factor):
+            for ioff in range(scale_factor):
+                subset = hires_bitmask[joff::scale_factor, ioff::scale_factor]
+                is_val = np.bitwise_and(subset, val)
+                new_polehole_bitmask[is_val > 0] = np.bitwise_or(
+                    new_polehole_bitmask[is_val > 0], val
+                )
+
+    return new_polehole_bitmask
+
+
 def generate_ecdr_anc_file(gridid):
     """Create the cdrv5 ancillary ile for this GridId.
     Note that this may use pre-existing cdrv5 ancillary fields
@@ -474,11 +499,50 @@ def generate_ecdr_anc_file(gridid):
         ),
     )
 
+    # Set up the pole hole bitmask
+    # This will be: we want the bit mask set if any underlying pole hole bit
+    # is set
+    if "polehole_bitmask" in ds_hires_anc.data_vars.keys():
+        polehole_bitmask_np = calc_polehole_bitmask(
+            ds_hires_anc.data_vars["polehole_bitmask"],
+            scale_factor,
+        )
+        ds["polehole_bitmask"] = xr.DataArray(
+            name="polehole_bitmask",
+            data=polehole_bitmask_np,
+            dims=["y", "x"],
+            coords=dict(
+                y=ds.variables["y"],
+                x=ds.variables["x"],
+            ),
+            attrs=dict(
+                short_name="polehole_bitmask",
+                long_name=f"{gridid} polehole_bitmask",
+                grid_mapping="crs",
+                flag_masks=ds_hires_anc.data_vars["polehole_bitmask"].attrs[
+                    "flag_masks"
+                ],
+                flag_meanings=ds_hires_anc.data_vars["polehole_bitmask"].attrs[
+                    "flag_meanings"
+                ],
+                valid_range=np.uint8(
+                    (
+                        0,
+                        np.sum(
+                            ds_hires_anc.data_vars["polehole_bitmask"].attrs[
+                                "flag_masks"
+                            ]
+                        )
+                        - 1,
+                    )
+                ),
+            ),
+        )
+
     # Write out ancillary file
     ds.to_netcdf(newres_anc_fn)
     print(f"Wrote new dataset to: {newres_anc_fn}")
 
-    breakpoint()
     print(f"Finished with generate_ecdr_anc_file() for gridid: {gridid}")
 
 
