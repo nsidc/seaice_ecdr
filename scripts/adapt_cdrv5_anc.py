@@ -1,5 +1,12 @@
 """Create 25km ancillary iles for cdrv5.
 
+NOTE: This will calculate the ancillary xr Dataset, but then NOT overwrite
+      an existing netCDF file.
+
+Usage:
+    python adapt_cdrv5_anc.py psn25  (for Northern Hemisphere)
+    python adapt_cdrv5_anc.py pss25  (for Southern Hemisphere)
+
 The sources for this information are:
     cdrv5 12.5km files [ecdr_anc]
         ecdr-ancillary-psn12.5.nc
@@ -28,6 +35,7 @@ Specifically:
 """
 
 import datetime as dt
+import os
 import warnings
 
 import numpy as np
@@ -540,10 +548,11 @@ def generate_ecdr_anc_file(gridid):
         )
 
     # Write out ancillary file
-    ds.to_netcdf(newres_anc_fn)
-    print(f"Wrote new dataset to: {newres_anc_fn}")
+    if os.path.isfile(newres_anc_fn):
+        raise RuntimeError(f"Output file exists, aborting\n{newres_anc_fn}")
 
-    print(f"Finished with generate_ecdr_anc_file() for gridid: {gridid}")
+    ds.to_netcdf(newres_anc_fn)
+    print(f"Wrote new {gridid} ancillary file to: {newres_anc_fn}")
 
 
 if __name__ == "__main__":
