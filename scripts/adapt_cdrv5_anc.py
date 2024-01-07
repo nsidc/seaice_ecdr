@@ -21,13 +21,14 @@ Specifically:
           longitude: latlon
        surface_type: regions
              adj123: <code>
+               l90c: <external code>
   min_concentration: ecdr_anc
    invalid_ice_mask: ecdr_anc
    polehole_bitmask: ecdr_anc
-               l90c: <external code>
 """
 
 import datetime as dt
+import warnings
 
 import numpy as np
 import xarray as xr
@@ -178,6 +179,46 @@ def calc_adj123_np(surftype_da, ocean_val=50, coast_val=200):
     return adj123_arr
 
 
+def calc_new_minconc(
+    hires_minconc,
+    scale_factor,
+    adj123,
+):
+    # Compute min_concentration field
+    # NOTE: The min_concentration field will only be defined for ocean grid
+    #       cells that are 1, 2, or 3 grid cells away from land
+    # NOTE: The methodology used here is an approximation.
+    #       The min-concentration field is intended
+    #       to represent the minimum concentration observed at a grid cell when
+    #       the grid cell has no sea ice.  This approximates what "sea ice
+    #       concentration" the nearby land appears to have.  Properly, this
+    #       should be re-computed for each sensor and each grid.
+
+    # Create a hires version of the adj123 matrix
+    ydim, xdim = adj123.shape
+    xdim_f = scale_factor * xdim
+    ydim_f = scale_factor * ydim
+    adj123_f = np.zeros((ydim_f, xdim_f), dtype=adj123.dtype)
+    for joff in range(scale_factor):
+        for ioff in range(scale_factor):
+            adj123_f[joff::scale_factor, ioff::scale_factor] = adj123.data[:]
+
+    # Re-arrange the high resolution array by the scale factor...
+    hires = hires_minconc.data.copy()
+    hires[adj123_f == 0] = np.nan
+    hires[adj123_f > 3] = np.nan
+    xdim_rescaled = hires_minconc.shape[1] // scale_factor
+    hires_grouped = hires.reshape(-1, scale_factor, xdim_rescaled, scale_factor)
+    with warnings.catch_warnings():
+        # Ignore the many regions where there are no values
+        warnings.filterwarnings("ignore", r"Mean of empty slice")
+        new_minconc = np.nanmean(hires_grouped, (-1, -3))
+
+    new_minconc[np.isnan(new_minconc)] = 0
+
+    return new_minconc
+
+
 def generate_ecdr_anc_file(gridid):
     """Create the cdrv5 ancillary ile for this GridId.
     Note that this may use pre-existing cdrv5 ancillary fields
@@ -287,7 +328,7 @@ def generate_ecdr_anc_file(gridid):
     # Calculate the land90conc field
     l90c_np = create_land90(adj123=ds["adj123"].data)
     ds["l90c"] = xr.DataArray(
-        name="l90c_np",
+        name="l90c",
         data=l90c_np,
         dims=["y", "x"],
         coords=dict(
@@ -325,10 +366,29 @@ def generate_ecdr_anc_file(gridid):
     #       the grid cell has no sea ice.  This approximates what "sea ice
     #       concentration" the nearby land appears to have.  Properly, this
     #       should be re-computed for each sensor and each grid.
-    hires_minconc = ds_hires_anc.data_vars["min_concentration"]
-
-    assert scale_factor == 2
-    assert hires_minconc is not None
+    new_minconc_np = calc_new_minconc(
+        ds_hires_anc.data_vars["min_concentration"],
+        scale_factor,
+        ds.data_vars["adj123"],
+    )
+    ds["min_concentration"] = xr.DataArray(
+        name="min_concentration",
+        data=new_minconc_np,
+        dims=["y", "x"],
+        coords=dict(
+            y=ds.variables["y"],
+            x=ds.variables["x"],
+        ),
+        attrs=dict(
+            short_name="min_concentration",
+            long_name=f"{gridid} minimum observed NASATeam seaice concentration",
+            grid_mapping="crs",
+            comment="The 'min_concentration' array is the minimum sea ice"
+            " concentration value observed at near-land pixels during"
+            " no-sea-ice conditions.  It represents the amount of apparent"
+            " sea ice concentration attributable to land spillover effect.",
+        ),
+    )
 
     # Write out ancillary file
     ds.to_netcdf(newres_anc_fn)
