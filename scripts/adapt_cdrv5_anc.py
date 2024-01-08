@@ -427,13 +427,13 @@ def generate_ecdr_anc_file(gridid):
             long_name=f"{gridid}_land-as-90-percent-concentration_field",
             grid_mapping="crs",
             comment="The 'land90' array is a mock sea ice concentration"
-            " array that is calculatedfrom the land mask.  It assumes that"
-            " the mock concentration value will bethe average of a 7x7 array"
-            " of local surface mask values centered on thecenter pixel."
-            "  Water grid cells are considered to have a sea iceconcentration"
+            " array that is calculated from the land mask.  It assumes that"
+            " the mock concentration value will be the average of a 7x7 array"
+            " of local surface mask values centered on the center pixel."
+            "  Water grid cells are considered to have a sea ice concentration"
             " of zero.  Land grid cells are considered to have a sea"
-            " iceconcentration of 90%.  The average of the 49 grid cells"
-            " in the 7x7 arrayyields the `land90` concentration value.",
+            " ice concentration of 90%.  The average of the 49 grid cells"
+            " in the 7x7 array yields the `land90` concentration value.",
         ),
     )
 
