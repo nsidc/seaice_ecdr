@@ -475,20 +475,29 @@ def _assign_time_to_monthly_ds(
 def calc_surface_type_mask_monthly(
     *,
     daily_ds_for_month: xr.Dataset,
+    hemisphere: Hemisphere,
 ) -> xr.DataArray:
-    daily_surf_mask = daily_ds_for_month.surface_type_mask
+    try:
+        daily_surf_mask = daily_ds_for_month.surface_type_mask
+    except AttributeError:
+        logger.warning(
+            f"Daily data for {daily_ds_for_month.year}-{daily_ds_for_month.month} use old `surface_type` varname."
+        )
+        daily_surf_mask = daily_ds_for_month.surface_type
+
     # initialize the surface mask w/ the latest surface mask.
     monthly_surface_mask = daily_surf_mask.isel(time=-1)
 
-    # The monthly surface mask should have a pole-hole that is the combination
+    # The NH monthly surface mask should have a pole-hole that is the combination
     # of all contributing pole-holes.
-    pole_hole_value = flag_value_for_meaning(
-        var=daily_surf_mask, meaning="polehole_mask"
-    )
-    monthly_surface_mask = monthly_surface_mask.where(
-        cond=~(daily_surf_mask == pole_hole_value).any(dim="time"),
-        other=pole_hole_value,
-    )
+    if hemisphere == NORTH:
+        pole_hole_value = flag_value_for_meaning(
+            var=daily_surf_mask, meaning="polehole_mask"
+        )
+        monthly_surface_mask = monthly_surface_mask.where(
+            cond=~(daily_surf_mask == pole_hole_value).any(dim="time"),
+            other=pole_hole_value,
+        )
 
     monthly_surface_mask = monthly_surface_mask.drop_vars("time")
 
@@ -531,6 +540,7 @@ def make_monthly_ds(
 
     surface_type_mask_monthly = calc_surface_type_mask_monthly(
         daily_ds_for_month=daily_ds_for_month,
+        hemisphere=hemisphere,
     )
 
     monthly_ds_data_vars = dict(
