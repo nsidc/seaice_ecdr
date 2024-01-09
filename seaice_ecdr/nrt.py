@@ -5,7 +5,7 @@ from typing import get_args
 
 import click
 from pm_tb_data._types import Hemisphere
-from pm_tb_data.fetch.lance_amsr2 import (
+from pm_tb_data.fetch.amsr.lance_amsr2 import (
     access_local_lance_data,
     download_latest_lance_files,
 )
