@@ -379,7 +379,6 @@ def generate_ecdr_anc_file(gridid):
     # Note: this is an encoding, not an attribute
     ds.latitude.encoding["missing_value"] = None
     ds.longitude.encoding["missing_value"] = None
-    breakpoint()
 
     # Add in the region values
     ds_regions = xr.load_dataset(region_fn)
