@@ -6,6 +6,7 @@ from typing import get_args
 import click
 import pandas as pd
 import xarray as xr
+from dask.distributed import Client
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
@@ -52,6 +53,7 @@ def get_monthly_aggregate_ds(
         resolution=resolution,
     )
 
+    _c = Client(n_workers=2, threads_per_worker=1)
     agg_ds = xr.open_mfdataset(monthly_filepaths)
 
     # Copy only the first CRS var from the aggregate

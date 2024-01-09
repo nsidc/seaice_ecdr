@@ -8,6 +8,7 @@ import click
 import numpy as np
 import pandas as pd
 import xarray as xr
+from dask.distributed import Client
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
@@ -189,16 +190,29 @@ def make_daily_aggregate_netcdf_for_year(
     required=True,
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
+@click.option(
+    "--end-year",
+    required=False,
+    type=int,
+    help="Year for which to create the monthly file.",
+    default=None,
+)
 def cli(
     *,
     year: int,
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    end_year: int | None,
 ) -> None:
-    make_daily_aggregate_netcdf_for_year(
-        year=year,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-    )
+    if end_year is None:
+        end_year = year
+
+    _c = Client(n_workers=2, threads_per_worker=1)
+    for year_to_process in range(year, end_year + 1):
+        make_daily_aggregate_netcdf_for_year(
+            year=year_to_process,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+        )
