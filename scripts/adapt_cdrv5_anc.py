@@ -347,6 +347,8 @@ def generate_ecdr_anc_file(gridid):
             x=ds_latlon.variables["x"],
             y=ds_latlon.variables["y"],
         ),
+        # TODO: The attributes of the ancillary Dataset should be standardized
+        #       and consistent for the ancillary files for all grids.
         attrs=dict(
             title="Ancillary Information for Polar Stereo 25km Grid used in CDRv5",
             date_created=f"{dt.date.today()}",
@@ -373,6 +375,12 @@ def generate_ecdr_anc_file(gridid):
     ds.x.encoding["_FillValue"] = None
     ds.y.encoding["_FillValue"] = None
 
+    # Remove "missing_value" attribute because it has been deprecated
+    # Note: this is an encoding, not an attribute
+    ds.latitude.encoding["missing_value"] = None
+    ds.longitude.encoding["missing_value"] = None
+    breakpoint()
+
     # Add in the region values
     ds_regions = xr.load_dataset(region_fn)
     surfacetype_np = calc_surfacetype_np(ds_regions)
@@ -384,6 +392,8 @@ def generate_ecdr_anc_file(gridid):
             y=ds.variables["y"],
             x=ds.variables["x"],
         ),
+        # TODO: The attributes of surface_type should be standardized
+        #       and consistent for the ancillary files for all grids.
         attrs=dict(
             long_name=f"{gridid}_surfacetype",
             grid_mapping="crs",
@@ -403,6 +413,8 @@ def generate_ecdr_anc_file(gridid):
             y=ds.variables["y"],
             x=ds.variables["x"],
         ),
+        # TODO: The attributes of adj123 should be standardized
+        #       and consistent for the ancillary files for all grids.
         attrs=dict(
             short_name="adj123",
             long_name=f"{gridid}_adjacency_field",
@@ -422,6 +434,8 @@ def generate_ecdr_anc_file(gridid):
             y=ds.variables["y"],
             x=ds.variables["x"],
         ),
+        # TODO: The attributes of l90c should be standardized
+        #       and consistent for the ancillary files for all grids.
         attrs=dict(
             short_name="l90c",
             long_name=f"{gridid}_land-as-90-percent-concentration_field",
@@ -466,6 +480,8 @@ def generate_ecdr_anc_file(gridid):
             y=ds.variables["y"],
             x=ds.variables["x"],
         ),
+        # TODO: The attributes of min_concentration should be standardized
+        #       and consistent for the ancillary files for all grids.
         attrs=dict(
             short_name="min_concentration",
             long_name=f"{gridid} minimum observed NASATeam seaice concentration",
@@ -495,6 +511,8 @@ def generate_ecdr_anc_file(gridid):
             y=ds.variables["y"],
             x=ds.variables["x"],
         ),
+        # TODO: The attributes of invalid_ice_mask should be standardized
+        #       and consistent for the ancillary files for all grids.
         attrs=dict(
             short_name="invalid_ice_mask",
             long_name=f"{gridid} invalid sea ice mask",
@@ -523,6 +541,8 @@ def generate_ecdr_anc_file(gridid):
                 y=ds.variables["y"],
                 x=ds.variables["x"],
             ),
+            # TODO: The attributes of polehole_bitmask should be standardized
+            #       and consistent for the ancillary files for all grids.
             attrs=dict(
                 short_name="polehole_bitmask",
                 long_name=f"{gridid} polehole_bitmask",
