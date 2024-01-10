@@ -11,6 +11,7 @@ from collections import OrderedDict
 # from typing import Any, Final, Literal, get_args
 from seaice_ecdr._types import SUPPORTED_SAT
 
+# TODO: De-dup with nc_attrs.py
 # Here’s what the GCMD platform long name should be based on sensor/platform short name:
 PLATFORMS_FOR_SATS: dict[SUPPORTED_SAT, str] = dict(
     am2="GCOM-W1 > Global Change Observation Mission 1st-Water",
@@ -23,6 +24,7 @@ PLATFORMS_FOR_SATS: dict[SUPPORTED_SAT, str] = dict(
 )
 
 
+# TODO: De-dup with nc_attrs.py
 # Here’s what the GCMD sensor name should be based on sensor short name:
 SENSORS_FOR_SATS: dict[SUPPORTED_SAT, str] = dict(
     am2="AMSR2 > Advanced Microwave Scanning Radiometer 2",
