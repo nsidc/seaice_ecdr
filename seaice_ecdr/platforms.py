@@ -75,25 +75,27 @@ def _platform_available_for_date(
     # First, verify the values of the first listed platform
     first_available_date = platform_availability[platform]["first_date"]
     if date < first_available_date:
-        raise RuntimeError(
+        print(
             f"""
-        Satellite {platform} is not available on date {date}
-        {date} is before first_available_date {first_available_date}
-        Date info: {platform_availability["platform"]}
-        """
+            Satellite {platform} is not available on date {date}
+            {date} is before first_available_date {first_available_date}
+            Date info: {platform_availability[platform]}
+            """
         )
+        return False
 
     try:
         last_available_date = platform_availability[platform]["last_date"]
         try:
             if date > last_available_date:
-                raise RuntimeError(
+                print(
                     f"""
-                Satellite {platform} is not available on date {date}
-                {date} is after last_available_date {last_available_date}
-                Date info: {platform_availability[platform]}
-                """
+                    Satellite {platform} is not available on date {date}
+                    {date} is after last_available_date {last_available_date}
+                    Date info: {platform_availability[platform]}
+                    """
                 )
+                return False
         except TypeError as e:
             if last_available_date is None:
                 pass
@@ -169,15 +171,27 @@ def get_platform_by_date(
         platform_availability=platform_availability,
     )
 
-    for start_date in platform_start_dates.keys():
-        if date > start_date:
-            continue
-        platform = platform_start_dates[start_date]
-        assert _platform_available_for_date(
-            date=date,
-            platform=platform,
-            platform_availability=platform_availability,
-        )
-        break
+    start_date_list = list(platform_start_dates.keys())
+    platform_list = list(platform_start_dates.values())
 
-    return platform
+    if date < start_date_list[0]:
+        raise RuntimeError(
+            f"""
+           date {date} too early.
+           First start_date: {start_date_list[0]}
+           """
+        )
+
+    if date >= start_date_list[-1]:
+        return platform_list[-1]
+
+    platform = platform_list[0]
+    for start_date, latest_platform in zip(start_date_list[1:], platform_list[1:]):
+        if date >= start_date:
+            platform = latest_platform
+            continue
+        else:
+            return platform
+
+    print("WARNING: Reached end of list without finding satellite")
+    return "None"
