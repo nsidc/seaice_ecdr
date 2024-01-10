@@ -32,7 +32,8 @@ from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_icecon.util import date_range
 from pm_tb_data._types import NORTH, Hemisphere
-from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS, get_au_si_tbs
+from pm_tb_data.fetch.amsr.au_si import get_au_si_tbs
+from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
@@ -244,12 +245,12 @@ def _setup_ecdr_ds(
     return ecdr_ide_ds
 
 
-def _au_si_res_str(*, resolution: ECDR_SUPPORTED_RESOLUTIONS) -> AU_SI_RESOLUTIONS:
+def _au_si_res_str(*, resolution: ECDR_SUPPORTED_RESOLUTIONS) -> AMSR_RESOLUTIONS:
     au_si_resolution_str = {
         "12.5": "12",
         "25": "25",
     }[resolution]
-    au_si_resolution_str = cast(AU_SI_RESOLUTIONS, au_si_resolution_str)
+    au_si_resolution_str = cast(AMSR_RESOLUTIONS, au_si_resolution_str)
 
     return au_si_resolution_str
 

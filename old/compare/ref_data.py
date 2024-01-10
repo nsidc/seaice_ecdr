@@ -14,7 +14,8 @@ import xarray as xr
 from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_icecon.util import date_range, get_ps12_grid_shape, get_ps25_grid_shape
 from pm_tb_data._types import NORTH, SOUTH, Hemisphere
-from pm_tb_data.fetch import au_si
+from pm_tb_data.fetch.amsr import au_si
+from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
 from pyresample import AreaDefinition
 from pyresample.image import ImageContainerNearest
 from seaice.data.api import concentration_daily
@@ -119,7 +120,7 @@ def get_au_si_bt_conc(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: au_si.AU_SI_RESOLUTIONS,
+    resolution: AMSR_RESOLUTIONS,
 ) -> xr.DataArray:
     ds = au_si.get_au_si_tbs(
         date=date,
@@ -183,7 +184,7 @@ def get_cdr(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: au_si.AU_SI_RESOLUTIONS,
+    resolution: AMSR_RESOLUTIONS,
 ) -> xr.Dataset:
     """Get CDR (G02202 and G10016) concentration field."""
     cdr_fp = _find_cdr(date=date, hemisphere=hemisphere)
@@ -231,7 +232,7 @@ def cdr_for_date_range(
     start_date: dt.date,
     end_date: dt.date,
     hemisphere: Hemisphere,
-    resolution: au_si.AU_SI_RESOLUTIONS,
+    resolution: AMSR_RESOLUTIONS,
 ):
     p_func = partial(_get_cdr, hemisphere, resolution)
 
