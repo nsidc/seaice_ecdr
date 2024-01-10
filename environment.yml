@@ -12,10 +12,11 @@ dependencies:
   - numpy ~=1.22.4
   - xarray ~=2023.6
   - dask ~=2023.10.1
-  - netCDF4 ~=1.6.3
+  - netCDF4 ~=1.6.5
   - loguru ~=0.7
-  - scipy ~=1.8.1 # TODO: we should be able to upgrade (.eg., ~=1.11.3) but `seaice` depends on an earlier version. `seaice` isn't _really_ a dependency.
-  - seaice ~=6.0
+  - scipy ~=1.8.1
+  # Required for aggregating NC files (provides the `ncrcat` CLI)
+  - nco ~5.1.9
 
   #############################
   # Non-imported dependencies #
