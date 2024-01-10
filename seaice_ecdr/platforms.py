@@ -6,8 +6,8 @@ for CDRv5
 
 import datetime as dt
 from collections import OrderedDict
-from functools import cache
 
+# from functools import cache
 # from typing import Any, Final, Literal, get_args
 from seaice_ecdr._types import SUPPORTED_SAT
 
@@ -51,7 +51,7 @@ PLATFORM_AVAILABILITY: OrderedDict[SUPPORTED_SAT, dict] = OrderedDict(
 )
 
 
-PLATFORM_START_DATES: OrderedDict[dt.date(), str] = OrderedDict(
+PLATFORM_START_DATES: OrderedDict[dt.date, str] = OrderedDict(
     {
         dt.date(1978, 10, 25): "n07",
         dt.date(1987, 7, 10): "f08",
@@ -67,7 +67,7 @@ PLATFORM_START_DATES: OrderedDict[dt.date(), str] = OrderedDict(
 
 def _platform_available_for_date(
     *,
-    date: dt.date(),
+    date: dt.date,
     platform: SUPPORTED_SAT,
     platform_availability: OrderedDict = PLATFORM_AVAILABILITY,
 ) -> bool:
@@ -102,7 +102,7 @@ def _platform_available_for_date(
     return True
 
 
-@cache
+# @cache
 def _platform_start_dates_are_consistent(
     *,
     platform_start_dates: OrderedDict = PLATFORM_START_DATES,
@@ -112,9 +112,13 @@ def _platform_start_dates_are_consistent(
     date_list = list(platform_start_dates.keys())
     platform_list = list(platform_start_dates.values())
     try:
-        date = [0]
+        date = date_list[0]
         platform = platform_list[0]
-        assert _platform_available_for_date(date, platform, platform_availability)
+        assert _platform_available_for_date(
+            date=date,
+            platform=platform,
+            platform_availability=platform_availability,
+        )
 
         for idx in range(1, len(date_list) + 1):
             date = date_list[idx]
@@ -124,16 +128,16 @@ def _platform_start_dates_are_consistent(
             prior_date = date - dt.timedelta(days=1)
             prior_platform = platform[idx - 1]
             assert _platform_available_for_date(
-                prior_date,
-                prior_platform,
-                platform_availability,
+                date=prior_date,
+                platform=prior_platform,
+                platform_availability=platform_availability,
             )
 
             # Check this platform's first available date
             assert _platform_available_for_date(
-                date,
-                platform,
-                platform_availability,
+                date=date,
+                platform=platform,
+                platform_availability=platform_availability,
             )
     except AssertionError:
         raise RuntimeError(
@@ -148,9 +152,9 @@ def _platform_start_dates_are_consistent(
 
 
 def get_platform_by_date(
-    date: dt.date(),
+    date: dt.date,
     platform_start_dates: OrderedDict = PLATFORM_START_DATES,
-    platform_availability: dict = PLATFORM_AVAILABILITY,
+    platform_availability: OrderedDict = PLATFORM_AVAILABILITY,
 ) -> str:
     """Return the platform for this date."""
     assert _platform_start_dates_are_consistent(
@@ -163,9 +167,9 @@ def get_platform_by_date(
             continue
         platform = platform_start_dates[start_date]
         assert _platform_available_for_date(
-            date,
-            platform,
-            platform_availability,
+            date=date,
+            platform=platform,
+            platform_availability=platform_availability,
         )
         break
 
