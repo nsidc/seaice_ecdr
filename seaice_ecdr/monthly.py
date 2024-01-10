@@ -477,13 +477,7 @@ def calc_surface_type_mask_monthly(
     daily_ds_for_month: xr.Dataset,
     hemisphere: Hemisphere,
 ) -> xr.DataArray:
-    try:
-        daily_surf_mask = daily_ds_for_month.surface_type_mask
-    except AttributeError:
-        logger.warning(
-            f"Daily data for {daily_ds_for_month.year}-{daily_ds_for_month.month} use old `surface_type` varname."
-        )
-        daily_surf_mask = daily_ds_for_month.surface_type
+    daily_surf_mask = daily_ds_for_month.surface_type_mask
 
     # initialize the surface mask w/ the latest surface mask.
     monthly_surface_mask = daily_surf_mask.isel(time=-1)
