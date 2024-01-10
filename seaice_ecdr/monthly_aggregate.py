@@ -180,7 +180,12 @@ def cli(
             end_month=end_date.month,
             ecdr_data_dir=ecdr_data_dir,
         )
-        ds.to_netcdf(output_filepath)
+        ds.to_netcdf(
+            output_filepath,
+            unlimited_dims=[
+                "time",
+            ],
+        )
 
     logger.info(f"Wrote monthly aggregate file to {output_filepath}")
 

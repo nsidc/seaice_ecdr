@@ -144,7 +144,12 @@ def make_daily_aggregate_netcdf_for_year(
             ecdr_data_dir=ecdr_data_dir,
         )
 
-        daily_ds.to_netcdf(output_path)
+        daily_ds.to_netcdf(
+            output_path,
+            unlimited_dims=[
+                "time",
+            ],
+        )
 
     logger.info(f"Wrote daily aggregate file for year={year} to {output_path}")
 
