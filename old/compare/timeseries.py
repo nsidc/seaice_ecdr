@@ -11,7 +11,7 @@ import xarray as xr
 from loguru import logger
 from pm_icecon.util import date_range, standard_output_filename
 from pm_tb_data._types import Hemisphere
-from pm_tb_data.fetch.au_si import AU_SI_RESOLUTIONS
+from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
 
 from seaice_ecdr.compare.ref_data import cdr_for_date_range
 from seaice_ecdr.constants import NSIDC_NFS_SHARE_DIR
@@ -26,7 +26,7 @@ def amsr2_cdr_for_date_range(
     *,
     start_date: dt.date,
     end_date: dt.date,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: AMSR_RESOLUTIONS,
     hemisphere: Hemisphere,
 ) -> xr.Dataset:
     """Return a xarray Dataset with CDR `conc` var indexed by date."""
@@ -86,7 +86,7 @@ def area_from_conc(
 
 
 def _get_ps_area_grid(
-    *, hemisphere: Hemisphere, resolution: AU_SI_RESOLUTIONS
+    *, hemisphere: Hemisphere, resolution: AMSR_RESOLUTIONS
 ) -> npt.NDArray:
     """Return the area grid for the given hemisphere and resolution.
 
@@ -120,7 +120,7 @@ def compare_timeseries(
     hemisphere: Hemisphere,
     start_date: dt.date,
     end_date: dt.date,
-    resolution: AU_SI_RESOLUTIONS,
+    resolution: AMSR_RESOLUTIONS,
 ):
     amsr2_cdr = amsr2_cdr_for_date_range(
         start_date=start_date,
@@ -228,7 +228,7 @@ if __name__ == "__main__":
     end_date = dt.date(2021, 12, 31)
 
     for hemisphere, resolution in product(
-        get_args(Hemisphere), get_args(AU_SI_RESOLUTIONS)
+        get_args(Hemisphere), get_args(AMSR_RESOLUTIONS)
     ):
         if resolution == "25":
             continue

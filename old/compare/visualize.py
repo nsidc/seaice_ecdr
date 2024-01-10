@@ -21,7 +21,7 @@ from pm_icecon.masks import get_ps_pole_hole_mask
 from pm_icecon.nt.masks import get_ps25_sst_mask
 from pm_icecon.tests.regression import test_nt
 from pm_tb_data._types import NORTH, SOUTH, Hemisphere
-from pm_tb_data.fetch import au_si
+from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.compare.ref_data import get_au_si_bt_conc, get_cdr, get_sea_ice_index
@@ -96,7 +96,7 @@ def _flip(input_conc_ds):
 
 # TODO: rename this func.
 def get_example_output(
-    *, hemisphere: Hemisphere, date: dt.date, resolution: au_si.AU_SI_RESOLUTIONS
+    *, hemisphere: Hemisphere, date: dt.date, resolution: AMSR_RESOLUTIONS
 ) -> xr.Dataset:
     """Get the example AMSR2 output from our python code.
 
@@ -308,7 +308,7 @@ def do_comparisons_au_si_bt(  # noqa
     *,
     hemisphere: Hemisphere,
     date: dt.date,
-    resolution: au_si.AU_SI_RESOLUTIONS,
+    resolution: AMSR_RESOLUTIONS,
 ) -> None:
     """Create figure showing comparison for AU_SI{25|12}."""
     au_si25_conc = get_au_si_bt_conc(
@@ -378,7 +378,7 @@ def compare_original_nt_to_sii(*, hemisphere: Hemisphere) -> None:  # noqa
 
 
 def compare_amsr_nt_to_sii(  # noqa
-    *, hemisphere: Hemisphere, resolution: au_si.AU_SI_RESOLUTIONS
+    *, hemisphere: Hemisphere, resolution: AMSR_RESOLUTIONS
 ) -> None:
     date = dt.date(2022, 8, 1)
     # date = dt.date(2018, 1, 1)
@@ -416,7 +416,7 @@ def compare_amsr_nt_to_sii(  # noqa
 def compare_cdr(
     *,
     hemisphere: Hemisphere,
-    resolution: au_si.AU_SI_RESOLUTIONS,
+    resolution: AMSR_RESOLUTIONS,
     date: dt.date,
 ):
     cdr_ds = get_cdr(date=date, hemisphere=hemisphere, resolution=resolution)
