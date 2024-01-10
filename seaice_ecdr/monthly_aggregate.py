@@ -1,15 +1,16 @@
 """Code to produce monthly aggregate files from monthly complete data.
 """
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import get_args
 
 import click
 import pandas as pd
 import xarray as xr
-from dask.distributed import Client
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
+import seaice_ecdr.daily_aggregate as dagg
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import get_ancillary_ds
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
@@ -53,7 +54,6 @@ def get_monthly_aggregate_ds(
         resolution=resolution,
     )
 
-    _c = Client(n_workers=2, threads_per_worker=1)
     agg_ds = xr.open_mfdataset(monthly_filepaths)
 
     # Copy only the first CRS var from the aggregate
@@ -117,6 +117,35 @@ def get_monthly_aggregate_filepath(
     return output_filepath
 
 
+def _update_ncrcat_monthly_ds(
+    *,
+    agg_ds: xr.Dataset,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    monthly_filepaths: list[Path],
+) -> xr.Dataset:
+    # Add latitude and longitude fields
+    surf_geo_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    agg_ds["latitude"] = surf_geo_ds.latitude
+    agg_ds["longitude"] = surf_geo_ds.latitude
+
+    # setup global attrs
+    # Set global attributes
+    monthly_aggregate_ds_global_attrs = get_global_attrs(
+        time=agg_ds.time,
+        temporality="monthly",
+        aggregate=True,
+        source=", ".join([fp.name for fp in monthly_filepaths]),
+        sats=[sat_from_filename(fp.name) for fp in monthly_filepaths],
+    )
+    agg_ds.attrs = monthly_aggregate_ds_global_attrs
+
+    return agg_ds
+
+
 @click.command(name="monthly-aggregate")
 @click.option(
     "-h",
@@ -155,27 +184,52 @@ def cli(
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> None:
-    ds = get_monthly_aggregate_ds(
+    # ds = get_monthly_aggregate_ds(
+    #     hemisphere=hemisphere,
+    #     resolution=resolution,
+    #     ecdr_data_dir=ecdr_data_dir,
+    # )
+
+    monthly_filepaths = _get_monthly_complete_filepaths(
         hemisphere=hemisphere,
-        resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        resolution=resolution,
     )
 
-    # TODO: better way to extract start/end date? This same code is used above
-    # in `get_monthly_aggregate_ds`.
-    start_date = pd.Timestamp(ds.time.min().values).date()
-    end_date = pd.Timestamp(ds.time.max().values).date()
+    # Create a temporary dir to store a WIP netcdf file. We do this because
+    # using the `ncrcat` CLI tool (included with `nco` dep) is much faster than
+    # xarray at concatenating the data. Then we do some modifications (e.g.,
+    # adding `latitude` and `longitude`, global attrs, etc.) before saving the
+    # data in it's final location.
+    with TemporaryDirectory() as tmpdir:
+        tmp_output_fp = Path(tmpdir) / "temp.nc"
+        dagg._concatenate_nc_files(
+            input_filepaths=monthly_filepaths,
+            output_filepath=tmp_output_fp,
+        )
+        ds = xr.open_dataset(tmp_output_fp)
+        ds = _update_ncrcat_monthly_ds(
+            agg_ds=ds,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            monthly_filepaths=monthly_filepaths,
+        )
 
-    output_filepath = get_monthly_aggregate_filepath(
-        hemisphere=hemisphere,
-        resolution=resolution,
-        start_year=start_date.year,
-        start_month=start_date.month,
-        end_year=end_date.year,
-        end_month=end_date.month,
-        ecdr_data_dir=ecdr_data_dir,
-    )
-    ds.to_netcdf(output_filepath)
+        # TODO: better way to extract start/end date? This same code is used above
+        # in `get_monthly_aggregate_ds`.
+        start_date = pd.Timestamp(ds.time.min().values).date()
+        end_date = pd.Timestamp(ds.time.max().values).date()
+
+        output_filepath = get_monthly_aggregate_filepath(
+            hemisphere=hemisphere,
+            resolution=resolution,
+            start_year=start_date.year,
+            start_month=start_date.month,
+            end_year=end_date.year,
+            end_month=end_date.month,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+        ds.to_netcdf(output_filepath)
 
     logger.info(f"Wrote monthly aggregate file to {output_filepath}")
 
