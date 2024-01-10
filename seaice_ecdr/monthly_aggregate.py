@@ -10,12 +10,12 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
-import seaice_ecdr.daily_aggregate as dagg
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import get_ancillary_ds
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.nc_attrs import get_global_attrs
+from seaice_ecdr.nc_util import concatenate_nc_files
 from seaice_ecdr.util import sat_from_filename, standard_monthly_aggregate_filename
 
 
@@ -154,7 +154,7 @@ def cli(
     # data in it's final location.
     with TemporaryDirectory() as tmpdir:
         tmp_output_fp = Path(tmpdir) / "temp.nc"
-        dagg._concatenate_nc_files(
+        concatenate_nc_files(
             input_filepaths=monthly_filepaths,
             output_filepath=tmp_output_fp,
         )

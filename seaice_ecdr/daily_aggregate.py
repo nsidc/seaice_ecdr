@@ -1,7 +1,6 @@
 """Code to produce daily aggregate files from daily complete data.
 """
 import datetime as dt
-import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import get_args
@@ -17,6 +16,7 @@ from seaice_ecdr.ancillary import get_ancillary_ds
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
+from seaice_ecdr.nc_util import concatenate_nc_files
 from seaice_ecdr.util import sat_from_filename, standard_daily_aggregate_filename
 
 
@@ -69,30 +69,6 @@ def get_daily_aggregate_filepath(
     output_filepath = output_dir / output_fn
 
     return output_filepath
-
-
-def _concatenate_nc_files(
-    *,
-    input_filepaths: list[Path],
-    output_filepath: Path,
-) -> None:
-    """Concatenate the given list of NetCDF files using `ncrcat`.
-
-    `ncrcat` is considerably faster at concatenating NetCDF files along the
-    `time` dimension than using `xr.open_mfdataset` followed by
-    `ds.to_netcdf()`. E.g., in simple tests of the two methods for a year's
-    worth of data - xarray takes ~20 mintues vs `ncrcat`'s ~20 seconds.
-    """
-    result = subprocess.run(
-        [
-            "ncrcat",
-            *input_filepaths,
-            output_filepath,
-        ],
-        capture_output=True,
-    )
-
-    result.check_returncode()
 
 
 def _update_ncrcat_daily_ds(
@@ -148,7 +124,7 @@ def make_daily_aggregate_netcdf_for_year(
     # data in it's final location.
     with TemporaryDirectory() as tmpdir:
         tmp_output_fp = Path(tmpdir) / "temp.nc"
-        _concatenate_nc_files(
+        concatenate_nc_files(
             input_filepaths=daily_filepaths,
             output_filepath=tmp_output_fp,
         )
