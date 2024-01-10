@@ -128,7 +128,7 @@ def make_daily_aggregate_netcdf_for_year(
             input_filepaths=daily_filepaths,
             output_filepath=tmp_output_fp,
         )
-        daily_ds = xr.open_dataset(tmp_output_fp)
+        daily_ds = xr.open_dataset(tmp_output_fp, chunks=dict(time=1))
         daily_ds = _update_ncrcat_daily_ds(
             ds=daily_ds,
             daily_filepaths=daily_filepaths,

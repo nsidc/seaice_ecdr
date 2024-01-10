@@ -158,7 +158,7 @@ def cli(
             input_filepaths=monthly_filepaths,
             output_filepath=tmp_output_fp,
         )
-        ds = xr.open_dataset(tmp_output_fp)
+        ds = xr.open_dataset(tmp_output_fp, chunks=dict(time=1))
         ds = _update_ncrcat_monthly_ds(
             agg_ds=ds,
             hemisphere=hemisphere,
