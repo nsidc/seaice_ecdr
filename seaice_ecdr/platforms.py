@@ -54,12 +54,12 @@ PLATFORM_AVAILABILITY: OrderedDict[SUPPORTED_SAT, dict] = OrderedDict(
 PLATFORM_START_DATES: OrderedDict[dt.date, str] = OrderedDict(
     {
         dt.date(1978, 10, 25): "n07",
-        dt.date(1987, 7, 10): "f08",
-        dt.date(1991, 12, 3): "f11",
-        dt.date(1995, 10, 1): "f13",
-        dt.date(2008, 1, 1): "f17",
+        dt.date(1987, 7, 10): "F08",
+        dt.date(1991, 12, 3): "F11",
+        dt.date(1995, 10, 1): "F13",
+        dt.date(2008, 1, 1): "F17",
         # dt.date(2002, 6, 1): 'ame',   # AMSR-E...
-        # dt.date(2011, 10, 4): 'f17',  # followed by f17 (again)
+        # dt.date(2011, 10, 4): 'F17',  # followed by f17 (again)
         dt.date(2012, 7, 3): "am2",
     }
 )
@@ -72,7 +72,8 @@ def _platform_available_for_date(
     platform_availability: OrderedDict = PLATFORM_AVAILABILITY,
 ) -> bool:
     """Determine if platform is available on this date."""
-    first_available_date = platform_availability["platform"]["first_date"]
+    # First, verify the values of the first listed platform
+    first_available_date = platform_availability[platform]["first_date"]
     if date < first_available_date:
         raise RuntimeError(
             f"""
@@ -83,15 +84,21 @@ def _platform_available_for_date(
         )
 
     try:
-        last_available_date = platform_availability["platform"]["last_date"]
-        if date > last_available_date:
-            raise RuntimeError(
-                f"""
-            Satellite {platform} is not available on date {date}
-            {date} is after last_available_date {last_available_date}
-            Date info: {platform_availability["platform"]}
-            """
-            )
+        last_available_date = platform_availability[platform]["last_date"]
+        try:
+            if date > last_available_date:
+                raise RuntimeError(
+                    f"""
+                Satellite {platform} is not available on date {date}
+                {date} is after last_available_date {last_available_date}
+                Date info: {platform_availability[platform]}
+                """
+                )
+        except TypeError as e:
+            if last_available_date is None:
+                pass
+            else:
+                raise e
     except IndexError as e:
         # last_date is set to None if platform is still providing new data
         if last_available_date is None:
@@ -120,13 +127,13 @@ def _platform_start_dates_are_consistent(
             platform_availability=platform_availability,
         )
 
-        for idx in range(1, len(date_list) + 1):
+        for idx in range(1, len(date_list)):
             date = date_list[idx]
             platform = platform_list[idx]
 
             # Check the end of the prior platform's date range
             prior_date = date - dt.timedelta(days=1)
-            prior_platform = platform[idx - 1]
+            prior_platform = platform_list[idx - 1]
             assert _platform_available_for_date(
                 date=prior_date,
                 platform=prior_platform,
