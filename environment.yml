@@ -14,8 +14,7 @@ dependencies:
   - dask ~=2023.10.1
   - netCDF4 ~=1.6.3
   - loguru ~=0.7
-  - scipy ~=1.8.1 # TODO: we should be able to upgrade (.eg., ~=1.11.3) but `seaice` depends on an earlier version. `seaice` isn't _really_ a dependency.
-  - seaice ~=6.0
+  - scipy ~=1.8.1
 
   #############################
   # Non-imported dependencies #

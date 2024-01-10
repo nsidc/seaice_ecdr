@@ -1,14 +1,14 @@
 """Code to produce daily aggregate files from daily complete data.
 """
 import datetime as dt
+import subprocess
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import get_args
 
 import click
-import numpy as np
 import pandas as pd
 import xarray as xr
-from dask.distributed import Client
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
@@ -48,61 +48,6 @@ def _get_daily_complete_filepaths_for_year(
     return data_list
 
 
-# TODO: this is also very similar to `monthly.get_daily_ds_for_month`.
-def get_daily_ds_for_year(
-    *,
-    year: int,
-    ecdr_data_dir: Path,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-) -> xr.Dataset:
-    """Create an xr.Dataset wtih ECDR complete daily data for a given year.
-
-    The resulting xr.Dataset includes:
-        * `year` attribute.
-        * The filepaths of the source data are included in a `filepaths` variable.
-    """
-    # Read all of the complete daily data for the given year and month.
-    daily_filepaths = _get_daily_complete_filepaths_for_year(
-        year=year,
-        ecdr_data_dir=ecdr_data_dir,
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-    ds = xr.open_mfdataset(daily_filepaths)
-
-    # Copy only the first CRS var from the aggregate
-    # TODO: is there a better way to tell xarray that we only want the `time`
-    # dimension on variables that already have it in the individual daily files?
-    ds["crs"] = ds.crs.isel(time=0, drop=True)
-
-    assert np.all([pd.Timestamp(t.values).year == year for t in ds.time])
-
-    surf_geo_ds = get_ancillary_ds(
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-    ds["latitude"] = surf_geo_ds.latitude
-    ds["longitude"] = surf_geo_ds.latitude
-
-    # setup global attrs
-    # Set global attributes
-    daily_aggregate_ds_global_attrs = get_global_attrs(
-        time=ds.time,
-        temporality="daily",
-        aggregate=True,
-        source=", ".join([fp.name for fp in daily_filepaths]),
-        sats=[sat_from_filename(fp.name) for fp in daily_filepaths],
-    )
-    ds.attrs.update(daily_aggregate_ds_global_attrs)
-
-    logger.info(
-        f"Created daily ds for {year=} from {len(ds.time)} complete daily files."
-    )
-
-    return ds
-
-
 def get_daily_aggregate_filepath(
     *,
     hemisphere: Hemisphere,
@@ -126,6 +71,62 @@ def get_daily_aggregate_filepath(
     return output_filepath
 
 
+def _concatenate_nc_files(
+    *,
+    input_filepaths: list[Path],
+    output_filepath: Path,
+) -> None:
+    """Concatenate the given list of NetCDF files using `ncrcat`.
+
+    `ncrcat` is considerably faster at concatenating NetCDF files along the
+    `time` dimension than using `xr.open_mfdataset` followed by
+    `ds.to_netcdf()`. E.g., in simple tests of the two methods for a year's
+    worth of data - xarray takes ~20 mintues vs `ncrcat`'s ~20 seconds.
+    """
+    result = subprocess.run(
+        [
+            "ncrcat",
+            *input_filepaths,
+            output_filepath,
+        ],
+        capture_output=True,
+    )
+
+    result.check_returncode()
+
+
+def _update_ncrcat_daily_ds(
+    *,
+    ds: xr.Dataset,
+    daily_filepaths: list[Path],
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+):
+    """Update the aggregate dataset created by `ncrcat`.
+
+    Adds lat/lon fields and sets global attrs.
+    """
+    surf_geo_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    ds["latitude"] = surf_geo_ds.latitude
+    ds["longitude"] = surf_geo_ds.latitude
+
+    # setup global attrs
+    # Set global attributes
+    daily_aggregate_ds_global_attrs = get_global_attrs(
+        time=ds.time,
+        temporality="daily",
+        aggregate=True,
+        source=", ".join([fp.name for fp in daily_filepaths]),
+        sats=[sat_from_filename(fp.name) for fp in daily_filepaths],
+    )
+    ds.attrs = daily_aggregate_ds_global_attrs
+
+    return ds
+
+
 def make_daily_aggregate_netcdf_for_year(
     *,
     year: int,
@@ -133,21 +134,41 @@ def make_daily_aggregate_netcdf_for_year(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
 ) -> None:
-    daily_ds = get_daily_ds_for_year(
+    daily_filepaths = _get_daily_complete_filepaths_for_year(
         year=year,
         ecdr_data_dir=ecdr_data_dir,
         hemisphere=hemisphere,
         resolution=resolution,
     )
 
-    output_path = get_daily_aggregate_filepath(
-        hemisphere=hemisphere,
-        resolution=resolution,
-        start_date=pd.Timestamp(daily_ds.time.min().item()).date(),
-        end_date=pd.Timestamp(daily_ds.time.max().item()).date(),
-        ecdr_data_dir=ecdr_data_dir,
-    )
-    daily_ds.to_netcdf(output_path)
+    # Create a temporary dir to store a WIP netcdf file. We do this because
+    # using the `ncrcat` CLI tool (included with `nco` dep) is much faster than
+    # xarray at concatenating the data. Then we do some modifications (e.g.,
+    # adding `latitude` and `longitude`, global attrs, etc.) before saving the
+    # data in it's final location.
+    with TemporaryDirectory() as tmpdir:
+        tmp_output_fp = Path(tmpdir) / "temp.nc"
+        _concatenate_nc_files(
+            input_filepaths=daily_filepaths,
+            output_filepath=tmp_output_fp,
+        )
+        daily_ds = xr.open_dataset(tmp_output_fp)
+        daily_ds = _update_ncrcat_daily_ds(
+            ds=daily_ds,
+            daily_filepaths=daily_filepaths,
+            hemisphere=hemisphere,
+            resolution=resolution,
+        )
+
+        output_path = get_daily_aggregate_filepath(
+            hemisphere=hemisphere,
+            resolution=resolution,
+            start_date=pd.Timestamp(daily_ds.time.min().item()).date(),
+            end_date=pd.Timestamp(daily_ds.time.max().item()).date(),
+            ecdr_data_dir=ecdr_data_dir,
+        )
+
+        daily_ds.to_netcdf(output_path)
 
     logger.info(f"Wrote daily aggregate file for year={year} to {output_path}")
 
@@ -208,7 +229,6 @@ def cli(
     if end_year is None:
         end_year = year
 
-    _c = Client(n_workers=2, threads_per_worker=1)
     for year_to_process in range(year, end_year + 1):
         make_daily_aggregate_netcdf_for_year(
             year=year_to_process,

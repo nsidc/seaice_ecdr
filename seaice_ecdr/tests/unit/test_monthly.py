@@ -549,6 +549,7 @@ def test_calc_surface_mask_monthly():
     )
 
     actual = calc_surface_type_mask_monthly(
+        hemisphere=NORTH,
         daily_ds_for_month=mock_daily_ds_for_month,
     )
 
