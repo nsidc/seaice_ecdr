@@ -41,55 +41,6 @@ def _get_monthly_complete_filepaths(
     return monthly_files
 
 
-# TODO: very similar to `get_daily_ds_for_year`!!
-def get_monthly_aggregate_ds(
-    *,
-    ecdr_data_dir: Path,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-) -> xr.Dataset:
-    monthly_filepaths = _get_monthly_complete_filepaths(
-        hemisphere=hemisphere,
-        ecdr_data_dir=ecdr_data_dir,
-        resolution=resolution,
-    )
-
-    agg_ds = xr.open_mfdataset(monthly_filepaths)
-
-    # Copy only the first CRS var from the aggregate
-    # TODO: is there a better way to tell xarray that we only want the `time`
-    # dimension on variables that already have it in the individual daily files?
-    agg_ds["crs"] = agg_ds.crs.isel(time=0, drop=True)
-
-    # Add latitude and longitude fields
-    surf_geo_ds = get_ancillary_ds(
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-    agg_ds["latitude"] = surf_geo_ds.latitude
-    agg_ds["longitude"] = surf_geo_ds.latitude
-
-    # setup global attrs
-    # Set global attributes
-    monthly_aggregate_ds_global_attrs = get_global_attrs(
-        time=agg_ds.time,
-        temporality="monthly",
-        aggregate=True,
-        source=", ".join([fp.name for fp in monthly_filepaths]),
-        sats=[sat_from_filename(fp.name) for fp in monthly_filepaths],
-    )
-    agg_ds.attrs.update(monthly_aggregate_ds_global_attrs)
-
-    start_date = pd.Timestamp(agg_ds.time.min().values).date()
-    end_date = pd.Timestamp(agg_ds.time.max().values).date()
-    logger.info(
-        f"Created monthly aggregate ds for {start_date:%Y-%m} through {end_date:%Y-%m}"
-        f" from {len(agg_ds.time)} complete monthly files."
-    )
-
-    return agg_ds
-
-
 def get_monthly_aggregate_filepath(
     *,
     hemisphere: Hemisphere,
