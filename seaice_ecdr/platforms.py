@@ -6,11 +6,10 @@ for CDRv5
 
 import datetime as dt
 from collections import OrderedDict
+from functools import cache
 
 import yaml
 
-# from functools import cache
-# from typing import Any, Final, Literal, get_args
 from seaice_ecdr._types import SUPPORTED_SAT
 
 # TODO: De-dup with nc_attrs.py
@@ -55,18 +54,26 @@ PLATFORM_AVAILABILITY: OrderedDict[SUPPORTED_SAT, dict] = OrderedDict(
 )
 
 
-PLATFORM_START_DATES: OrderedDict[dt.date, str] = OrderedDict(
-    {
-        dt.date(1978, 10, 25): "n07",
-        dt.date(1987, 7, 10): "F08",
-        dt.date(1991, 12, 3): "F11",
-        dt.date(1995, 10, 1): "F13",
-        dt.date(2008, 1, 1): "F17",
-        # dt.date(2002, 6, 1): 'ame',   # AMSR-E...
-        # dt.date(2011, 10, 4): 'F17',  # followed by f17 (again)
-        dt.date(2012, 7, 3): "am2",
-    }
-)
+@cache
+def get_platform_start_dates() -> OrderedDict[dt.date, SUPPORTED_SAT]:
+    _platform_start_dates: OrderedDict[dt.date, SUPPORTED_SAT] = OrderedDict(
+        {
+            dt.date(1978, 10, 25): "n07",
+            dt.date(1987, 7, 10): "F08",
+            dt.date(1991, 12, 3): "F11",
+            dt.date(1995, 10, 1): "F13",
+            dt.date(2008, 1, 1): "F17",
+            # dt.date(2002, 6, 1): 'ame',   # AMSR-E...
+            # dt.date(2011, 10, 4): 'F17',  # followed by f17 (again)
+            dt.date(2012, 7, 3): "am2",
+        }
+    )
+
+    assert _platform_start_dates_are_consistent(
+        platform_start_dates=_platform_start_dates
+    )
+
+    return _platform_start_dates
 
 
 def _platform_available_for_date(
@@ -115,12 +122,9 @@ def _platform_available_for_date(
     return True
 
 
-# @cache
 def _platform_start_dates_are_consistent(
     *,
-    # platform_start_dates: OrderedDict = PLATFORM_START_DATES,
-    platform_start_dates: OrderedDict = PLATFORM_START_DATES,
-    platform_availability: OrderedDict = PLATFORM_AVAILABILITY,
+    platform_start_dates: OrderedDict[dt.date, SUPPORTED_SAT],
 ) -> bool:
     """Return whether the provided start date structure is valid."""
     date_list = list(platform_start_dates.keys())
@@ -131,7 +135,7 @@ def _platform_start_dates_are_consistent(
         assert _platform_available_for_date(
             date=date,
             platform=platform,
-            platform_availability=platform_availability,
+            platform_availability=PLATFORM_AVAILABILITY,
         )
 
         for idx in range(1, len(date_list)):
@@ -144,21 +148,21 @@ def _platform_start_dates_are_consistent(
             assert _platform_available_for_date(
                 date=prior_date,
                 platform=prior_platform,
-                platform_availability=platform_availability,
+                platform_availability=PLATFORM_AVAILABILITY,
             )
 
             # Check this platform's first available date
             assert _platform_available_for_date(
                 date=date,
                 platform=platform,
-                platform_availability=platform_availability,
+                platform_availability=PLATFORM_AVAILABILITY,
             )
     except AssertionError:
         raise RuntimeError(
             f"""
         platform start dates are not consistent
         platform_start_dates: {platform_start_dates}
-        platform_availability: {platform_availability}
+        platform_availability: {PLATFORM_AVAILABILITY}
         """
         )
 
@@ -168,14 +172,10 @@ def _platform_start_dates_are_consistent(
 def get_platform_by_date(
     date: dt.date,
     *,
-    platform_start_dates: OrderedDict = PLATFORM_START_DATES,
     platform_availability: OrderedDict = PLATFORM_AVAILABILITY,
 ) -> str:
     """Return the platform for this date."""
-    assert _platform_start_dates_are_consistent(
-        platform_start_dates=platform_start_dates,
-        platform_availability=platform_availability,
-    )
+    platform_start_dates = get_platform_start_dates()
 
     start_date_list = list(platform_start_dates.keys())
     platform_list = list(platform_start_dates.values())
@@ -201,9 +201,6 @@ def get_platform_by_date(
             else:
                 break
 
-    if return_platform is None:
-        RuntimeError("WARNING: Reached end of list without finding satellite")
-
     return str(return_platform)
 
 
@@ -223,19 +220,5 @@ def read_platform_start_dates_cfg(start_dates_cfg_filename):
         )
 
     platform_start_dates = OrderedDict(file_dict)
-
-    try:
-        assert _platform_start_dates_are_consistent(
-            platform_start_dates=platform_start_dates,
-        )
-    except AssertionError:
-        raise RuntimeError(
-            f"""
-    Error: platform_start_dates in specifiec config file:
-        ({start_dates_cfg_filename})
-    are not consistent:
-        {platform_start_dates}
-    """
-        )
 
     return platform_start_dates
