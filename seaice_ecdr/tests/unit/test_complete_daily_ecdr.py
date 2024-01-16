@@ -6,6 +6,7 @@ import numpy as np
 from pm_tb_data._types import NORTH, SOUTH
 
 from seaice_ecdr import complete_daily_ecdr as cdecdr
+from seaice_ecdr.platforms import PLATFORM_START_DATES_DEFAULT
 
 
 def test_no_melt_onset_for_southern_hemisphere(tmpdir):
@@ -16,6 +17,7 @@ def test_no_melt_onset_for_southern_hemisphere(tmpdir):
             hemisphere=SOUTH,
             resolution="12.5",
             ecdr_data_dir=Path(tmpdir),
+            platform_start_dates=PLATFORM_START_DATES_DEFAULT,
         )
         assert melt_onset_field is None
 
@@ -32,5 +34,6 @@ def test_melt_onset_field_outside_melt_season(tmpdir):
             resolution="12.5",
             ecdr_data_dir=Path(tmpdir),
             no_melt_flag=no_melt_flag,
+            platform_start_dates=PLATFORM_START_DATES_DEFAULT,
         )
         assert np.all(melt_onset_field == no_melt_flag)

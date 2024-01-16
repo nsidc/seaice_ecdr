@@ -89,6 +89,7 @@ def get_surfacetype_da(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    sat,
 ) -> xr.DataArray:
     """Return a dataarray with surface type information for this date."""
     ancillary_ds = get_ancillary_ds(
@@ -102,7 +103,12 @@ def get_surfacetype_da(
     polehole_surface_type = 100
     if "polehole_bitmask" in ancillary_ds.data_vars.keys():
         polehole_bitmask = ancillary_ds.polehole_bitmask
-        sat = _get_sat_by_date(date)
+        if sat is None:
+            sat = _get_sat_by_date(date)
+        elif sat == "ame":
+            # TODO: Verify that AMSR-E pole hole is same as AMSR2
+            # Use the AMSR2 pole hole for AMSR-E
+            sat = "am2"
         polehole_bitlabel = f"{sat}_polemask"
         polehole_bitvalue = _bitmask_value_for_meaning(
             var=polehole_bitmask,
@@ -155,7 +161,10 @@ def get_surfacetype_da(
 
 
 def nh_polehole_mask(
-    *, date: dt.date, resolution: ECDR_SUPPORTED_RESOLUTIONS
+    *,
+    date: dt.date,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    sat=None,
 ) -> xr.DataArray:
     """Return the northern hemisphere pole hole mask for the given date and resolution."""
     ancillary_ds = get_ancillary_ds(
@@ -165,9 +174,12 @@ def nh_polehole_mask(
 
     polehole_bitmask = ancillary_ds.polehole_bitmask
 
-    sat = _get_sat_by_date(
-        date=date,
-    )
+    if sat is None:
+        sat = _get_sat_by_date(
+            date=date,
+        )
+    elif sat == "ame":
+        sat = "am2"
 
     polehole_bitlabel = f"{sat}_polemask"
     polehole_bitvalue = _bitmask_value_for_meaning(

@@ -18,6 +18,11 @@ from seaice_ecdr.initial_daily_ecdr import (
     get_idecdr_filepath,
     write_ide_netcdf,
 )
+from seaice_ecdr.platforms import (
+    PLATFORM_START_DATES_DEFAULT,
+    get_platform_by_date,
+    read_platform_start_dates_cfg,
+)
 
 
 def compute_nrt_initial_daily_ecdr_dataset(
@@ -26,6 +31,7 @@ def compute_nrt_initial_daily_ecdr_dataset(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     lance_amsr2_input_dir: Path,
+    platform_start_dates,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
     xr_tbs = access_local_lance_data(
@@ -39,6 +45,7 @@ def compute_nrt_initial_daily_ecdr_dataset(
         hemisphere=hemisphere,
         resolution=resolution,
         xr_tbs=xr_tbs,
+        platform_start_dates=platform_start_dates,
     )
 
     return nrt_initial_ecdr_ds
@@ -133,6 +140,19 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     default=LANCE_NRT_DATA_DIR,
     help="Directory in which LANCE AMSR2 NRT files are located.",
 )
+@click.option(
+    "--start-dates-cfg",
+    required=False,
+    type=click.Path(
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        resolve_path=True,
+        path_type=Path,
+    ),
+    default=None,
+    help="If given, this is the name of a yaml file with platform_start_dates dict",
+)
 def nrt_initial_daily_ecdr(
     *,
     date: dt.date,
@@ -140,21 +160,30 @@ def nrt_initial_daily_ecdr(
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     lance_amsr2_input_dir: Path,
+    start_dates_cfg: Path | None,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data.
 
     TODO: Consider renaming this: nrt_initial_daily_ecdr_netcdf()
     """
+    if start_dates_cfg is None:
+        platform_start_dates = PLATFORM_START_DATES_DEFAULT
+    else:
+        platform_start_dates = read_platform_start_dates_cfg(start_dates_cfg)
+
     nrt_initial_ecdr_ds = compute_nrt_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
         lance_amsr2_input_dir=lance_amsr2_input_dir,
+        platform_start_dates=platform_start_dates,
     )
 
+    platform = get_platform_by_date(date, platform_start_dates)
     output_path = get_idecdr_filepath(
         hemisphere=hemisphere,
         date=date,
+        platform=platform,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )

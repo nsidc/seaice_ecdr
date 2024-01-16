@@ -7,6 +7,8 @@ for CDRv5
 import datetime as dt
 from collections import OrderedDict
 
+import yaml
+
 # from functools import cache
 # from typing import Any, Final, Literal, get_args
 from seaice_ecdr._types import SUPPORTED_SAT
@@ -53,7 +55,22 @@ PLATFORM_AVAILABILITY: OrderedDict[SUPPORTED_SAT, dict] = OrderedDict(
 )
 
 
+"""
 PLATFORM_START_DATES: OrderedDict[dt.date, str] = OrderedDict(
+    {
+        dt.date(1978, 10, 25): "n07",
+        dt.date(1987, 7, 10): "F08",
+        dt.date(1991, 12, 3): "F11",
+        dt.date(1995, 10, 1): "F13",
+        dt.date(2008, 1, 1): "F17",
+        # dt.date(2002, 6, 1): 'ame',   # AMSR-E...
+        # dt.date(2011, 10, 4): 'F17',  # followed by f17 (again)
+        dt.date(2012, 7, 3): "am2",
+    }
+)
+"""
+
+PLATFORM_START_DATES_DEFAULT: OrderedDict[dt.date, str] = OrderedDict(
     {
         dt.date(1978, 10, 25): "n07",
         dt.date(1987, 7, 10): "F08",
@@ -116,7 +133,8 @@ def _platform_available_for_date(
 # @cache
 def _platform_start_dates_are_consistent(
     *,
-    platform_start_dates: OrderedDict = PLATFORM_START_DATES,
+    # platform_start_dates: OrderedDict = PLATFORM_START_DATES,
+    platform_start_dates: OrderedDict = PLATFORM_START_DATES_DEFAULT,
     platform_availability: OrderedDict = PLATFORM_AVAILABILITY,
 ) -> bool:
     """Return whether the provided start date structure is valid."""
@@ -164,7 +182,9 @@ def _platform_start_dates_are_consistent(
 
 def get_platform_by_date(
     date: dt.date,
-    platform_start_dates: OrderedDict = PLATFORM_START_DATES,
+    # platform_start_dates: OrderedDict = PLATFORM_START_DATES,
+    # platform_start_dates: OrderedDict = PLATFORM_START_DATES_DEFAULT,
+    platform_start_dates: OrderedDict,
     platform_availability: OrderedDict = PLATFORM_AVAILABILITY,
 ) -> str:
     """Return the platform for this date."""
@@ -184,16 +204,54 @@ def get_platform_by_date(
            """
         )
 
+    return_platform = None
     if date >= start_date_list[-1]:
-        return platform_list[-1]
+        return_platform = platform_list[-1]
 
-    platform = platform_list[0]
-    for start_date, latest_platform in zip(start_date_list[1:], platform_list[1:]):
-        if date >= start_date:
-            platform = latest_platform
-            continue
-        else:
-            return platform
+    if return_platform is None:
+        return_platform = platform_list[0]
+        for start_date, latest_platform in zip(start_date_list[1:], platform_list[1:]):
+            if date >= start_date:
+                return_platform = latest_platform
+                continue
+            else:
+                break
 
-    print("WARNING: Reached end of list without finding satellite")
-    return "None"
+    if return_platform is None:
+        RuntimeError("WARNING: Reached end of list without finding satellite")
+
+    return str(return_platform)
+
+
+def read_platform_start_dates_cfg(start_dates_cfg_filename):
+    """The "platform_start_dates" dictionary is an OrderedDict
+    of keys (dates) with corresponding platforms/sats (values)
+
+    Note: It seems like yaml can't safe_load() an OrderedDict.
+    """
+
+    try:
+        with open(start_dates_cfg_filename, "r") as config_file:
+            file_dict = yaml.safe_load(config_file)
+    except FileNotFoundError:
+        raise RuntimeError(
+            f"Could not find specified start_dates config file: {start_dates_cfg_filename}"
+        )
+
+    platform_start_dates = OrderedDict(file_dict)
+
+    try:
+        assert _platform_start_dates_are_consistent(
+            platform_start_dates=platform_start_dates,
+        )
+    except AssertionError:
+        raise RuntimeError(
+            f"""
+    Error: platform_start_dates in specifiec config file:
+        ({start_dates_cfg_filename})
+    are not consistent:
+        {platform_start_dates}
+    """
+        )
+
+    return platform_start_dates

@@ -3,8 +3,6 @@
 """
 import copy
 import datetime as dt
-import sys
-import traceback
 from functools import cache
 from pathlib import Path
 from typing import Iterable, cast, get_args
@@ -16,7 +14,7 @@ from loguru import logger
 from pm_icecon.util import date_range
 from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.ancillary import (
     get_land_mask,
     get_surfacetype_da,
@@ -28,6 +26,11 @@ from seaice_ecdr.melt import (
     MELT_SEASON_FIRST_DOY,
     MELT_SEASON_LAST_DOY,
     melting,
+)
+from seaice_ecdr.platforms import (
+    PLATFORM_START_DATES_DEFAULT,
+    get_platform_by_date,
+    read_platform_start_dates_cfg,
 )
 from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
@@ -48,13 +51,17 @@ def get_ecdr_filepath(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    platform_start_dates,
 ) -> Path:
     """Return the complete daily eCDR file path."""
+    platform = get_platform_by_date(date, platform_start_dates)
+    sat = cast(SUPPORTED_SAT, platform)
     ecdr_filename = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
         # TODO: extract this to kwarg!!!
-        sat="am2",
+        # sat="am2",
+        sat=sat,
         resolution=resolution,
     )
     ecdr_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir)
@@ -70,6 +77,7 @@ def read_or_create_and_read_tiecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    platform_start_dates,
 ) -> xr.Dataset:
     """Read an tiecdr netCDF file, creating it if it doesn't exist."""
     tie_filepath = get_tie_filepath(
@@ -77,6 +85,7 @@ def read_or_create_and_read_tiecdr_ds(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        platform_start_dates=platform_start_dates,
     )
     # TODO: This only creates if file is missing.  We may want an overwrite opt
     if not tie_filepath.is_file():
@@ -85,6 +94,7 @@ def read_or_create_and_read_tiecdr_ds(
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
+            platform_start_dates=platform_start_dates,
         )
     logger.info(f"Reading tieCDR file from: {tie_filepath}")
     tie_ds = xr.load_dataset(tie_filepath)
@@ -119,6 +129,7 @@ def read_melt_onset_field(
     hemisphere,
     resolution,
     ecdr_data_dir: Path,
+    platform_start_dates,
 ) -> np.ndarray:
     """Return the melt onset field for this complete daily eCDR file."""
     cde_ds = read_or_create_and_read_cdecdr_ds(
@@ -126,6 +137,7 @@ def read_melt_onset_field(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        platform_start_dates=platform_start_dates,
     )
 
     # TODO: Perhaps these field names should be in a dictionary somewhere?
@@ -140,6 +152,7 @@ def read_melt_elements(
     hemisphere,
     resolution,
     ecdr_data_dir,
+    platform_start_dates,
 ):
     """Return the elements from tiecdr needed to calculate melt."""
     tie_ds = read_or_create_and_read_tiecdr_ds(
@@ -147,6 +160,7 @@ def read_melt_elements(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        platform_start_dates=platform_start_dates,
     )
     return (
         np.squeeze(tie_ds["cdr_conc"].to_numpy()),
@@ -161,6 +175,7 @@ def create_melt_onset_field(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    platform_start_dates,
     first_melt_doy: int = MELT_SEASON_FIRST_DOY,
     last_melt_doy: int = MELT_SEASON_LAST_DOY,
     no_melt_flag: int = MELT_ONSET_FILL_VALUE,
@@ -224,6 +239,7 @@ def create_melt_onset_field(
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
+            platform_start_dates=platform_start_dates,
         )
         logger.info(f"using read melt_onset_field for prior for {day_of_year}")
 
@@ -232,6 +248,7 @@ def create_melt_onset_field(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        platform_start_dates=platform_start_dates,
     )
     is_melted_today = melting(
         concentrations=cdr_conc_ti,
@@ -260,14 +277,19 @@ def create_melt_onset_field(
     return melt_onset_field
 
 
-def complete_daily_ecdr_dataset_for_au_si_tbs(
+def complete_daily_ecdr_dataset(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    platform_start_dates,
 ) -> xr.Dataset:
     """Create xr dataset containing the complete daily enhanced CDR.
+
+    Note: this began as a copy of:
+        complete_daily_ecdr_dataset_for_au_si_tbs()
+    ...but is being rewritten so that it is not specific to au_si_tbs
 
     This function returns
     - a Dataset containing
@@ -279,6 +301,7 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        platform_start_dates=platform_start_dates,
     )
     cde_ds = tie_ds.copy()
 
@@ -287,6 +310,7 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        platform_start_dates=platform_start_dates,
     )
 
     # Add the surface-type field
@@ -297,10 +321,12 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
     #       The methodology here should be reviewed to see if there is
     #       a "better" way to add a geo-referenced dataarray to an existing
     #       xr Dataset.
+    platform = get_platform_by_date(date, platform_start_dates)
     surfacetype_da = get_surfacetype_da(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
+        sat=platform,
     )
     # Force use of the cde_ds coords instead of the x, y, time vars
     # from the ancillary file (which *should* be compatible...but we
@@ -355,6 +381,107 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
     return cde_ds
 
 
+''' This is commented out while it is being replaced by:
+  complete_daily_ecdr_dataset()
+def complete_daily_ecdr_dataset_for_au_si_tbs(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
+) -> xr.Dataset:
+    """Create xr dataset containing the complete daily enhanced CDR.
+
+    This function returns
+    - a Dataset containing
+      - The melt onset field
+      - All appropriate QA and QC fields
+    """
+    tie_ds = read_or_create_and_read_tiecdr_ds(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+        platform_start_dates=platform_start_dates,
+    )
+    cde_ds = tie_ds.copy()
+
+    melt_onset_field = create_melt_onset_field(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+
+    # Add the surface-type field
+    # TODO: Setting a DataArray directly into a Dataset changes the
+    #       coordinate variables of the Dataset.  Eg, here, if the
+    #       surfacetype dataarray is set directly, the x, y, and time
+    #       variables/coords/dims of the cde_ds are reset.
+    #       The methodology here should be reviewed to see if there is
+    #       a "better" way to add a geo-referenced dataarray to an existing
+    #       xr Dataset.
+    platform = get_platform_by_date(date)
+    surfacetype_da = get_surfacetype_da(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        sat=platform,
+    )
+    # Force use of the cde_ds coords instead of the x, y, time vars
+    # from the ancillary file (which *should* be compatible...but we
+    # don't want coords changing in cde_ds as a result of external files).
+    surfacetype_da.assign_coords(
+        {
+            "time": cde_ds.time,
+            "y": cde_ds.y,
+            "x": cde_ds.x,
+        }
+    )
+    cde_ds = cde_ds.merge(surfacetype_da)
+
+    # TODO: Need to ensure that the cdr_seaice_conc field does not have values
+    #       where seaice cannot occur, eg over land or lakes
+
+    # Update cde_ds with melt onset info
+    if melt_onset_field is None:
+        return cde_ds
+
+    cde_ds["melt_onset_day_cdr_seaice_conc"] = (
+        ("time", "y", "x"),
+        melt_onset_field,
+        {
+            "grid_mapping": "crs",
+            "standard_name": "status_flag",
+            "comment": (
+                "Value of 255 means no melt detected yet or the date is"
+                " outside the melt season.  Other values indicate the day"
+                " of year when melt was first detected at this location."
+            ),
+        },
+        {
+            "zlib": True,
+        },
+    )
+
+    # the np.squeeze() function here is to remove the time dim so that
+    # this becomes a 2d array for updating the qa_... field
+    is_melt_has_occurred = np.squeeze(
+        (MELT_SEASON_FIRST_DOY <= cde_ds["melt_onset_day_cdr_seaice_conc"].data)
+        & (cde_ds["melt_onset_day_cdr_seaice_conc"].data <= MELT_SEASON_LAST_DOY)
+    )
+    # TODO: the flag value being "or"ed to the bitmask should be looked
+    #       up as the temporally-interpolation-has-occured value
+    #       rather than hardcoded as '128'.
+    cde_ds["qa_of_cdr_seaice_conc"] = cde_ds["qa_of_cdr_seaice_conc"].where(
+        ~is_melt_has_occurred,
+        other=np.bitwise_or(cde_ds["qa_of_cdr_seaice_conc"], 128),
+    )
+
+    return cde_ds
+'''
+
+
 def write_cde_netcdf(
     *,
     cde_ds: xr.Dataset,
@@ -404,13 +531,24 @@ def make_cdecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    platform_start_dates,
 ) -> Path:
     logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
+
+    """ Rewriting the au_si specific code here...
     cde_ds = complete_daily_ecdr_dataset_for_au_si_tbs(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+    )
+    """
+    cde_ds = complete_daily_ecdr_dataset(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+        platform_start_dates=platform_start_dates,
     )
 
     cde_ds = finalize_cdecdr_ds(cde_ds)
@@ -420,6 +558,7 @@ def make_cdecdr_netcdf(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        platform_start_dates=platform_start_dates,
     )
 
     written_cde_ncfile = write_cde_netcdf(
@@ -437,6 +576,7 @@ def read_or_create_and_read_cdecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    platform_start_dates,
     overwrite_cde: bool = False,
 ) -> xr.Dataset:
     """Read an cdecdr netCDF file, creating it if it doesn't exist.
@@ -449,6 +589,7 @@ def read_or_create_and_read_cdecdr_ds(
         hemisphere,
         resolution,
         ecdr_data_dir=ecdr_data_dir,
+        platform_start_dates=platform_start_dates,
     )
 
     if overwrite_cde or not cde_filepath.is_file():
@@ -457,11 +598,51 @@ def read_or_create_and_read_cdecdr_ds(
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
+            platform_start_dates=platform_start_dates,
         )
     logger.info(f"Reading cdeCDR file from: {cde_filepath}")
     cde_ds = xr.load_dataset(cde_filepath)
 
     return cde_ds
+
+
+''' Moved this to cli.util.py
+def read_platform_start_dates_cfg(start_dates_cfg_filename):
+    """The "platform_start_dates" dictionary is an OrderedDict
+    of keys (dates) with corresponding platforms/sats (values)
+
+    Note: It seems like yaml can't safe_load() an OrderedDict.
+    """
+    from collections import OrderedDict
+
+    import yaml
+
+    try:
+        with open(start_dates_cfg_filename, "r") as config_file:
+            file_dict = yaml.safe_load(config_file)
+    except FileNotFoundError:
+        raise RuntimeError(
+            f"Could not find specified start_dates config file: {start_dates_cfg_filename}"
+        )
+
+    platform_start_dates = OrderedDict(file_dict)
+
+    try:
+        assert _platform_start_dates_are_consistent(
+            platform_start_dates=platform_start_dates,
+        )
+    except AssertionError:
+        raise RuntimeError(
+            f"""
+    Error: platform_start_dates in specifiec config file:
+        ({start_dates_cfg_filename})
+    are not consistent:
+        {platform_start_dates}
+    """
+        )
+
+    return platform_start_dates
+'''
 
 
 def create_cdecdr_for_date_range(
@@ -471,15 +652,27 @@ def create_cdecdr_for_date_range(
     end_date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    platform_start_dates,
 ) -> None:
     """Generate the complete daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
+        logger.warning("skipping the error capture...")
+        make_cdecdr_netcdf(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+            platform_start_dates=platform_start_dates,
+        )
+
+        """
         try:
             make_cdecdr_netcdf(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
                 ecdr_data_dir=ecdr_data_dir,
+                platform_start_dates=platform_start_dates,
             )
 
         # TODO: either catch and re-throw this exception or throw an error after
@@ -496,6 +689,7 @@ def create_cdecdr_for_date_range(
             # TODO: Perhaps this function should come from seaice_ecdr
             err_filepath = get_ecdr_filepath(
                 date=date,
+                platform_start_dates=platform_start_dates,
                 hemisphere=hemisphere,
                 resolution=resolution,
                 ecdr_data_dir=ecdr_data_dir,
@@ -505,6 +699,7 @@ def create_cdecdr_for_date_range(
             with open(err_filepath.parent / err_filename, "w") as f:
                 traceback.print_exc(file=f)
                 traceback.print_exc(file=sys.stdout)
+        """
 
 
 @click.command(name="cdecdr")
@@ -567,6 +762,19 @@ def create_cdecdr_for_date_range(
     required=True,
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
+@click.option(
+    "--start-dates-cfg",
+    required=False,
+    type=click.Path(
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        resolve_path=True,
+        path_type=Path,
+    ),
+    default=None,
+    help="If given, this is the name of a yaml file with platform_start_dates dict",
+)
 def cli(
     *,
     date: dt.date,
@@ -574,6 +782,7 @@ def cli(
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    start_dates_cfg: Path | None,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.
 
@@ -584,6 +793,10 @@ def cli(
     projection, resolution, and bounds), and TBtype (TB type includes source and
     methodology for getting those TBs onto the grid)
     """
+    if start_dates_cfg is None:
+        platform_start_dates = PLATFORM_START_DATES_DEFAULT
+    else:
+        platform_start_dates = read_platform_start_dates_cfg(start_dates_cfg)
 
     if end_date is None:
         end_date = copy.copy(date)
@@ -594,4 +807,5 @@ def cli(
         end_date=end_date,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        platform_start_dates=platform_start_dates,
     )

@@ -17,6 +17,10 @@ from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
+from seaice_ecdr.platforms import (
+    PLATFORM_START_DATES_DEFAULT,
+    read_platform_start_dates_cfg,
+)
 from seaice_ecdr.util import sat_from_filename, standard_daily_aggregate_filename
 
 
@@ -28,6 +32,7 @@ def _get_daily_complete_filepaths_for_year(
     ecdr_data_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    platform_start_dates,
 ) -> list[Path]:
     data_list = []
     for period in pd.period_range(start=dt.date(year, 1, 1), end=dt.date(year, 12, 31)):
@@ -36,6 +41,7 @@ def _get_daily_complete_filepaths_for_year(
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
+            platform_start_dates=platform_start_dates,
         )
         if expected_fp.is_file():
             data_list.append(expected_fp)
@@ -109,12 +115,14 @@ def make_daily_aggregate_netcdf_for_year(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    platform_start_dates,
 ) -> None:
     daily_filepaths = _get_daily_complete_filepaths_for_year(
         year=year,
         ecdr_data_dir=ecdr_data_dir,
         hemisphere=hemisphere,
         resolution=resolution,
+        platform_start_dates=platform_start_dates,
     )
 
     # Create a temporary dir to store a WIP netcdf file. We do this because
@@ -199,6 +207,19 @@ def make_daily_aggregate_netcdf_for_year(
     help="Year for which to create the monthly file.",
     default=None,
 )
+@click.option(
+    "--start-dates-cfg",
+    required=False,
+    type=click.Path(
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        resolve_path=True,
+        path_type=Path,
+    ),
+    default=None,
+    help="If given, this is the name of a yaml file with platform_start_dates dict",
+)
 def cli(
     *,
     year: int,
@@ -206,9 +227,15 @@ def cli(
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     end_year: int | None,
+    start_dates_cfg: Path | None,
 ) -> None:
     if end_year is None:
         end_year = year
+
+    if start_dates_cfg is None:
+        platform_start_dates = PLATFORM_START_DATES_DEFAULT
+    else:
+        platform_start_dates = read_platform_start_dates_cfg(start_dates_cfg)
 
     for year_to_process in range(year, end_year + 1):
         make_daily_aggregate_netcdf_for_year(
@@ -216,4 +243,5 @@ def cli(
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
+            platform_start_dates=platform_start_dates,
         )

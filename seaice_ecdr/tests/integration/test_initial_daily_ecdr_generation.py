@@ -11,12 +11,12 @@ from pm_tb_data._types import NORTH
 
 from seaice_ecdr.initial_daily_ecdr import (
     get_idecdr_filepath,
+    # initial_daily_ecdr_dataset_for_au_si_tbs as compute_idecdr_ds,
+    initial_daily_ecdr_dataset,
     make_idecdr_netcdf,
     write_ide_netcdf,
 )
-from seaice_ecdr.initial_daily_ecdr import (
-    initial_daily_ecdr_dataset_for_au_si_tbs as compute_idecdr_ds,
-)
+from seaice_ecdr.platforms import PLATFORM_START_DATES_DEFAULT
 
 cdr_conc_fieldname = "conc"
 
@@ -30,10 +30,11 @@ def sample_idecdr_dataset_nh():
     test_hemisphere = NORTH
     test_resolution: Final = "12.5"
 
-    ide_conc_ds = compute_idecdr_ds(
+    ide_conc_ds = initial_daily_ecdr_dataset(
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
+        platform_start_dates=PLATFORM_START_DATES_DEFAULT,
     )
     return ide_conc_ds
 
@@ -47,10 +48,11 @@ def sample_idecdr_dataset_sh():
     test_hemisphere = NORTH
     test_resolution: Final = "12.5"
 
-    ide_conc_ds = compute_idecdr_ds(
+    ide_conc_ds = initial_daily_ecdr_dataset(
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
+        platform_start_dates=PLATFORM_START_DATES_DEFAULT,
     )
     return ide_conc_ds
 
@@ -130,15 +132,19 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
     test_resolution: Final = "12.5"
+    test_platform = "am2"
+
     make_idecdr_netcdf(
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
         ecdr_data_dir=tmpdir_path,
+        platform_start_dates=PLATFORM_START_DATES_DEFAULT,
     )
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,
         date=test_date,
+        platform=test_platform,
         resolution=test_resolution,
         ecdr_data_dir=tmpdir_path,
     )
@@ -158,16 +164,20 @@ def test_can_drop_fields_from_idecdr_netcdf(
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
     test_resolution: Final = "12.5"
+    test_platform = "am2"
+
     make_idecdr_netcdf(
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
         ecdr_data_dir=tmpdir_path,
         excluded_fields=(cdr_conc_fieldname,),
+        platform_start_dates=PLATFORM_START_DATES_DEFAULT,
     )
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,
         date=test_date,
+        platform=test_platform,
         resolution=test_resolution,
         ecdr_data_dir=tmpdir_path,
     )

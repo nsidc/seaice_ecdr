@@ -23,6 +23,7 @@ from seaice_ecdr.monthly import (
     check_min_days_for_valid_month,
     make_monthly_ds,
 )
+from seaice_ecdr.platforms import PLATFORM_START_DATES_DEFAULT
 
 
 def test__get_daily_complete_filepaths_for_month(fs):
@@ -63,6 +64,7 @@ def test__get_daily_complete_filepaths_for_month(fs):
         ecdr_data_dir=ecdr_data_dir,
         resolution="12.5",
         hemisphere=NORTH,
+        platform_start_dates=PLATFORM_START_DATES_DEFAULT,
     )
 
     assert sorted(_fake_files_for_test_year_month_and_hemisphere) == sorted(actual)
