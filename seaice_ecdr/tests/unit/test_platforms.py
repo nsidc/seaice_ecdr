@@ -5,7 +5,7 @@ from typing import get_args
 from seaice_ecdr.platforms import (
     PLATFORM_AVAILABILITY,
     # PLATFORM_START_DATES,
-    PLATFORM_START_DATES_DEFAULT,
+    PLATFORM_START_DATES,
     PLATFORMS_FOR_SATS,
     SUPPORTED_SAT,
     _platform_available_for_date,
@@ -50,7 +50,7 @@ def test_default_platform_availability():
 
 def test_default_platform_start_dates_are_consistent():
     assert _platform_start_dates_are_consistent(
-        platform_start_dates=PLATFORM_START_DATES_DEFAULT,
+        platform_start_dates=PLATFORM_START_DATES,
         platform_availability=PLATFORM_AVAILABILITY,
     )
 
@@ -90,15 +90,15 @@ def test_platform_availability_by_date():
 
 
 def test_get_platform_by_date():
-    date_list = PLATFORM_START_DATES_DEFAULT.keys()
-    platform_list = PLATFORM_START_DATES_DEFAULT.values()
+    date_list = PLATFORM_START_DATES.keys()
+    platform_list = PLATFORM_START_DATES.values()
 
     for date, expected_platform in zip(date_list, platform_list):
         print(f"testing {date} -> {expected_platform}")
 
         platform = get_platform_by_date(
             date=date,
-            platform_start_dates=PLATFORM_START_DATES_DEFAULT,
+            platform_start_dates=PLATFORM_START_DATES,
             platform_availability=PLATFORM_AVAILABILITY,
         )
         assert platform == expected_platform

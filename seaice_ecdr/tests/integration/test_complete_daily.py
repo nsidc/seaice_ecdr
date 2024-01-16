@@ -3,7 +3,6 @@ import datetime as dt
 from pm_tb_data._types import NORTH
 
 from seaice_ecdr.complete_daily_ecdr import make_cdecdr_netcdf
-from seaice_ecdr.platforms import PLATFORM_START_DATES_DEFAULT
 from seaice_ecdr.tests.integration import ecdr_data_dir_test_path  # noqa
 
 
@@ -14,7 +13,6 @@ def test_make_cdecdr_netcdf(ecdr_data_dir_test_path):  # noqa
             hemisphere=NORTH,
             resolution="12.5",
             ecdr_data_dir=ecdr_data_dir_test_path,
-            platform_start_dates=PLATFORM_START_DATES_DEFAULT,
         )
 
         assert output_path.is_file()

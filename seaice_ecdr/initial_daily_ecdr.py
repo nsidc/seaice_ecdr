@@ -48,11 +48,7 @@ from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
-from seaice_ecdr.platforms import (
-    PLATFORM_START_DATES_DEFAULT,
-    get_platform_by_date,
-    read_platform_start_dates_cfg,
-)
+from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.util import standard_daily_filename
 
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
@@ -275,7 +271,6 @@ def _ame_res_str(*, resolution: ECDR_SUPPORTED_RESOLUTIONS) -> AMSR_RESOLUTIONS:
 def compute_initial_daily_ecdr_dataset(
     *,
     date: dt.date,
-    platform_start_dates,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     xr_tbs: xr.Dataset,
@@ -400,7 +395,7 @@ def compute_initial_daily_ecdr_dataset(
     # ...but it should be coordinated with pole hole filling routines below
     # ...and the pole filling should occur after temporal interpolation
     if hemisphere == NORTH:
-        platform = get_platform_by_date(date, platform_start_dates)
+        platform = get_platform_by_date(date)
         pole_mask = nh_polehole_mask(
             date=date,
             resolution=resolution,
@@ -620,7 +615,7 @@ def compute_initial_daily_ecdr_dataset(
     # NOTE: Usually, the pole hole will be filled in pass 3, along with melt onset calc.
     if fill_the_pole_hole and hemisphere == NORTH:
         cdr_conc_pre_polefill = cdr_conc.copy()
-        platform = get_platform_by_date(date, platform_start_dates)
+        platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
             date=date,
             resolution=resolution,
@@ -860,50 +855,9 @@ def create_null_au_si_tbs(
     return null_tbs
 
 
-''' Remove this...
-def initial_daily_ecdr_dataset_for_au_si_tbs(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-) -> xr.Dataset:
-    """Create xr dataset containing the first pass of daily enhanced CDR.
-
-    This uses AU_SI12 TBs"""
-    au_si_resolution_str = _au_si_res_str(resolution=resolution)
-    try:
-        xr_tbs = get_au_si_tbs(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=au_si_resolution_str,
-        )
-    except FileNotFoundError:
-        xr_tbs = create_null_au_si_tbs(
-            hemisphere=hemisphere,
-            resolution=resolution,
-        )
-        logger.warning(
-            f"Used all-null TBS for date={date},"
-            f" hemisphere={hemisphere},"
-            f" resolution={resolution}"
-        )
-
-    initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
-        date=date,
-        platform_start_dates=platform_start_dates,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        xr_tbs=xr_tbs,
-    )
-
-    return initial_ecdr_ds
-'''
-
-
 def initial_daily_ecdr_dataset(
     *,
     date: dt.date,
-    platform_start_dates,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
@@ -911,7 +865,7 @@ def initial_daily_ecdr_dataset(
 
     This uses AU_SI12 TBs
     and others..."""
-    platform = get_platform_by_date(date, platform_start_dates=platform_start_dates)
+    platform = get_platform_by_date(date)
     if platform == "am2":
         au_si_resolution_str = _au_si_res_str(resolution=resolution)
         try:
@@ -956,7 +910,6 @@ def initial_daily_ecdr_dataset(
 
     initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,
-        platform_start_dates=platform_start_dates,
         hemisphere=hemisphere,
         resolution=resolution,
         xr_tbs=xr_tbs,
@@ -1054,7 +1007,6 @@ def get_idecdr_filepath(
 def make_idecdr_netcdf(
     *,
     date: dt.date,
-    platform_start_dates,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
@@ -1070,11 +1022,10 @@ def make_idecdr_netcdf(
     """
     ide_ds = initial_daily_ecdr_dataset(
         date=date,
-        platform_start_dates=platform_start_dates,
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    platform = get_platform_by_date(date, platform_start_dates=platform_start_dates)
+    platform = get_platform_by_date(date)
     output_path = get_idecdr_filepath(
         date=date,
         platform=platform,
@@ -1096,7 +1047,6 @@ def create_idecdr_for_date_range(
     hemisphere: Hemisphere,
     start_date: dt.date,
     end_date: dt.date,
-    platform_start_dates,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
     verbose_intermed_ncfile: bool = False,
@@ -1104,7 +1054,7 @@ def create_idecdr_for_date_range(
     """Generate the initial daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
         try:
-            platform = get_platform_by_date(date, platform_start_dates)
+            platform = get_platform_by_date(date)
 
             if not verbose_intermed_ncfile:
                 excluded_fields = [
@@ -1125,7 +1075,6 @@ def create_idecdr_for_date_range(
                 ]
             make_idecdr_netcdf(
                 date=date,
-                platform_start_dates=platform_start_dates,
                 hemisphere=hemisphere,
                 resolution=resolution,
                 ecdr_data_dir=ecdr_data_dir,
@@ -1212,19 +1161,6 @@ def create_idecdr_for_date_range(
     default=False,
     type=bool,
 )
-@click.option(
-    "--start-dates-cfg",
-    required=False,
-    type=click.Path(
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        resolve_path=True,
-        path_type=Path,
-    ),
-    default=None,
-    help="If given, this is the name of a yaml file with platform_start_dates dict",
-)
 def cli(
     *,
     date: dt.date,
@@ -1232,7 +1168,6 @@ def cli(
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     verbose_intermed_ncfile: bool,
-    start_dates_cfg: Path | None,
 ) -> None:
     """Run the initial daily ECDR algorithm with AMSR2 data.
 
@@ -1240,10 +1175,6 @@ def cli(
     projection, resolution, and bounds), and TBtype (TB type includes source and
     methodology for getting those TBs onto the grid)
     """
-    if start_dates_cfg is None:
-        platform_start_dates = PLATFORM_START_DATES_DEFAULT
-    else:
-        platform_start_dates = read_platform_start_dates_cfg(start_dates_cfg)
 
     create_idecdr_for_date_range(
         hemisphere=hemisphere,
@@ -1252,5 +1183,4 @@ def cli(
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
         verbose_intermed_ncfile=verbose_intermed_ncfile,
-        platform_start_dates=platform_start_dates,
     )

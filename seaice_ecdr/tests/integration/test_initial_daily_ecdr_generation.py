@@ -16,7 +16,6 @@ from seaice_ecdr.initial_daily_ecdr import (
     make_idecdr_netcdf,
     write_ide_netcdf,
 )
-from seaice_ecdr.platforms import PLATFORM_START_DATES_DEFAULT
 
 cdr_conc_fieldname = "conc"
 
@@ -34,7 +33,6 @@ def sample_idecdr_dataset_nh():
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
-        platform_start_dates=PLATFORM_START_DATES_DEFAULT,
     )
     return ide_conc_ds
 
@@ -52,7 +50,6 @@ def sample_idecdr_dataset_sh():
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
-        platform_start_dates=PLATFORM_START_DATES_DEFAULT,
     )
     return ide_conc_ds
 
@@ -139,7 +136,6 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
         hemisphere=test_hemisphere,
         resolution=test_resolution,
         ecdr_data_dir=tmpdir_path,
-        platform_start_dates=PLATFORM_START_DATES_DEFAULT,
     )
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,
@@ -172,7 +168,6 @@ def test_can_drop_fields_from_idecdr_netcdf(
         resolution=test_resolution,
         ecdr_data_dir=tmpdir_path,
         excluded_fields=(cdr_conc_fieldname,),
-        platform_start_dates=PLATFORM_START_DATES_DEFAULT,
     )
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,

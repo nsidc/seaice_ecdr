@@ -28,9 +28,7 @@ from seaice_ecdr.initial_daily_ecdr import (
     make_idecdr_netcdf,
 )
 from seaice_ecdr.platforms import (
-    PLATFORM_START_DATES_DEFAULT,
     get_platform_by_date,
-    read_platform_start_dates_cfg,
 )
 from seaice_ecdr.util import standard_daily_filename
 
@@ -136,17 +134,15 @@ def get_tie_filepath(
     hemisphere,
     resolution,
     ecdr_data_dir: Path,
-    platform_start_dates,
 ) -> Path:
     """Return the complete daily tie file path."""
 
-    platform = get_platform_by_date(date, platform_start_dates)
+    platform = get_platform_by_date(date)
     sat = cast(SUPPORTED_SAT, platform)
 
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        # sat="am2",
         sat=sat,
         resolution=resolution,
     )
@@ -341,7 +337,6 @@ def temporally_composite_dataarray(
 def read_or_create_and_read_idecdr_ds(
     *,
     date: dt.date,
-    platform_start_dates,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
@@ -350,7 +345,6 @@ def read_or_create_and_read_idecdr_ds(
     """Read an idecdr netCDF file, creating it if it doesn't exist."""
     platform = get_platform_by_date(
         date,
-        platform_start_dates=platform_start_dates,
     )
 
     ide_filepath = get_idecdr_filepath(
@@ -376,7 +370,6 @@ def read_or_create_and_read_idecdr_ds(
         ]
         make_idecdr_netcdf(
             date=date,
-            platform_start_dates=platform_start_dates,
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
@@ -526,7 +519,6 @@ def filter_field_via_bitmask(
 def temporally_interpolated_ecdr_dataset(
     *,
     date: dt.date,
-    platform_start_dates,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     interp_range: int = 5,
@@ -547,7 +539,6 @@ def temporally_interpolated_ecdr_dataset(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
-        platform_start_dates=platform_start_dates,
     )
 
     # Copy ide_ds to a new xr tiecdr dataset
@@ -568,7 +559,6 @@ def temporally_interpolated_ecdr_dataset(
             "hemisphere": hemisphere,
             "resolution": resolution,
             "ecdr_data_dir": ecdr_data_dir,
-            "platform_start_dates": platform_start_dates,
         },
     )
 
@@ -629,7 +619,7 @@ def temporally_interpolated_ecdr_dataset(
     #       grid is having its pole hole filled!
     if fill_the_pole_hole and hemisphere == NORTH:
         cdr_conc_pre_polefill = cdr_conc.copy()
-        platform = get_platform_by_date(date, platform_start_dates)
+        platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
             date=date, resolution=resolution, sat=platform
         )
@@ -690,7 +680,6 @@ def temporally_interpolated_ecdr_dataset(
             "hemisphere": hemisphere,
             "resolution": resolution,
             "ecdr_data_dir": ecdr_data_dir,
-            "platform_start_dates": platform_start_dates,
         },
     )
 
@@ -719,7 +708,6 @@ def temporally_interpolated_ecdr_dataset(
             "hemisphere": hemisphere,
             "resolution": resolution,
             "ecdr_data_dir": ecdr_data_dir,
-            "platform_start_dates": platform_start_dates,
         },
     )
 
@@ -738,7 +726,7 @@ def temporally_interpolated_ecdr_dataset(
 
         # Fill pole hole of BT
         bt_conc_pre_polefill = bt_conc_2d.copy()
-        platform = get_platform_by_date(date, platform_start_dates)
+        platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
             date=date, resolution=resolution, sat=platform
         )
@@ -854,7 +842,6 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     interp_range: int = 5,
     ecdr_data_dir: Path,
     fill_the_pole_hole: bool = True,
-    platform_start_dates=PLATFORM_START_DATES,
 ) -> xr.Dataset:
     """Create xr dataset containing the second pass of daily enhanced CDR.
 
@@ -871,7 +858,6 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
-        platform_start_dates=platform_start_dates,
     )
 
     # Copy ide_ds to a new xr tiecdr dataset
@@ -892,7 +878,6 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
             "hemisphere": hemisphere,
             "resolution": resolution,
             "ecdr_data_dir": ecdr_data_dir,
-            "platform_start_dates": platform_start_dates,
         },
     )
 
@@ -953,7 +938,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     #       grid is having its pole hole filled!
     if fill_the_pole_hole and hemisphere == NORTH:
         cdr_conc_pre_polefill = cdr_conc.copy()
-        platform = get_platform_by_date(date, platform_start_dates)
+        platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(date=date, resolution=resolution, sat=platform)
         cdr_conc_pole_filled = fill_pole_hole(
             conc=cdr_conc,
@@ -1012,7 +997,6 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
             "hemisphere": hemisphere,
             "resolution": resolution,
             "ecdr_data_dir": ecdr_data_dir,
-            "platform_start_dates": platform_start_dates,
         },
     )
 
@@ -1041,7 +1025,6 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
             "hemisphere": hemisphere,
             "resolution": resolution,
             "ecdr_data_dir": ecdr_data_dir,
-            "platform_start_dates": platform_start_dates,
         },
     )
 
@@ -1060,7 +1043,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
 
         # Fill pole hole of BT
         bt_conc_pre_polefill = bt_conc_2d.copy()
-        platform = get_platform_by_date(date, platform_start_dates)
+        platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(date=date, resolution=resolution, sat=platform)
         bt_conc_pole_filled = fill_pole_hole(
             conc=bt_conc_2d,
@@ -1223,7 +1206,6 @@ def write_tie_netcdf(
 def make_tiecdr_netcdf(
     *,
     date: dt.date,
-    platform_start_dates,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
@@ -1248,14 +1230,12 @@ def make_tiecdr_netcdf(
         interp_range=interp_range,
         ecdr_data_dir=ecdr_data_dir,
         fill_the_pole_hole=fill_the_pole_hole,
-        platform_start_dates=platform_start_dates,
     )
     output_path = get_tie_filepath(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
-        platform_start_dates=platform_start_dates,
     )
 
     written_tie_ncfile = write_tie_netcdf(
@@ -1272,7 +1252,6 @@ def create_tiecdr_for_date_range(
     end_date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
-    platform_start_dates,
 ) -> None:
     """Generate the temporally composited daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
@@ -1282,7 +1261,6 @@ def create_tiecdr_for_date_range(
                 hemisphere=hemisphere,
                 resolution=resolution,
                 ecdr_data_dir=ecdr_data_dir,
-                platform_start_dates=platform_start_dates,
             )
 
         # TODO: either catch and re-throw this exception or throw an error after
@@ -1301,7 +1279,6 @@ def create_tiecdr_for_date_range(
                 hemisphere=hemisphere,
                 resolution=resolution,
                 ecdr_data_dir=ecdr_data_dir,
-                platform_start_dates=platform_start_dates,
             )
             err_filename = err_filepath.name + ".error"
             logger.info(f"Writing error info to {err_filename}")
@@ -1370,19 +1347,6 @@ def create_tiecdr_for_date_range(
     required=True,
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
-@click.option(
-    "--start-dates-cfg",
-    required=False,
-    type=click.Path(
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        resolve_path=True,
-        path_type=Path,
-    ),
-    default=None,
-    help="If given, this is the name of a yaml file with platform_start_dates dict",
-)
 def cli(
     *,
     date: dt.date,
@@ -1390,7 +1354,6 @@ def cli(
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    start_dates_cfg: Path | None,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.
 
@@ -1404,16 +1367,10 @@ def cli(
     if end_date is None:
         end_date = copy.copy(date)
 
-    if start_dates_cfg is None:
-        platform_start_dates = PLATFORM_START_DATES_DEFAULT
-    else:
-        platform_start_dates = read_platform_start_dates_cfg(start_dates_cfg)
-
     create_tiecdr_for_date_range(
         hemisphere=hemisphere,
         start_date=date,
         end_date=end_date,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
-        platform_start_dates=platform_start_dates,
     )

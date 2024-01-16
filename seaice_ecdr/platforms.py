@@ -55,22 +55,7 @@ PLATFORM_AVAILABILITY: OrderedDict[SUPPORTED_SAT, dict] = OrderedDict(
 )
 
 
-"""
 PLATFORM_START_DATES: OrderedDict[dt.date, str] = OrderedDict(
-    {
-        dt.date(1978, 10, 25): "n07",
-        dt.date(1987, 7, 10): "F08",
-        dt.date(1991, 12, 3): "F11",
-        dt.date(1995, 10, 1): "F13",
-        dt.date(2008, 1, 1): "F17",
-        # dt.date(2002, 6, 1): 'ame',   # AMSR-E...
-        # dt.date(2011, 10, 4): 'F17',  # followed by f17 (again)
-        dt.date(2012, 7, 3): "am2",
-    }
-)
-"""
-
-PLATFORM_START_DATES_DEFAULT: OrderedDict[dt.date, str] = OrderedDict(
     {
         dt.date(1978, 10, 25): "n07",
         dt.date(1987, 7, 10): "F08",
@@ -134,7 +119,7 @@ def _platform_available_for_date(
 def _platform_start_dates_are_consistent(
     *,
     # platform_start_dates: OrderedDict = PLATFORM_START_DATES,
-    platform_start_dates: OrderedDict = PLATFORM_START_DATES_DEFAULT,
+    platform_start_dates: OrderedDict = PLATFORM_START_DATES,
     platform_availability: OrderedDict = PLATFORM_AVAILABILITY,
 ) -> bool:
     """Return whether the provided start date structure is valid."""
@@ -182,9 +167,8 @@ def _platform_start_dates_are_consistent(
 
 def get_platform_by_date(
     date: dt.date,
-    # platform_start_dates: OrderedDict = PLATFORM_START_DATES,
-    # platform_start_dates: OrderedDict = PLATFORM_START_DATES_DEFAULT,
-    platform_start_dates: OrderedDict,
+    *,
+    platform_start_dates: OrderedDict = PLATFORM_START_DATES,
     platform_availability: OrderedDict = PLATFORM_AVAILABILITY,
 ) -> str:
     """Return the platform for this date."""
