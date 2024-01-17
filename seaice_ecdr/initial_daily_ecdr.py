@@ -399,7 +399,7 @@ def compute_initial_daily_ecdr_dataset(
     invalid_ice_mask = get_invalid_ice_mask(
         hemisphere=hemisphere,
         month=date.month,
-        resolution=resolution,
+        resolution=tb_resolution,
     )
 
     land_mask = get_land_mask(
@@ -615,9 +615,6 @@ def compute_initial_daily_ecdr_dataset(
         },
     )
 
-    breakpoint()
-    # FIX: invalid_ice_mask is dtype float64 instead of bool
-    print("check these operations...")
     set_to_zero_sic = (
         ecdr_ide_ds["nt_weather_mask"].data[0, :, :]
         | ecdr_ide_ds["bt_weather_mask"].data[0, :, :]
@@ -636,11 +633,11 @@ def compute_initial_daily_ecdr_dataset(
     logger.info("Applying NT2 land spillover technique...")
     l90c = get_land90_conc_field(
         hemisphere=hemisphere,
-        resolution=resolution,
+        resolution=tb_resolution,
     )
     adj123 = get_adj123_field(
         hemisphere=hemisphere,
-        resolution=resolution,
+        resolution=tb_resolution,
     )
     cdr_conc = apply_nt2_land_spillover(
         conc=cdr_conc,
@@ -658,7 +655,7 @@ def compute_initial_daily_ecdr_dataset(
         platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
             date=date,
-            resolution=resolution,
+            resolution=tb_resolution,
             sat=platform,
         )
         cdr_conc = fill_pole_hole(
@@ -798,6 +795,8 @@ def compute_initial_daily_ecdr_dataset(
         },
     )
 
+    breakpoint()
+    print("Here, need to convert to 12.5km if it's 25km")
     # Finished!
     return ecdr_ide_ds
 
