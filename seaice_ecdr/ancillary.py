@@ -220,8 +220,6 @@ def get_invalid_ice_mask(
     # The invalid ice mask is indexed by month in the ancillary dataset. Drop
     # that coordinate.
     invalid_ice_mask = invalid_ice_mask.drop_vars("month")
-    breakpoint()
-    print("while debugging...is this bool in psn12.5 but float64 in psn25?")
 
     return invalid_ice_mask
 
