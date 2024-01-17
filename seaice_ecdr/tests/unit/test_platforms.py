@@ -2,15 +2,16 @@
 import datetime as dt
 from typing import get_args
 
+import yaml
+
 from seaice_ecdr.platforms import (
     PLATFORM_AVAILABILITY,
-    # PLATFORM_START_DATES,
-    PLATFORM_START_DATES_DEFAULT,
     PLATFORMS_FOR_SATS,
     SUPPORTED_SAT,
     _platform_available_for_date,
     _platform_start_dates_are_consistent,
     get_platform_by_date,
+    get_platform_start_dates,
 )
 
 platform_test_dates = {
@@ -49,9 +50,9 @@ def test_default_platform_availability():
 
 
 def test_default_platform_start_dates_are_consistent():
+    platform_start_dates = get_platform_start_dates()
     assert _platform_start_dates_are_consistent(
-        platform_start_dates=PLATFORM_START_DATES_DEFAULT,
-        platform_availability=PLATFORM_AVAILABILITY,
+        platform_start_dates=platform_start_dates
     )
 
 
@@ -63,7 +64,6 @@ def test_platform_availability_by_date():
         assert not _platform_available_for_date(
             date=date_before_any_satellites,
             platform=platform,
-            platform_availability=PLATFORM_AVAILABILITY,
         )
 
     date_after_dead_satellites = dt.date(2100, 1, 1)
@@ -78,27 +78,46 @@ def test_platform_availability_by_date():
         assert not _platform_available_for_date(
             date=date_after_dead_satellites,
             platform=platform,
-            platform_availability=PLATFORM_AVAILABILITY,
         )
 
     for platform in platform_test_dates.keys():
         assert _platform_available_for_date(
             date=platform_test_dates[platform],
             platform=platform,
-            platform_availability=PLATFORM_AVAILABILITY,
         )
 
 
 def test_get_platform_by_date():
-    date_list = PLATFORM_START_DATES_DEFAULT.keys()
-    platform_list = PLATFORM_START_DATES_DEFAULT.values()
+    platform_start_dates = get_platform_start_dates()
+    date_list = platform_start_dates.keys()
+    platform_list = platform_start_dates.values()
 
     for date, expected_platform in zip(date_list, platform_list):
         print(f"testing {date} -> {expected_platform}")
 
         platform = get_platform_by_date(
             date=date,
-            platform_start_dates=PLATFORM_START_DATES_DEFAULT,
-            platform_availability=PLATFORM_AVAILABILITY,
         )
         assert platform == expected_platform
+
+
+def test_override_platform_by_date(monkeypatch, tmpdir):
+    override_file = tmpdir / "override_platform_dates.yaml"
+    expected_platform_dates = {
+        dt.date(1987, 7, 10): "F08",
+        dt.date(1991, 12, 3): "F11",
+        dt.date(1995, 10, 1): "F13",
+        dt.date(2002, 6, 1): "ame",
+    }
+
+    with open(override_file, "w") as yaml_file:
+        yaml.safe_dump(expected_platform_dates, yaml_file)
+
+    monkeypatch.setenv("PLATFORM_START_DATES_CFG_OVERRIDE_FILE", str(override_file))
+
+    # This is a cached function. Calls from other tests may interfere, so clear
+    # the cache here.
+    get_platform_start_dates.cache_clear()
+    platform_dates = get_platform_start_dates()
+
+    assert platform_dates == expected_platform_dates

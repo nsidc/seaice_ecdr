@@ -10,7 +10,6 @@ from seaice_ecdr.daily_aggregate import (
     get_daily_aggregate_filepath,
     make_daily_aggregate_netcdf_for_year,
 )
-from seaice_ecdr.platforms import PLATFORM_START_DATES_DEFAULT
 
 
 def test_daily_aggreagate_matches_daily_data(tmpdir):
@@ -28,7 +27,6 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=tmpdir_path,
-            platform_start_dates=PLATFORM_START_DATES_DEFAULT,
         )
         datasets.append(ds)
 
@@ -38,7 +36,6 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=tmpdir_path,
-        platform_start_dates=PLATFORM_START_DATES_DEFAULT,
     )
 
     # Read back in the data.
