@@ -55,8 +55,6 @@ def get_ecdr_filepath(
     ecdr_filename = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        # TODO: extract this to kwarg!!!
-        # sat="am2",
         sat=sat,
         resolution=resolution,
     )
