@@ -154,10 +154,11 @@ def cli(
     end_date: dt.date,
 ):
     daily = False
-    monthly = False
     if product_type == "daily" or product_type == "both":
         daily = True
-    elif product_type == "monthly" or product_type == "both":
+
+    monthly = False
+    if product_type == "monthly" or product_type == "both":
         monthly = True
 
     hemispheres = get_args(Hemisphere) if hemisphere_str == "both" else [hemisphere_str]
