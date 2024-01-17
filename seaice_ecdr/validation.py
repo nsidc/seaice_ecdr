@@ -41,6 +41,7 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.util import date_range
 
 
 def get_validation_dir(*, ecdr_data_dir: Path) -> Path:
@@ -57,8 +58,20 @@ def validate_daily_outputs(
     start_date: dt.date,
     end_date: dt.date,
 ) -> None:
-    # TODO
-    ...
+    """Create validation logs for daily outputs.
+
+    Creates two space-delimited files (TODO: could be csv?):
+
+    * log_seaice_{n|s}_daily_{start_year}_{end_year}.txt. Contains the following
+      fields: [year, month, day, total, ice, land, coast, lake, pole, oceanmask,
+      ice-free, missing, bad, melt].
+    * error_seaice_{n|s}_daily_{start_year}_{end_year}.txt. Contains the
+      following fields: [year, month, day, error_code]
+
+    """
+    for date in date_range(start_date=start_date, end_date=end_date):
+        # TODO
+        ...
 
 
 def validate_monthly_outputs(

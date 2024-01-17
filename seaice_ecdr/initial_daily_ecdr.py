@@ -30,7 +30,6 @@ from pm_icecon.interpolation import spatial_interp_tbs
 from pm_icecon.land_spillover import apply_nt2_land_spillover
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
-from pm_icecon.util import date_range
 from pm_tb_data._types import NORTH, Hemisphere
 from pm_tb_data.fetch.amsr.ae_si import get_ae_si_tbs_from_disk
 from pm_tb_data.fetch.amsr.au_si import get_au_si_tbs
@@ -49,7 +48,7 @@ from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
-from seaice_ecdr.util import standard_daily_filename
+from seaice_ecdr.util import date_range, standard_daily_filename
 
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
 

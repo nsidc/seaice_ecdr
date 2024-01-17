@@ -4,6 +4,7 @@ from typing import Final
 from pm_tb_data._types import NORTH, SOUTH
 
 from seaice_ecdr.util import (
+    date_range,
     sat_from_filename,
     standard_daily_aggregate_filename,
     standard_daily_filename,
@@ -112,3 +113,17 @@ def test_monthly_sat_from_filename():
     actual_sat = sat_from_filename(fn)
 
     assert expected_sat == actual_sat
+
+
+def test_date_range():
+    start_date = dt.date(2021, 1, 2)
+    end_date = dt.date(2021, 1, 5)
+    expected = [
+        start_date,
+        dt.date(2021, 1, 3),
+        dt.date(2021, 1, 4),
+        end_date,
+    ]
+    actual = list(date_range(start_date=start_date, end_date=end_date))
+
+    assert expected == actual
