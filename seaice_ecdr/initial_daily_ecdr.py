@@ -10,15 +10,17 @@ import sys
 import traceback
 from functools import cache
 from pathlib import Path
-from typing import Iterable, TypedDict, cast, get_args
+from typing import Final, Iterable, TypedDict, cast, get_args
 
 import click
 import numpy as np
 import numpy.typing as npt
 import pm_icecon.bt.compute_bt_ic as bt
 import pm_icecon.bt.params.ausi_amsr2 as pmi_bt_params
+import pm_icecon.bt.params.nsidc0001 as pmi_bt_params_0001
 import pm_icecon.nt.compute_nt_ic as nt
 import pm_icecon.nt.params.amsr2 as nt_amsr2_params
+import pm_icecon.nt.params.nsidc0001 as nt_0001_params
 import xarray as xr
 from loguru import logger
 
@@ -35,6 +37,7 @@ from pm_tb_data._types import NORTH, Hemisphere
 from pm_tb_data.fetch.amsr.ae_si import get_ae_si_tbs_from_disk
 from pm_tb_data.fetch.amsr.au_si import get_au_si_tbs
 from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
+from pm_tb_data.fetch.nsidc_0001 import get_nsidc_0001_tbs_from_disk
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
@@ -275,6 +278,7 @@ def compute_initial_daily_ecdr_dataset(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     xr_tbs: xr.Dataset,
     fill_the_pole_hole: bool = False,
+    tb_resolution: ECDR_SUPPORTED_RESOLUTIONS | None,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -288,7 +292,7 @@ def compute_initial_daily_ecdr_dataset(
     ecdr_ide_ds = _setup_ecdr_ds(
         date=date,
         xr_tbs=xr_tbs,
-        resolution=resolution,
+        resolution=tb_resolution if tb_resolution is not None else resolution,
         hemisphere=hemisphere,
     )
 
@@ -336,7 +340,7 @@ def compute_initial_daily_ecdr_dataset(
             != ecdr_ide_ds[si_varname].data[0, :, :]
         ) & (~np.isnan(ecdr_ide_ds[si_varname].data[0, :, :]))
         spatint_bitmask_arr[is_tb_si_diff] += TB_SPATINT_BITMASK_MAP[tbname]
-        land_mask = get_land_mask(hemisphere=hemisphere, resolution=resolution)
+        land_mask = get_land_mask(hemisphere=hemisphere, resolution=tb_resolution)
         spatint_bitmask_arr[land_mask.data] = 0
 
     ecdr_ide_ds["spatial_interpolation_flag"] = (
@@ -364,11 +368,29 @@ def compute_initial_daily_ecdr_dataset(
     )
     logger.info("Initialized spatial_interpolation_flag with TB fill locations")
 
-    bt_coefs_init = pmi_bt_params.get_ausi_bootstrap_params(
-        date=date,
-        satellite="amsr2",
-        gridid=ecdr_ide_ds.grid_id,
-    )
+    platform = get_platform_by_date(date)
+    if platform == "am2":
+        bt_coefs_init = pmi_bt_params.get_ausi_bootstrap_params(
+            date=date,
+            satellite="amsr2",
+            gridid=ecdr_ide_ds.grid_id,
+        )
+    elif platform == "ame":
+        # TODO: This needs to become ame bootstrap params
+        bt_coefs_init = pmi_bt_params.get_ausi_bootstrap_params(
+            date=date,
+            satellite="amsr2",
+            gridid=ecdr_ide_ds.grid_id,
+        )
+    elif platform == "F17":
+        # TODO: This needs to become ame bootstrap params
+        bt_coefs_init = pmi_bt_params_0001.get_F17_bootstrap_params(
+            date=date,
+            satellite=platform,
+            gridid=ecdr_ide_ds.grid_id,
+        )
+    else:
+        raise RuntimeError(f"platform bootstrap params not implemented: {platform}")
 
     # Add the function that generates the bt_tb_mask to bt_coefs
     bt_coefs_init["bt_tb_data_mask_function"] = bt.tb_data_mask
@@ -382,7 +404,7 @@ def compute_initial_daily_ecdr_dataset(
 
     land_mask = get_land_mask(
         hemisphere=hemisphere,
-        resolution=resolution,
+        resolution=tb_resolution,
     )
 
     ecdr_ide_ds["invalid_ice_mask"] = invalid_ice_mask.expand_dims(dim="time")
@@ -395,18 +417,33 @@ def compute_initial_daily_ecdr_dataset(
     # ...but it should be coordinated with pole hole filling routines below
     # ...and the pole filling should occur after temporal interpolation
     if hemisphere == NORTH:
-        platform = get_platform_by_date(date)
         pole_mask = nh_polehole_mask(
             date=date,
-            resolution=resolution,
+            resolution=tb_resolution,
             sat=platform,
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
 
     # Determine the NT fields and coefficients
-    nt_params = nt_amsr2_params.get_amsr2_params(
-        hemisphere=hemisphere,
-    )
+    # TODO: Add the rest of these satellites...
+    valid_sats_0001_nt = ("F17",)
+    if platform == "am2":
+        nt_params = nt_amsr2_params.get_amsr2_params(
+            hemisphere=hemisphere,
+        )
+    # TODO: AMSRE should get its own NT parameters...
+    elif platform == "ame":
+        nt_params = nt_amsr2_params.get_amsr2_params(
+            hemisphere=hemisphere,
+        )
+    elif platform in valid_sats_0001_nt:
+        nt_params = nt_0001_params.get_0001_nt_params(
+            hemisphere=hemisphere,
+            platform=platform,
+        )
+    else:
+        raise RuntimeError(f"Dont know how to get NT parameters for: {platform}")
+
     nt_coefs = NtCoefs(
         nt_tiepoints=nt_params.tiepoints,
         nt_gradient_thresholds=nt_params.gradient_thresholds,
@@ -578,6 +615,9 @@ def compute_initial_daily_ecdr_dataset(
         },
     )
 
+    breakpoint()
+    # FIX: invalid_ice_mask is dtype float64 instead of bool
+    print("check these operations...")
     set_to_zero_sic = (
         ecdr_ide_ds["nt_weather_mask"].data[0, :, :]
         | ecdr_ide_ds["bt_weather_mask"].data[0, :, :]
@@ -762,6 +802,36 @@ def compute_initial_daily_ecdr_dataset(
     return ecdr_ide_ds
 
 
+# TODO: Eventually, these should be renamed based on microwave
+#       band names, not AMSR2 TB channel frequencies
+def rename_0001_tbs(
+    *,
+    input_ds: xr.Dataset,
+) -> xr.Dataset:
+    """Rename 0001 TB fields for use with siconc code written for AMSR2."""
+    nsidc0001_to_amsr_tb_mapping = {
+        "h19": "h18",
+        "v19": "v18",
+        "v22": "v23",
+        "h37": "h36",
+        "v37": "v36",
+    }
+
+    new_tbs = {}
+    for key in input_ds.data_vars.keys():
+        data_var = input_ds.data_vars[key]
+        new_key = nsidc0001_to_amsr_tb_mapping[key]
+        new_tbs[new_key] = xr.DataArray(
+            data_var.data,
+            dims=("fake_y", "fake_x"),
+            attrs=data_var.attrs,
+        )
+
+    new_ds = xr.Dataset(new_tbs)
+
+    return new_ds
+
+
 def create_null_au_si_tbs(
     *,
     hemisphere: Hemisphere,
@@ -884,6 +954,7 @@ def initial_daily_ecdr_dataset(
                 f" hemisphere={hemisphere},"
                 f" resolution={resolution}"
             )
+        tb_resolution = resolution
     elif platform == "ame":
         ame_resolution_str = _ame_res_str(resolution=resolution)
         AME_DATA_DIR = Path("/ecs/DP4/AMSA/AE_SI12.003/")
@@ -905,6 +976,34 @@ def initial_daily_ecdr_dataset(
                 f" hemisphere={hemisphere},"
                 f" resolution={resolution}"
             )
+        tb_resolution = resolution
+    elif platform == "F17":
+        NSIDC0001_DATA_DIR = Path("/ecs/DP4/PM/NSIDC-0001.006/")
+        # NSIDC-0001 TBs for siconc are all at 25km
+        nsidc0001_resolution: Final = "25"
+        try:
+            xr_tbs_0001 = get_nsidc_0001_tbs_from_disk(
+                date=date,
+                hemisphere=hemisphere,
+                data_dir=NSIDC0001_DATA_DIR,
+                resolution=nsidc0001_resolution,
+                sat=platform,
+            )
+            xr_tbs = rename_0001_tbs(input_ds=xr_tbs_0001)
+        except FileNotFoundError:
+            logger.warning(f"Using null TBs for {platform} on {date}")
+            breakpoint()
+            print("this needs to be create_null_0001_tbs()")
+            xr_tbs_0001 = create_null_au_si_tbs(
+                hemisphere=hemisphere,
+                resolution=resolution,
+            )
+            logger.warning(
+                f"Used all-null TBS for date={date},"
+                f" hemisphere={hemisphere},"
+                f" resolution={resolution}"
+            )
+        tb_resolution = nsidc0001_resolution
     else:
         raise RuntimeError(f"Platform not supported: {platform}")
 
@@ -913,6 +1012,7 @@ def initial_daily_ecdr_dataset(
         hemisphere=hemisphere,
         resolution=resolution,
         xr_tbs=xr_tbs,
+        tb_resolution=tb_resolution,
     )
 
     return initial_ecdr_ds

@@ -38,7 +38,10 @@ def get_ancillary_ds(
     *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
 ) -> xr.Dataset:
     """Return xr Dataset of ancillary data for this hemisphere/resolution."""
-    if resolution != "12.5":
+    # TODO: This list could be determined from an examination of
+    #       the ancillary directory
+    implemented_resolutions = ("12.5", "25")
+    if resolution not in implemented_resolutions:
         raise NotImplementedError("ECDR currently only supports 12.5km resolution.")
 
     filepath = get_ancillary_filepath(hemisphere=hemisphere, resolution=resolution)
@@ -71,8 +74,12 @@ def _get_sat_by_date(
 
 
 def _bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
-    index = var.flag_meanings.split(" ").index(meaning)
-    value = var.flag_masks[index]
+    try:
+        index = var.flag_meanings.split(" ").index(meaning)
+        value = var.flag_masks[index]
+    except ValueError:
+        index = var.flag_meanings.split(" ").index(meaning.lower())
+        value = var.flag_masks[index]
 
     return value
 
@@ -213,6 +220,8 @@ def get_invalid_ice_mask(
     # The invalid ice mask is indexed by month in the ancillary dataset. Drop
     # that coordinate.
     invalid_ice_mask = invalid_ice_mask.drop_vars("month")
+    breakpoint()
+    print("while debugging...is this bool in psn12.5 but float64 in psn25?")
 
     return invalid_ice_mask
 
