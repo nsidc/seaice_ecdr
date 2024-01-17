@@ -5,10 +5,13 @@ for CDRv5
 """
 
 import datetime as dt
+import os
 from collections import OrderedDict
 from functools import cache
+from typing import cast, get_args
 
 import yaml
+from loguru import logger
 
 from seaice_ecdr._types import SUPPORTED_SAT
 
@@ -54,19 +57,65 @@ PLATFORM_AVAILABILITY: OrderedDict[SUPPORTED_SAT, dict] = OrderedDict(
 )
 
 
+def read_platform_start_dates_cfg_override(
+    start_dates_cfg_filename,
+) -> OrderedDict[dt.date, SUPPORTED_SAT]:
+    """The "platform_start_dates" dictionary is an OrderedDict
+    of keys (dates) with corresponding platforms/sats (values)
+
+    Note: It seems like yaml can't safe_load() an OrderedDict.
+    """
+    try:
+        with open(start_dates_cfg_filename, "r") as config_file:
+            file_dict = yaml.safe_load(config_file)
+    except FileNotFoundError:
+        raise RuntimeError(
+            f"Could not find specified start_dates config file: {start_dates_cfg_filename}"
+        )
+
+    platform_start_dates = OrderedDict(file_dict)
+
+    # Assert that the keys are ordered.
+    assert sorted(platform_start_dates.keys()) == list(platform_start_dates.keys())
+    # Assert that the platforms are in our list of supported sats.
+    assert all(
+        [
+            platform in get_args(SUPPORTED_SAT)
+            for platform in platform_start_dates.values()
+        ]
+    )
+
+    return platform_start_dates
+
+
 @cache
 def get_platform_start_dates() -> OrderedDict[dt.date, SUPPORTED_SAT]:
-    _platform_start_dates: OrderedDict[dt.date, SUPPORTED_SAT] = OrderedDict(
-        {
-            dt.date(1978, 10, 25): "n07",
-            dt.date(1987, 7, 10): "F08",
-            dt.date(1991, 12, 3): "F11",
-            dt.date(1995, 10, 1): "F13",
-            dt.date(2008, 1, 1): "F17",
-            # dt.date(2002, 6, 1): 'ame',   # AMSR-E...
-            # dt.date(2011, 10, 4): 'F17',  # followed by f17 (again)
-            dt.date(2012, 7, 3): "am2",
-        }
+    """Return dict of start dates for differnt platforms.
+
+    Platform start dates can be overridden via a YAML override file specified by
+    the `PLATFORM_START_DATES_CFG_OVERRIDE_FILE` envvar.
+    """
+
+    if override_file := os.environ.get("PLATFORM_START_DATES_CFG_OVERRIDE_FILE"):
+        _platform_start_dates = read_platform_start_dates_cfg_override(override_file)
+        logger.info(f"Read platform start dates from {override_file}")
+
+    else:
+        _platform_start_dates = OrderedDict(
+            {
+                dt.date(1978, 10, 25): "n07",
+                dt.date(1987, 7, 10): "F08",
+                dt.date(1991, 12, 3): "F11",
+                dt.date(1995, 10, 1): "F13",
+                dt.date(2008, 1, 1): "F17",
+                # dt.date(2002, 6, 1): 'ame',   # AMSR-E...
+                # dt.date(2011, 10, 4): 'F17',  # followed by f17 (again)
+                dt.date(2012, 7, 3): "am2",
+            }
+        )
+
+    _platform_start_dates = cast(
+        OrderedDict[dt.date, SUPPORTED_SAT], _platform_start_dates
     )
 
     assert _platform_start_dates_are_consistent(
@@ -202,23 +251,3 @@ def get_platform_by_date(
                 break
 
     return str(return_platform)
-
-
-def read_platform_start_dates_cfg(start_dates_cfg_filename):
-    """The "platform_start_dates" dictionary is an OrderedDict
-    of keys (dates) with corresponding platforms/sats (values)
-
-    Note: It seems like yaml can't safe_load() an OrderedDict.
-    """
-
-    try:
-        with open(start_dates_cfg_filename, "r") as config_file:
-            file_dict = yaml.safe_load(config_file)
-    except FileNotFoundError:
-        raise RuntimeError(
-            f"Could not find specified start_dates config file: {start_dates_cfg_filename}"
-        )
-
-    platform_start_dates = OrderedDict(file_dict)
-
-    return platform_start_dates
