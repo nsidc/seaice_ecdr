@@ -716,19 +716,6 @@ def make_monthly_nc(
     required=True,
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
-@click.option(
-    "--start-dates-cfg",
-    required=False,
-    type=click.Path(
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        resolve_path=True,
-        path_type=Path,
-    ),
-    default=None,
-    help="If given, this is the name of a yaml file with platform_start_dates dict",
-)
 def cli(
     *,
     year: int,
