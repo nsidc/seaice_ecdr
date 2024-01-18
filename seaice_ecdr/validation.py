@@ -30,7 +30,9 @@ There are two output files each time this program is run:
       bad: pixels that have an error (invalid sea ice value), should always be 0
       melt: pixels that have ice and are melting (north only, 1 March - 1 September only)
 """
+import csv
 import datetime as dt
+from collections import defaultdict
 from pathlib import Path
 from typing import Final, Literal, cast, get_args
 
@@ -66,6 +68,45 @@ def get_validation_dir(*, ecdr_data_dir: Path) -> Path:
     return validation_dir
 
 
+DAILY_LOG_FIELDS = [
+    "year",
+    "month",
+    "day",
+    "total",
+    "ice",
+    "land",
+    "coast",
+    "lake",
+    "pole",
+    "oceanmask",
+    "ice-free",
+    "missing",
+    "bad",
+    "melt",
+]
+DAILY_ERROR_FIELDS = ["year", "month", "day", "error_code"]
+
+
+def daily_log_entry(**kwargs) -> dict:
+    log_entry: dict = defaultdict(None)
+    for k, v in kwargs.items():
+        if k not in DAILY_LOG_FIELDS:
+            raise RuntimeError(f"Unexpected log field {k}")
+        log_entry[k] = v
+
+    return log_entry
+
+
+def daily_error_entry(**kwargs) -> dict:
+    error_entry: dict = defaultdict(None)
+    for k, v in kwargs.items():
+        if k not in DAILY_ERROR_FIELDS:
+            raise RuntimeError(f"Unexpected error field {k}")
+        error_entry[k] = v
+
+    return error_entry
+
+
 def validate_daily_outputs(
     *,
     hemisphere: Hemisphere,
@@ -87,18 +128,22 @@ def validate_daily_outputs(
     validation_dir = get_validation_dir(ecdr_data_dir=ecdr_data_dir)
     log_filepath = (
         validation_dir
-        / f"log_seaice_{hemisphere[0]}_daily_{start_date.year}_{end_date.year}.txt"
+        / f"log_seaice_{hemisphere[0]}_daily_{start_date.year}_{end_date.year}.csv"
     )
     error_filepath = (
         validation_dir
-        / f"error_seaice_{hemisphere[0]}_daily_{start_date.year}_{end_date.year}.txt"
+        / f"error_seaice_{hemisphere[0]}_daily_{start_date.year}_{end_date.year}.csv"
     )
     with open(log_filepath, "w") as log_file, open(error_filepath, "w") as error_file:
         # Write headers
-        log_file.write(
-            "year month day total ice land coast lake pole oceanmask ice-free missing bad melt\n"
+        log_writer = csv.DictWriter(
+            log_file, fieldnames=DAILY_LOG_FIELDS, delimiter=","
         )
-        error_file.write("year month day error_code\n")
+        log_writer.writeheader()
+        error_writer = csv.DictWriter(
+            error_file, fieldnames=DAILY_ERROR_FIELDS, delimiter=","
+        )
+        error_writer.writeheader()
         for date in date_range(start_date=start_date, end_date=end_date):
             data_fp = get_ecdr_filepath(
                 date=date,
@@ -108,13 +153,21 @@ def validate_daily_outputs(
             )
 
             # Missing data file.
-            # "no file exists" is set as the value in the
-            # log file, after "year, month, day".
-            # Error file is the same except it gives the error code.
             if not data_fp.is_file():
-                log_file.write(f"{date.year} {date.month} {date.day} no file exists\n")
+                logger.warning(f"Expected file is missing: {data_fp}")
+                log_dict = daily_log_entry(
+                    year=date.year, month=date.month, day=date.day
+                )
+                log_writer.writerow(log_dict)
                 error_value = ERROR_FILE_CODES["missing_file"]
-                error_file.write(f"{date.year} {date.month} {date.day} {error_value}\n")
+                error_dict = daily_error_entry(
+                    year=date.year,
+                    month=date.month,
+                    day=date.day,
+                    error_code=error_value,
+                )
+                error_writer.writerow(error_dict)
+                continue
 
             # A file exists on disk. Read it.
             ds = xr.open_dataset(data_fp)
@@ -176,13 +229,25 @@ def validate_daily_outputs(
             ) > 0
             num_melt_pixels = int(melt_start_detected_mask.sum())
 
-            log_file.write(
-                f"{date.year} {date.month} {date.day}"
-                f" {total_num_pixels} {num_ice_pixels} {surf_value_counts['land']}"
-                f" {surf_value_counts['coast']} {surf_value_counts['lake']} {surf_value_counts['polehole_mask']}"
-                f" {num_oceanmask_pixels} {num_ice_free_pixels} {num_missing_pixels}"
-                f" {num_bad_pixels} {num_melt_pixels}\n"
+            log_entry = daily_log_entry(
+                **{
+                    "year": date.year,
+                    "month": date.month,
+                    "day": date.day,
+                    "total": total_num_pixels,
+                    "ice": num_ice_pixels,
+                    "land": surf_value_counts["land"],
+                    "coast": surf_value_counts["coast"],
+                    "lake": surf_value_counts["lake"],
+                    "pole": surf_value_counts["polehole_mask"],
+                    "oceanmask": num_oceanmask_pixels,
+                    "ice-free": num_ice_free_pixels,
+                    "missing": num_missing_pixels,
+                    "bad": num_bad_pixels,
+                    "melt": num_melt_pixels,
+                }
             )
+            log_writer.writerow(log_entry)
 
             error_code = ERROR_FILE_CODES["no_problems"]
             # This should never happen.
@@ -208,7 +273,13 @@ def validate_daily_outputs(
             if (num_missing_pixels > 100) and (num_missing_pixels < 1000):
                 error_code += ERROR_FILE_CODES["between_100_and_1000_missing_values"]
 
-            error_file.write(f"{date.year} {date.month} {date.day} {error_code}\n")
+            error_entry = daily_error_entry(
+                year=date.year,
+                month=date.month,
+                day=date.day,
+                error_code=error_code,
+            )
+            error_writer.writerow(error_entry)
 
         logger.info(f"Wrote {log_filepath}")
         logger.info(f"Wrote {error_filepath}")
