@@ -157,9 +157,11 @@ def validate_daily_outputs(
             num_missing_pixels = 0
 
             # Per CDR v4, "bad" ice pixels are outside the expected range.
-            # TODO: do we cutoff conc < 10%?
+            # Note: we use 0.0999 instead of 0.1 because SIC values of 10% are
+            # decoded from the integer value of 10 to 0.1, which is represented
+            # as 0.099999 as a floating point data.
             less_than_10_sic = int(
-                ((ds.cdr_seaice_conc > 0) & (ds.cdr_seaice_conc < 0.1)).sum()
+                ((ds.cdr_seaice_conc > 0) & (ds.cdr_seaice_conc <= 0.0999)).sum()
             )
             gt_100_sic = int((ds.cdr_seaice_conc > 1).sum())
             num_bad_pixels = less_than_10_sic | gt_100_sic
@@ -188,7 +190,7 @@ def validate_daily_outputs(
                 error_code += ERROR_FILE_CODES["file_exists_but_is_empty"]
 
             if num_bad_pixels > 0:
-                breakpoint()
+                logger.warning(f"Found {num_bad_pixels} bad pixels for {data_fp}")
                 error_code += ERROR_FILE_CODES["file_exists_but_conc_values_are_bad"]
 
             # melt flag on the wrong day
