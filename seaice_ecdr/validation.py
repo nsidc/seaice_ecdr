@@ -15,33 +15,46 @@ There are two output files each time this program is run:
       error = 0     --> no significant problems in CDR fields
 
    non-varying log file parameters:
-              north    south
-      total: 136192   104912  --> total number pixels in the grid
-      land:   63212    21273  --> number of land pixels
-      coast:   5052      907  --> number of coast pixels
-      lake:     665        0  --> number of lake pixels
-      pole:     468        0  --> number of pixels in pole hole
-   ***these values should not vary for any day or month***
+      total: total number pixels in the grid
+      land: number of land pixels
+      coast: number of coast pixels
+      lake: number of lake pixels
 
    varying log file parameters:
-      ice       --> number pixels with non-zero sea ice concentrations
-      oceanmask --> number of pixels with no ice that are masked by ocean mask
+      pole: number of pixels in pole hole
+      ice: number pixels with non-zero sea ice concentrations
+      oceanmask: number of pixels with no ice that are masked by ocean mask
                     this number will vary by month but should be the same for a given month
-      ice-free  --> pixels that aren't masked but have a value of 0
-      missing   --> pixels that are missing (no brightness temperatures)
-      bad       --> pixels that have an error (invalid sea ice value), should always be 0
-      melt      --> pixels that have ice and are melting (north only, 1 March - 1 September only)
+      ice-free: pixels that aren't masked but have a value of 0
+      missing: pixels that are missing (no brightness temperatures)
+      bad: pixels that have an error (invalid sea ice value), should always be 0
+      melt: pixels that have ice and are melting (north only, 1 March - 1 September only)
 """
 import datetime as dt
 from pathlib import Path
-from typing import Literal, cast, get_args
+from typing import Final, Literal, cast, get_args
 
 import click
+import xarray as xr
 from pm_tb_data._types import Hemisphere
 
+from seaice_ecdr.ancillary import bitmask_value_for_meaning, flag_value_for_meaning
 from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.util import date_range
+
+VALIDATION_RESOLUTION: Final = "12.5"
+
+ERROR_FILE_CODES = dict(
+    missing_file=-9999,
+    file_exists_but_is_empty=-999,
+    file_exists_but_conc_values_are_bad=-99,
+    melt_flagged_on_wrong_day=-9,
+    more_than_1000_missing_values=-2,
+    between_100_and_1000_missing_values=-1,
+    no_problems=0,
+)
 
 
 def get_validation_dir(*, ecdr_data_dir: Path) -> Path:
@@ -69,9 +82,103 @@ def validate_daily_outputs(
       following fields: [year, month, day, error_code]
 
     """
-    for date in date_range(start_date=start_date, end_date=end_date):
-        # TODO
-        ...
+    validation_dir = get_validation_dir(ecdr_data_dir=ecdr_data_dir)
+    log_filepath = (
+        validation_dir
+        / f"log_seaice_{hemisphere[0]}_daily_{start_date.year}_{end_date.year}.txt"
+    )
+    error_filepath = (
+        validation_dir
+        / f"error_seaice_{hemisphere[0]}_daily_{start_date.year}_{end_date.year}.txt"
+    )
+    with open(log_filepath, "w") as log_file, open(error_filepath, "w") as error_file:
+        # Write headers
+        log_file.write(
+            "year month day total ice land coast lake pole oceanmask ice-free missing bad melt"
+        )
+        error_file.write("year month day error_code")
+        for date in date_range(start_date=start_date, end_date=end_date):
+            data_fp = get_ecdr_filepath(
+                date=date,
+                hemisphere=hemisphere,
+                resolution=VALIDATION_RESOLUTION,
+                ecdr_data_dir=ecdr_data_dir,
+            )
+
+            # Missing data file.
+            # "no file exists" is set as the value in the
+            # log file, after "year, month, day".
+            # Error file is the same except it gives the error code.
+            if not data_fp.is_file():
+                log_file.write(f"{date.year} {date.month} {date.day} no file exists")
+                error_value = ERROR_FILE_CODES["missing_file"]
+                error_file.write(f"{date.year} {date.month} {date.day} {error_value}")
+
+            # A file exists on disk. Read it.
+            ds = xr.open_dataset(data_fp)
+
+            # Handle the log file first. It contains information on the # of
+            # pixels of each type in the surface_type_mask and the ocean mask
+            # (via qa_of_cdr_seaice_conc)
+            # total ice land coast lake pole oceanmask ice-free missing bad melt
+            total_num_pixels = len(ds.x) * len(ds.y)
+            # Areas where there is a concentration detected.
+            num_ice_pixels = int(
+                ((ds.cdr_seaice_conc > 0) & (ds.cdr_seaice_conc <= 1)).sum()
+            )
+
+            # Surface value counts. These should be the same for every day.
+            surf_value_counts = {}
+            for flag in ("land", "coast", "lake", "polehole_mask"):
+                flag_value = flag_value_for_meaning(
+                    var=ds.surface_type_mask,
+                    meaning=flag,
+                )
+                num_flag_pixels = int((ds.surface_type_mask == flag_value).sum())
+                surf_value_counts[flag] = num_flag_pixels
+
+            # Number of oceanmask (invalid ice mask) pixels
+            invalid_ice_bitmask_value = bitmask_value_for_meaning(
+                var=ds.qa_of_cdr_seaice_conc,
+                meaning="valid_ice_mask_applied",
+            )
+            invalid_ice_mask = (
+                ds.qa_of_cdr_seaice_conc & invalid_ice_bitmask_value
+            ) > 0
+            num_oceanmask_pixels = int(invalid_ice_mask.sum())
+
+            # Ice-free pixels (conc == 0)
+            num_ice_free_pixels = int((ds.cdr_seaice_conc == 0).sum())
+
+            # TODO: we don't have missing pixels. Remove? Some other measure?
+            # Leave hard-codded to 0?
+            num_missing_pixels = 0
+
+            # Per CDR v4, "bad" ice pixels are outside the expected range.
+            # TODO: do we cutoff conc < 10%?
+            less_than_10_sic = int(
+                ((ds.cdr_seaice_conc > 0) & (ds.cdr_seaice_conc < 0.1)).sum()
+            )
+            gt_100_sic = int((ds.cdr_seaice_conc > 1).sum())
+            num_bad_pixels = less_than_10_sic | gt_100_sic
+
+            # Number of melt pixels
+            melt_start_detected_bitmask_value = bitmask_value_for_meaning(
+                var=ds.qa_of_cdr_seaice_conc,
+                meaning="melt_start_detected",
+            )
+            melt_start_detected_mask = (
+                ds.qa_of_cdr_seaice_conc & melt_start_detected_bitmask_value
+            ) > 0
+            num_melt_pixels = int(melt_start_detected_mask.sum())
+
+            log_file.write(
+                f"{date.year} {date.month} {date.day}"
+                f" {total_num_pixels} {num_ice_pixels} {surf_value_counts['land']}"
+                f" {surf_value_counts['coast']} {surf_value_counts['lake']} {surf_value_counts['polehole_mask']}"
+                f" {num_oceanmask_pixels} {num_ice_free_pixels} {num_missing_pixels}"
+                f" {num_bad_pixels} {num_melt_pixels}"
+            )
 
 
 def validate_monthly_outputs(
@@ -148,7 +255,7 @@ def validate_monthly_outputs(
 )
 def cli(
     ecdr_data_dir: Path,
-    hemisphere_str: Hemisphere | Literal["both"],
+    hemisphere: Hemisphere | Literal["both"],
     product_type: Literal["daily", "monthly", "both"],
     start_date: dt.date,
     end_date: dt.date,
@@ -161,7 +268,7 @@ def cli(
     if product_type == "monthly" or product_type == "both":
         monthly = True
 
-    hemispheres = get_args(Hemisphere) if hemisphere_str == "both" else [hemisphere_str]
+    hemispheres = get_args(Hemisphere) if hemisphere == "both" else [hemisphere]
     hemispheres = cast(list[Hemisphere], hemispheres)
     for hemisphere in hemispheres:
         # daily & monthly, NH and SH.
