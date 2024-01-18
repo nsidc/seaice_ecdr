@@ -47,6 +47,7 @@ from seaice_ecdr.util import date_range
 
 VALIDATION_RESOLUTION: Final = "12.5"
 
+# This is a bitmask. TODO: make it more clear!
 ERROR_FILE_CODES = dict(
     missing_file=-9999,
     file_exists_but_is_empty=-999,
@@ -180,6 +181,32 @@ def validate_daily_outputs(
                 f" {num_oceanmask_pixels} {num_ice_free_pixels} {num_missing_pixels}"
                 f" {num_bad_pixels} {num_melt_pixels}\n"
             )
+
+            error_code = ERROR_FILE_CODES["no_problems"]
+            # This should never happen.
+            if ds.cdr_seaice_conc.isnull().all():
+                error_code += ERROR_FILE_CODES["file_exists_but_is_empty"]
+
+            if num_bad_pixels > 0:
+                breakpoint()
+                error_code += ERROR_FILE_CODES["file_exists_but_conc_values_are_bad"]
+
+            # melt flag on the wrong day
+            melt_season_start_for_year = dt.date(date.year, 3, 1)
+            melt_season_end_for_year = dt.date(date.year, 9, 1)
+            date_in_melt_season = (
+                melt_season_start_for_year <= date <= melt_season_end_for_year
+            )
+            if (num_melt_pixels > 0) and not date_in_melt_season:
+                error_code += ERROR_FILE_CODES["melt_flagged_on_wrong_day"]
+
+            if num_missing_pixels >= 1000:
+                error_code += ERROR_FILE_CODES["more_than_1000_missing_values"]
+
+            if (num_missing_pixels > 100) and (num_missing_pixels < 1000):
+                error_code += ERROR_FILE_CODES["between_100_and_1000_missing_values"]
+
+            error_file.write(f"{date.year} {date.month} {date.day} {error_code}\n")
 
         logger.info(f"Wrote {log_filepath}")
         logger.info(f"Wrote {error_filepath}")
