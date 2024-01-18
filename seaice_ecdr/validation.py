@@ -36,6 +36,7 @@ from typing import Final, Literal, cast, get_args
 
 import click
 import xarray as xr
+from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.ancillary import bitmask_value_for_meaning, flag_value_for_meaning
@@ -94,9 +95,9 @@ def validate_daily_outputs(
     with open(log_filepath, "w") as log_file, open(error_filepath, "w") as error_file:
         # Write headers
         log_file.write(
-            "year month day total ice land coast lake pole oceanmask ice-free missing bad melt"
+            "year month day total ice land coast lake pole oceanmask ice-free missing bad melt\n"
         )
-        error_file.write("year month day error_code")
+        error_file.write("year month day error_code\n")
         for date in date_range(start_date=start_date, end_date=end_date):
             data_fp = get_ecdr_filepath(
                 date=date,
@@ -110,9 +111,9 @@ def validate_daily_outputs(
             # log file, after "year, month, day".
             # Error file is the same except it gives the error code.
             if not data_fp.is_file():
-                log_file.write(f"{date.year} {date.month} {date.day} no file exists")
+                log_file.write(f"{date.year} {date.month} {date.day} no file exists\n")
                 error_value = ERROR_FILE_CODES["missing_file"]
-                error_file.write(f"{date.year} {date.month} {date.day} {error_value}")
+                error_file.write(f"{date.year} {date.month} {date.day} {error_value}\n")
 
             # A file exists on disk. Read it.
             ds = xr.open_dataset(data_fp)
@@ -177,8 +178,11 @@ def validate_daily_outputs(
                 f" {total_num_pixels} {num_ice_pixels} {surf_value_counts['land']}"
                 f" {surf_value_counts['coast']} {surf_value_counts['lake']} {surf_value_counts['polehole_mask']}"
                 f" {num_oceanmask_pixels} {num_ice_free_pixels} {num_missing_pixels}"
-                f" {num_bad_pixels} {num_melt_pixels}"
+                f" {num_bad_pixels} {num_melt_pixels}\n"
             )
+
+        logger.info(f"Wrote {log_filepath}")
+        logger.info(f"Wrote {error_filepath}")
 
 
 def validate_monthly_outputs(
