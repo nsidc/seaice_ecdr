@@ -26,12 +26,13 @@ There are two output files each time this program is run:
       oceanmask: number of pixels with no ice that are masked by ocean mask
                     this number will vary by month but should be the same for a given month
       ice-free: pixels that aren't masked but have a value of 0
-      missing: pixels that are missing (no brightness temperatures)
+      missing: pixels that are missing (no SIC). Should always be 0.
       bad: pixels that have an error (invalid sea ice value), should always be 0
       melt: pixels that have ice and are melting (north only, 1 March - 1 September only)
 """
 import csv
 import datetime as dt
+import itertools
 from collections import defaultdict
 from pathlib import Path
 from typing import Final, Literal, cast, get_args
@@ -44,7 +45,8 @@ from pm_tb_data._types import Hemisphere
 from seaice_ecdr.ancillary import bitmask_value_for_meaning, flag_value_for_meaning
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
-from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import ECDR_PRODUCT_VERSION, STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.util import date_range
 
 VALIDATION_RESOLUTION: Final = "12.5"
@@ -68,10 +70,17 @@ def get_validation_dir(*, ecdr_data_dir: Path) -> Path:
     return validation_dir
 
 
-DAILY_LOG_FIELDS = [
+MONTHLY_TEMPORAL_FIELDS = [
     "year",
     "month",
+]
+
+DAILY_TEMPORAL_FIELDS = [
+    *MONTHLY_TEMPORAL_FIELDS,
     "day",
+]
+
+SHARED_LOG_FIELDS = [
     "total",
     "ice",
     "land",
@@ -84,35 +93,196 @@ DAILY_LOG_FIELDS = [
     "bad",
     "melt",
 ]
-DAILY_ERROR_FIELDS = ["year", "month", "day", "error_code"]
+
+SHARED_ERROR_FIELDS = ["error_code"]
+
+Product = Literal["daily", "monthly"]
 
 
-def daily_log_entry(**kwargs) -> dict:
+def get_log_fields(*, product: Product) -> list[str]:
+    if product == "daily":
+        log_fields = [*DAILY_TEMPORAL_FIELDS, *SHARED_LOG_FIELDS]
+    else:
+        log_fields = [*MONTHLY_TEMPORAL_FIELDS, *SHARED_LOG_FIELDS]
+
+    return log_fields
+
+
+def write_log_entry(*, product: Product, csv_writer: csv.DictWriter, entry: dict):
+    log_fields = get_log_fields(product=product)
+
     log_entry: dict = defaultdict(None)
-    for k, v in kwargs.items():
-        if k not in DAILY_LOG_FIELDS:
-            raise RuntimeError(f"Unexpected log field {k}")
+
+    for k, v in entry.items():
+        if k not in log_fields:
+            raise RuntimeError(f"Unexpected log field {k} for {product=}")
         log_entry[k] = v
 
-    return log_entry
+    csv_writer.writerow(log_entry)
 
 
-def daily_error_entry(**kwargs) -> dict:
+def get_error_fields(*, product: Product) -> list[str]:
+    if product == "daily":
+        error_fields = [*DAILY_TEMPORAL_FIELDS, *SHARED_ERROR_FIELDS]
+    else:
+        error_fields = [*MONTHLY_TEMPORAL_FIELDS, *SHARED_ERROR_FIELDS]
+
+    return error_fields
+
+
+def write_error_entry(*, product: Product, csv_writer: csv.DictWriter, entry: dict):
+    error_fields = get_error_fields(product=product)
+
     error_entry: dict = defaultdict(None)
-    for k, v in kwargs.items():
-        if k not in DAILY_ERROR_FIELDS:
+    for k, v in entry.items():
+        if k not in error_fields:
             raise RuntimeError(f"Unexpected error field {k}")
         error_entry[k] = v
 
-    return error_entry
+    csv_writer.writerow(error_entry)
 
 
-def validate_daily_outputs(
+def make_validation_dict_for_missing_file() -> dict:
+    log_dict = {}
+    error_value = ERROR_FILE_CODES["missing_file"]
+    error_dict = dict(
+        error_code=error_value,
+    )
+    validation_dict = dict(
+        error=error_dict,
+        log=log_dict,
+    )
+    return validation_dict
+
+
+def make_validation_dict(
+    *, data_fp: Path, product: Product, date: dt.date, hemisphere: Hemisphere
+) -> dict:
+    ds = xr.open_dataset(data_fp)
+    conc_var_name = "cdr_seaice_conc"
+    if product == "monthly":
+        conc_var_name = conc_var_name + "_monthly"
+    seaice_conc_var = ds[conc_var_name]
+
+    qa_var_name = "qa_of_" + conc_var_name
+    qa_var = ds[qa_var_name]
+
+    # Handle the log file first. It contains information on the # of
+    # pixels of each type in the surface_type_mask and the ocean mask
+    # (via qa_of_cdr_seaice_conc)
+    # total ice land coast lake pole oceanmask ice-free missing bad melt
+    total_num_pixels = len(ds.x) * len(ds.y)
+    # Areas where there is a concentration detected.
+    num_ice_pixels = int(((seaice_conc_var > 0) & (seaice_conc_var <= 1)).sum())
+
+    # Surface value counts. These should be the same for every day.
+    surf_value_counts = {}
+    for flag in ("land", "coast", "lake", "polehole_mask"):
+        flag_value = flag_value_for_meaning(
+            var=ds.surface_type_mask,
+            meaning=flag,
+        )
+        num_flag_pixels = int((ds.surface_type_mask == flag_value).sum())
+        surf_value_counts[flag] = num_flag_pixels
+
+    # Number of oceanmask (invalid ice mask) pixels
+    # TODO: inconsistency in bitmask meaning between daily & monthly.
+    _bitmask_meaning = (
+        "valid_ice_mask_applied"
+        if product == "daily"
+        else "region_masked_by_ocean_climatology"
+    )
+    invalid_ice_bitmask_value = bitmask_value_for_meaning(
+        var=qa_var,
+        meaning=_bitmask_meaning,
+    )
+    invalid_ice_mask = (qa_var & invalid_ice_bitmask_value) > 0
+    num_oceanmask_pixels = int(invalid_ice_mask.sum())
+
+    # Ice-free pixels (conc == 0)
+    num_ice_free_pixels = int((seaice_conc_var == 0).sum())
+
+    # TODO: we don't have missing pixels. Remove? Some other measure?
+    # Leave hard-codded to 0?
+    num_missing_pixels = 0
+
+    # Per CDR v4, "bad" ice pixels are outside the expected range.
+    # Note: we use 0.0999 instead of 0.1 because SIC values of 10% are
+    # decoded from the integer value of 10 to 0.1, which is represented
+    # as 0.099999 as a floating point data.
+    less_than_10_sic = int(((seaice_conc_var > 0) & (seaice_conc_var <= 0.0999)).sum())
+    gt_100_sic = int((seaice_conc_var > 1).sum())
+    num_bad_pixels = less_than_10_sic | gt_100_sic
+
+    # Number of melt pixels
+    if hemisphere == "north":
+        _melt_start_meaning = "melt_start_detected"
+        if product == "monthly":
+            _melt_start_meaning = "at_least_one_day_during_month_has_melt_detected"
+        melt_start_detected_bitmask_value = bitmask_value_for_meaning(
+            var=qa_var,
+            meaning=_melt_start_meaning,
+        )
+        melt_start_detected_mask = (qa_var & melt_start_detected_bitmask_value) > 0
+        num_melt_pixels = int(melt_start_detected_mask.sum())
+    else:
+        num_melt_pixels = 0
+
+    log_dict = {
+        "total": total_num_pixels,
+        "ice": num_ice_pixels,
+        "land": surf_value_counts["land"],
+        "coast": surf_value_counts["coast"],
+        "lake": surf_value_counts["lake"],
+        "pole": surf_value_counts["polehole_mask"],
+        "oceanmask": num_oceanmask_pixels,
+        "ice-free": num_ice_free_pixels,
+        "missing": num_missing_pixels,
+        "bad": num_bad_pixels,
+        "melt": num_melt_pixels,
+    }
+
+    error_code = ERROR_FILE_CODES["no_problems"]
+    # This should never happen.
+    if seaice_conc_var.isnull().all():
+        error_code += ERROR_FILE_CODES["file_exists_but_is_empty"]
+
+    if num_bad_pixels > 0:
+        logger.warning(f"Found {num_bad_pixels} bad pixels for {data_fp}")
+        error_code += ERROR_FILE_CODES["file_exists_but_conc_values_are_bad"]
+
+    # melt flag on the wrong day
+    melt_season_start_for_year = dt.date(date.year, 3, 1)
+    melt_season_end_for_year = dt.date(date.year, 9, 1)
+    date_in_melt_season = melt_season_start_for_year <= date <= melt_season_end_for_year
+    if (num_melt_pixels > 0) and not date_in_melt_season:
+        error_code += ERROR_FILE_CODES["melt_flagged_on_wrong_day"]
+
+    if num_missing_pixels >= 1000:
+        error_code += ERROR_FILE_CODES["more_than_1000_missing_values"]
+
+    if (num_missing_pixels > 100) and (num_missing_pixels < 1000):
+        error_code += ERROR_FILE_CODES["between_100_and_1000_missing_values"]
+
+    error_dict = dict(
+        error_code=error_code,
+    )
+
+    validation_dict = dict(
+        error=error_dict,
+        log=log_dict,
+    )
+
+    return validation_dict
+
+
+def validate_outputs(
     *,
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
     start_date: dt.date,
     end_date: dt.date,
+    product: Product,
 ) -> None:
     """Create validation logs for daily outputs.
 
@@ -128,174 +298,102 @@ def validate_daily_outputs(
     validation_dir = get_validation_dir(ecdr_data_dir=ecdr_data_dir)
     log_filepath = (
         validation_dir
-        / f"log_seaice_{hemisphere[0]}_daily_{start_date.year}_{end_date.year}.csv"
+        / f"log_seaice_{hemisphere[0]}_{product}_{start_date.year}_{end_date.year}.csv"
     )
     error_filepath = (
         validation_dir
-        / f"error_seaice_{hemisphere[0]}_daily_{start_date.year}_{end_date.year}.csv"
+        / f"error_seaice_{hemisphere[0]}_{product}_{start_date.year}_{end_date.year}.csv"
     )
+    log_fields = get_log_fields(product=product)
+    error_fields = get_error_fields(product=product)
     with open(log_filepath, "w") as log_file, open(error_filepath, "w") as error_file:
         # Write headers
-        log_writer = csv.DictWriter(
-            log_file, fieldnames=DAILY_LOG_FIELDS, delimiter=","
-        )
+        log_writer = csv.DictWriter(log_file, fieldnames=log_fields, delimiter=",")
         log_writer.writeheader()
         error_writer = csv.DictWriter(
-            error_file, fieldnames=DAILY_ERROR_FIELDS, delimiter=","
+            error_file, fieldnames=error_fields, delimiter=","
         )
         error_writer.writeheader()
-        for date in date_range(start_date=start_date, end_date=end_date):
-            data_fp = get_ecdr_filepath(
-                date=date,
-                hemisphere=hemisphere,
-                resolution=VALIDATION_RESOLUTION,
-                ecdr_data_dir=ecdr_data_dir,
-            )
-
-            # Missing data file.
-            if not data_fp.is_file():
-                logger.warning(f"Expected file is missing: {data_fp}")
-                log_dict = daily_log_entry(
-                    year=date.year, month=date.month, day=date.day
+        if product == "daily":
+            for date in date_range(start_date=start_date, end_date=end_date):
+                data_fp = get_ecdr_filepath(
+                    date=date,
+                    hemisphere=hemisphere,
+                    resolution=VALIDATION_RESOLUTION,
+                    ecdr_data_dir=ecdr_data_dir,
                 )
-                log_writer.writerow(log_dict)
-                error_value = ERROR_FILE_CODES["missing_file"]
-                error_dict = daily_error_entry(
-                    year=date.year,
-                    month=date.month,
-                    day=date.day,
-                    error_code=error_value,
+
+                if not data_fp.is_file():
+                    logger.warning(f"Expected daily file is missing: {data_fp}")
+                    validation_dict = make_validation_dict_for_missing_file()
+                else:
+                    validation_dict = make_validation_dict(
+                        data_fp=data_fp,
+                        product=product,
+                        date=date,
+                        hemisphere=hemisphere,
+                    )
+
+                write_error_entry(
+                    product=product,
+                    csv_writer=error_writer,
+                    entry=dict(
+                        year=date.year,
+                        month=date.month,
+                        day=date.day,
+                        **validation_dict["error"],
+                    ),
                 )
-                error_writer.writerow(error_dict)
-                continue
-
-            # A file exists on disk. Read it.
-            ds = xr.open_dataset(data_fp)
-
-            # Handle the log file first. It contains information on the # of
-            # pixels of each type in the surface_type_mask and the ocean mask
-            # (via qa_of_cdr_seaice_conc)
-            # total ice land coast lake pole oceanmask ice-free missing bad melt
-            total_num_pixels = len(ds.x) * len(ds.y)
-            # Areas where there is a concentration detected.
-            num_ice_pixels = int(
-                ((ds.cdr_seaice_conc > 0) & (ds.cdr_seaice_conc <= 1)).sum()
-            )
-
-            # Surface value counts. These should be the same for every day.
-            surf_value_counts = {}
-            for flag in ("land", "coast", "lake", "polehole_mask"):
-                flag_value = flag_value_for_meaning(
-                    var=ds.surface_type_mask,
-                    meaning=flag,
+                write_log_entry(
+                    product=product,
+                    csv_writer=log_writer,
+                    entry=dict(
+                        year=date.year,
+                        month=date.month,
+                        day=date.day,
+                        **validation_dict["log"],
+                    ),
                 )
-                num_flag_pixels = int((ds.surface_type_mask == flag_value).sum())
-                surf_value_counts[flag] = num_flag_pixels
+        else:
+            years = range(start_date.year, end_date.year + 1)
+            months = range(start_date.month, end_date.month + 1)
+            for year, month in itertools.product(years, months):
+                monthly_dir = get_monthly_dir(ecdr_data_dir=ecdr_data_dir)
 
-            # Number of oceanmask (invalid ice mask) pixels
-            invalid_ice_bitmask_value = bitmask_value_for_meaning(
-                var=ds.qa_of_cdr_seaice_conc,
-                meaning="valid_ice_mask_applied",
-            )
-            invalid_ice_mask = (
-                ds.qa_of_cdr_seaice_conc & invalid_ice_bitmask_value
-            ) > 0
-            num_oceanmask_pixels = int(invalid_ice_mask.sum())
+                # monthly filepaths should have the form
+                # "sic_ps{n|s}12.5_{YYYYMM}_{sat}_v05r00.nc"
+                expected_fn_glob = f"sic_ps{hemisphere[0]}12.5_{year}{month:02}_*_{ECDR_PRODUCT_VERSION}.nc"
+                results = list(monthly_dir.glob(expected_fn_glob))
+                if not results:
+                    validation_dict = make_validation_dict_for_missing_file()
+                else:
+                    validation_dict = make_validation_dict(
+                        data_fp=results[0],
+                        product=product,
+                        date=dt.date(year, month, 1),
+                        hemisphere=hemisphere,
+                    )
+                write_error_entry(
+                    product=product,
+                    csv_writer=error_writer,
+                    entry=dict(
+                        year=year,
+                        month=month,
+                        **validation_dict["error"],
+                    ),
+                )
+                write_log_entry(
+                    product=product,
+                    csv_writer=log_writer,
+                    entry=dict(
+                        year=year,
+                        month=month,
+                        **validation_dict["log"],
+                    ),
+                )
 
-            # Ice-free pixels (conc == 0)
-            num_ice_free_pixels = int((ds.cdr_seaice_conc == 0).sum())
-
-            # TODO: we don't have missing pixels. Remove? Some other measure?
-            # Leave hard-codded to 0?
-            num_missing_pixels = 0
-
-            # Per CDR v4, "bad" ice pixels are outside the expected range.
-            # Note: we use 0.0999 instead of 0.1 because SIC values of 10% are
-            # decoded from the integer value of 10 to 0.1, which is represented
-            # as 0.099999 as a floating point data.
-            less_than_10_sic = int(
-                ((ds.cdr_seaice_conc > 0) & (ds.cdr_seaice_conc <= 0.0999)).sum()
-            )
-            gt_100_sic = int((ds.cdr_seaice_conc > 1).sum())
-            num_bad_pixels = less_than_10_sic | gt_100_sic
-
-            # Number of melt pixels
-            melt_start_detected_bitmask_value = bitmask_value_for_meaning(
-                var=ds.qa_of_cdr_seaice_conc,
-                meaning="melt_start_detected",
-            )
-            melt_start_detected_mask = (
-                ds.qa_of_cdr_seaice_conc & melt_start_detected_bitmask_value
-            ) > 0
-            num_melt_pixels = int(melt_start_detected_mask.sum())
-
-            log_entry = daily_log_entry(
-                **{
-                    "year": date.year,
-                    "month": date.month,
-                    "day": date.day,
-                    "total": total_num_pixels,
-                    "ice": num_ice_pixels,
-                    "land": surf_value_counts["land"],
-                    "coast": surf_value_counts["coast"],
-                    "lake": surf_value_counts["lake"],
-                    "pole": surf_value_counts["polehole_mask"],
-                    "oceanmask": num_oceanmask_pixels,
-                    "ice-free": num_ice_free_pixels,
-                    "missing": num_missing_pixels,
-                    "bad": num_bad_pixels,
-                    "melt": num_melt_pixels,
-                }
-            )
-            log_writer.writerow(log_entry)
-
-            error_code = ERROR_FILE_CODES["no_problems"]
-            # This should never happen.
-            if ds.cdr_seaice_conc.isnull().all():
-                error_code += ERROR_FILE_CODES["file_exists_but_is_empty"]
-
-            if num_bad_pixels > 0:
-                logger.warning(f"Found {num_bad_pixels} bad pixels for {data_fp}")
-                error_code += ERROR_FILE_CODES["file_exists_but_conc_values_are_bad"]
-
-            # melt flag on the wrong day
-            melt_season_start_for_year = dt.date(date.year, 3, 1)
-            melt_season_end_for_year = dt.date(date.year, 9, 1)
-            date_in_melt_season = (
-                melt_season_start_for_year <= date <= melt_season_end_for_year
-            )
-            if (num_melt_pixels > 0) and not date_in_melt_season:
-                error_code += ERROR_FILE_CODES["melt_flagged_on_wrong_day"]
-
-            if num_missing_pixels >= 1000:
-                error_code += ERROR_FILE_CODES["more_than_1000_missing_values"]
-
-            if (num_missing_pixels > 100) and (num_missing_pixels < 1000):
-                error_code += ERROR_FILE_CODES["between_100_and_1000_missing_values"]
-
-            error_entry = daily_error_entry(
-                year=date.year,
-                month=date.month,
-                day=date.day,
-                error_code=error_code,
-            )
-            error_writer.writerow(error_entry)
-
-        logger.info(f"Wrote {log_filepath}")
-        logger.info(f"Wrote {error_filepath}")
-
-
-def validate_monthly_outputs(
-    *,
-    hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
-    start_year: int,
-    start_month: int,
-    end_year: int,
-    end_month: int,
-) -> None:
-    # TODO
-    ...
+    logger.info(f"Wrote {log_filepath}")
+    logger.info(f"Wrote {error_filepath}")
 
 
 @click.command(name="validate-outputs")
@@ -377,18 +475,18 @@ def cli(
     for hemisphere in hemispheres:
         # daily & monthly, NH and SH.
         if daily:
-            validate_daily_outputs(
+            validate_outputs(
                 hemisphere=hemisphere,
                 ecdr_data_dir=ecdr_data_dir,
                 start_date=start_date,
                 end_date=end_date,
+                product="daily",
             )
         if monthly:
-            validate_monthly_outputs(
+            validate_outputs(
                 hemisphere=hemisphere,
                 ecdr_data_dir=ecdr_data_dir,
-                start_year=start_date.year,
-                start_month=start_date.month,
-                end_year=end_date.year,
-                end_month=end_date.month,
+                start_date=start_date,
+                end_date=end_date,
+                product="monthly",
             )
