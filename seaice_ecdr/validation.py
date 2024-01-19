@@ -178,6 +178,10 @@ def make_validation_dict(
     # Surface value counts. These should be the same for every day.
     surf_value_counts = {}
     for flag in ("land", "coast", "lake", "polehole_mask"):
+        if flag == "polehole_mask" and hemisphere == "south":
+            surf_value_counts[flag] = 0
+            continue
+
         flag_value = flag_value_for_meaning(
             var=ds.surface_type_mask,
             meaning=flag,
