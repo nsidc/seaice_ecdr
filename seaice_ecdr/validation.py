@@ -1,34 +1,30 @@
 """Validate outputs of the seaice ECDR.
 
-There are two output files each time this program is run:
-   error_seaice_cdr*.txt - error code for each day in date range run
-   log_seaice_cdr*.txt - log of pixel counts for various parameters
+error file values:
+    error = -9999 --> no CDR file on that date
+    error = -999  --> CDR file exists but is empty (no valid concentrations)
+    error = -99   --> CDR file exists and has values but some concentration values are in error
+    error = -9    --> Melt is being flagged on a date that it should not be
+    error = -2    --> More than 1000 missing values, indicates at least one missing swath
+    error = -1    --> 100-1000 missing values, likely indicates at least part of
+                    a missing swath
+    error = 0     --> no significant problems in CDR fields
 
-   error file values:
-      error = -9999 --> no CDR file on that date
-      error = -999  --> CDR file exists but is empty (no valid concentrations)
-      error = -99   --> CDR file exists and has values but some concentration values are in error
-      error = -9    --> Melt is being flagged on a date that it should not be
-      error = -2    --> More than 1000 missing values, indicates at least one missing swath
-      error = -1    --> 100-1000 missing values, likely indicates at least part of
-                        a missing swath
-      error = 0     --> no significant problems in CDR fields
+non-varying log file parameters:
+    total: total number pixels in the grid
+    land: number of land pixels
+    coast: number of coast pixels
+    lake: number of lake pixels
 
-   non-varying log file parameters:
-      total: total number pixels in the grid
-      land: number of land pixels
-      coast: number of coast pixels
-      lake: number of lake pixels
-
-   varying log file parameters:
-      pole: number of pixels in pole hole
-      ice: number pixels with non-zero sea ice concentrations
-      oceanmask: number of pixels with no ice that are masked by ocean mask
-                    this number will vary by month but should be the same for a given month
-      ice-free: pixels that aren't masked but have a value of 0
-      missing: pixels that are missing (no SIC). Should always be 0.
-      bad: pixels that have an error (invalid sea ice value), should always be 0
-      melt: pixels that have ice and are melting (north only, 1 March - 1 September only)
+varying log file parameters:
+    pole: number of pixels in pole hole
+    ice: number pixels with non-zero sea ice concentrations
+    oceanmask: number of pixels with no ice that are masked by ocean mask
+                this number will vary by month but should be the same for a given month
+    ice-free: pixels that aren't masked but have a value of 0
+    missing: pixels that are missing (no SIC). Should always be 0.
+    bad: pixels that have an error (invalid sea ice value), should always be 0
+    melt: pixels that have ice and are melting (north only, 1 March - 1 September only)
 """
 import csv
 import datetime as dt
@@ -51,8 +47,7 @@ from seaice_ecdr.util import date_range
 
 VALIDATION_RESOLUTION: Final = "12.5"
 
-# This is a bitmask. TODO: make it more clear!
-ERROR_FILE_CODES = dict(
+ERROR_FILE_BITMASK = dict(
     missing_file=-9999,
     file_exists_but_is_empty=-999,
     file_exists_but_conc_values_are_bad=-99,
@@ -154,7 +149,7 @@ def write_error_entry(
 
 def make_validation_dict_for_missing_file() -> dict:
     log_dict: dict = {}
-    error_value = ERROR_FILE_CODES["missing_file"]
+    error_value = ERROR_FILE_BITMASK["missing_file"]
     error_dict = dict(
         error_code=error_value,
     )
@@ -260,27 +255,27 @@ def make_validation_dict(
         "melt": num_melt_pixels,
     }
 
-    error_code = ERROR_FILE_CODES["no_problems"]
+    error_code = ERROR_FILE_BITMASK["no_problems"]
     # This should never happen.
     if seaice_conc_var.isnull().all():
-        error_code += ERROR_FILE_CODES["file_exists_but_is_empty"]
+        error_code += ERROR_FILE_BITMASK["file_exists_but_is_empty"]
 
     if num_bad_pixels > 0:
         logger.warning(f"Found {num_bad_pixels} bad pixels for {data_fp}")
-        error_code += ERROR_FILE_CODES["file_exists_but_conc_values_are_bad"]
+        error_code += ERROR_FILE_BITMASK["file_exists_but_conc_values_are_bad"]
 
     # melt flag on the wrong day
     melt_season_start_for_year = dt.date(date.year, 3, 1)
     melt_season_end_for_year = dt.date(date.year, 9, 1)
     date_in_melt_season = melt_season_start_for_year <= date <= melt_season_end_for_year
     if (num_melt_pixels > 0) and not date_in_melt_season:
-        error_code += ERROR_FILE_CODES["melt_flagged_on_wrong_day"]
+        error_code += ERROR_FILE_BITMASK["melt_flagged_on_wrong_day"]
 
     if num_missing_pixels >= 1000:
-        error_code += ERROR_FILE_CODES["more_than_1000_missing_values"]
+        error_code += ERROR_FILE_BITMASK["more_than_1000_missing_values"]
 
     if (num_missing_pixels > 100) and (num_missing_pixels < 1000):
-        error_code += ERROR_FILE_CODES["between_100_and_1000_missing_values"]
+        error_code += ERROR_FILE_BITMASK["between_100_and_1000_missing_values"]
 
     error_dict = dict(
         error_code=error_code,
