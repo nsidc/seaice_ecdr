@@ -108,7 +108,12 @@ def get_log_fields(*, product: Product) -> list[str]:
     return log_fields
 
 
-def write_log_entry(*, product: Product, csv_writer: csv.DictWriter, entry: dict):
+def write_log_entry(
+    *,
+    product: Product,
+    csv_writer: csv.DictWriter,
+    entry: dict,
+):
     log_fields = get_log_fields(product=product)
 
     log_entry: dict = defaultdict(None)
@@ -130,7 +135,12 @@ def get_error_fields(*, product: Product) -> list[str]:
     return error_fields
 
 
-def write_error_entry(*, product: Product, csv_writer: csv.DictWriter, entry: dict):
+def write_error_entry(
+    *,
+    product: Product,
+    csv_writer: csv.DictWriter,
+    entry: dict,
+):
     error_fields = get_error_fields(product=product)
 
     error_entry: dict = defaultdict(None)
@@ -143,7 +153,7 @@ def write_error_entry(*, product: Product, csv_writer: csv.DictWriter, entry: di
 
 
 def make_validation_dict_for_missing_file() -> dict:
-    log_dict = {}
+    log_dict: dict = {}
     error_value = ERROR_FILE_CODES["missing_file"]
     error_dict = dict(
         error_code=error_value,
@@ -156,7 +166,11 @@ def make_validation_dict_for_missing_file() -> dict:
 
 
 def make_validation_dict(
-    *, data_fp: Path, product: Product, date: dt.date, hemisphere: Hemisphere
+    *,
+    data_fp: Path,
+    product: Product,
+    date: dt.date,
+    hemisphere: Hemisphere,
 ) -> dict:
     ds = xr.open_dataset(data_fp)
     conc_var_name = "cdr_seaice_conc"
