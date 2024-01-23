@@ -208,6 +208,8 @@ def _setup_ecdr_ds(
     # Note: these attributes should probably go with
     #       a variable named "CDR_parameters" or similar
     ecdr_ide_ds.attrs["grid_id"] = grid_id
+    # TODO: we should not set this attr on the DS. It is only used for the
+    # bootstrap alg computation.
     ecdr_ide_ds.attrs["missing_value"] = DEFAULT_FLAG_VALUES.missing
 
     file_date = dt.date(1970, 1, 1) + dt.timedelta(
