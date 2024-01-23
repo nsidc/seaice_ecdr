@@ -175,7 +175,7 @@ def make_validation_dict_for_missing_file() -> dict:
 
 def get_error_code(
     *,
-    seaice_conc_var: xr.DataArray,
+    num_total_pixels: int,
     num_bad_pixels: int,
     num_missing_pixels: int,
     num_melt_pixels: int,
@@ -184,7 +184,7 @@ def get_error_code(
 ):
     error_code = ERROR_FILE_BITMASK["no_problems"]
     # This should never happen.
-    if seaice_conc_var.isnull().all():
+    if num_total_pixels == num_missing_pixels:
         error_code += ERROR_FILE_BITMASK["file_exists_but_is_empty"]
 
     if num_bad_pixels > 0:
@@ -207,14 +207,16 @@ def get_error_code(
     return error_code
 
 
-def make_validation_dict(
+def get_pixel_counts(
     *,
-    data_fp: Path,
+    ds: xr.Dataset,
     product: Product,
-    date: dt.date,
     hemisphere: Hemisphere,
-) -> dict:
-    ds = xr.open_dataset(data_fp)
+) -> dict[str, int]:
+    """Return pixel counts from the daily or monthly ds.
+
+    Each key of the resulting dictionary is an element of `SHARED_LOG_FIELDS`.
+    """
     conc_var_name = "cdr_seaice_conc"
     if product == "monthly":
         conc_var_name = conc_var_name + "_monthly"
@@ -288,7 +290,7 @@ def make_validation_dict(
     else:
         num_melt_pixels = 0
 
-    log_dict = {
+    pixel_counts = {
         "total": total_num_pixels,
         "ice": num_ice_pixels,
         "land": surf_value_counts["land"],
@@ -302,22 +304,36 @@ def make_validation_dict(
         "melt": num_melt_pixels,
     }
 
-    error_code = get_error_code(
-        seaice_conc_var=seaice_conc_var,
-        date=date,
-        num_bad_pixels=num_bad_pixels,
-        num_missing_pixels=num_missing_pixels,
-        num_melt_pixels=num_melt_pixels,
-        data_fp=data_fp,
+    return pixel_counts
+
+
+def make_validation_dict(
+    *,
+    data_fp: Path,
+    product: Product,
+    date: dt.date,
+    hemisphere: Hemisphere,
+) -> dict:
+    ds = xr.open_dataset(data_fp)
+
+    pixel_counts = get_pixel_counts(
+        ds=ds,
+        product=product,
+        hemisphere=hemisphere,
     )
 
-    error_dict = dict(
-        error_code=error_code,
+    error_code = get_error_code(
+        date=date,
+        data_fp=data_fp,
+        num_total_pixels=pixel_counts["total"],
+        num_bad_pixels=pixel_counts["bad"],
+        num_missing_pixels=pixel_counts["missing"],
+        num_melt_pixels=pixel_counts["melt"],
     )
 
     validation_dict = dict(
-        error=error_dict,
-        log=log_dict,
+        error=dict(error_code=error_code),
+        log=pixel_counts,
     )
 
     return validation_dict

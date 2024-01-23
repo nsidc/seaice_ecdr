@@ -1,16 +1,12 @@
 import datetime as dt
 from pathlib import Path
 
-import numpy as np
-import xarray as xr
-
 from seaice_ecdr.validation import ERROR_FILE_BITMASK, get_error_code
 
 
 def test_get_error_code_no_errors():
-    mock_seaice_conc = xr.DataArray([0, 0.25, 1, np.nan])
     actual_error_code = get_error_code(
-        seaice_conc_var=mock_seaice_conc,
+        num_total_pixels=10000,
         num_bad_pixels=0,
         num_missing_pixels=0,
         num_melt_pixels=0,
@@ -24,11 +20,12 @@ def test_get_error_code_no_errors():
 
 
 def test_get_error_code_file_empty():
-    mock_seaice_conc = xr.DataArray([np.nan, np.nan, np.nan, np.nan])
+    # The file is considered empty if the total number of pixels equals the
+    # number of missing pixels.
     actual_error_code = get_error_code(
-        seaice_conc_var=mock_seaice_conc,
+        num_total_pixels=100,
         num_bad_pixels=0,
-        num_missing_pixels=0,
+        num_missing_pixels=100,
         num_melt_pixels=0,
         date=dt.date(2022, 3, 1),
         data_fp=Path("foo"),
@@ -40,9 +37,8 @@ def test_get_error_code_file_empty():
 
 
 def test_get_error_code_bad_pixels_and_bad_melt():
-    mock_seaice_conc = xr.DataArray([0, 0.25, 1, np.nan])
     actual_error_code = get_error_code(
-        seaice_conc_var=mock_seaice_conc,
+        num_total_pixels=10000,
         num_bad_pixels=3,
         num_missing_pixels=0,
         num_melt_pixels=123,
