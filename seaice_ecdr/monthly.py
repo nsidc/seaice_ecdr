@@ -315,7 +315,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
 
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.assign_attrs(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QC flags",
-        standard_name="sea_ice_area_fraction status_flag",
+        standard_name="status_flag",
         flag_meanings=" ".join(
             k for k in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.keys()
         ),
