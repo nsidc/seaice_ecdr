@@ -421,7 +421,10 @@ def validate_outputs(
     logger.info(f"Wrote {error_filepath}")
 
 
-@click.command(name="validate-outputs")
+@click.command(
+    name="validate-outputs",
+    help="Create CSV files used to validate ECDR outputs.",
+)
 @click.option(
     "--ecdr-data-dir",
     required=True,
