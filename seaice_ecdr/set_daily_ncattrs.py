@@ -162,7 +162,6 @@ def finalize_cdecdr_ds(
             "grid_mapping": "crs",
             "flag_masks": np.array(
                 (
-                    0,
                     1,
                     2,
                     4,
@@ -173,7 +172,6 @@ def finalize_cdecdr_ds(
                 dtype=np.uint8,
             ),
             "flag_meanings": (
-                "no_spatial_interpolation"
                 " 19v_tb_value_interpolated"
                 " 19h_tb_value_interpolated"
                 " 22v_tb_value_interpolated"
