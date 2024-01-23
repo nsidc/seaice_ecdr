@@ -427,7 +427,7 @@ def calc_melt_onset_day_cdr_seaice_conc_monthly(
         )
     )
     melt_onset_day_cdr_seaice_conc_monthly.encoding = dict(
-        _FillValue=255,
+        _FillValue=None,
         dtype=np.uint8,
         zlib=True,
     )
