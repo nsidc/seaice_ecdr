@@ -173,6 +173,40 @@ def make_validation_dict_for_missing_file() -> dict:
     return validation_dict
 
 
+def get_error_code(
+    *,
+    seaice_conc_var: xr.DataArray,
+    num_bad_pixels: int,
+    num_missing_pixels: int,
+    num_melt_pixels: int,
+    date: dt.date,
+    data_fp: Path,
+):
+    error_code = ERROR_FILE_BITMASK["no_problems"]
+    # This should never happen.
+    if seaice_conc_var.isnull().all():
+        error_code += ERROR_FILE_BITMASK["file_exists_but_is_empty"]
+
+    if num_bad_pixels > 0:
+        logger.warning(f"Found {num_bad_pixels} bad pixels for {data_fp}")
+        error_code += ERROR_FILE_BITMASK["file_exists_but_conc_values_are_bad"]
+
+    # melt flag on the wrong day
+    melt_season_start_for_year = dt.date(date.year, 3, 1)
+    melt_season_end_for_year = dt.date(date.year, 9, 1)
+    date_in_melt_season = melt_season_start_for_year <= date <= melt_season_end_for_year
+    if (num_melt_pixels > 0) and not date_in_melt_season:
+        error_code += ERROR_FILE_BITMASK["melt_flagged_on_wrong_day"]
+
+    if num_missing_pixels >= 1000:
+        error_code += ERROR_FILE_BITMASK["more_than_1000_missing_values"]
+
+    if (num_missing_pixels > 100) and (num_missing_pixels < 1000):
+        error_code += ERROR_FILE_BITMASK["between_100_and_1000_missing_values"]
+
+    return error_code
+
+
 def make_validation_dict(
     *,
     data_fp: Path,
@@ -238,7 +272,7 @@ def make_validation_dict(
     # as 0.099999 as a floating point data.
     less_than_10_sic = int(((seaice_conc_var > 0) & (seaice_conc_var <= 0.0999)).sum())
     gt_100_sic = int((seaice_conc_var > 1).sum())
-    num_bad_pixels = less_than_10_sic | gt_100_sic
+    num_bad_pixels = less_than_10_sic + gt_100_sic
 
     # Number of melt pixels
     if hemisphere == "north":
@@ -268,27 +302,14 @@ def make_validation_dict(
         "melt": num_melt_pixels,
     }
 
-    error_code = ERROR_FILE_BITMASK["no_problems"]
-    # This should never happen.
-    if seaice_conc_var.isnull().all():
-        error_code += ERROR_FILE_BITMASK["file_exists_but_is_empty"]
-
-    if num_bad_pixels > 0:
-        logger.warning(f"Found {num_bad_pixels} bad pixels for {data_fp}")
-        error_code += ERROR_FILE_BITMASK["file_exists_but_conc_values_are_bad"]
-
-    # melt flag on the wrong day
-    melt_season_start_for_year = dt.date(date.year, 3, 1)
-    melt_season_end_for_year = dt.date(date.year, 9, 1)
-    date_in_melt_season = melt_season_start_for_year <= date <= melt_season_end_for_year
-    if (num_melt_pixels > 0) and not date_in_melt_season:
-        error_code += ERROR_FILE_BITMASK["melt_flagged_on_wrong_day"]
-
-    if num_missing_pixels >= 1000:
-        error_code += ERROR_FILE_BITMASK["more_than_1000_missing_values"]
-
-    if (num_missing_pixels > 100) and (num_missing_pixels < 1000):
-        error_code += ERROR_FILE_BITMASK["between_100_and_1000_missing_values"]
+    error_code = get_error_code(
+        seaice_conc_var=seaice_conc_var,
+        date=date,
+        num_bad_pixels=num_bad_pixels,
+        num_missing_pixels=num_missing_pixels,
+        num_melt_pixels=num_melt_pixels,
+        data_fp=data_fp,
+    )
 
     error_dict = dict(
         error_code=error_code,
