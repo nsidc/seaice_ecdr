@@ -391,6 +391,7 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
         valid_range=(np.float32(0.0), np.float32(1.0)),
         grid_mapping="crs",
+        units="1",
     )
 
     stdv_of_cdr_seaice_conc_monthly.encoding = dict(
