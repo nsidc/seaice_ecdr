@@ -55,7 +55,7 @@ def finalize_cdecdr_ds(
                 " Sea Ice Concentration"
             ),
             "grid_mapping": "crs",
-            "reference": "https://nsidc.org/data/g02202/versions/5/",
+            "reference": "https://nsidc.org/data/g02202/versions/5",
             "ancillary_variables": "stdev_of_cdr_seaice_conc qa_of_cdr_seaice_conc",
             "valid_range": np.array((0, 100), dtype=np.uint8),
         },
