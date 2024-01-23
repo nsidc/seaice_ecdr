@@ -23,9 +23,6 @@ import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import pm_icecon.nt.params.nsidc0001 as nt_0001_params
 import xarray as xr
 from loguru import logger
-
-# TODO: defalut flag values are specific to the ECDR, and should probably be
-# defined in this repo instead of `pm_icecon`.
 from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
@@ -39,6 +36,8 @@ from pm_tb_data.fetch.amsr.au_si import get_au_si_tbs
 from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
 from pm_tb_data.fetch.nsidc_0001 import get_nsidc_0001_tbs_from_disk
 
+# TODO: default flag values are specific to the ECDR, and should probably be
+# defined in this repo instead of `pm_icecon`.
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
     get_adj123_field,
@@ -52,6 +51,7 @@ from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
+from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
 from seaice_ecdr.util import standard_daily_filename
 
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
@@ -205,6 +205,8 @@ def _setup_ecdr_ds(
         resolution=resolution,
     )
 
+    # TODO: These fields should derive from the ancillary file,
+    #       not get_dataset_for_grid_id()
     ecdr_ide_ds = get_dataset_for_grid_id(grid_id, date)
 
     # Set initial global attributes
@@ -230,6 +232,7 @@ def _setup_ecdr_ds(
         tbdata = xr_tbs.variables[tbname].data
         freq = tbname[1:]
         pol = tbname[:1]
+        # TODO: AU_SI is specified here, but should be calculated
         tb_longname = f"Daily TB {freq}{pol} from AU_SI{resolution}"
         tb_units = "K"
         ecdr_ide_ds[tb_varname] = (
@@ -240,7 +243,7 @@ def _setup_ecdr_ds(
                 "standard_name": "brightness_temperature",
                 "long_name": tb_longname,
                 "units": tb_units,
-                "valid_range": [np.float64(10.0), np.float64(3500.0)],
+                "valid_range": [np.float64(10.0), np.float64(350.0)],
             },
             {
                 "zlib": True,
@@ -795,9 +798,6 @@ def compute_initial_daily_ecdr_dataset(
         },
     )
 
-    breakpoint()
-    print("Here, need to convert to 12.5km if it's 25km")
-    # Finished!
     return ecdr_ide_ds
 
 
@@ -924,6 +924,32 @@ def create_null_au_si_tbs(
     return null_tbs
 
 
+def reproject_ideds(
+    initial_ecdr_ds: xr.Dataset,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    tb_resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> xr.Dataset:
+    """Re-project the initial daily eCDR data set to a different grid.
+    Currently, this is set up only to reproject 25km polar stereo to 12.5km
+    """
+    if tb_resolution == "25" and resolution == "12.5":
+        reprojected_ideds = reproject_ideds_25to12(
+            initial_ecdr_ds=initial_ecdr_ds,
+            date=date,
+            hemisphere=hemisphere,
+            tb_resolution=tb_resolution,
+            resolution=resolution,
+        )
+    else:
+        raise RuntimeError(
+            f"reproject_ideds() not defined for {tb_resolution} to {resolution}"
+        )
+
+    return reprojected_ideds
+
+
 def initial_daily_ecdr_dataset(
     *,
     date: dt.date,
@@ -1013,6 +1039,21 @@ def initial_daily_ecdr_dataset(
         xr_tbs=xr_tbs,
         tb_resolution=tb_resolution,
     )
+
+    # If the computed ide_ds is not on the desired grid (ie resolution),
+    # then it needs to be projected to the new grid
+    # In general, this should be a comparison of grid_id's, but for
+    # eCDR, a comparison of resolutions will suffice
+    # Finished!
+    if resolution != tb_resolution:
+        initial_ecdr_ds = reproject_ideds(
+            initial_ecdr_ds=initial_ecdr_ds,
+            date=date,
+            hemisphere=hemisphere,
+            tb_resolution=tb_resolution,
+            resolution=resolution,
+        )
+        logger.info(f"Reprojected ide_ds to {resolution}km")
 
     return initial_ecdr_ds
 
