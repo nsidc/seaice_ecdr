@@ -2,6 +2,7 @@
 
 import numpy as np
 import xarray as xr
+from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr.nc_attrs import get_global_attrs
 
@@ -25,6 +26,7 @@ CDECDR_FIELDS_TO_RENAME = {
 
 def finalize_cdecdr_ds(
     ds_in: xr.Dataset,
+    hemisphere: Hemisphere,
     fields_to_drop: list = CDECDR_FIELDS_TO_DROP,
     fields_to_rename: dict = CDECDR_FIELDS_TO_RENAME,
 ) -> xr.Dataset:
@@ -81,6 +83,31 @@ def finalize_cdecdr_ds(
 
     # TODO: Verify that flag mask values have been set properly
     # TODO: Use common dict with key/vals for flag masks/meanings
+    qa_flag_masks = [
+        1,  # BT_weather_filter_applied
+        2,  # NT_weather_filter_applied
+        4,  # Land_spillover_filter_applied
+        8,  # No_input_data
+        16,  # Valid_ice_mask_applied
+        32,  # Spatial_interpolation_applied
+        64,  # Temporal_interpolation_applied
+    ]
+    qa_flag_meanings = (
+        "BT_weather_filter_applied"  # Note: no leading space
+        " NT_weather_filter_applied"
+        " Land_spillover_filter_applied"
+        " No_input_data"
+        " valid_ice_mask_applied"
+        " spatial_interpolation_applied"
+        " temporal_interpolation_applied"
+    )
+
+    # Melt only occurs in the northern hemisphere. Don't add status flags for SH
+    # here.
+    if hemisphere == NORTH:
+        qa_flag_masks.append(128)  # Melt_start_detected
+        qa_flag_meanings += " melt_start_detected"
+
     ds["qa_of_cdr_seaice_conc"] = (
         ("time", "y", "x"),
         ds["qa_of_cdr_seaice_conc"].data.astype(np.uint8),
@@ -89,29 +116,8 @@ def finalize_cdecdr_ds(
             "long_name": "Passive Microwave Sea Ice Concentration QC flags",
             "units": "1",
             "grid_mapping": "crs",
-            "flag_masks": np.array(
-                (
-                    1,  # BT_weather_filter_applied
-                    2,  # NT_weather_filter_applied
-                    4,  # Land_spillover_filter_applied
-                    8,  # No_input_data
-                    16,  # Valid_ice_mask_applied
-                    32,  # Spatial_interpolation_applied
-                    64,  # Temporal_interpolation_applied
-                    128,  # Melt_start_detected
-                ),
-                dtype=np.uint8,
-            ),
-            "flag_meanings": (
-                "BT_weather_filter_applied"  # Note: no leading space
-                " NT_weather_filter_applied"
-                " Land_spillover_filter_applied"
-                " No_input_data"
-                " valid_ice_mask_applied"
-                " spatial_interpolation_applied"
-                " temporal_interpolation_applied"
-                " melt_start_detected"
-            ),
+            "flag_masks": np.array(qa_flag_masks, dtype=np.uint8),
+            "flag_meanings": qa_flag_meanings,
             "valid_range": np.array((0, 255), dtype=np.uint8),
         },
         {
