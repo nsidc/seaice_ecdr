@@ -240,6 +240,7 @@ def get_global_attrs(
         keywords_vocabulary="NASA Global Change Master Directory (GCMD) Keywords, Version 17.1",
         cdm_data_type="Grid",
         project="NOAA/NSIDC passive microwave sea ice concentration climate data record",
+        creator_name="NSIDC/NOAA",
         creator_url="http://nsidc.org/",
         creator_email="nsidc@nsidc.org",
         institution="NSIDC > National Snow and Ice Data Center",
