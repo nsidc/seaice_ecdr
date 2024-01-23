@@ -152,23 +152,27 @@ def finalize_cdecdr_ds(
         pass
 
     # TODO: Use common dict with key/vals for flag masks/meanings
-    flag_masks = [
+    spatial_interp_flag_masks = [
         1,
         2,
         4,
         8,
         16,
     ]
-    flag_meanings = (
+    spatial_interp_flag_meanings = (
         "19v_tb_value_interpolated"
         " 19h_tb_value_interpolated"
         " 22v_tb_value_interpolated"
         " 37v_tb_value_interpolated"
         " 37h_tb_value_interpolated"
     )
+    spatial_interp_valid_range = (0, 63)
     if hemisphere == NORTH:
-        flag_masks.append(32)
-        flag_meanings += " pole_hole_spatially_interpolated_(Arctic_only)"
+        spatial_interp_flag_masks.append(32)
+        spatial_interp_flag_meanings += (
+            " pole_hole_spatially_interpolated_(Arctic_only)"
+        )
+        spatial_interp_valid_range = (0, 62)
 
     ds["spatial_interpolation_flag"] = (
         ("time", "y", "x"),
@@ -178,9 +182,9 @@ def finalize_cdecdr_ds(
             "long_name": "Passive Microwave Sea Ice Concentration spatial interpolation flags",
             "units": "1",
             "grid_mapping": "crs",
-            "flag_masks": np.array(flag_masks, dtype=np.uint8),
-            "flag_meanings": flag_meanings,
-            "valid_range": np.array((0, 63), dtype=np.uint8),
+            "flag_masks": np.array(spatial_interp_flag_masks, dtype=np.uint8),
+            "flag_meanings": spatial_interp_flag_meanings,
+            "valid_range": np.array(spatial_interp_valid_range, dtype=np.uint8),
         },
         {
             "zlib": True,
