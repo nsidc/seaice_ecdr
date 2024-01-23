@@ -72,7 +72,7 @@ def finalize_cdecdr_ds(
                 "Passive Microwave Sea Ice"
                 "Concentration Source Estimated Standard Deviation"
             ),
-            "units": 1,
+            "units": "1",
             "grid_mapping": "crs",
             "valid_range": np.array((0.0, 300.0), dtype=np.float32),
         },
