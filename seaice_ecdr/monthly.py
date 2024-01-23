@@ -373,6 +373,10 @@ def calc_cdr_seaice_conc_monthly(
         name="cdr_seaice_conc_monthly",
     )
 
+    cdr_seaice_conc_monthly.attrs[
+        "reference"
+    ] = "https://nsidc.org/data/g02202/versions/5"
+
     return cdr_seaice_conc_monthly
 
 
