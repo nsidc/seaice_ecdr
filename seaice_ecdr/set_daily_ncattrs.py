@@ -324,7 +324,7 @@ def finalize_cdecdr_ds(
                 " raw field with no masking or filtering"
             ),
             "grid_mapping": "crs",
-            "valid_range": np.array((0, 100), dtype=np.uint8),
+            "valid_min": np.uint8(0),
         },
     )
 
