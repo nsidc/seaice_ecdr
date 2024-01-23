@@ -647,6 +647,11 @@ def make_monthly_nc(
         ecdr_data_dir=ecdr_data_dir,
     )
 
+    # Set `x` and `y` `_FillValue` to `None`. Although unset initially, `xarray`
+    # seems to default to `np.nan` for variables without a FillValue.
+    monthly_ds.x.encoding["_FillValue"] = None
+    monthly_ds.y.encoding["_FillValue"] = None
+
     monthly_ds.to_netcdf(
         output_path,
         unlimited_dims=[
