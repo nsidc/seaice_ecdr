@@ -224,6 +224,37 @@ def get_invalid_ice_mask(
     return invalid_ice_mask
 
 
+def get_ocean_mask(
+    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> xr.DataArray:
+    """Return a binary mask where True values represent `ocean`."""
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    surface_type = ancillary_ds.surface_type
+
+    ocean_val = flag_value_for_meaning(
+        var=surface_type,
+        meaning="ocean",
+    )
+
+    ocean_mask = surface_type == ocean_val
+
+    ocean_mask.attrs = dict(
+        grid_mapping="crs",
+        standard_name="ocean_binary_mask",
+        long_name="ocean mask",
+        comment="Mask indicating where ocean is",
+        units="1",
+    )
+
+    ocean_mask.encoding = dict(zlib=True)
+
+    return ocean_mask
+
+
 def get_land_mask(
     *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
 ) -> xr.DataArray:
