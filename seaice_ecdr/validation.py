@@ -1,5 +1,15 @@
 """Validate outputs of the seaice ECDR.
 
+This modlue provides code and a CLI for doing QC/validation of ECDR output
+files.
+
+The primary output from this code are two CSV files:
+
+* error_seaice_{n|s}_daily_{start_year}_{end_year}.csv
+* log_seaice_{n|s}_daily_{start_year}_{end_year}.csv
+
+The error CSV file provides a code for each daily/monthly ECDR NetCDF file.
+
 error file values:
     error = -9999 --> no CDR file on that date
     error = -999  --> CDR file exists but is empty (no valid concentrations)
@@ -9,6 +19,9 @@ error file values:
     error = -1    --> 100-1000 missing values, likely indicates at least part of
                     a missing swath
     error = 0     --> no significant problems in CDR fields
+
+The log file provides more detail, giving the number of pixels of various
+categories (e.g., "land", "melt", "ice-free").
 
 non-varying log file parameters:
     total: total number pixels in the grid
@@ -299,14 +312,13 @@ def validate_outputs(
 ) -> None:
     """Create validation logs for daily outputs.
 
-    Creates two space-delimited files (TODO: could be csv?):
+    Creates two CSV files:
 
-    * log_seaice_{n|s}_daily_{start_year}_{end_year}.txt. Contains the following
+    * log_seaice_{n|s}_daily_{start_year}_{end_year}.csv. Contains the following
       fields: [year, month, day, total, ice, land, coast, lake, pole, oceanmask,
       ice-free, missing, bad, melt].
-    * error_seaice_{n|s}_daily_{start_year}_{end_year}.txt. Contains the
+    * error_seaice_{n|s}_daily_{start_year}_{end_year}.csv. Contains the
       following fields: [year, month, day, error_code]
-
     """
     validation_dir = get_validation_dir(ecdr_data_dir=ecdr_data_dir)
     log_filepath = (
