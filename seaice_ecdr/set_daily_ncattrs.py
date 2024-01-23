@@ -118,7 +118,7 @@ def finalize_cdecdr_ds(
             "grid_mapping": "crs",
             "flag_masks": np.array(qa_flag_masks, dtype=np.uint8),
             "flag_meanings": qa_flag_meanings,
-            "valid_range": np.array((0, max(qa_flag_masks)), dtype=np.uint8),
+            "valid_range": np.array((0, sum(qa_flag_masks)), dtype=np.uint8),
         },
         {
             "zlib": True,
@@ -166,13 +166,11 @@ def finalize_cdecdr_ds(
         " 37v_tb_value_interpolated"
         " 37h_tb_value_interpolated"
     )
-    spatial_interp_valid_range = (0, 63)
     if hemisphere == NORTH:
         spatial_interp_flag_masks.append(32)
         spatial_interp_flag_meanings += (
             " pole_hole_spatially_interpolated_(Arctic_only)"
         )
-        spatial_interp_valid_range = (0, 62)
 
     ds["spatial_interpolation_flag"] = (
         ("time", "y", "x"),
@@ -184,7 +182,9 @@ def finalize_cdecdr_ds(
             "grid_mapping": "crs",
             "flag_masks": np.array(spatial_interp_flag_masks, dtype=np.uint8),
             "flag_meanings": spatial_interp_flag_meanings,
-            "valid_range": np.array(spatial_interp_valid_range, dtype=np.uint8),
+            "valid_range": np.array(
+                (0, sum(spatial_interp_flag_masks)), dtype=np.uint8
+            ),
         },
         {
             "zlib": True,
