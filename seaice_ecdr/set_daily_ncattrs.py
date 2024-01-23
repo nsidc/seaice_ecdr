@@ -118,7 +118,7 @@ def finalize_cdecdr_ds(
             "grid_mapping": "crs",
             "flag_masks": np.array(qa_flag_masks, dtype=np.uint8),
             "flag_meanings": qa_flag_meanings,
-            "valid_range": np.array((0, 255), dtype=np.uint8),
+            "valid_range": np.array((0, max(qa_flag_masks)), dtype=np.uint8),
         },
         {
             "zlib": True,
