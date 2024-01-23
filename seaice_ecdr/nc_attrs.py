@@ -228,7 +228,7 @@ def get_global_attrs(
         ),
         program="NOAA Climate Data Record Program",
         software_version_id=_get_software_version_id(),
-        metadata_link="https://nsidc.org/data/g02202/versions/5/",
+        metadata_link="https://nsidc.org/data/g02202/versions/5",
         product_version=ECDR_PRODUCT_VERSION,
         spatial_resolution=f"{resolution}km",
         standard_name_vocabulary="CF Standard Name Table (v83, 17 October 2023)",
