@@ -107,9 +107,9 @@ def get_platform_start_dates() -> OrderedDict[dt.date, SUPPORTED_SAT]:
                 dt.date(1987, 7, 10): "F08",
                 dt.date(1991, 12, 3): "F11",
                 dt.date(1995, 10, 1): "F13",
-                dt.date(2008, 1, 1): "F17",
-                # dt.date(2002, 6, 1): 'ame',   # AMSR-E...
-                # dt.date(2011, 10, 4): 'F17',  # followed by f17 (again)
+                dt.date(2002, 6, 1): "ame",  # AMSR-E is first AMSR sat
+                # dt.date(2008, 1, 1): "F17", # F17 starts while AMSR-E is up
+                dt.date(2011, 10, 4): "F17",  # followed by f17 (again)
                 dt.date(2012, 7, 3): "am2",
             }
         )
