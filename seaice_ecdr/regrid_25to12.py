@@ -7,6 +7,12 @@ import datetime as dt
 import numpy as np
 import numpy.typing as npt
 import xarray as xr
+
+# NOTE: Use of opencv -- in python "cv2" -- requires a binary library
+# on the VM:
+#   sudo apt install libgl1
+# Also, the opencv-pytypes package is only available from pip3, not from mamba
+#   hence the type-ignore here
 from cv2 import INTER_LINEAR, resize  # type: ignore[import-not-found]
 from loguru import logger
 from pm_icecon.constants import DEFAULT_FLAG_VALUES
@@ -188,14 +194,14 @@ def regrid_da_25to12(
             blocked12[joff::2, ioff::2] = data25[:]
 
     # Calculate linearly interpolated field
-    if not prefer_block:
+    if prefer_block:
+        resize12 = blocked12.copy()
+    else:
         resize12 = resize(
             data25,
             (xdim12, ydim12),
             interpolation=INTER_LINEAR,
         )
-    else:
-        resize12 = blocked12.copy()
 
     # Begin building up the 12.5km resolution grid
     data12 = resize12.copy()
@@ -277,7 +283,6 @@ def adjust_reprojected_siconc_field(
         ice_edge_adjacency[is_newly_labeled] = dist
 
     ice_edge_adjacency[is_land] = 200
-    ice_edge_adjacency.tofile("iea.dat")
 
     for dist in range(1, n_adj + 1):
         idx = dist - 1
@@ -302,9 +307,6 @@ def reproject_ideds_25to12(
     tb_resolution,
     resolution,
 ):
-    # TODO: This is for develeoping; delete this save
-    initial_ecdr_ds.to_netcdf("unreprojected.nc")
-
     # Determine reprojection_masks
     reprojection_da = get_reprojection_da_psn25to12(hemisphere=hemisphere)
 
