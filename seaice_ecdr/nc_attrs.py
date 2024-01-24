@@ -218,7 +218,7 @@ def get_global_attrs(
 
     new_global_attrs = OrderedDict(
         # We expect conventions to be the first item in the global attributes.
-        Conventions="CF-1.10, ACDD-1.3",
+        Conventions="CF-1.11, ACDD-1.3",
         # Use the current UTC time to set the `date_created` attribute.
         date_created=dt.datetime.utcnow().strftime(DATE_STR_FMT),
         **time_coverage_attrs,
@@ -228,18 +228,19 @@ def get_global_attrs(
         ),
         program="NOAA Climate Data Record Program",
         software_version_id=_get_software_version_id(),
-        metadata_link="https://nsidc.org/data/g02202/versions/5/",
+        metadata_link="https://nsidc.org/data/g02202/versions/5",
         product_version=ECDR_PRODUCT_VERSION,
         spatial_resolution=f"{resolution}km",
         standard_name_vocabulary="CF Standard Name Table (v83, 17 October 2023)",
         id="https://doi.org/10.7265/rjzb-pf78",
         naming_authority="org.doi.dx",
         license="No constraints on data access or use",
-        summary="This data set provides a passive microwave sea ice concentration climate data record (CDR) based on gridded brightness temperatures from the Advanced Microwave Scanning Radiometer 2 (AMSR2) onboard the GCOM-W1 satellite, the Advanced Microwave Scanning Radiometer for EOS (AMSR-E) onboard the Aqua satellite, the Special Sensor Microwave Imager (SSM/I) and the Special Sensor Microwave Imager/Sounder (SSMIS) that are part of the Defense Meteorological Satellite Program (DMSP) series of passive microwave radiometers, and the Nimbus-7 Scanning Multichannel Microwave Radiometer (SMMR). The sea ice concentration CDR is an estimate of sea ice concentration that is produced by combining concentration estimates from two algorithms developed at the NASA Goddard Space Flight Center (GSFC): the NASA Team algorithm and the Bootstrap algorithm. The individual algorithms are used to process and combine brightness temperature data at NSIDC. This product is designed to provide a consistent time series of sea ice concentrations (the fraction, or percentage, of ocean area covered by sea ice) from November 1978 to the present which spans the coverage of several passive microwave instruments. The data are gridded on the NSIDC polar stereographic grid with 12.5 x 12.5 km grid cells, and are available in NetCDF file format. Each file contains a variable with the CDR concentration values as well as variables that hold the raw NASA Team and Bootstrap processed concentrations for reference; Variables containing standard deviation, quality flags, and projection information are also included.",
+        summary="This data set provides a passive microwave sea ice concentration climate data record (CDR) based on gridded brightness temperatures from the Advanced Microwave Scanning Radiometer 2 (AMSR2) onboard the GCOM-W1 satellite, the Advanced Microwave Scanning Radiometer for EOS (AMSR-E) onboard the Aqua satellite, the Special Sensor Microwave Imager (SSM/I) and the Special Sensor Microwave Imager/Sounder (SSMIS) that are part of the Defense Meteorological Satellite Program (DMSP) series of passive microwave radiometers, and the Nimbus-7 Scanning Multichannel Microwave Radiometer (SMMR). The sea ice concentration CDR is an estimate of sea ice concentration that is produced by combining concentration estimates from two algorithms developed at the NASA Goddard Space Flight Center (GSFC): the NASA Team algorithm and the Bootstrap algorithm. The individual algorithms are used to process and combine brightness temperature data at NSIDC. This product is designed to provide a consistent time series of sea ice concentrations (the fraction, or percentage, of ocean area covered by sea ice) from November 1978 to the present, which spans the coverage of several passive microwave instruments. The data are gridded on the NSIDC polar stereographic grid with 12.5 km x 12.5 km grid cells and are available in NetCDF file format. Each file contains a variable with the CDR concentration values as well as variables that hold the raw NASA Team and Bootstrap processed concentrations for reference. Variables containing standard deviation, quality flags, and projection information are also included.",
         keywords="EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE CONCENTRATION, Continent > North America > Canada > Hudson Bay, Geographic Region > Arctic, Geographic Region > Polar, Geographic Region > Northern Hemisphere, Ocean > Arctic Ocean, Ocean > Arctic Ocean > Barents Sea, Ocean > Arctic Ocean > Beaufort Sea, Ocean > Arctic Ocean > Chukchi Sea, CONTINENT > NORTH AMERICA > CANADA > HUDSON BAY, Ocean > Atlantic Ocean > North Atlantic Ocean > Davis Straight, OCEAN > ATLANTIC OCEAN > NORTH ATLANTIC OCEAN > GULF OF ST LAWRENCE, Ocean > Atlantic Ocean > North Atlantic Ocean > North Sea, Ocean > Atlantic Ocean > North Atlantic Ocean > Norwegian Sea, OCEAN > ATLANTIC OCEAN > NORTH ATLANTIC OCEAN > SVALBARD AND JAN MAYEN, Ocean > Pacific Ocean, Ocean > Pacific Ocean > North Pacific Ocean > Bering Sea, Ocean > Pacific Ocean > North Pacific Ocean > Sea Of Okhotsk",
         keywords_vocabulary="NASA Global Change Master Directory (GCMD) Keywords, Version 17.1",
         cdm_data_type="Grid",
         project="NOAA/NSIDC passive microwave sea ice concentration climate data record",
+        creator_name="NSIDC/NOAA",
         creator_url="http://nsidc.org/",
         creator_email="nsidc@nsidc.org",
         institution="NSIDC > National Snow and Ice Data Center",
@@ -247,6 +248,7 @@ def get_global_attrs(
         contributor_name="Walter N. Meier, Florence Fetterer, Ann Windnagel, J. Scott Stewart, Trey Stafford",
         contributor_role="principal investigator, author, author, software developer, software developer",
         acknowledgment="This project was supported in part by a grant from the NOAA Climate Data Record Program. The NASA Team and Bootstrap sea ice concentration algorithms were developed by Donald J. Cavalieri, Josefino C. Comiso, Claire L. Parkinson, and others at the NASA Goddard Space Flight Center in Greenbelt, MD.",
+        references="Comiso, J. C., and F. Nishio. 2008. Trends in the Sea Ice Cover Using Enhanced and Compatible AMSR-E, SSM/I, and SMMR Data. Journal of Geophysical Research 113, C02S07, doi:10.1029/2007JC0043257. ; Comiso, J. C., D. Cavalieri, C. Parkinson, and P. Gloersen. 1997. Passive Microwave Algorithms for Sea Ice Concentrations: A Comparison of Two Techniques. Remote Sensing of the Environment 60(3):357-84. ; Comiso, J. C. 1984. Characteristics of Winter Sea Ice from Satellite Multispectral Microwave Observations. Journal of Geophysical Research 91(C1):975-94. ; Cavalieri, D. J., P. Gloersen, and W. J. Campbell. 1984. Determination of Sea Ice Parameters with the NIMBUS-7 SMMR. Journal of Geophysical Research 89(D4):5355-5369. ; Cavalieri, D. J., C. l. Parkinson, P. Gloersen, J. C. Comiso, and H. J. Zwally. 1999. Deriving Long-term Time Series of Sea Ice Cover from Satellite Passive-Microwave Multisensor Data Sets. Journal of Geophysical Research 104(7): 15,803-15,814 ; Comiso, J.C., R.A. Gersten, L.V. Stock, J. Turner, G.J. Perez, and K. Cho. 2017. Positive Trend in the Antarctic Sea Ice Cover and Associated Changes in Surface Temperature. J. Climate, 30, 2251–2267, doi:10.1175/JCLI-D-16-0408.1",
         source=source,
         platform=platform,
         sensor=sensor,

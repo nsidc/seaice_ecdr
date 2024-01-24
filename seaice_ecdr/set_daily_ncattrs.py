@@ -330,7 +330,7 @@ def finalize_cdecdr_ds(
         # TODO: set sat from source
         sats=["am2"],
     )
-    ds.attrs.update(new_global_attrs)
+    ds.attrs = new_global_attrs
 
     # Coordinate values should not have _FillValue set
     ds.time.encoding["_FillValue"] = None
