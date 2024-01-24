@@ -16,13 +16,15 @@ import click
 import numpy as np
 import numpy.typing as npt
 import pm_icecon.bt.compute_bt_ic as bt
-import pm_icecon.bt.params.ausi_amsr2 as pmi_bt_params
+import pm_icecon.bt.params.ausi_amsr2 as pmi_bt_params_amsr2
+import pm_icecon.bt.params.ausi_amsre as pmi_bt_params_amsre
 import pm_icecon.bt.params.nsidc0001 as pmi_bt_params_0001
 import pm_icecon.nt.compute_nt_ic as nt
 import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import pm_icecon.nt.params.nsidc0001 as nt_0001_params
 import xarray as xr
 from loguru import logger
+from pm_icecon._types import ValidSatellites
 from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
@@ -380,16 +382,15 @@ def compute_initial_daily_ecdr_dataset(
 
     platform = get_platform_by_date(date)
     if platform == "am2":
-        bt_coefs_init = pmi_bt_params.get_ausi_bootstrap_params(
+        bt_coefs_init = pmi_bt_params_amsr2.get_ausi_amsr2_bootstrap_params(
             date=date,
             satellite="amsr2",
             gridid=ecdr_ide_ds.grid_id,
         )
     elif platform == "ame":
-        # TODO: This needs to become ame bootstrap params
-        bt_coefs_init = pmi_bt_params.get_ausi_bootstrap_params(
+        bt_coefs_init = pmi_bt_params_amsre.get_ausi_amsre_bootstrap_params(
             date=date,
-            satellite="amsr2",
+            satellite="amsre",
             gridid=ecdr_ide_ds.grid_id,
         )
     elif platform == "F17":
@@ -449,7 +450,7 @@ def compute_initial_daily_ecdr_dataset(
     elif platform in valid_sats_0001_nt:
         nt_params = nt_0001_params.get_0001_nt_params(
             hemisphere=hemisphere,
-            platform=platform,
+            platform=cast(ValidSatellites, platform),
         )
     else:
         raise RuntimeError(f"Dont know how to get NT parameters for: {platform}")
