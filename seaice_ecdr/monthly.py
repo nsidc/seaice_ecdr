@@ -315,7 +315,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
 
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.assign_attrs(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QC flags",
-        standard_name="sea_ice_area_fraction status_flag",
+        standard_name="status_flag",
         flag_meanings=" ".join(
             k for k in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.keys()
         ),
@@ -373,6 +373,10 @@ def calc_cdr_seaice_conc_monthly(
         name="cdr_seaice_conc_monthly",
     )
 
+    cdr_seaice_conc_monthly.attrs[
+        "reference"
+    ] = "https://nsidc.org/data/g02202/versions/5"
+
     return cdr_seaice_conc_monthly
 
 
@@ -391,6 +395,7 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
         valid_range=(np.float32(0.0), np.float32(1.0)),
         grid_mapping="crs",
+        units="1",
     )
 
     stdv_of_cdr_seaice_conc_monthly.encoding = dict(
@@ -422,12 +427,12 @@ def calc_melt_onset_day_cdr_seaice_conc_monthly(
         melt_onset_day_cdr_seaice_conc_monthly.assign_attrs(
             long_name="Monthly Day of Snow Melt Onset Over Sea Ice",
             units="1",
-            valid_range=(np.ubyte(60), np.ubyte(244)),
+            valid_range=(np.ubyte(60), np.ubyte(255)),
             grid_mapping="crs",
         )
     )
     melt_onset_day_cdr_seaice_conc_monthly.encoding = dict(
-        _FillValue=255,
+        _FillValue=None,
         dtype=np.uint8,
         zlib=True,
     )
@@ -646,6 +651,11 @@ def make_monthly_nc(
         month=month,
         ecdr_data_dir=ecdr_data_dir,
     )
+
+    # Set `x` and `y` `_FillValue` to `None`. Although unset initially, `xarray`
+    # seems to default to `np.nan` for variables without a FillValue.
+    monthly_ds.x.encoding["_FillValue"] = None
+    monthly_ds.y.encoding["_FillValue"] = None
 
     monthly_ds.to_netcdf(
         output_path,

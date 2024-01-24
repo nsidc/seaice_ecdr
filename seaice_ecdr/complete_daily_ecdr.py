@@ -529,7 +529,7 @@ def make_cdecdr_netcdf(
         ecdr_data_dir=ecdr_data_dir,
     )
 
-    cde_ds = finalize_cdecdr_ds(cde_ds)
+    cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere)
 
     output_path = get_ecdr_filepath(
         date=date,
