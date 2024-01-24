@@ -16,7 +16,6 @@ import pandas as pd
 import xarray as xr
 from loguru import logger
 from pm_icecon.fill_polehole import fill_pole_hole
-from pm_icecon.util import date_range
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
@@ -30,7 +29,7 @@ from seaice_ecdr.initial_daily_ecdr import (
 from seaice_ecdr.platforms import (
     get_platform_by_date,
 )
-from seaice_ecdr.util import standard_daily_filename
+from seaice_ecdr.util import date_range, standard_daily_filename
 
 # Set the default minimum log notification to "info"
 try:

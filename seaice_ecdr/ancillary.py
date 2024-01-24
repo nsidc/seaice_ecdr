@@ -73,13 +73,17 @@ def _get_sat_by_date(
         raise RuntimeError(f"Could not determine sat for date: {date}")
 
 
-def _bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
+def bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
+    # TODO: where do we encounter the ValueError that requires setting
+    # `meaning.lower()`? Can we just use a `.lower()` on the `flag_meanings` and
+    # `meaning` to be consistent and never run into this problem? Are there any
+    # cases where case matters?
     try:
         index = var.flag_meanings.split(" ").index(meaning)
-        value = var.flag_masks[index]
     except ValueError:
         index = var.flag_meanings.split(" ").index(meaning.lower())
-        value = var.flag_masks[index]
+
+    value = var.flag_masks[index]
 
     return value
 
@@ -117,7 +121,7 @@ def get_surfacetype_da(
             # Use the AMSR2 pole hole for AMSR-E
             sat = "am2"
         polehole_bitlabel = f"{sat}_polemask"
-        polehole_bitvalue = _bitmask_value_for_meaning(
+        polehole_bitvalue = bitmask_value_for_meaning(
             var=polehole_bitmask,
             meaning=polehole_bitlabel,
         )
@@ -189,7 +193,7 @@ def nh_polehole_mask(
         sat = "am2"
 
     polehole_bitlabel = f"{sat}_polemask"
-    polehole_bitvalue = _bitmask_value_for_meaning(
+    polehole_bitvalue = bitmask_value_for_meaning(
         var=polehole_bitmask,
         meaning=polehole_bitlabel,
     )
