@@ -34,7 +34,7 @@ from pm_tb_data._types import NORTH, Hemisphere
 from pm_tb_data.fetch.amsr.ae_si import get_ae_si_tbs_from_disk
 from pm_tb_data.fetch.amsr.au_si import get_au_si_tbs
 from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
-from pm_tb_data.fetch.nsidc_0001 import get_nsidc_0001_tbs_from_disk
+from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS, get_nsidc_0001_tbs_from_disk
 
 # TODO: default flag values are specific to the ECDR, and should probably be
 # defined in this repo instead of `pm_icecon`.
@@ -281,7 +281,7 @@ def compute_initial_daily_ecdr_dataset(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     xr_tbs: xr.Dataset,
     fill_the_pole_hole: bool = False,
-    tb_resolution: ECDR_SUPPORTED_RESOLUTIONS | None,
+    tb_resolution: ECDR_SUPPORTED_RESOLUTIONS | None = None,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -292,10 +292,14 @@ def compute_initial_daily_ecdr_dataset(
     fields. Its difficult to understand what's in the resulting dataset without
     manually inspecting the result of running this code.
     """
+    # tb_resolution defaults to final grid resolution
+    if tb_resolution is None:
+        tb_resolution = resolution
+
     ecdr_ide_ds = _setup_ecdr_ds(
         date=date,
         xr_tbs=xr_tbs,
-        resolution=tb_resolution if tb_resolution is not None else resolution,
+        resolution=tb_resolution,
         hemisphere=hemisphere,
     )
 
@@ -343,7 +347,10 @@ def compute_initial_daily_ecdr_dataset(
             != ecdr_ide_ds[si_varname].data[0, :, :]
         ) & (~np.isnan(ecdr_ide_ds[si_varname].data[0, :, :]))
         spatint_bitmask_arr[is_tb_si_diff] += TB_SPATINT_BITMASK_MAP[tbname]
-        land_mask = get_land_mask(hemisphere=hemisphere, resolution=tb_resolution)
+        land_mask = get_land_mask(
+            hemisphere=cast(Hemisphere, hemisphere),
+            resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+        )
         spatint_bitmask_arr[land_mask.data] = 0
 
     ecdr_ide_ds["spatial_interpolation_flag"] = (
@@ -402,12 +409,12 @@ def compute_initial_daily_ecdr_dataset(
     invalid_ice_mask = get_invalid_ice_mask(
         hemisphere=hemisphere,
         month=date.month,
-        resolution=tb_resolution,
+        resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
     )
 
     land_mask = get_land_mask(
         hemisphere=hemisphere,
-        resolution=tb_resolution,
+        resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
     )
 
     ecdr_ide_ds["invalid_ice_mask"] = invalid_ice_mask.expand_dims(dim="time")
@@ -422,7 +429,7 @@ def compute_initial_daily_ecdr_dataset(
     if hemisphere == NORTH:
         pole_mask = nh_polehole_mask(
             date=date,
-            resolution=tb_resolution,
+            resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
             sat=platform,
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
@@ -636,11 +643,11 @@ def compute_initial_daily_ecdr_dataset(
     logger.info("Applying NT2 land spillover technique...")
     l90c = get_land90_conc_field(
         hemisphere=hemisphere,
-        resolution=tb_resolution,
+        resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
     )
     adj123 = get_adj123_field(
         hemisphere=hemisphere,
-        resolution=tb_resolution,
+        resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
     )
     cdr_conc = apply_nt2_land_spillover(
         conc=cdr_conc,
@@ -658,7 +665,7 @@ def compute_initial_daily_ecdr_dataset(
         platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
             date=date,
-            resolution=tb_resolution,
+            resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
             sat=platform,
         )
         cdr_conc = fill_pole_hole(
@@ -1012,7 +1019,7 @@ def initial_daily_ecdr_dataset(
                 hemisphere=hemisphere,
                 data_dir=NSIDC0001_DATA_DIR,
                 resolution=nsidc0001_resolution,
-                sat=platform,
+                sat=cast(NSIDC_0001_SATS, platform),
             )
             xr_tbs = rename_0001_tbs(input_ds=xr_tbs_0001)
         except FileNotFoundError:

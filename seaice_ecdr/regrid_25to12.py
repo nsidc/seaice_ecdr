@@ -7,7 +7,7 @@ import datetime as dt
 import numpy as np
 import numpy.typing as npt
 import xarray as xr
-from cv2 import INTER_LINEAR, resize
+from cv2 import INTER_LINEAR, resize  # type: ignore[import-not-found]
 from loguru import logger
 from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_tb_data._types import Hemisphere
