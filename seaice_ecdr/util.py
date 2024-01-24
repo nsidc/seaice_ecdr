@@ -1,7 +1,8 @@
 import datetime as dt
 import re
-from typing import cast, get_args
+from typing import Iterator, cast, get_args
 
+import pandas as pd
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
@@ -98,3 +99,9 @@ def sat_from_filename(filename: str) -> SUPPORTED_SAT:
     sat = cast(SUPPORTED_SAT, sat)
 
     return sat
+
+
+def date_range(*, start_date: dt.date, end_date: dt.date) -> Iterator[dt.date]:
+    """Yield a dt.date object representing each day between start_date and end_date."""
+    for pd_timestamp in pd.date_range(start=start_date, end=end_date, freq="D"):
+        yield pd_timestamp.date()

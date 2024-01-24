@@ -217,27 +217,27 @@ def _mock_daily_ds_for_month():
     ]
 
     _mock_daily_melt_onset = [
-        [np.nan, np.nan, np.nan],
-        [np.nan, np.nan, np.nan],
-        [np.nan, np.nan, np.nan],
-        [np.nan, np.nan, np.nan],
+        [255, 255, 255],
+        [255, 255, 255],
+        [255, 255, 255],
+        [255, 255, 255],
         [
-            np.nan,
-            np.nan,
-            np.nan,
+            255,
+            255,
+            255,
         ],
         [
-            np.nan,
-            np.nan,
-            np.nan,
+            255,
+            255,
+            255,
         ],
         [
-            np.nan,
-            np.nan,
-            np.nan,
+            255,
+            255,
+            255,
         ],
-        [np.nan, 61, 61],
-        [np.nan, np.nan, np.nan],
+        [255, 61, 61],
+        [255, 255, 255],
     ]
 
     _mock_daily_ds = xr.Dataset(
