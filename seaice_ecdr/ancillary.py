@@ -70,7 +70,7 @@ def _get_sat_by_date(
         raise RuntimeError(f"Could not determine sat for date: {date}")
 
 
-def _bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
+def bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
     index = var.flag_meanings.split(" ").index(meaning)
     value = var.flag_masks[index]
 
@@ -110,7 +110,7 @@ def get_surfacetype_da(
             # Use the AMSR2 pole hole for AMSR-E
             sat = "am2"
         polehole_bitlabel = f"{sat}_polemask"
-        polehole_bitvalue = _bitmask_value_for_meaning(
+        polehole_bitvalue = bitmask_value_for_meaning(
             var=polehole_bitmask,
             meaning=polehole_bitlabel,
         )
@@ -182,7 +182,7 @@ def nh_polehole_mask(
         sat = "am2"
 
     polehole_bitlabel = f"{sat}_polemask"
-    polehole_bitvalue = _bitmask_value_for_meaning(
+    polehole_bitvalue = bitmask_value_for_meaning(
         var=polehole_bitmask,
         meaning=polehole_bitlabel,
     )
