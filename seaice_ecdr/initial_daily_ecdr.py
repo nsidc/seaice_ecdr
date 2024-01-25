@@ -25,6 +25,9 @@ import pm_icecon.nt.params.nsidc0001 as nt_0001_params
 import xarray as xr
 from loguru import logger
 from pm_icecon._types import ValidSatellites
+
+# TODO: default flag values are specific to the ECDR, and should probably be
+# defined in this repo instead of `pm_icecon`.
 from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
@@ -37,8 +40,6 @@ from pm_tb_data.fetch.amsr.au_si import get_au_si_tbs
 from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
 from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS, get_nsidc_0001_tbs_from_disk
 
-# TODO: default flag values are specific to the ECDR, and should probably be
-# defined in this repo instead of `pm_icecon`.
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
     get_adj123_field,
