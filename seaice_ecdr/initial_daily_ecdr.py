@@ -352,8 +352,8 @@ def compute_initial_daily_ecdr_dataset(
         ) & (~np.isnan(ecdr_ide_ds[si_varname].data[0, :, :]))
         spatint_bitmask_arr[is_tb_si_diff] += TB_SPATINT_BITMASK_MAP[tbname]
         land_mask = get_land_mask(
-            hemisphere=cast(Hemisphere, hemisphere),
-            resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+            hemisphere=hemisphere,
+            resolution=tb_resolution,
         )
         spatint_bitmask_arr[land_mask.data] = 0
 
@@ -412,12 +412,12 @@ def compute_initial_daily_ecdr_dataset(
     invalid_ice_mask = get_invalid_ice_mask(
         hemisphere=hemisphere,
         month=date.month,
-        resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+        resolution=tb_resolution,
     )
 
     land_mask = get_land_mask(
         hemisphere=hemisphere,
-        resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+        resolution=tb_resolution,
     )
 
     ecdr_ide_ds["invalid_ice_mask"] = invalid_ice_mask.expand_dims(dim="time")
@@ -432,7 +432,7 @@ def compute_initial_daily_ecdr_dataset(
     if hemisphere == NORTH:
         pole_mask = nh_polehole_mask(
             date=date,
-            resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+            resolution=tb_resolution,
             sat=platform,
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
