@@ -92,6 +92,9 @@ def cdr_bootstrap(
         missing_flag_value=missing_flag_value,
     )
 
+    # Se any bootstrap concentrations below 10% to 0.
+    bt_conc[bt_conc < 10] = 0
+
     return bt_conc
 
 
@@ -675,9 +678,12 @@ def compute_initial_daily_ecdr_dataset(
             )
             logger.info("Updated spatial_interpolation with pole hole value")
 
-    # Apply land flag value and clamp max conc to 100.
+    # Mask out land and clamp conc to between 10-100%.
+    # TODO: using the land mask here is not enough! We need to mask out all
+    # "non-ocean" pixels, which includes coast & lakes.
+    cdr_conc[land_mask.data] = np.nan
+    cdr_conc[cdr_conc < 10] = 0
     cdr_conc[cdr_conc > 100] = 100
-    cdr_conc[land_mask.data] = DEFAULT_FLAG_VALUES.land
 
     # Add the BT raw field to the dataset
     if bt_conc is not None:
@@ -742,10 +748,8 @@ def compute_initial_daily_ecdr_dataset(
             ecdr_ide_ds.variables["raw_nt_seaice_conc"].attrs[attr] = str(nt_coefs[attr])  # type: ignore[literal-required]  # noqa
 
     # Add the final cdr_conc value to the xarray dataset
-    # Remove cdr_conc flags
-    cdr_conc[cdr_conc >= 120] = np.nan
+    # Rescale conc values to 0-1
     cdr_conc = cdr_conc / 100.0
-
     ecdr_ide_ds["conc"] = (
         ("time", "y", "x"),
         np.expand_dims(cdr_conc, axis=0),
