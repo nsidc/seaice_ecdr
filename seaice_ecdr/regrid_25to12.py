@@ -15,11 +15,11 @@ import xarray as xr
 #   hence the type-ignore here
 from cv2 import INTER_LINEAR, resize  # type: ignore[import-not-found]
 from loguru import logger
-from pm_icecon.constants import DEFAULT_FLAG_VALUES
-from pm_tb_data._types import Hemisphere
 
 # TODO: default flag values are specific to the ECDR, and should probably be
 # defined in this repo instead of `pm_icecon`.
+from pm_icecon.constants import DEFAULT_FLAG_VALUES
+from pm_tb_data._types import Hemisphere
 from scipy.interpolate import griddata
 from scipy.signal import convolve2d
 
