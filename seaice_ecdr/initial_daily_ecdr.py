@@ -256,25 +256,19 @@ def _setup_ecdr_ds(
     return ecdr_ide_ds
 
 
-def _au_si_res_str(*, resolution: ECDR_SUPPORTED_RESOLUTIONS) -> AMSR_RESOLUTIONS:
-    au_si_resolution_str = {
+def _pm_icecon_amsr_res_str(
+    *, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> AMSR_RESOLUTIONS:
+    """Given an AMSR ECDR resolution string, return a compatible `pm_icecon` resolution string."""
+    _ecdr_pm_icecon_resolution_mapping: dict[
+        ECDR_SUPPORTED_RESOLUTIONS, AMSR_RESOLUTIONS
+    ] = {
         "12.5": "12",
         "25": "25",
-    }[resolution]
-    au_si_resolution_str = cast(AMSR_RESOLUTIONS, au_si_resolution_str)
+    }
+    au_si_resolution_str = _ecdr_pm_icecon_resolution_mapping[resolution]
 
     return au_si_resolution_str
-
-
-def _ame_res_str(*, resolution: ECDR_SUPPORTED_RESOLUTIONS) -> AMSR_RESOLUTIONS:
-    # Note: I think this is identical to the results of _au_si_res_str()
-    ame_si_resolution_str = {
-        "12.5": "12",
-        "25": "25",
-    }[resolution]
-    ame_si_resolution_str = cast(AMSR_RESOLUTIONS, ame_si_resolution_str)
-
-    return ame_si_resolution_str
 
 
 def compute_initial_daily_ecdr_dataset(
@@ -971,7 +965,7 @@ def initial_daily_ecdr_dataset(
     and others..."""
     platform = get_platform_by_date(date)
     if platform == "am2":
-        au_si_resolution_str = _au_si_res_str(resolution=resolution)
+        au_si_resolution_str = _pm_icecon_amsr_res_str(resolution=resolution)
         try:
             xr_tbs = get_au_si_tbs(
                 date=date,
@@ -990,7 +984,7 @@ def initial_daily_ecdr_dataset(
             )
         tb_resolution = resolution
     elif platform == "ame":
-        ame_resolution_str = _ame_res_str(resolution=resolution)
+        ame_resolution_str = _pm_icecon_amsr_res_str(resolution=resolution)
         AME_DATA_DIR = Path("/ecs/DP4/AMSA/AE_SI12.003/")
         try:
             xr_tbs = get_ae_si_tbs_from_disk(
