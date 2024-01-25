@@ -37,7 +37,7 @@ from pm_tb_data._types import NORTH, Hemisphere
 from pm_tb_data.fetch.amsr.ae_si import get_ae_si_tbs_from_disk
 from pm_tb_data.fetch.amsr.au_si import get_au_si_tbs
 from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
-from pm_tb_data.fetch.nsidc_0001 import get_nsidc_0001_tbs_from_disk
+from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS, get_nsidc_0001_tbs_from_disk
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
@@ -429,19 +429,16 @@ def compute_initial_daily_ecdr_dataset(
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
 
-    # Determine the NT fields and coefficients
-    # TODO: Add the rest of these satellites...
-    valid_sats_0001_nt = ("F17",)
     if platform == "am2":
         nt_params = nt_amsr2_params.get_amsr2_params(
             hemisphere=hemisphere,
         )
-    # TODO: AMSRE should get its own NT parameters...
     elif platform == "ame":
+        # TODO: AMSRE should get its own NT parameters...
         nt_params = nt_amsr2_params.get_amsr2_params(
             hemisphere=hemisphere,
         )
-    elif platform in valid_sats_0001_nt:
+    elif platform in get_args(NSIDC_0001_SATS):
         nt_params = nt_0001_params.get_0001_nt_params(
             hemisphere=hemisphere,
             platform=platform,
