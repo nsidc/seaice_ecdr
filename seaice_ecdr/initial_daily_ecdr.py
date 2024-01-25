@@ -24,7 +24,9 @@ import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import pm_icecon.nt.params.nsidc0001 as nt_0001_params
 import xarray as xr
 from loguru import logger
-from pm_icecon._types import ValidSatellites
+
+# TODO: default flag values are specific to the ECDR, and should probably be
+# defined in this repo instead of `pm_icecon`.
 from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
@@ -37,8 +39,6 @@ from pm_tb_data.fetch.amsr.au_si import get_au_si_tbs
 from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
 from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS, get_nsidc_0001_tbs_from_disk
 
-# TODO: default flag values are specific to the ECDR, and should probably be
-# defined in this repo instead of `pm_icecon`.
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
     get_adj123_field,
@@ -256,25 +256,19 @@ def _setup_ecdr_ds(
     return ecdr_ide_ds
 
 
-def _au_si_res_str(*, resolution: ECDR_SUPPORTED_RESOLUTIONS) -> AMSR_RESOLUTIONS:
-    au_si_resolution_str = {
+def _pm_icecon_amsr_res_str(
+    *, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> AMSR_RESOLUTIONS:
+    """Given an AMSR ECDR resolution string, return a compatible `pm_icecon` resolution string."""
+    _ecdr_pm_icecon_resolution_mapping: dict[
+        ECDR_SUPPORTED_RESOLUTIONS, AMSR_RESOLUTIONS
+    ] = {
         "12.5": "12",
         "25": "25",
-    }[resolution]
-    au_si_resolution_str = cast(AMSR_RESOLUTIONS, au_si_resolution_str)
+    }
+    au_si_resolution_str = _ecdr_pm_icecon_resolution_mapping[resolution]
 
     return au_si_resolution_str
-
-
-def _ame_res_str(*, resolution: ECDR_SUPPORTED_RESOLUTIONS) -> AMSR_RESOLUTIONS:
-    # Note: I think this is identical to the results of _au_si_res_str()
-    ame_si_resolution_str = {
-        "12.5": "12",
-        "25": "25",
-    }[resolution]
-    ame_si_resolution_str = cast(AMSR_RESOLUTIONS, ame_si_resolution_str)
-
-    return ame_si_resolution_str
 
 
 def compute_initial_daily_ecdr_dataset(
@@ -351,8 +345,8 @@ def compute_initial_daily_ecdr_dataset(
         ) & (~np.isnan(ecdr_ide_ds[si_varname].data[0, :, :]))
         spatint_bitmask_arr[is_tb_si_diff] += TB_SPATINT_BITMASK_MAP[tbname]
         land_mask = get_land_mask(
-            hemisphere=cast(Hemisphere, hemisphere),
-            resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+            hemisphere=hemisphere,
+            resolution=tb_resolution,
         )
         spatint_bitmask_arr[land_mask.data] = 0
 
@@ -395,7 +389,6 @@ def compute_initial_daily_ecdr_dataset(
             gridid=ecdr_ide_ds.grid_id,
         )
     elif platform == "F17":
-        # TODO: This needs to become ame bootstrap params
         bt_coefs_init = pmi_bt_params_0001.get_F17_bootstrap_params(
             date=date,
             satellite=platform,
@@ -411,12 +404,12 @@ def compute_initial_daily_ecdr_dataset(
     invalid_ice_mask = get_invalid_ice_mask(
         hemisphere=hemisphere,
         month=date.month,
-        resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+        resolution=tb_resolution,
     )
 
     land_mask = get_land_mask(
         hemisphere=hemisphere,
-        resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+        resolution=tb_resolution,
     )
 
     ecdr_ide_ds["invalid_ice_mask"] = invalid_ice_mask.expand_dims(dim="time")
@@ -431,27 +424,24 @@ def compute_initial_daily_ecdr_dataset(
     if hemisphere == NORTH:
         pole_mask = nh_polehole_mask(
             date=date,
-            resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+            resolution=tb_resolution,
             sat=platform,
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
 
-    # Determine the NT fields and coefficients
-    # TODO: Add the rest of these satellites...
-    valid_sats_0001_nt = ("F17",)
     if platform == "am2":
         nt_params = nt_amsr2_params.get_amsr2_params(
             hemisphere=hemisphere,
         )
-    # TODO: AMSRE should get its own NT parameters...
     elif platform == "ame":
+        # TODO: AMSRE should get its own NT parameters...
         nt_params = nt_amsr2_params.get_amsr2_params(
             hemisphere=hemisphere,
         )
-    elif platform in valid_sats_0001_nt:
+    elif platform in get_args(NSIDC_0001_SATS):
         nt_params = nt_0001_params.get_0001_nt_params(
             hemisphere=hemisphere,
-            platform=cast(ValidSatellites, platform),
+            platform=platform,
         )
     else:
         raise RuntimeError(f"Dont know how to get NT parameters for: {platform}")
@@ -645,11 +635,11 @@ def compute_initial_daily_ecdr_dataset(
     logger.info("Applying NT2 land spillover technique...")
     l90c = get_land90_conc_field(
         hemisphere=hemisphere,
-        resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+        resolution=tb_resolution,
     )
     adj123 = get_adj123_field(
         hemisphere=hemisphere,
-        resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+        resolution=tb_resolution,
     )
     cdr_conc = apply_nt2_land_spillover(
         conc=cdr_conc,
@@ -667,7 +657,7 @@ def compute_initial_daily_ecdr_dataset(
         platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
             date=date,
-            resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+            resolution=tb_resolution,
             sat=platform,
         )
         cdr_conc = fill_pole_hole(
@@ -971,7 +961,7 @@ def initial_daily_ecdr_dataset(
     and others..."""
     platform = get_platform_by_date(date)
     if platform == "am2":
-        au_si_resolution_str = _au_si_res_str(resolution=resolution)
+        au_si_resolution_str = _pm_icecon_amsr_res_str(resolution=resolution)
         try:
             xr_tbs = get_au_si_tbs(
                 date=date,
@@ -990,7 +980,7 @@ def initial_daily_ecdr_dataset(
             )
         tb_resolution = resolution
     elif platform == "ame":
-        ame_resolution_str = _ame_res_str(resolution=resolution)
+        ame_resolution_str = _pm_icecon_amsr_res_str(resolution=resolution)
         AME_DATA_DIR = Path("/ecs/DP4/AMSA/AE_SI12.003/")
         try:
             xr_tbs = get_ae_si_tbs_from_disk(
@@ -1021,14 +1011,13 @@ def initial_daily_ecdr_dataset(
                 hemisphere=hemisphere,
                 data_dir=NSIDC0001_DATA_DIR,
                 resolution=nsidc0001_resolution,
-                sat=cast(NSIDC_0001_SATS, platform),
+                sat=platform,
             )
             xr_tbs = rename_0001_tbs(input_ds=xr_tbs_0001)
         except FileNotFoundError:
             logger.warning(f"Using null TBs for {platform} on {date}")
-            breakpoint()
             print("this needs to be create_null_0001_tbs()")
-            xr_tbs_0001 = create_null_au_si_tbs(
+            xr_tbs = create_null_au_si_tbs(
                 hemisphere=hemisphere,
                 resolution=resolution,
             )
