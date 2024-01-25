@@ -389,7 +389,6 @@ def compute_initial_daily_ecdr_dataset(
             gridid=ecdr_ide_ds.grid_id,
         )
     elif platform == "F17":
-        # TODO: This needs to become ame bootstrap params
         bt_coefs_init = pmi_bt_params_0001.get_F17_bootstrap_params(
             date=date,
             satellite=platform,
