@@ -8,6 +8,7 @@ alongside the ECDR.
 import datetime as dt
 from functools import cache
 from pathlib import Path
+from typing import get_args
 
 import numpy as np
 import pandas as pd
@@ -40,9 +41,10 @@ def get_ancillary_ds(
     """Return xr Dataset of ancillary data for this hemisphere/resolution."""
     # TODO: This list could be determined from an examination of
     #       the ancillary directory
-    implemented_resolutions = ("12.5", "25")
-    if resolution not in implemented_resolutions:
-        raise NotImplementedError("ECDR currently only supports 12.5km resolution.")
+    if resolution not in get_args(ECDR_SUPPORTED_RESOLUTIONS):
+        raise NotImplementedError(
+            "ECDR currently only supports {get_args(ECDR_SUPPORTED_RESOLUTIONS)} resolutions."
+        )
 
     filepath = get_ancillary_filepath(hemisphere=hemisphere, resolution=resolution)
     ds = xr.load_dataset(filepath)
