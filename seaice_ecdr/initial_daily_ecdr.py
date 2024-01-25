@@ -1017,7 +1017,7 @@ def initial_daily_ecdr_dataset(
         except FileNotFoundError:
             logger.warning(f"Using null TBs for {platform} on {date}")
             print("this needs to be create_null_0001_tbs()")
-            xr_tbs_0001 = create_null_au_si_tbs(
+            xr_tbs = create_null_au_si_tbs(
                 hemisphere=hemisphere,
                 resolution=resolution,
             )
