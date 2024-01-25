@@ -679,6 +679,8 @@ def compute_initial_daily_ecdr_dataset(
             logger.info("Updated spatial_interpolation with pole hole value")
 
     # Mask out land and clamp conc to between 10-100%.
+    # TODO: using the land mask here is not enough! We need to mask out all
+    # "non-ocean" pixels, which includes coast & lakes.
     cdr_conc[land_mask.data] = np.nan
     cdr_conc[cdr_conc < 10] = 0
     cdr_conc[cdr_conc > 100] = 100
