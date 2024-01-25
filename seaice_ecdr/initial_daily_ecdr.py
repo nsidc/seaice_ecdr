@@ -639,11 +639,11 @@ def compute_initial_daily_ecdr_dataset(
     logger.info("Applying NT2 land spillover technique...")
     l90c = get_land90_conc_field(
         hemisphere=hemisphere,
-        resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+        resolution=tb_resolution,
     )
     adj123 = get_adj123_field(
         hemisphere=hemisphere,
-        resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+        resolution=tb_resolution,
     )
     cdr_conc = apply_nt2_land_spillover(
         conc=cdr_conc,
@@ -661,7 +661,7 @@ def compute_initial_daily_ecdr_dataset(
         platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
             date=date,
-            resolution=cast(ECDR_SUPPORTED_RESOLUTIONS, tb_resolution),
+            resolution=tb_resolution,
             sat=platform,
         )
         cdr_conc = fill_pole_hole(
