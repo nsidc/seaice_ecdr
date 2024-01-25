@@ -52,7 +52,7 @@ def get_ancillary_ds(
     return ds
 
 
-# TODO: move to util  module?
+# TODO: reconcile with `platforms.py`
 def _get_sat_by_date(
     date: dt.date,
 ) -> SUPPORTED_SAT:
