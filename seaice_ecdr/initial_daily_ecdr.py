@@ -37,7 +37,7 @@ from pm_tb_data._types import NORTH, Hemisphere
 from pm_tb_data.fetch.amsr.ae_si import get_ae_si_tbs_from_disk
 from pm_tb_data.fetch.amsr.au_si import get_au_si_tbs
 from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
-from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS, get_nsidc_0001_tbs_from_disk
+from pm_tb_data.fetch.nsidc_0001 import get_nsidc_0001_tbs_from_disk
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
@@ -1015,7 +1015,7 @@ def initial_daily_ecdr_dataset(
                 hemisphere=hemisphere,
                 data_dir=NSIDC0001_DATA_DIR,
                 resolution=nsidc0001_resolution,
-                sat=cast(NSIDC_0001_SATS, platform),
+                sat=platform,
             )
             xr_tbs = rename_0001_tbs(input_ds=xr_tbs_0001)
         except FileNotFoundError:
