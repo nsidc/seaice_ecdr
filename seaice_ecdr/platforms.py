@@ -222,7 +222,7 @@ def get_platform_by_date(
     date: dt.date,
     *,
     platform_availability: OrderedDict = PLATFORM_AVAILABILITY,
-) -> str:
+) -> SUPPORTED_SAT:
     """Return the platform for this date."""
     platform_start_dates = get_platform_start_dates()
 
@@ -250,4 +250,4 @@ def get_platform_by_date(
             else:
                 break
 
-    return str(return_platform)
+    return return_platform

@@ -24,7 +24,6 @@ import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import pm_icecon.nt.params.nsidc0001 as nt_0001_params
 import xarray as xr
 from loguru import logger
-from pm_icecon._types import ValidSatellites
 
 # TODO: default flag values are specific to the ECDR, and should probably be
 # defined in this repo instead of `pm_icecon`.
@@ -452,7 +451,7 @@ def compute_initial_daily_ecdr_dataset(
     elif platform in valid_sats_0001_nt:
         nt_params = nt_0001_params.get_0001_nt_params(
             hemisphere=hemisphere,
-            platform=cast(ValidSatellites, platform),
+            platform=platform,
         )
     else:
         raise RuntimeError(f"Dont know how to get NT parameters for: {platform}")
