@@ -24,10 +24,6 @@ import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import pm_icecon.nt.params.nsidc0001 as nt_0001_params
 import xarray as xr
 from loguru import logger
-
-# TODO: default flag values are specific to the ECDR, and should probably be
-# defined in this repo instead of `pm_icecon`.
-from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
 from pm_icecon.land_spillover import apply_nt2_land_spillover
@@ -66,7 +62,6 @@ def cdr_bootstrap(
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
     bt_coefs,
-    missing_flag_value: float,
 ):
     """Generate the raw bootstrap concentration field."""
     wtp_37v = bt_coefs["bt_wtp_v37"]
@@ -91,11 +86,15 @@ def cdr_bootstrap(
         line_37v19v=bt_coefs["v1937_lnline"],
         ad_line_offset=bt_coefs["ad_line_offset"],
         maxic_frac=bt_coefs["maxic"],
-        missing_flag_value=missing_flag_value,
+        # Note: the missing value of 255 ends up getting set to `nan` below.
+        missing_flag_value=255,
     )
 
     # Se any bootstrap concentrations below 10% to 0.
     bt_conc[bt_conc < 10] = 0
+
+    # Remove bt_conc flags (e.g., missing)
+    bt_conc[bt_conc > 200] = np.nan
 
     return bt_conc
 
@@ -168,7 +167,6 @@ def calculate_bt_nt_cdr_raw_conc(
     tb_v19: npt.NDArray,
     bt_coefs: dict,
     nt_coefs: NtCoefs,
-    missing_flag_value: float | int,
 ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     """Run the CDR algorithm."""
     # First, get bootstrap conc.
@@ -177,7 +175,6 @@ def calculate_bt_nt_cdr_raw_conc(
         tb_h37=tb_h37,
         tb_v19=tb_v19,
         bt_coefs=bt_coefs,
-        missing_flag_value=missing_flag_value,
     )
 
     # Get nasateam conc. Note that concentrations from nasateam may be >100%.
@@ -219,9 +216,6 @@ def _setup_ecdr_ds(
     # Note: these attributes should probably go with
     #       a variable named "CDR_parameters" or similar
     ecdr_ide_ds.attrs["grid_id"] = grid_id
-    # TODO: we should not set this attr on the DS. It is only used for the
-    # bootstrap alg computation.
-    ecdr_ide_ds.attrs["missing_value"] = DEFAULT_FLAG_VALUES.missing
 
     # Set data_source attribute
     ecdr_ide_ds.attrs["data_source"] = tb_data.data_source
@@ -245,7 +239,6 @@ def _setup_ecdr_ds(
         tbdata = tb_data.tbs.variables[tbname].data
         freq = tbname[1:]
         pol = tbname[:1]
-        # TODO: AU_SI is specified here, but should be calculated
         tb_longname = f"Daily TB {freq}{pol} from {tb_data.data_source}"
         tb_units = "K"
         ecdr_ide_ds[tb_varname] = (
@@ -271,7 +264,6 @@ def compute_initial_daily_ecdr_dataset(
     date: dt.date,
     hemisphere: Hemisphere,
     tb_data: EcdrTbData,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     fill_the_pole_hole: bool = False,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
@@ -568,7 +560,6 @@ def compute_initial_daily_ecdr_dataset(
         tb_v19=ecdr_ide_ds["v18_day_si"].data[0, :, :],
         bt_coefs=bt_coefs,
         nt_coefs=nt_coefs,
-        missing_flag_value=ecdr_ide_ds.attrs["missing_value"],
     )
 
     # Apply masks
@@ -672,27 +663,22 @@ def compute_initial_daily_ecdr_dataset(
     cdr_conc[cdr_conc > 100] = 100
 
     # Add the BT raw field to the dataset
-    if bt_conc is not None:
-        # Remove bt_conc flags and
-        bt_conc[bt_conc > 200] = np.nan
-        bt_conc = bt_conc / 100.0  # re-set range from 0 to 1
-        ecdr_ide_ds["raw_bt_seaice_conc"] = (
-            ("time", "y", "x"),
-            np.expand_dims(bt_conc, axis=0),
-            {
-                "grid_mapping": "crs",
-                "standard_name": "sea_ice_area_fraction",
-                "long_name": (
-                    "Bootstrap sea ice concentration, raw field with no masking"
-                ),
-            },
-            {
-                "zlib": True,
-                "dtype": "uint8",
-                "scale_factor": 0.01,
-                "_FillValue": 255,
-            },
-        )
+    bt_conc = bt_conc / 100.0  # re-set range from 0 to 1
+    ecdr_ide_ds["raw_bt_seaice_conc"] = (
+        ("time", "y", "x"),
+        np.expand_dims(bt_conc, axis=0),
+        {
+            "grid_mapping": "crs",
+            "standard_name": "sea_ice_area_fraction",
+            "long_name": ("Bootstrap sea ice concentration, raw field with no masking"),
+        },
+        {
+            "zlib": True,
+            "dtype": "uint8",
+            "scale_factor": 0.01,
+            "_FillValue": 255,
+        },
+    )
 
     # Add the BT coefficients to the raw_bt_seaice_conc DataArray
     for attr in sorted(bt_coefs.keys()):
@@ -704,32 +690,29 @@ def compute_initial_daily_ecdr_dataset(
             )
 
     # Add the NT raw field to the dataset
-    if nt_conc is not None:
-        if (nt_conc > 200).any():
-            logger.warning(
-                "Raw nasateam concentrations above 200 were found."
-                " This is unexpected may need to be investigated."
-                f" Max nt value: {np.nanmax(nt_conc)}"
-            )
-
-        nt_conc = nt_conc / 100.0
-        ecdr_ide_ds["raw_nt_seaice_conc"] = (
-            ("time", "y", "x"),
-            np.expand_dims(nt_conc, axis=0),
-            {
-                "grid_mapping": "crs",
-                "standard_name": "sea_ice_area_fraction",
-                "long_name": (
-                    "NASA Team sea ice concentration, raw field with no masking"
-                ),
-            },
-            {
-                "zlib": True,
-                "dtype": "uint8",
-                "scale_factor": 0.01,
-                "_FillValue": 255,
-            },
+    if (nt_conc > 200).any():
+        logger.warning(
+            "Raw nasateam concentrations above 200 were found."
+            " This is unexpected may need to be investigated."
+            f" Max nt value: {np.nanmax(nt_conc)}"
         )
+
+    nt_conc = nt_conc / 100.0
+    ecdr_ide_ds["raw_nt_seaice_conc"] = (
+        ("time", "y", "x"),
+        np.expand_dims(nt_conc, axis=0),
+        {
+            "grid_mapping": "crs",
+            "standard_name": "sea_ice_area_fraction",
+            "long_name": ("NASA Team sea ice concentration, raw field with no masking"),
+        },
+        {
+            "zlib": True,
+            "dtype": "uint8",
+            "scale_factor": 0.01,
+            "_FillValue": 255,
+        },
+    )
 
     # Add the NT coefficients to the raw_nt_seaice_conc DataArray
     for attr in sorted(nt_coefs.keys()):
@@ -835,7 +818,6 @@ def initial_daily_ecdr_dataset(
     initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
-        resolution=resolution,
         tb_data=tb_data,
     )
 
