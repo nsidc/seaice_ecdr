@@ -177,7 +177,7 @@ QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS = OrderedDict(
     nt_weather_filter_applied=2,
     land_spillover_applied=4,
     no_input_data=8,
-    valid_ice_mask_applied=16,
+    invalid_ice_mask_applied=16,
     spatial_interpolation_applied=32,
     temporal_interpolation_applied=64,
     # This flag value only occurs in the Arctic.
@@ -191,7 +191,7 @@ QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS = OrderedDict(
         "average_concentration_exceeds_0.30": 2,
         "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15": 4,
         "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30": 8,
-        "region_masked_by_ocean_climatology": 16,
+        "invalid_ice_mask_applied": 16,
         "at_least_one_day_during_month_has_spatial_interpolation": 32,
         "at_least_one_day_during_month_has_temporal_interpolation": 64,
         "at_least_one_day_during_month_has_melt_detected": 128,
@@ -262,15 +262,15 @@ def calc_qa_of_cdr_seaice_conc_monthly(
         ],
     )
 
-    # Use "valid_ice_mask_applied", which is actually the invalid ice mask.
-    region_masked_by_ocean_climatology = _qa_field_has_flag(
+    # Use "invalid_ice_mask_applied", which is actually the invalid ice mask.
+    invalid_ice_mask_applied = _qa_field_has_flag(
         qa_field=daily_ds_for_month.qa_of_cdr_seaice_conc,
-        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["valid_ice_mask_applied"],
+        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["invalid_ice_mask_applied"],
     ).any(dim="time")
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
-        ~region_masked_by_ocean_climatology,
+        ~invalid_ice_mask_applied,
         qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["region_masked_by_ocean_climatology"],
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["invalid_ice_mask_applied"],
     )
 
     at_least_one_day_during_month_has_spatial_interpolation = _qa_field_has_flag(
@@ -346,6 +346,7 @@ def _calc_conc_monthly(
     conc_monthly = conc_monthly.assign_attrs(
         long_name=long_name,
         standard_name="sea_ice_area_fraction",
+        coverage_content_type="image",
         units="1",
         valid_range=(np.uint8(0), np.uint8(100)),
         grid_mapping="crs",
