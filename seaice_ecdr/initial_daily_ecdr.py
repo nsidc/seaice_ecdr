@@ -53,6 +53,10 @@ from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
 from seaice_ecdr.tb_data import get_ecdr_tb_data
 from seaice_ecdr.util import date_range, standard_daily_filename
 
+# TODO: these TB names are not those expected by the nt/bt algorithms as defined
+# by `pm_icecon`. These are AMSR2 equivilients.
+# Bootstrap needs: v37, h37, v19, v22
+# Nasateam needs: v19, h19, v37
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
 
 
