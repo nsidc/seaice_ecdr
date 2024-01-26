@@ -324,7 +324,9 @@ def finalize_cdecdr_ds(
                 " raw field with no masking or filtering"
             ),
             "grid_mapping": "crs",
-            "valid_min": np.uint8(0),
+            # We set a valid max of 200 because we allow nasateam raw
+            # concentrations >100%. We don't think values of >200 are realistic.
+            "valid_range": np.array((0, 200), dtype=np.uint8),
         },
     )
 

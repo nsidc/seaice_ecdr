@@ -719,6 +719,12 @@ def compute_initial_daily_ecdr_dataset(
 
     # Add the NT raw field to the dataset
     if nt_conc is not None:
+        if (nt_conc > 200).any():
+            raise RuntimeError(
+                "Raw nasateam concentrations above 200 were found."
+                " This is unexpected and needs to be investigated."
+            )
+
         nt_conc = nt_conc / 100.0
         ecdr_ide_ds["raw_nt_seaice_conc"] = (
             ("time", "y", "x"),
