@@ -135,10 +135,18 @@ def get_surfacetype_da(
             y=yvar,
             x=xvar,
         ),
+        # TODO: get these attrs from ancillary file.
         attrs={
             "grid_mapping": "crs",
             "flag_values": surftype_flag_values_arr,
             "flag_meanings": surftype_flag_meanings_str,
+            "standard_name": "area_type",
+            "long_name": "Mask for ocean, lake, polehole, coast, and land areas",
+            "comment": (
+                "Note: Not all of the flag meanings derive from the current list of"
+                " acceptable labels for area_type because there are area types in"
+                " this field that are not present in that list."
+            ),
         },
     )
 
