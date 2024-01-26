@@ -49,6 +49,7 @@ def finalize_cdecdr_ds(
         ds["cdr_seaice_conc"].data,
         {
             "standard_name": "sea_ice_area_fraction",
+            "coverage_content_type": "image",
             "units": "1",
             "long_name": (
                 "NOAA/NSIDC Climate Data Record of Passive Microwave"
@@ -299,6 +300,7 @@ def finalize_cdecdr_ds(
         ds["raw_bt_seaice_conc"].data,
         {
             "standard_name": "sea_ice_area_fraction",
+            "coverage_content_type": "image",
             "units": "1",
             "long_name": (
                 "Bootstrap sea ice concntration;"
@@ -318,6 +320,7 @@ def finalize_cdecdr_ds(
         ds["raw_nt_seaice_conc"].data,
         {
             "standard_name": "sea_ice_area_fraction",
+            "coverage_content_type": "image",
             "units": "1",
             "long_name": (
                 "NASA Team sea ice concntration;"
