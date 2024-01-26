@@ -832,7 +832,6 @@ def initial_daily_ecdr_dataset(
     tb_data = get_ecdr_tb_data(
         date=date,
         hemisphere=hemisphere,
-        resolution=resolution,
     )
     initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,

@@ -1,7 +1,7 @@
 import datetime as dt
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import Final, get_args
 
 import numpy as np
 import xarray as xr
@@ -13,7 +13,7 @@ from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.amsr.ae_si import get_ae_si_tbs_from_disk
 from pm_tb_data.fetch.amsr.au_si import get_au_si_tbs
 from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
-from pm_tb_data.fetch.nsidc_0001 import get_nsidc_0001_tbs_from_disk
+from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS, get_nsidc_0001_tbs_from_disk
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.platforms import get_platform_by_date
@@ -163,83 +163,107 @@ class EcdrTbData:
     resolution: ECDR_SUPPORTED_RESOLUTIONS
 
 
-def get_ecdr_tb_data(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-) -> EcdrTbData:
-    platform = get_platform_by_date(date)
-    if platform == "am2":
-        au_si_resolution_str = _pm_icecon_amsr_res_str(resolution=resolution)
-        try:
-            xr_tbs = get_au_si_tbs(
-                date=date,
-                hemisphere=hemisphere,
-                resolution=au_si_resolution_str,
-            )
-        except FileNotFoundError:
-            xr_tbs = create_null_au_si_tbs(
-                hemisphere=hemisphere,
-                resolution=resolution,
-            )
-            logger.warning(
-                f"Used all-null TBS for date={date},"
-                f" hemisphere={hemisphere},"
-                f" resolution={resolution}"
-            )
-        tb_resolution = resolution
-    elif platform == "ame":
-        ame_resolution_str = _pm_icecon_amsr_res_str(resolution=resolution)
-        AME_DATA_DIR = Path("/ecs/DP4/AMSA/AE_SI12.003/")
-        try:
-            xr_tbs = get_ae_si_tbs_from_disk(
-                date=date,
-                hemisphere=hemisphere,
-                data_dir=AME_DATA_DIR,
-                resolution=ame_resolution_str,
-            )
-        except FileNotFoundError:
-            logger.warning(f"Using null AU_SI12 for AME on {date}")
-            xr_tbs = create_null_au_si_tbs(
-                hemisphere=hemisphere,
-                resolution=resolution,
-            )
-            logger.warning(
-                f"Used all-null TBS for date={date},"
-                f" hemisphere={hemisphere},"
-                f" resolution={resolution}"
-            )
-        tb_resolution = resolution
-    elif platform == "F17":
-        NSIDC0001_DATA_DIR = Path("/ecs/DP4/PM/NSIDC-0001.006/")
-        # NSIDC-0001 TBs for siconc are all at 25km
-        nsidc0001_resolution: Final = "25"
-        try:
-            xr_tbs_0001 = get_nsidc_0001_tbs_from_disk(
-                date=date,
-                hemisphere=hemisphere,
-                data_dir=NSIDC0001_DATA_DIR,
-                resolution=nsidc0001_resolution,
-                sat=platform,
-            )
-            xr_tbs = rename_0001_tbs(input_ds=xr_tbs_0001)
-        except FileNotFoundError:
-            logger.warning(f"Using null TBs for {platform} on {date}")
-            print("this needs to be create_null_0001_tbs()")
-            xr_tbs = create_null_au_si_tbs(
-                hemisphere=hemisphere,
-                resolution=resolution,
-            )
-            logger.warning(
-                f"Used all-null TBS for date={date},"
-                f" hemisphere={hemisphere},"
-                f" resolution={resolution}"
-            )
-        tb_resolution = nsidc0001_resolution
-    else:
-        raise RuntimeError(f"Platform not supported: {platform}")
+def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
+    tb_resolution: Final = "12.5"
+    try:
+        xr_tbs = get_au_si_tbs(
+            date=date,
+            hemisphere=hemisphere,
+            resolution="12",
+        )
+    except FileNotFoundError:
+        xr_tbs = create_null_au_si_tbs(
+            hemisphere=hemisphere,
+            resolution=tb_resolution,
+        )
+        logger.warning(
+            f"Used all-null TBS for date={date},"
+            f" hemisphere={hemisphere},"
+            f" resolution={tb_resolution}"
+        )
 
     ecdr_tb_data = EcdrTbData(tbs=xr_tbs, resolution=tb_resolution)
 
     return ecdr_tb_data
+
+
+def _get_ame_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
+    tb_resolution: Final = "12.5"
+    ame_resolution_str = _pm_icecon_amsr_res_str(resolution=tb_resolution)
+    AME_DATA_DIR = Path("/ecs/DP4/AMSA/AE_SI12.003/")
+    try:
+        xr_tbs = get_ae_si_tbs_from_disk(
+            date=date,
+            hemisphere=hemisphere,
+            data_dir=AME_DATA_DIR,
+            resolution=ame_resolution_str,
+        )
+    except FileNotFoundError:
+        logger.warning(f"Using null AU_SI12 for AME on {date}")
+        xr_tbs = create_null_au_si_tbs(
+            hemisphere=hemisphere,
+            resolution=tb_resolution,
+        )
+        logger.warning(
+            f"Used all-null TBS for date={date},"
+            f" hemisphere={hemisphere},"
+            f" resolution={tb_resolution}"
+        )
+
+    ecdr_tb_data = EcdrTbData(tbs=xr_tbs, resolution=tb_resolution)
+
+    return ecdr_tb_data
+
+
+def _get_nsidc_0001_tbs(
+    *, date: dt.date, hemisphere: Hemisphere, platform: NSIDC_0001_SATS
+) -> EcdrTbData:
+    NSIDC0001_DATA_DIR = Path("/ecs/DP4/PM/NSIDC-0001.006/")
+    # NSIDC-0001 TBs for siconc are all at 25km
+    nsidc0001_resolution: Final = "25"
+    tb_resolution: Final = nsidc0001_resolution
+    try:
+        xr_tbs_0001 = get_nsidc_0001_tbs_from_disk(
+            date=date,
+            hemisphere=hemisphere,
+            data_dir=NSIDC0001_DATA_DIR,
+            resolution=nsidc0001_resolution,
+            sat=platform,
+        )
+        xr_tbs = rename_0001_tbs(input_ds=xr_tbs_0001)
+    except FileNotFoundError:
+        logger.warning(f"Using null TBs for {platform} on {date}")
+        print("this needs to be create_null_0001_tbs()")
+        xr_tbs = create_null_au_si_tbs(
+            hemisphere=hemisphere,
+            resolution=tb_resolution,
+        )
+        logger.warning(
+            f"Used all-null TBS for date={date},"
+            f" hemisphere={hemisphere},"
+            f" resolution={tb_resolution}"
+        )
+
+    ecdr_tb_data = EcdrTbData(tbs=xr_tbs, resolution=tb_resolution)
+
+    return ecdr_tb_data
+
+
+def get_ecdr_tb_data(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+) -> EcdrTbData:
+    platform = get_platform_by_date(date)
+    if platform == "am2":
+        return _get_am2_tbs(date=date, hemisphere=hemisphere)
+    elif platform == "ame":
+        return _get_ame_tbs(date=date, hemisphere=hemisphere)
+    elif platform in get_args(NSIDC_0001_SATS):
+        return _get_nsidc_0001_tbs(
+            platform=platform,  # type: ignore[arg-type]
+            date=date,
+            hemisphere=hemisphere,
+        )
+    else:
+        raise RuntimeError(f"Platform not supported: {platform}")
