@@ -42,10 +42,14 @@ def compute_nrt_initial_daily_ecdr_dataset(
         tbs=xr_tbs,
         resolution="12.5",
         data_source="LANCE AU_SI12",
+        platform="am2",
     )
 
     nrt_initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
-        date=date, hemisphere=hemisphere, resolution=resolution, tb_data=tb_data
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        tb_data=tb_data,
     )
 
     return nrt_initial_ecdr_ds

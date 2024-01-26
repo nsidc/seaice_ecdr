@@ -226,6 +226,9 @@ def _setup_ecdr_ds(
     # Set data_source attribute
     ecdr_ide_ds.attrs["data_source"] = tb_data.data_source
 
+    # Set the platform
+    ecdr_ide_ds.attrs["platform"] = tb_data.platform
+
     file_date = dt.date(1970, 1, 1) + dt.timedelta(
         days=int(ecdr_ide_ds.variables["time"].data)
     )

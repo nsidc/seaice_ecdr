@@ -16,7 +16,7 @@ from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
 from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS, get_nsidc_0001_tbs_from_disk
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.platforms import get_platform_by_date
+from seaice_ecdr.platforms import SUPPORTED_SAT, get_platform_by_date
 
 
 def _pm_icecon_amsr_res_str(
@@ -162,6 +162,7 @@ class EcdrTbData:
     tbs: xr.Dataset
     resolution: ECDR_SUPPORTED_RESOLUTIONS
     data_source: str
+    platform: SUPPORTED_SAT
 
 
 def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
@@ -184,7 +185,10 @@ def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
         )
 
     ecdr_tb_data = EcdrTbData(
-        tbs=xr_tbs, resolution=tb_resolution, data_source="AU_SI12"
+        tbs=xr_tbs,
+        resolution=tb_resolution,
+        data_source="AU_SI12",
+        platform="am2",
     )
 
     return ecdr_tb_data
@@ -214,7 +218,10 @@ def _get_ame_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
         )
 
     ecdr_tb_data = EcdrTbData(
-        tbs=xr_tbs, resolution=tb_resolution, data_source="AE_SI12"
+        tbs=xr_tbs,
+        resolution=tb_resolution,
+        data_source="AE_SI12",
+        platform="ame",
     )
 
     return ecdr_tb_data
@@ -250,7 +257,10 @@ def _get_nsidc_0001_tbs(
         )
 
     ecdr_tb_data = EcdrTbData(
-        tbs=xr_tbs, resolution=tb_resolution, data_source="NSIDC-0001"
+        tbs=xr_tbs,
+        resolution=tb_resolution,
+        data_source="NSIDC-0001",
+        platform=platform,  # type: ignore[arg-type]
     )
 
     return ecdr_tb_data
