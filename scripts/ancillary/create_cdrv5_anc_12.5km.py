@@ -75,31 +75,32 @@ cdrv4_anc_fn = {
     "sh": "/projects/DATASETS/NOAA/G02202_V4/ancillary/G02202-cdr-ancillary-sh.nc",
 }
 
+# NOTE: These should correspond to SUPPORTED_SAT values seaice_ecdr/_types.py
 SENSOR_LIST = [
-    "smmr",
-    "f08",
-    "f11",
-    "f13",
-    "f17",
-    "am2",
+    "n07",
+    "F08",
+    "F11",
+    "F13",
+    "F17",
     "ame",
+    "am2",
 ]
 
-NSIDC0051_SOURCES = ("smmr", "f08", "f11", "f13", "f17")
+NSIDC0051_SOURCES = ("n07", "F08", "F11", "F13", "F17")
 ICVARNAME_0051 = {
-    "smmr": "N07_ICECON",
-    "f08": "F08_ICECON",
-    "f11": "F11_ICECON",
-    "f13": "F13_ICECON",
-    "f17": "F17_ICECON",
+    "n07": "N07_ICECON",
+    "F08": "F08_ICECON",
+    "F11": "F11_ICECON",
+    "F13": "F13_ICECON",
+    "F17": "F17_ICECON",
 }
 
 SAMPLE_0051_DAILY_NH_NCFN = {
-    "smmr": "/ecs/DP1/PM/NSIDC-0051.002/1978.11.03/NSIDC0051_SEAICE_PS_N25km_19781103_v2.0.nc",
-    "f08": "/ecs/DP1/PM/NSIDC-0051.002/1989.11.02/NSIDC0051_SEAICE_PS_N25km_19891102_v2.0.nc",
-    "f11": "/ecs/DP1/PM/NSIDC-0051.002/1993.11.02/NSIDC0051_SEAICE_PS_N25km_19931102_v2.0.nc",
-    "f13": "/ecs/DP1/PM/NSIDC-0051.002/2000.11.02/NSIDC0051_SEAICE_PS_N25km_20001102_v2.0.nc",
-    "f17": "/ecs/DP1/PM/NSIDC-0051.002/2020.11.02/NSIDC0051_SEAICE_PS_N25km_20201102_v2.0.nc",
+    "n07": "/ecs/DP1/PM/NSIDC-0051.002/1978.11.03/NSIDC0051_SEAICE_PS_N25km_19781103_v2.0.nc",
+    "F08": "/ecs/DP1/PM/NSIDC-0051.002/1989.11.02/NSIDC0051_SEAICE_PS_N25km_19891102_v2.0.nc",
+    "F11": "/ecs/DP1/PM/NSIDC-0051.002/1993.11.02/NSIDC0051_SEAICE_PS_N25km_19931102_v2.0.nc",
+    "F13": "/ecs/DP1/PM/NSIDC-0051.002/2000.11.02/NSIDC0051_SEAICE_PS_N25km_20001102_v2.0.nc",
+    "F17": "/ecs/DP1/PM/NSIDC-0051.002/2020.11.02/NSIDC0051_SEAICE_PS_N25km_20201102_v2.0.nc",
 }
 
 
@@ -183,10 +184,10 @@ def get_polehole_bitmask(
     ydim, xdim = mask_shape
     bitmask = np.zeros((ydim, xdim), dtype=np.uint8)
     bit_value = 1
-    flag_values_list = []
+    flag_masks_list = []
     flag_meanings = []
     for sensor in sensor_list:
-        flag_values_list.append(bit_value)
+        flag_masks_list.append(bit_value)
 
         bit_name = f"{sensor}_polemask"
         flag_meanings.append(bit_name)
@@ -199,10 +200,10 @@ def get_polehole_bitmask(
 
     assert len(flag_meanings) <= 8
 
-    flag_values = np.array(flag_values_list, dtype=np.uint8)
+    flag_masks = np.array(flag_masks_list, dtype=np.uint8)
     flag_meanings_str = " ".join(flag_meaning for flag_meaning in flag_meanings)
 
-    return bitmask, flag_values, flag_meanings_str
+    return bitmask, flag_masks, flag_meanings_str
 
 
 def find_coast(mask, ocean_values=(50,), land_values=(75, 250)):
@@ -257,7 +258,6 @@ def calc_surfacetype_np(ds):
             mask_varname = possible_varname
             break
 
-    print(f"mask_varname: {mask_varname}")
     da_regions = ds.data_vars[mask_varname]
     regions_data = da_regions.data
     is_regions_ocean = regions_data <= 20
@@ -532,10 +532,18 @@ def generate_ecdr_anc_12p5_file(gridid):
     # Variables added: crs
     # Attributes added: description and geo-informative attrs
     ds_latlon = xr.load_dataset(latlon_fn)
+    crs_da = ds_latlon.variables["crs"]
+    if "straight_vertical_longitude_from_pole" in crs_da.attrs.keys():
+        # CF-1.11 deprecates this polar stereographic map parameter
+        crs_da.attrs["longitude_of_projection_origin"] = crs_da.attrs[
+            "straight_vertical_longitude_from_pole"
+        ]
+        del crs_da.attrs["straight_vertical_longitude_from_pole"]
+
     months = np.arange(1, 13).astype(np.int16)
     ds = xr.Dataset(
         data_vars=dict(
-            crs=ds_latlon.variables["crs"],
+            crs=crs_da,
             latitude=ds_latlon.variables["latitude"],
             longitude=ds_latlon.variables["longitude"],
         ),
@@ -714,11 +722,11 @@ def generate_ecdr_anc_12p5_file(gridid):
     # is set
     if "psn" in gridid:
         # Only have pole hole bitmask in Northern Hemisphere grid
-        polehole_bitmask, flag_values, flag_meanings_str = get_polehole_bitmask(
+        polehole_bitmask, flag_masks, flag_meanings_str = get_polehole_bitmask(
             ds.data_vars["adj123"].data.shape,
             SENSOR_LIST,
         )
-        flag_values_sum = np.sum(flag_values)
+        flag_masks_sum = np.sum(flag_masks)
 
         ds["polehole_bitmask"] = xr.DataArray(
             name="polehole_bitmask",
@@ -728,9 +736,9 @@ def generate_ecdr_anc_12p5_file(gridid):
                 "short_name": "polehole_bitmask",
                 "long_name": f"{gridid} polehole_bitmask",
                 "grid_mapping": "crs",
-                "flag_values": flag_values,
+                "flag_masks": flag_masks,
                 "flag_meanings": flag_meanings_str,
-                "valid_range": np.array((0, flag_values_sum), dtype=np.uint8),
+                "valid_range": np.array((0, flag_masks_sum), dtype=np.uint8),
             },
         )
 

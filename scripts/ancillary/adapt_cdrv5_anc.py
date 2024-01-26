@@ -44,10 +44,15 @@ from pm_icecon.land_spillover import create_land90
 from scipy.signal import convolve2d
 
 ecdr_anc_fn = {
-    "psn12.5": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-psn12.5.nc",
-    "pss12.5": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-pss12.5.nc",
-    "psn25": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-psn25.nc",
-    "pss25": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-pss25.nc",
+    # "psn12.5": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-psn12.5.nc",
+    # "pss12.5": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-pss12.5.nc",
+    # "psn25": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-psn25.nc",
+    # "pss25": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-pss25.nc",
+    # Prefer local versions
+    "psn12.5": "./ecdr-ancillary-psn12.5.nc",
+    "pss12.5": "./ecdr-ancillary-pss12.5.nc",
+    "psn25": "./ecdr-ancillary-psn25.nc",
+    "pss25": "./ecdr-ancillary-pss25.nc",
 }
 
 nsidc0771_fn = {
@@ -117,7 +122,6 @@ def calc_surfacetype_np(ds):
             mask_varname = possible_varname
             break
 
-    print(f"mask_varname: {mask_varname}")
     da_regions = ds.data_vars[mask_varname]
     regions_data = da_regions.data
     is_regions_ocean = regions_data <= 20
