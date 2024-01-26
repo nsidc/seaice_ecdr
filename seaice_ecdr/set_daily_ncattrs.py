@@ -338,9 +338,7 @@ def finalize_cdecdr_ds(
         time=ds.time,
         temporality="daily",
         aggregate=False,
-        # TODO: support alternative source datasets. Will be AU_SI12 for AMSR2,
-        # AE_SI12 for AMSR-E, and NSIDC-0001 for SSMIS, SSM/I, and SMMR
-        source="Generated from AU_SI12",
+        source="Generated from {ds_in.data_source}",
         # TODO: set sat from source
         sats=["am2"],
     )

@@ -50,7 +50,7 @@ from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
-from seaice_ecdr.tb_data import get_ecdr_tb_data
+from seaice_ecdr.tb_data import EcdrTbData, get_ecdr_tb_data
 from seaice_ecdr.util import date_range, standard_daily_filename
 
 # TODO: these TB names are not those expected by the nt/bt algorithms as defined
@@ -201,14 +201,13 @@ def calculate_bt_nt_cdr_raw_conc(
 def _setup_ecdr_ds(
     *,
     date: dt.date,
-    xr_tbs: xr.Dataset,
+    tb_data: EcdrTbData,
     hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
     # Initialize geo-referenced xarray Dataset
     grid_id = get_grid_id(
         hemisphere=hemisphere,
-        resolution=resolution,
+        resolution=tb_data.resolution,
     )
 
     # TODO: These fields should derive from the ancillary file,
@@ -224,6 +223,9 @@ def _setup_ecdr_ds(
     # bootstrap alg computation.
     ecdr_ide_ds.attrs["missing_value"] = DEFAULT_FLAG_VALUES.missing
 
+    # Set data_source attribute
+    ecdr_ide_ds.attrs["data_source"] = tb_data.data_source
+
     file_date = dt.date(1970, 1, 1) + dt.timedelta(
         days=int(ecdr_ide_ds.variables["time"].data)
     )
@@ -237,11 +239,11 @@ def _setup_ecdr_ds(
     # Move TBs to ecdr_ds
     for tbname in EXPECTED_TB_NAMES:
         tb_varname = f"{tbname}_day"
-        tbdata = xr_tbs.variables[tbname].data
+        tbdata = tb_data.tbs.variables[tbname].data
         freq = tbname[1:]
         pol = tbname[:1]
         # TODO: AU_SI is specified here, but should be calculated
-        tb_longname = f"Daily TB {freq}{pol} from AU_SI{resolution}"
+        tb_longname = f"Daily TB {freq}{pol} from {tb_data.data_source}"
         tb_units = "K"
         ecdr_ide_ds[tb_varname] = (
             ("time", "y", "x"),
@@ -265,10 +267,9 @@ def compute_initial_daily_ecdr_dataset(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
+    tb_data: EcdrTbData,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    xr_tbs: xr.Dataset,
     fill_the_pole_hole: bool = False,
-    tb_resolution: ECDR_SUPPORTED_RESOLUTIONS | None = None,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -279,14 +280,9 @@ def compute_initial_daily_ecdr_dataset(
     fields. Its difficult to understand what's in the resulting dataset without
     manually inspecting the result of running this code.
     """
-    # tb_resolution defaults to final grid resolution
-    if tb_resolution is None:
-        tb_resolution = resolution
-
     ecdr_ide_ds = _setup_ecdr_ds(
         date=date,
-        xr_tbs=xr_tbs,
-        resolution=tb_resolution,
+        tb_data=tb_data,
         hemisphere=hemisphere,
     )
 
@@ -336,7 +332,7 @@ def compute_initial_daily_ecdr_dataset(
         spatint_bitmask_arr[is_tb_si_diff] += TB_SPATINT_BITMASK_MAP[tbname]
         land_mask = get_land_mask(
             hemisphere=hemisphere,
-            resolution=tb_resolution,
+            resolution=tb_data.resolution,
         )
         spatint_bitmask_arr[land_mask.data] = 0
 
@@ -394,12 +390,12 @@ def compute_initial_daily_ecdr_dataset(
     invalid_ice_mask = get_invalid_ice_mask(
         hemisphere=hemisphere,
         month=date.month,
-        resolution=tb_resolution,
+        resolution=tb_data.resolution,
     )
 
     land_mask = get_land_mask(
         hemisphere=hemisphere,
-        resolution=tb_resolution,
+        resolution=tb_data.resolution,
     )
 
     ecdr_ide_ds["invalid_ice_mask"] = invalid_ice_mask.expand_dims(dim="time")
@@ -414,7 +410,7 @@ def compute_initial_daily_ecdr_dataset(
     if hemisphere == NORTH:
         pole_mask = nh_polehole_mask(
             date=date,
-            resolution=tb_resolution,
+            resolution=tb_data.resolution,
             sat=platform,
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
@@ -625,11 +621,11 @@ def compute_initial_daily_ecdr_dataset(
     logger.info("Applying NT2 land spillover technique...")
     l90c = get_land90_conc_field(
         hemisphere=hemisphere,
-        resolution=tb_resolution,
+        resolution=tb_data.resolution,
     )
     adj123 = get_adj123_field(
         hemisphere=hemisphere,
-        resolution=tb_resolution,
+        resolution=tb_data.resolution,
     )
     cdr_conc = apply_nt2_land_spillover(
         conc=cdr_conc,
@@ -647,7 +643,7 @@ def compute_initial_daily_ecdr_dataset(
         platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
             date=date,
-            resolution=tb_resolution,
+            resolution=tb_data.resolution,
             sat=platform,
         )
         cdr_conc = fill_pole_hole(
@@ -837,8 +833,7 @@ def initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        xr_tbs=tb_data.tbs,
-        tb_resolution=tb_data.resolution,
+        tb_data=tb_data,
     )
 
     # If the computed ide_ds is not on the desired grid (ie resolution),
@@ -954,13 +949,6 @@ def make_idecdr_netcdf(
     excluded_fields: Iterable[str] = [],
 ) -> None:
     logger.info(f"Creating idecdr for {date=}, {hemisphere=}, {resolution=}")
-    """ Rewriting to generalize away from au_si
-    ide_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-    """
     ide_ds = initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,

@@ -161,6 +161,7 @@ def create_null_au_si_tbs(
 class EcdrTbData:
     tbs: xr.Dataset
     resolution: ECDR_SUPPORTED_RESOLUTIONS
+    data_source: str
 
 
 def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
@@ -182,7 +183,9 @@ def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
             f" resolution={tb_resolution}"
         )
 
-    ecdr_tb_data = EcdrTbData(tbs=xr_tbs, resolution=tb_resolution)
+    ecdr_tb_data = EcdrTbData(
+        tbs=xr_tbs, resolution=tb_resolution, data_source="AU_SI12"
+    )
 
     return ecdr_tb_data
 
@@ -210,7 +213,9 @@ def _get_ame_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
             f" resolution={tb_resolution}"
         )
 
-    ecdr_tb_data = EcdrTbData(tbs=xr_tbs, resolution=tb_resolution)
+    ecdr_tb_data = EcdrTbData(
+        tbs=xr_tbs, resolution=tb_resolution, data_source="AE_SI12"
+    )
 
     return ecdr_tb_data
 
@@ -244,7 +249,9 @@ def _get_nsidc_0001_tbs(
             f" resolution={tb_resolution}"
         )
 
-    ecdr_tb_data = EcdrTbData(tbs=xr_tbs, resolution=tb_resolution)
+    ecdr_tb_data = EcdrTbData(
+        tbs=xr_tbs, resolution=tb_resolution, data_source="NSIDC-0001"
+    )
 
     return ecdr_tb_data
 
