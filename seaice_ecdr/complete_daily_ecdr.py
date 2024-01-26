@@ -514,14 +514,6 @@ def make_cdecdr_netcdf(
 ) -> Path:
     logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
 
-    """ Rewriting the au_si specific code here...
-    cde_ds = complete_daily_ecdr_dataset_for_au_si_tbs(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-    )
-    """
     cde_ds = complete_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,

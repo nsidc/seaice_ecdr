@@ -10,7 +10,7 @@ import sys
 import traceback
 from functools import cache
 from pathlib import Path
-from typing import Final, Iterable, TypedDict, cast, get_args
+from typing import Iterable, TypedDict, cast, get_args
 
 import click
 import numpy as np
@@ -34,10 +34,7 @@ from pm_icecon.land_spillover import apply_nt2_land_spillover
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_tb_data._types import NORTH, Hemisphere
-from pm_tb_data.fetch.amsr.ae_si import get_ae_si_tbs_from_disk
-from pm_tb_data.fetch.amsr.au_si import get_au_si_tbs
-from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
-from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS, get_nsidc_0001_tbs_from_disk
+from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
@@ -53,8 +50,13 @@ from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
+from seaice_ecdr.tb_data import EcdrTbData, get_ecdr_tb_data
 from seaice_ecdr.util import date_range, standard_daily_filename
 
+# TODO: these TB names are not those expected by the nt/bt algorithms as defined
+# by `pm_icecon`. These are AMSR2 equivilients.
+# Bootstrap needs: v37, h37, v19, v22
+# Nasateam needs: v19, h19, v37
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
 
 
@@ -199,14 +201,13 @@ def calculate_bt_nt_cdr_raw_conc(
 def _setup_ecdr_ds(
     *,
     date: dt.date,
-    xr_tbs: xr.Dataset,
+    tb_data: EcdrTbData,
     hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
     # Initialize geo-referenced xarray Dataset
     grid_id = get_grid_id(
         hemisphere=hemisphere,
-        resolution=resolution,
+        resolution=tb_data.resolution,
     )
 
     # TODO: These fields should derive from the ancillary file,
@@ -222,6 +223,12 @@ def _setup_ecdr_ds(
     # bootstrap alg computation.
     ecdr_ide_ds.attrs["missing_value"] = DEFAULT_FLAG_VALUES.missing
 
+    # Set data_source attribute
+    ecdr_ide_ds.attrs["data_source"] = tb_data.data_source
+
+    # Set the platform
+    ecdr_ide_ds.attrs["platform"] = tb_data.platform
+
     file_date = dt.date(1970, 1, 1) + dt.timedelta(
         days=int(ecdr_ide_ds.variables["time"].data)
     )
@@ -235,11 +242,11 @@ def _setup_ecdr_ds(
     # Move TBs to ecdr_ds
     for tbname in EXPECTED_TB_NAMES:
         tb_varname = f"{tbname}_day"
-        tbdata = xr_tbs.variables[tbname].data
+        tbdata = tb_data.tbs.variables[tbname].data
         freq = tbname[1:]
         pol = tbname[:1]
         # TODO: AU_SI is specified here, but should be calculated
-        tb_longname = f"Daily TB {freq}{pol} from AU_SI{resolution}"
+        tb_longname = f"Daily TB {freq}{pol} from {tb_data.data_source}"
         tb_units = "K"
         ecdr_ide_ds[tb_varname] = (
             ("time", "y", "x"),
@@ -259,29 +266,13 @@ def _setup_ecdr_ds(
     return ecdr_ide_ds
 
 
-def _pm_icecon_amsr_res_str(
-    *, resolution: ECDR_SUPPORTED_RESOLUTIONS
-) -> AMSR_RESOLUTIONS:
-    """Given an AMSR ECDR resolution string, return a compatible `pm_icecon` resolution string."""
-    _ecdr_pm_icecon_resolution_mapping: dict[
-        ECDR_SUPPORTED_RESOLUTIONS, AMSR_RESOLUTIONS
-    ] = {
-        "12.5": "12",
-        "25": "25",
-    }
-    au_si_resolution_str = _ecdr_pm_icecon_resolution_mapping[resolution]
-
-    return au_si_resolution_str
-
-
 def compute_initial_daily_ecdr_dataset(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
+    tb_data: EcdrTbData,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    xr_tbs: xr.Dataset,
     fill_the_pole_hole: bool = False,
-    tb_resolution: ECDR_SUPPORTED_RESOLUTIONS | None = None,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -292,14 +283,9 @@ def compute_initial_daily_ecdr_dataset(
     fields. Its difficult to understand what's in the resulting dataset without
     manually inspecting the result of running this code.
     """
-    # tb_resolution defaults to final grid resolution
-    if tb_resolution is None:
-        tb_resolution = resolution
-
     ecdr_ide_ds = _setup_ecdr_ds(
         date=date,
-        xr_tbs=xr_tbs,
-        resolution=tb_resolution,
+        tb_data=tb_data,
         hemisphere=hemisphere,
     )
 
@@ -349,7 +335,7 @@ def compute_initial_daily_ecdr_dataset(
         spatint_bitmask_arr[is_tb_si_diff] += TB_SPATINT_BITMASK_MAP[tbname]
         land_mask = get_land_mask(
             hemisphere=hemisphere,
-            resolution=tb_resolution,
+            resolution=tb_data.resolution,
         )
         spatint_bitmask_arr[land_mask.data] = 0
 
@@ -407,12 +393,12 @@ def compute_initial_daily_ecdr_dataset(
     invalid_ice_mask = get_invalid_ice_mask(
         hemisphere=hemisphere,
         month=date.month,
-        resolution=tb_resolution,
+        resolution=tb_data.resolution,
     )
 
     land_mask = get_land_mask(
         hemisphere=hemisphere,
-        resolution=tb_resolution,
+        resolution=tb_data.resolution,
     )
 
     ecdr_ide_ds["invalid_ice_mask"] = invalid_ice_mask.expand_dims(dim="time")
@@ -427,7 +413,7 @@ def compute_initial_daily_ecdr_dataset(
     if hemisphere == NORTH:
         pole_mask = nh_polehole_mask(
             date=date,
-            resolution=tb_resolution,
+            resolution=tb_data.resolution,
             sat=platform,
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
@@ -638,11 +624,11 @@ def compute_initial_daily_ecdr_dataset(
     logger.info("Applying NT2 land spillover technique...")
     l90c = get_land90_conc_field(
         hemisphere=hemisphere,
-        resolution=tb_resolution,
+        resolution=tb_data.resolution,
     )
     adj123 = get_adj123_field(
         hemisphere=hemisphere,
-        resolution=tb_resolution,
+        resolution=tb_data.resolution,
     )
     cdr_conc = apply_nt2_land_spillover(
         conc=cdr_conc,
@@ -660,7 +646,7 @@ def compute_initial_daily_ecdr_dataset(
         platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
             date=date,
-            resolution=tb_resolution,
+            resolution=tb_data.resolution,
             sat=platform,
         )
         cdr_conc = fill_pole_hole(
@@ -809,129 +795,6 @@ def compute_initial_daily_ecdr_dataset(
     return ecdr_ide_ds
 
 
-# TODO: Eventually, these should be renamed based on microwave
-#       band names, not AMSR2 TB channel frequencies
-def rename_0001_tbs(
-    *,
-    input_ds: xr.Dataset,
-) -> xr.Dataset:
-    """Rename 0001 TB fields for use with siconc code written for AMSR2."""
-    nsidc0001_to_amsr_tb_mapping = {
-        "h19": "h18",
-        "v19": "v18",
-        "v22": "v23",
-        "h37": "h36",
-        "v37": "v36",
-    }
-
-    new_tbs = {}
-    for key in input_ds.data_vars.keys():
-        data_var = input_ds.data_vars[key]
-        new_key = nsidc0001_to_amsr_tb_mapping[key]
-        new_tbs[new_key] = xr.DataArray(
-            data_var.data,
-            dims=("fake_y", "fake_x"),
-            attrs=data_var.attrs,
-        )
-
-    new_ds = xr.Dataset(new_tbs)
-
-    return new_ds
-
-
-def create_null_au_si_tbs(
-    *,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-) -> xr.Dataset:
-    """Create xr dataset containing all null-value data for all tbs."""
-    chan_desc = {
-        "h18": "18.7 GHz horizontal daily average Tbs",
-        "v18": "18.7 GHz vertical daily average Tbs",
-        "h23": "23.8 GHz horizontal daily average Tbs",
-        "v23": "23.8 GHz vertical daily average Tbs",
-        "h36": "36.5 GHz horizontal daily average Tbs",
-        "v36": "36.5 GHz vertical daily average Tbs",
-        "h89": "89.0 GHz horizontal daily average Tbs",
-        "v89": "89.0 GHz vertical daily average Tbs",
-    }
-
-    if hemisphere == "north" and resolution == "12.5":
-        xdim = 608
-        ydim = 896
-    elif hemisphere == "south" and resolution == "12.5":
-        xdim = 632
-        ydim = 664
-    else:
-        value_error_string = f"""
-        Could not create null_set of TBs for
-          hemisphere: {hemisphere}
-          resolution: {resolution}
-        """
-        raise ValueError(value_error_string)
-
-    null_array = np.zeros((ydim, xdim), dtype=np.float64)
-    null_array[:] = np.nan
-    common_tb_attrs = {
-        "_FillValue": 0,
-        "units": "degree_kelvin",
-        "standard_name": "brightness_temperature",
-        "packing_convention": "netCDF",
-        "packing_convention_description": "unpacked = scale_factor x packed + add_offset",
-        "scale_factor": 0.1,
-        "add_offset": 0.0,
-    }
-    null_tbs = xr.Dataset(
-        data_vars=dict(
-            h18=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            v18=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            h23=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            v23=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            h36=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            v36=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            h89=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            v89=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-        ),
-    )
-
-    for key in chan_desc.keys():
-        null_tbs.data_vars[key].attrs.update({"long_name": chan_desc[key]})
-
-    return null_tbs
-
-
 def reproject_ideds(
     initial_ecdr_ds: xr.Dataset,
     date: dt.date,
@@ -964,87 +827,16 @@ def initial_daily_ecdr_dataset(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
-    """Create xr dataset containing the first pass of daily enhanced CDR.
-
-    This uses AU_SI12 TBs
-    and others..."""
-    platform = get_platform_by_date(date)
-    if platform == "am2":
-        au_si_resolution_str = _pm_icecon_amsr_res_str(resolution=resolution)
-        try:
-            xr_tbs = get_au_si_tbs(
-                date=date,
-                hemisphere=hemisphere,
-                resolution=au_si_resolution_str,
-            )
-        except FileNotFoundError:
-            xr_tbs = create_null_au_si_tbs(
-                hemisphere=hemisphere,
-                resolution=resolution,
-            )
-            logger.warning(
-                f"Used all-null TBS for date={date},"
-                f" hemisphere={hemisphere},"
-                f" resolution={resolution}"
-            )
-        tb_resolution = resolution
-    elif platform == "ame":
-        ame_resolution_str = _pm_icecon_amsr_res_str(resolution=resolution)
-        AME_DATA_DIR = Path("/ecs/DP4/AMSA/AE_SI12.003/")
-        try:
-            xr_tbs = get_ae_si_tbs_from_disk(
-                date=date,
-                hemisphere=hemisphere,
-                data_dir=AME_DATA_DIR,
-                resolution=ame_resolution_str,
-            )
-        except FileNotFoundError:
-            logger.warning(f"Using null AU_SI12 for AME on {date}")
-            xr_tbs = create_null_au_si_tbs(
-                hemisphere=hemisphere,
-                resolution=resolution,
-            )
-            logger.warning(
-                f"Used all-null TBS for date={date},"
-                f" hemisphere={hemisphere},"
-                f" resolution={resolution}"
-            )
-        tb_resolution = resolution
-    elif platform == "F17":
-        NSIDC0001_DATA_DIR = Path("/ecs/DP4/PM/NSIDC-0001.006/")
-        # NSIDC-0001 TBs for siconc are all at 25km
-        nsidc0001_resolution: Final = "25"
-        try:
-            xr_tbs_0001 = get_nsidc_0001_tbs_from_disk(
-                date=date,
-                hemisphere=hemisphere,
-                data_dir=NSIDC0001_DATA_DIR,
-                resolution=nsidc0001_resolution,
-                sat=platform,
-            )
-            xr_tbs = rename_0001_tbs(input_ds=xr_tbs_0001)
-        except FileNotFoundError:
-            logger.warning(f"Using null TBs for {platform} on {date}")
-            print("this needs to be create_null_0001_tbs()")
-            xr_tbs = create_null_au_si_tbs(
-                hemisphere=hemisphere,
-                resolution=resolution,
-            )
-            logger.warning(
-                f"Used all-null TBS for date={date},"
-                f" hemisphere={hemisphere},"
-                f" resolution={resolution}"
-            )
-        tb_resolution = nsidc0001_resolution
-    else:
-        raise RuntimeError(f"Platform not supported: {platform}")
-
+    """Create xr dataset containing the first pass of daily enhanced CDR."""
+    tb_data = get_ecdr_tb_data(
+        date=date,
+        hemisphere=hemisphere,
+    )
     initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        xr_tbs=xr_tbs,
-        tb_resolution=tb_resolution,
+        tb_data=tb_data,
     )
 
     # If the computed ide_ds is not on the desired grid (ie resolution),
@@ -1052,12 +844,12 @@ def initial_daily_ecdr_dataset(
     # In general, this should be a comparison of grid_id's, but for
     # eCDR, a comparison of resolutions will suffice
     # Finished!
-    if resolution != tb_resolution:
+    if resolution != tb_data.resolution:
         initial_ecdr_ds = reproject_ideds(
             initial_ecdr_ds=initial_ecdr_ds,
             date=date,
             hemisphere=hemisphere,
-            tb_resolution=tb_resolution,
+            tb_resolution=tb_data.resolution,
             resolution=resolution,
         )
         logger.info(f"Reprojected ide_ds to {resolution}km")
@@ -1160,13 +952,6 @@ def make_idecdr_netcdf(
     excluded_fields: Iterable[str] = [],
 ) -> None:
     logger.info(f"Creating idecdr for {date=}, {hemisphere=}, {resolution=}")
-    """ Rewriting to generalize away from au_si
-    ide_ds = initial_daily_ecdr_dataset_for_au_si_tbs(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-    """
     ide_ds = initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
