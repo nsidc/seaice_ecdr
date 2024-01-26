@@ -720,9 +720,10 @@ def compute_initial_daily_ecdr_dataset(
     # Add the NT raw field to the dataset
     if nt_conc is not None:
         if (nt_conc > 200).any():
-            raise RuntimeError(
+            logger.warning(
                 "Raw nasateam concentrations above 200 were found."
-                " This is unexpected and needs to be investigated."
+                " This is unexpected may need to be investigated."
+                f" Max nt value: {np.nanmax(nt_conc)}"
             )
 
         nt_conc = nt_conc / 100.0
