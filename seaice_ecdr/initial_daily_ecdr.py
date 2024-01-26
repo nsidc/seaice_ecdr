@@ -265,7 +265,6 @@ def compute_initial_daily_ecdr_dataset(
     date: dt.date,
     hemisphere: Hemisphere,
     tb_data: EcdrTbData,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     fill_the_pole_hole: bool = False,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
@@ -820,7 +819,6 @@ def initial_daily_ecdr_dataset(
     initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
-        resolution=resolution,
         tb_data=tb_data,
     )
 

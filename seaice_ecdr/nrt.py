@@ -48,7 +48,6 @@ def compute_nrt_initial_daily_ecdr_dataset(
     nrt_initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
-        resolution=resolution,
         tb_data=tb_data,
     )
 
