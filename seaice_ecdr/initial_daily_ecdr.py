@@ -665,25 +665,22 @@ def compute_initial_daily_ecdr_dataset(
     cdr_conc[cdr_conc > 100] = 100
 
     # Add the BT raw field to the dataset
-    if bt_conc is not None:
-        bt_conc = bt_conc / 100.0  # re-set range from 0 to 1
-        ecdr_ide_ds["raw_bt_seaice_conc"] = (
-            ("time", "y", "x"),
-            np.expand_dims(bt_conc, axis=0),
-            {
-                "grid_mapping": "crs",
-                "standard_name": "sea_ice_area_fraction",
-                "long_name": (
-                    "Bootstrap sea ice concentration, raw field with no masking"
-                ),
-            },
-            {
-                "zlib": True,
-                "dtype": "uint8",
-                "scale_factor": 0.01,
-                "_FillValue": 255,
-            },
-        )
+    bt_conc = bt_conc / 100.0  # re-set range from 0 to 1
+    ecdr_ide_ds["raw_bt_seaice_conc"] = (
+        ("time", "y", "x"),
+        np.expand_dims(bt_conc, axis=0),
+        {
+            "grid_mapping": "crs",
+            "standard_name": "sea_ice_area_fraction",
+            "long_name": ("Bootstrap sea ice concentration, raw field with no masking"),
+        },
+        {
+            "zlib": True,
+            "dtype": "uint8",
+            "scale_factor": 0.01,
+            "_FillValue": 255,
+        },
+    )
 
     # Add the BT coefficients to the raw_bt_seaice_conc DataArray
     for attr in sorted(bt_coefs.keys()):
@@ -695,32 +692,29 @@ def compute_initial_daily_ecdr_dataset(
             )
 
     # Add the NT raw field to the dataset
-    if nt_conc is not None:
-        if (nt_conc > 200).any():
-            logger.warning(
-                "Raw nasateam concentrations above 200 were found."
-                " This is unexpected may need to be investigated."
-                f" Max nt value: {np.nanmax(nt_conc)}"
-            )
-
-        nt_conc = nt_conc / 100.0
-        ecdr_ide_ds["raw_nt_seaice_conc"] = (
-            ("time", "y", "x"),
-            np.expand_dims(nt_conc, axis=0),
-            {
-                "grid_mapping": "crs",
-                "standard_name": "sea_ice_area_fraction",
-                "long_name": (
-                    "NASA Team sea ice concentration, raw field with no masking"
-                ),
-            },
-            {
-                "zlib": True,
-                "dtype": "uint8",
-                "scale_factor": 0.01,
-                "_FillValue": 255,
-            },
+    if (nt_conc > 200).any():
+        logger.warning(
+            "Raw nasateam concentrations above 200 were found."
+            " This is unexpected may need to be investigated."
+            f" Max nt value: {np.nanmax(nt_conc)}"
         )
+
+    nt_conc = nt_conc / 100.0
+    ecdr_ide_ds["raw_nt_seaice_conc"] = (
+        ("time", "y", "x"),
+        np.expand_dims(nt_conc, axis=0),
+        {
+            "grid_mapping": "crs",
+            "standard_name": "sea_ice_area_fraction",
+            "long_name": ("NASA Team sea ice concentration, raw field with no masking"),
+        },
+        {
+            "zlib": True,
+            "dtype": "uint8",
+            "scale_factor": 0.01,
+            "_FillValue": 255,
+        },
+    )
 
     # Add the NT coefficients to the raw_nt_seaice_conc DataArray
     for attr in sorted(nt_coefs.keys()):
