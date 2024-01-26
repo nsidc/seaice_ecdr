@@ -15,10 +15,6 @@ import xarray as xr
 #   hence the type-ignore here
 from cv2 import INTER_LINEAR, resize  # type: ignore[import-not-found]
 from loguru import logger
-
-# TODO: default flag values are specific to the ECDR, and should probably be
-# defined in this repo instead of `pm_icecon`.
-from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_tb_data._types import Hemisphere
 from scipy.interpolate import griddata
 from scipy.signal import convolve2d
@@ -57,7 +53,6 @@ def _setup_ecdr_ds_replacement(
     # Note: these attributes should probably go with
     #       a variable named "CDR_parameters" or similar
     ecdr_ide_ds.attrs["grid_id"] = grid_id
-    ecdr_ide_ds.attrs["missing_value"] = DEFAULT_FLAG_VALUES.missing
 
     file_date = dt.date(1970, 1, 1) + dt.timedelta(
         days=int(ecdr_ide_ds.variables["time"].data)
