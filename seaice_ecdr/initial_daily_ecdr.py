@@ -239,7 +239,6 @@ def _setup_ecdr_ds(
         tbdata = tb_data.tbs.variables[tbname].data
         freq = tbname[1:]
         pol = tbname[:1]
-        # TODO: AU_SI is specified here, but should be calculated
         tb_longname = f"Daily TB {freq}{pol} from {tb_data.data_source}"
         tb_units = "K"
         ecdr_ide_ds[tb_varname] = (
