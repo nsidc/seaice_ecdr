@@ -8,16 +8,17 @@ alongside the ECDR.
 import datetime as dt
 from functools import cache
 from pathlib import Path
+from typing import get_args
 
 import numpy as np
 import pandas as pd
 import xarray as xr
-from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.constants import CDR_ANCILLARY_DIR
 from seaice_ecdr.grid_id import get_grid_id
+from seaice_ecdr.platforms import get_platform_by_date
 
 
 def get_ancillary_filepath(
@@ -38,8 +39,12 @@ def get_ancillary_ds(
     *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
 ) -> xr.Dataset:
     """Return xr Dataset of ancillary data for this hemisphere/resolution."""
-    if resolution != "12.5":
-        raise NotImplementedError("ECDR currently only supports 12.5km resolution.")
+    # TODO: This list could be determined from an examination of
+    #       the ancillary directory
+    if resolution not in get_args(ECDR_SUPPORTED_RESOLUTIONS):
+        raise NotImplementedError(
+            "ECDR currently only supports {get_args(ECDR_SUPPORTED_RESOLUTIONS)} resolutions."
+        )
 
     filepath = get_ancillary_filepath(hemisphere=hemisphere, resolution=resolution)
     ds = xr.load_dataset(filepath)
@@ -47,31 +52,16 @@ def get_ancillary_ds(
     return ds
 
 
-# TODO: move to util  module?
-def _get_sat_by_date(
-    date: dt.date,
-) -> SUPPORTED_SAT:
-    """Return the satellite used for this date."""
-    # TODO: these date ranges belong in a config location
-    if date >= dt.date(2012, 7, 2) and date <= dt.date(2030, 12, 31):
-        return "am2"
-    # TODO: Remove this logic when SSMIS satellites are used.
-    elif date >= dt.date(2012, 6, 27) and date <= dt.date(2012, 7, 1):
-        logger.warning(
-            "_get_sat_by_date() override implemented so that"
-            f" AMSR2 is considered the 'satellite for this date' ({date})"
-            "while this product is under development.  When another"
-            " SSMIS satellite (eg F17 or F18) is used through 7/1/2012,"
-            " this override should be removed.  This call was needed for"
-            " to determine the pole hole mask for this date."
-        )
-        return "am2"
-    else:
-        raise RuntimeError(f"Could not determine sat for date: {date}")
-
-
 def bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
-    index = var.flag_meanings.split(" ").index(meaning)
+    # TODO: where do we encounter the ValueError that requires setting
+    # `meaning.lower()`? Can we just use a `.lower()` on the `flag_meanings` and
+    # `meaning` to be consistent and never run into this problem? Are there any
+    # cases where case matters?
+    try:
+        index = var.flag_meanings.split(" ").index(meaning)
+    except ValueError:
+        index = var.flag_meanings.split(" ").index(meaning.lower())
+
     value = var.flag_masks[index]
 
     return value
@@ -104,7 +94,7 @@ def get_surfacetype_da(
     if "polehole_bitmask" in ancillary_ds.data_vars.keys():
         polehole_bitmask = ancillary_ds.polehole_bitmask
         if sat is None:
-            sat = _get_sat_by_date(date)
+            sat = get_platform_by_date(date)
         elif sat == "ame":
             # TODO: Verify that AMSR-E pole hole is same as AMSR2
             # Use the AMSR2 pole hole for AMSR-E
@@ -175,7 +165,7 @@ def nh_polehole_mask(
     polehole_bitmask = ancillary_ds.polehole_bitmask
 
     if sat is None:
-        sat = _get_sat_by_date(
+        sat = get_platform_by_date(
             date=date,
         )
     elif sat == "ame":
@@ -215,6 +205,37 @@ def get_invalid_ice_mask(
     invalid_ice_mask = invalid_ice_mask.drop_vars("month")
 
     return invalid_ice_mask
+
+
+def get_ocean_mask(
+    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> xr.DataArray:
+    """Return a binary mask where True values represent `ocean`."""
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    surface_type = ancillary_ds.surface_type
+
+    ocean_val = flag_value_for_meaning(
+        var=surface_type,
+        meaning="ocean",
+    )
+
+    ocean_mask = surface_type == ocean_val
+
+    ocean_mask.attrs = dict(
+        grid_mapping="crs",
+        standard_name="ocean_binary_mask",
+        long_name="ocean mask",
+        comment="Mask indicating where ocean is",
+        units="1",
+    )
+
+    ocean_mask.encoding = dict(zlib=True)
+
+    return ocean_mask
 
 
 def get_land_mask(
