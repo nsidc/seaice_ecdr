@@ -6,9 +6,6 @@ from typing import Final, get_args
 import numpy as np
 import xarray as xr
 from loguru import logger
-
-# TODO: default flag values are specific to the ECDR, and should probably be
-# defined in this repo instead of `pm_icecon`.
 from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.amsr.ae_si import get_ae_si_tbs_from_disk
 from pm_tb_data.fetch.amsr.au_si import get_au_si_tbs
@@ -282,5 +279,6 @@ def get_ecdr_tb_data(
             date=date,
             hemisphere=hemisphere,
         )
+    # TODO: support SMMR/platform="n07"
     else:
         raise RuntimeError(f"Platform not supported: {platform}")
