@@ -248,15 +248,9 @@ def get_pixel_counts(
         surf_value_counts[flag] = num_flag_pixels
 
     # Number of oceanmask (invalid ice mask) pixels
-    # TODO: inconsistency in bitmask meaning between daily & monthly.
-    _bitmask_meaning = (
-        "valid_ice_mask_applied"
-        if product == "daily"
-        else "region_masked_by_ocean_climatology"
-    )
     invalid_ice_bitmask_value = bitmask_value_for_meaning(
         var=qa_var,
-        meaning=_bitmask_meaning,
+        meaning="invalid_ice_mask_applied",
     )
     invalid_ice_mask = (qa_var & invalid_ice_bitmask_value) > 0
     num_oceanmask_pixels = int(invalid_ice_mask.sum())

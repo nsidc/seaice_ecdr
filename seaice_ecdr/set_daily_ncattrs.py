@@ -89,7 +89,7 @@ def finalize_cdecdr_ds(
         2,  # NT_weather_filter_applied
         4,  # Land_spillover_filter_applied
         8,  # No_input_data
-        16,  # Valid_ice_mask_applied
+        16,  # invalid_ice_mask_applied
         32,  # Spatial_interpolation_applied
         64,  # Temporal_interpolation_applied
     ]
@@ -98,7 +98,7 @@ def finalize_cdecdr_ds(
         " NT_weather_filter_applied"
         " Land_spillover_filter_applied"
         " No_input_data"
-        " valid_ice_mask_applied"
+        " invalid_ice_mask_applied"
         " spatial_interpolation_applied"
         " temporal_interpolation_applied"
     )

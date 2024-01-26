@@ -791,7 +791,7 @@ def temporally_interpolated_ecdr_dataset(
     filter_flags_to_apply = [
         "BT_weather_filter_applied",
         "NT_weather_filter_applied",
-        "valid_ice_mask_applied",
+        "invalid_ice_mask_applied",
     ]
 
     stdev_field_filtered = filter_field_via_bitmask(
@@ -832,6 +832,7 @@ def temporally_interpolated_ecdr_dataset(
     return tie_ds
 
 
+# TODO: remove this commented-out code!
 '''
 def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     *,
@@ -1106,7 +1107,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     filter_flags_to_apply = [
         "BT_weather_filter_applied",
         "NT_weather_filter_applied",
-        "valid_ice_mask_applied",
+        "invalid_ice_mask_applied",
     ]
 
     stdev_field_filtered = filter_field_via_bitmask(
