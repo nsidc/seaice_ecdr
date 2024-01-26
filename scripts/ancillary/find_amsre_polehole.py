@@ -60,5 +60,3 @@ convolved = convolve2d(
 )
 is_amsre_polehole = convolved > 0
 # is_amsre_polehole.tofile('is_amsre_polehole.dat')
-
-breakpoint()
