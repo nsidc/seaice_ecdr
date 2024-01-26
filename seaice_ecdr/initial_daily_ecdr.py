@@ -50,7 +50,7 @@ from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
-from seaice_ecdr.tb_data import get_ecdr_tbs
+from seaice_ecdr.tb_data import get_ecdr_tb_data
 from seaice_ecdr.util import date_range, standard_daily_filename
 
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
@@ -825,7 +825,7 @@ def initial_daily_ecdr_dataset(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
     """Create xr dataset containing the first pass of daily enhanced CDR."""
-    tb_data = get_ecdr_tbs(
+    tb_data = get_ecdr_tb_data(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,

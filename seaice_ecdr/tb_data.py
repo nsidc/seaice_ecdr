@@ -163,7 +163,7 @@ class EcdrTbData:
     resolution: ECDR_SUPPORTED_RESOLUTIONS
 
 
-def get_ecdr_tbs(
+def get_ecdr_tb_data(
     *, date: dt.date, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
 ) -> EcdrTbData:
     platform = get_platform_by_date(date)
