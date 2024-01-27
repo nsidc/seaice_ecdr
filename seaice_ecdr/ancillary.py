@@ -53,14 +53,10 @@ def get_ancillary_ds(
 
 
 def bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
-    # TODO: where do we encounter the ValueError that requires setting
-    # `meaning.lower()`? Can we just use a `.lower()` on the `flag_meanings` and
-    # `meaning` to be consistent and never run into this problem? Are there any
-    # cases where case matters?
     try:
         index = var.flag_meanings.split(" ").index(meaning)
     except ValueError:
-        index = var.flag_meanings.split(" ").index(meaning.lower())
+        raise ValueError(f"Could not determine pole hole mask for {meaning}")
 
     value = var.flag_masks[index]
 
@@ -95,10 +91,7 @@ def get_surfacetype_da(
         polehole_bitmask = ancillary_ds.polehole_bitmask
         if sat is None:
             sat = get_platform_by_date(date)
-        elif sat == "ame":
-            # TODO: Verify that AMSR-E pole hole is same as AMSR2
-            # Use the AMSR2 pole hole for AMSR-E
-            sat = "am2"
+
         polehole_bitlabel = f"{sat}_polemask"
         polehole_bitvalue = bitmask_value_for_meaning(
             var=polehole_bitmask,
