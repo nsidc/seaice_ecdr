@@ -49,11 +49,7 @@ from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
 from seaice_ecdr.tb_data import EcdrTbData, get_ecdr_tb_data
 from seaice_ecdr.util import date_range, standard_daily_filename
 
-# TODO: these TB names are not those expected by the nt/bt algorithms as defined
-# by `pm_icecon`. These are AMSR2 equivilients.
-# Bootstrap needs: v37, h37, v19, v22
-# Nasateam needs: v19, h19, v37
-EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
+EXPECTED_TB_NAMES = ("h19", "v19", "v22", "h37", "v37")
 
 
 def cdr_bootstrap(
@@ -236,7 +232,7 @@ def _setup_ecdr_ds(
     # Move TBs to ecdr_ds
     for tbname in EXPECTED_TB_NAMES:
         tb_varname = f"{tbname}_day"
-        tbdata = tb_data.tbs.variables[tbname].data
+        tbdata = getattr(tb_data.tbs, tbname)
         freq = tbname[1:]
         pol = tbname[:1]
         tb_longname = f"Daily TB {freq}{pol} from {tb_data.data_source}"
@@ -305,16 +301,16 @@ def compute_initial_daily_ecdr_dataset(
 
     # Set up the spatial interpolation bitmask field where the various
     # TB fields were interpolated
-    _, ydim, xdim = ecdr_ide_ds["h18_day_si"].data.shape
+    _, ydim, xdim = ecdr_ide_ds["h19_day_si"].data.shape
     spatint_bitmask_arr = np.zeros((ydim, xdim), dtype=np.uint8)
     # TODO: Long term reminder: we want to use "band" labels rather than
     #       exact GHz frequencies -- which vary by satellite -- to ID channels
     TB_SPATINT_BITMASK_MAP = {
-        "v18": 1,
-        "h18": 2,
-        "v23": 4,
-        "v36": 8,
-        "h36": 16,
+        "v19": 1,
+        "h19": 2,
+        "v22": 4,
+        "v37": 8,
+        "h37": 16,
         "pole_filled": 32,
     }
     for tbname in EXPECTED_TB_NAMES:
@@ -434,10 +430,10 @@ def compute_initial_daily_ecdr_dataset(
 
     # Compute the invalid TB mask
     invalid_tb_mask = get_bt_tb_mask(
-        tb_v37=ecdr_ide_ds["v36_day_si"].data[0, :, :],
-        tb_h37=ecdr_ide_ds["h36_day_si"].data[0, :, :],
-        tb_v19=ecdr_ide_ds["v18_day_si"].data[0, :, :],
-        tb_v22=ecdr_ide_ds["v23_day_si"].data[0, :, :],
+        tb_v37=ecdr_ide_ds["v37_day_si"].data[0, :, :],
+        tb_h37=ecdr_ide_ds["h37_day_si"].data[0, :, :],
+        tb_v19=ecdr_ide_ds["v19_day_si"].data[0, :, :],
+        tb_v22=ecdr_ide_ds["v22_day_si"].data[0, :, :],
         mintb=bt_coefs_init["mintb"],
         maxtb=bt_coefs_init["maxtb"],
         tb_data_mask_function=bt_coefs_init["bt_tb_data_mask_function"],
@@ -460,10 +456,10 @@ def compute_initial_daily_ecdr_dataset(
 
     # Compute the BT weather mask
     bt_weather_mask = bt.get_weather_mask(
-        v37=ecdr_ide_ds["v36_day_si"].data[0, :, :],
-        h37=ecdr_ide_ds["h36_day_si"].data[0, :, :],
-        v22=ecdr_ide_ds["v23_day_si"].data[0, :, :],
-        v19=ecdr_ide_ds["v18_day_si"].data[0, :, :],
+        v37=ecdr_ide_ds["v37_day_si"].data[0, :, :],
+        h37=ecdr_ide_ds["h37_day_si"].data[0, :, :],
+        v22=ecdr_ide_ds["v22_day_si"].data[0, :, :],
+        v19=ecdr_ide_ds["v19_day_si"].data[0, :, :],
         land_mask=ecdr_ide_ds["land_mask"].data,
         tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
         ln1=bt_coefs_init["vh37_lnline"],
@@ -508,8 +504,8 @@ def compute_initial_daily_ecdr_dataset(
     bt_coefs["vh37_lnline"] = bt.get_linfit(
         land_mask=ecdr_ide_ds["land_mask"].data,
         tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
-        tbx=ecdr_ide_ds["v36_day_si"].data[0, :, :],
-        tby=ecdr_ide_ds["h36_day_si"].data[0, :, :],
+        tbx=ecdr_ide_ds["v37_day_si"].data[0, :, :],
+        tby=ecdr_ide_ds["h37_day_si"].data[0, :, :],
         lnline=bt_coefs_init["vh37_lnline"],
         add=bt_coefs["add1"],
         weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
@@ -518,19 +514,19 @@ def compute_initial_daily_ecdr_dataset(
     bt_coefs["bt_wtp_v37"] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init["bt_wtp_v37"],
         weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-        tb=ecdr_ide_ds["v36_day_si"].data[0, :, :],
+        tb=ecdr_ide_ds["v37_day_si"].data[0, :, :],
     )
 
     bt_coefs["bt_wtp_h37"] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init["bt_wtp_h37"],
         weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-        tb=ecdr_ide_ds["h36_day_si"].data[0, :, :],
+        tb=ecdr_ide_ds["h37_day_si"].data[0, :, :],
     )
 
     bt_coefs["bt_wtp_v19"] = bt.calculate_water_tiepoint(
         wtp_init=bt_coefs_init["bt_wtp_v19"],
         weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-        tb=ecdr_ide_ds["v18_day_si"].data[0, :, :],
+        tb=ecdr_ide_ds["v19_day_si"].data[0, :, :],
     )
 
     bt_coefs["ad_line_offset"] = bt.get_adj_ad_line_offset(
@@ -542,22 +538,22 @@ def compute_initial_daily_ecdr_dataset(
     bt_coefs["v1937_lnline"] = bt.get_linfit(
         land_mask=ecdr_ide_ds["land_mask"].data,
         tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
-        tbx=ecdr_ide_ds["v36_day_si"].data[0, :, :],
-        tby=ecdr_ide_ds["v18_day_si"].data[0, :, :],
+        tbx=ecdr_ide_ds["v37_day_si"].data[0, :, :],
+        tby=ecdr_ide_ds["v19_day_si"].data[0, :, :],
         lnline=bt_coefs_init["v1937_lnline"],
         add=bt_coefs["add2"],
         weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-        tba=ecdr_ide_ds["h36_day_si"].data[0, :, :],
+        tba=ecdr_ide_ds["h37_day_si"].data[0, :, :],
         iceline=bt_coefs["vh37_lnline"],
         ad_line_offset=bt_coefs["ad_line_offset"],
     )
 
     # finally, compute the CDR.
     bt_conc, nt_conc, cdr_conc_raw = calculate_bt_nt_cdr_raw_conc(
-        tb_h19=ecdr_ide_ds["h18_day_si"].data[0, :, :],
-        tb_v37=ecdr_ide_ds["v36_day_si"].data[0, :, :],
-        tb_h37=ecdr_ide_ds["h36_day_si"].data[0, :, :],
-        tb_v19=ecdr_ide_ds["v18_day_si"].data[0, :, :],
+        tb_h19=ecdr_ide_ds["h19_day_si"].data[0, :, :],
+        tb_v37=ecdr_ide_ds["v37_day_si"].data[0, :, :],
+        tb_h37=ecdr_ide_ds["h37_day_si"].data[0, :, :],
+        tb_v19=ecdr_ide_ds["v19_day_si"].data[0, :, :],
         bt_coefs=bt_coefs,
         nt_coefs=nt_coefs,
     )
@@ -565,12 +561,12 @@ def compute_initial_daily_ecdr_dataset(
     # Apply masks
     # Get Nasateam weather filter
     nt_gr_2219 = nt.compute_ratio(
-        ecdr_ide_ds["v23_day_si"].data[0, :, :],
-        ecdr_ide_ds["v18_day_si"].data[0, :, :],
+        ecdr_ide_ds["v22_day_si"].data[0, :, :],
+        ecdr_ide_ds["v19_day_si"].data[0, :, :],
     )
     nt_gr_3719 = nt.compute_ratio(
-        ecdr_ide_ds["v36_day_si"].data[0, :, :],
-        ecdr_ide_ds["v18_day_si"].data[0, :, :],
+        ecdr_ide_ds["v37_day_si"].data[0, :, :],
+        ecdr_ide_ds["v19_day_si"].data[0, :, :],
     )
     nt_weather_mask = nt.get_weather_filter_mask(
         gr_2219=nt_gr_2219,
@@ -850,7 +846,7 @@ def write_ide_netcdf(
         "raw_nt_seaice_conc",
         "raw_bt_seaice_conc",
     ),
-    tb_fields: Iterable[str] = ("h18_day_si", "h36_day_si"),
+    tb_fields: Iterable[str] = ("h19_day_si", "h37_day_si"),
 ) -> Path:
     """Write the initial_ecdr_ds to a netCDF file and return the path."""
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
@@ -972,16 +968,16 @@ def create_idecdr_for_date_range(
 
             if not verbose_intermed_ncfile:
                 excluded_fields = [
-                    "h18_day",
-                    "v18_day",
-                    "v23_day",
-                    "h36_day",
-                    "v36_day",
-                    # "h18_day_si",  # include this field for melt onset calculation
-                    "v18_day_si",
-                    "v23_day_si",
-                    # "h36_day_si",  # include this field for melt onset calculation
-                    "v36_day_si",
+                    "h19_day",
+                    "v19_day",
+                    "v22_day",
+                    "h37_day",
+                    "v37_day",
+                    # "h19_day_si",  # include this field for melt onset calculation
+                    "v19_day_si",
+                    "v22_day_si",
+                    # "h37_day_si",  # include this field for melt onset calculation
+                    "v37_day_si",
                     "NT_icecon_min",
                     "land_mask",
                     "pole_mask",

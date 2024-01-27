@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Final, get_args
 
 import numpy as np
+import numpy.typing as npt
 import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
@@ -155,11 +156,30 @@ def create_null_au_si_tbs(
 
 
 @dataclass
+class EcdrTbs:
+    v19: npt.NDArray
+    h19: npt.NDArray
+    v22: npt.NDArray
+    v37: npt.NDArray
+    h37: npt.NDArray
+
+
+@dataclass
 class EcdrTbData:
-    tbs: xr.Dataset
+    tbs: EcdrTbs
     resolution: ECDR_SUPPORTED_RESOLUTIONS
     data_source: str
     platform: SUPPORTED_SAT
+
+
+def ecdr_tbs_from_amsr_channels(*, xr_tbs: xr.Dataset) -> EcdrTbs:
+    return EcdrTbs(
+        v19=xr_tbs.v18.data,
+        h19=xr_tbs.h18.data,
+        v22=xr_tbs.v23.data,
+        v37=xr_tbs.v36.data,
+        h37=xr_tbs.h36.data,
+    )
 
 
 def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
@@ -182,7 +202,7 @@ def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
         )
 
     ecdr_tb_data = EcdrTbData(
-        tbs=xr_tbs,
+        tbs=ecdr_tbs_from_amsr_channels(xr_tbs=xr_tbs),
         resolution=tb_resolution,
         data_source="AU_SI12",
         platform="am2",
@@ -215,7 +235,7 @@ def _get_ame_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
         )
 
     ecdr_tb_data = EcdrTbData(
-        tbs=xr_tbs,
+        tbs=ecdr_tbs_from_amsr_channels(xr_tbs=xr_tbs),
         resolution=tb_resolution,
         data_source="AE_SI12",
         platform="ame",
@@ -254,7 +274,8 @@ def _get_nsidc_0001_tbs(
         )
 
     ecdr_tb_data = EcdrTbData(
-        tbs=xr_tbs,
+        # TODO: does 0001 need a different mapping?
+        tbs=ecdr_tbs_from_amsr_channels(xr_tbs=xr_tbs),
         resolution=tb_resolution,
         data_source="NSIDC-0001",
         platform=platform,  # type: ignore[arg-type]
