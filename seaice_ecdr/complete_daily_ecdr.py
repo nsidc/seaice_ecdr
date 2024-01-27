@@ -151,8 +151,8 @@ def read_melt_elements(
     )
     return (
         np.squeeze(tie_ds["cdr_conc"].to_numpy()),
-        tie_ds["h18_day_si"].to_numpy(),
-        tie_ds["h36_day_si"].to_numpy(),
+        tie_ds["h19_day_si"].to_numpy(),
+        tie_ds["h37_day_si"].to_numpy(),
     )
 
 
