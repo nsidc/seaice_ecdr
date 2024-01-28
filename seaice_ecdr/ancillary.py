@@ -197,6 +197,8 @@ def get_invalid_ice_mask(
     # that coordinate.
     invalid_ice_mask = invalid_ice_mask.drop_vars("month")
 
+    # xarray does not currently permit netCDF files with boolean data type
+    # so this array must be explicitly cast as boolean upon being read in.
     invalid_ice_mask = invalid_ice_mask.astype("bool")
 
     return invalid_ice_mask
