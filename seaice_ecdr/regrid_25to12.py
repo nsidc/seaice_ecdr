@@ -13,7 +13,7 @@ import xarray as xr
 #   sudo apt install libgl1
 # Also, the opencv-pytypes package is only available from pip3, not from mamba
 #   hence the type-ignore here
-from cv2 import INTER_LINEAR, resize  # type: ignore[import-not-found]
+from cv2 import INTER_LINEAR, resize  # type: ignore[import]
 from loguru import logger
 
 # TODO: default flag values are specific to the ECDR, and should probably be
