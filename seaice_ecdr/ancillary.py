@@ -197,6 +197,8 @@ def get_invalid_ice_mask(
     # that coordinate.
     invalid_ice_mask = invalid_ice_mask.drop_vars("month")
 
+    invalid_ice_mask = invalid_ice_mask.astype("bool")
+
     return invalid_ice_mask
 
 
