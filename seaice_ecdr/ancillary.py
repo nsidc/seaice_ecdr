@@ -238,7 +238,8 @@ def get_land_mask(
 ) -> xr.DataArray:
     """Return a binary mask where True values represent `land`.
 
-    This mask includes both land & coast.
+    This mask includes land, coast, and lake and is therefore more of a
+    not-ocean mask
     """
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
@@ -256,7 +257,16 @@ def get_land_mask(
         meaning="coast",
     )
 
-    land_mask = (surface_type == land_val) | (surface_type == coast_val)
+    lake_val = flag_value_for_meaning(
+        var=surface_type,
+        meaning="lake",
+    )
+
+    land_mask = (
+        (surface_type == land_val)
+        | (surface_type == coast_val)
+        | (surface_type == lake_val)
+    )
 
     land_mask.attrs = dict(
         grid_mapping="crs",
