@@ -186,8 +186,8 @@ def calculate_bt_nt_cdr_raw_conc(
         nt_tiepoints=nt_coefs["nt_tiepoints"],
     )
 
-    # Now calculate CDR SIC
-    is_bt_seaice = (bt_conc > 0) & (bt_conc <= 100)
+    # Now calculate CDR SIC, requiring BT SIC to be at least 10%
+    is_bt_seaice = (bt_conc >= 10) & (bt_conc <= 100)
     use_nt_values = (nt_conc > bt_conc) & is_bt_seaice
     # Note: Here, values without sea ice (because no TBs) have val np.nan
     cdr_conc = bt_conc.copy()
