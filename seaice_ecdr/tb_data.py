@@ -259,6 +259,13 @@ def _get_nsidc_0001_tbs(
             resolution=nsidc0001_resolution,
             sat=platform,
         )
+        # TODO: this is confusing. It seems like this does the same remapping as
+        # `ecdr_tbs_from_amsr_channels`. We don't need both, and the name should
+        # be generic enough to reflect that. Do all 0001 platforms share the
+        # same remapping? IS there any input data we use that doesn't get
+        # remapped this way?
+        # All platforms in 0001 (F08, F11, F13, and F17 have the same channels:
+        # ['h19', 'v19', 'v22', 'h37', 'v37']
         xr_tbs = rename_0001_tbs(input_ds=xr_tbs_0001)
     except FileNotFoundError:
         logger.warning(f"Using null TBs for {platform} on {date}")
@@ -301,5 +308,6 @@ def get_ecdr_tb_data(
             hemisphere=hemisphere,
         )
     # TODO: support SMMR/platform="n07"
+    # Available channels: h06, h37, v37, h10, v18, v10, h18, v06
     else:
         raise RuntimeError(f"Platform not supported: {platform}")
