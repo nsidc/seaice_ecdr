@@ -380,8 +380,9 @@ def compute_initial_daily_ecdr_dataset(
     # Get the bootstrap fields and assign them to ide_ds DataArrays
     invalid_ice_mask = get_invalid_ice_mask(
         hemisphere=hemisphere,
-        month=date.month,
+        date=date,
         resolution=tb_data.resolution,
+        platform=platform,
     )
 
     land_mask = get_land_mask(
