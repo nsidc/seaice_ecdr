@@ -40,6 +40,9 @@ import warnings
 
 import numpy as np
 import xarray as xr
+
+# from seaice_ecdr.scripts.ancillary.create_cdrv5_anc_12p5km import calc_adj123_np
+from create_cdrv5_anc_12p5km import calc_adj123_np
 from pm_icecon.land_spillover import create_land90
 from scipy.signal import convolve2d
 
@@ -143,6 +146,7 @@ def calc_surfacetype_np(ds):
     return surface_mask
 
 
+'''
 def calc_adj123_np(surftype_da, ocean_val=50, coast_val=200):
     """Compute the land-adjacency field for this surfacetype mask.
     Input:
@@ -151,25 +155,16 @@ def calc_adj123_np(surftype_da, ocean_val=50, coast_val=200):
             coast: coast_val (default 200)
     Output:
         Numpy array with adjacency values of 1, 2, 3
+        Land will have value 0
+        Far-from-coast ocean will have value 255
     """
     surftype = surftype_da.as_numpy()
     is_ocean = surftype == ocean_val
     is_coast = surftype == coast_val
     is_land = (~is_ocean) & (~is_coast)
 
-    kernel = [
-        [
-            1,
-            1,
-            1,
-        ],
-        [1, 1, 1],
-        [
-            1,
-            1,
-            1,
-        ],
-    ]
+    kernel = np.ones((3, 3), dtype=np.uint8)
+
     adj123_arr = np.zeros(surftype.shape, dtype=np.uint8)
     adj123_arr[is_land] = 255
     for adj_val in range(1, 4):
@@ -189,6 +184,7 @@ def calc_adj123_np(surftype_da, ocean_val=50, coast_val=200):
     adj123_arr[adj123_arr == 255] = 0
 
     return adj123_arr
+'''
 
 
 def calc_new_minconc(
@@ -232,57 +228,84 @@ def calc_new_minconc(
 
 
 def calc_invalid_ice_mask(
-    hires_iim,
+    hires_iims,
     hires_surftype,
     scale_factor,
-    surftype,
+    lores_surftype,
 ):
     """Create an invalid ice mask from a higher resolution mask."""
-    # Create a hires version of the surftype matrix
-    ydim, xdim = surftype.shape
-    xdim_f = scale_factor * xdim
-    ydim_f = scale_factor * ydim
-    surftype_f = np.zeros((ydim_f, xdim_f), dtype=surftype.dtype)
-    for joff in range(scale_factor):
-        for ioff in range(scale_factor):
-            surftype_f[joff::scale_factor, ioff::scale_factor] = surftype.data[:]
-    # Convert to float32; set non-ocean to NaN; set invalid to 1 and not to 0
-    is_non_ocean = surftype_f != 50
-    hires_iim_float = hires_iim.data.astype(np.float32)
-    # Set lakes to invalid ice
-    n_months, _, _ = hires_iim_float.shape
-    new_iim_bool = np.zeros((n_months, ydim, xdim), dtype=bool)
-    new_iim_bool[:] = False
+    # Create a hires version of the lores_surftype matrix
+    ydim_lo, xdim_lo = lores_surftype.data.shape
+    n_months, ydim_hi, xdim_hi = hires_iims.data.shape
 
-    xdim_rescaled = hires_iim_float.shape[-1] // scale_factor
+    is_ocean_lores = lores_surftype.data == 50
+    is_ocean_hires = hires_surftype.data == 50
+
+    lores_iims = np.zeros((n_months, ydim_lo, xdim_lo), dtype=np.uint8)
+    lores_iims[:] = 255
     for m in range(n_months):
-        hires_iim_slice = hires_iim_float[m, :, :]
-        hires_iim_slice[is_non_ocean] = np.nan
-        # Note that the invalid ice mask is set to invalid for lakes
-        # but we don't want to allow that here
-        hires_iim_slice[hires_surftype.data == 75] = np.nan
-        hires_iim_slice[hires_surftype.data == 200] = np.nan
+        lores_iim = lores_iims[m, :, :]
+        for joff in range(scale_factor):
+            for ioff in range(scale_factor):
+                hires_iim = hires_iims[m, joff::scale_factor, ioff::scale_factor].data
+                is_ocean = (
+                    is_ocean_lores
+                    & is_ocean_hires[joff::scale_factor, ioff::scale_factor]
+                )
+                # We can copy this value at places where both low res and high res are ocean
+                # and the location either does not have a value (ie is 255) or is marked as
+                # invalid (ie is 1)
+                is_mappable = is_ocean & ((lores_iim == 255) | (lores_iim == 1))
+                lores_iim[is_mappable] = hires_iim[is_mappable]
 
-        # Re-arrange the high resolution array by the scale factor...
-        hires_grouped = hires_iim_slice.reshape(
-            -1, scale_factor, xdim_rescaled, scale_factor
+        # lores_iim is this month's field with 0s where valid, 1s where valid, 255 where undecided
+        n_unmapped = np.sum(np.where((lores_iim == 255) & is_ocean_lores, 1, 0))
+        n_unmapped_prior = n_unmapped
+
+        kernel = np.ones((3, 3), dtype=np.uint8)
+
+        while n_unmapped > 0:
+            # Expand valid
+            is_valid = lores_iim == 0
+            is_needed = is_ocean_lores & (lores_iim == 255)
+            convolved = convolve2d(
+                is_valid.astype(np.uint8),
+                kernel,
+                mode="same",
+                boundary="fill",
+                fillvalue=0,
+            )
+            is_assignable = is_needed & (convolved > 0)
+            lores_iim[is_assignable] = 0
+
+            # Expand invalid
+            is_invalid = lores_iim == 1
+            is_needed = is_ocean_lores & (lores_iim == 255)
+            convolved = convolve2d(
+                is_invalid.astype(np.uint8),
+                kernel,
+                mode="same",
+                boundary="fill",
+                fillvalue=0,
+            )
+            is_assignable = is_needed & (convolved > 0)
+            lores_iim[is_assignable] = 1
+
+            n_unmapped = np.sum(np.where((lores_iim == 255) & is_ocean_lores, 1, 0))
+            if n_unmapped == n_unmapped_prior:
+                print(f"Stopping with {n_unmapped} unreachable")
+                break
+
+            n_unmapped_prior = n_unmapped
+
+        assert np.all(
+            (lores_iim[is_ocean_lores] == 0) | (lores_iim[is_ocean_lores] == 1)
         )
-        with warnings.catch_warnings():
-            # Ignore the many regions where there are no values
-            warnings.filterwarnings("ignore", r"Mean of empty slice")
-            new_iim_slice = np.nansum(hires_grouped, (-1, -3))
-        new_iim_bool_slice = new_iim_bool[m, :, :]
-        new_iim_bool_slice[new_iim_slice > 0] = True
 
-        # Manual correction noticed in QC
-        if xdim == 304:
-            # NH
-            new_iim_bool_slice[359:380, 53:70] = 0
-            if (m <= 5) or (m == 12):
-                new_iim_bool_slice[297, 295] = 0
-                new_iim_bool_slice[302, 297] = 0
+        # Set all non-ocean to invalid sea ice
+        lores_iim[~is_ocean_lores] = 1
 
-    return new_iim_bool
+    return lores_iims
 
 
 def calc_polehole_bitmask(

@@ -278,36 +278,27 @@ def calc_surfacetype_np(ds):
     return surface_mask
 
 
-def calc_adj123_np(surftype_da, ocean_val=50, coast_val=200):
+def calc_adj123_np(surftype_da, ocean_val=50, coast_val=200, n_adj_vals=3):
     """Compute the land-adjacency field for this surfacetype mask.
     Input:
         DataArray with values:
             ocean: ocean_val (default 50)
             coast: coast_val (default 200)
     Output:
-        Numpy array with adjacency values of 1, 2, 3
+        Numpy array with adjacency values of 1, 2, ..., n_adj_vals
+        Land will have value 0
+        Far-from-coast ocean will have value 255
     """
     surftype = surftype_da.as_numpy()
     is_ocean = surftype == ocean_val
     is_coast = surftype == coast_val
     is_land = (~is_ocean) & (~is_coast)
 
-    kernel = [
-        [
-            1,
-            1,
-            1,
-        ],
-        [1, 1, 1],
-        [
-            1,
-            1,
-            1,
-        ],
-    ]
+    kernel = np.ones((3, 3), dtype=np.uint8)
+
     adj123_arr = np.zeros(surftype.shape, dtype=np.uint8)
     adj123_arr[is_land] = 255
-    for adj_val in range(1, 4):
+    for adj_val in range(1, n_adj_vals + 1):
         is_unlabeled = adj123_arr == 0
         is_labeled = (adj123_arr == 255) | ((~is_unlabeled) & (adj123_arr < adj_val))
         convolved = convolve2d(
