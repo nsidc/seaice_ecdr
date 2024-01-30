@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import click
 from loguru import logger
 
 from seaice_ecdr.constants import CDR_ANCILLARY_DIR
@@ -59,3 +60,39 @@ def make_archive_for_noaa(*, output_dir: Path, ref: str = "main"):
             base_name=base_name_with_dir, format="zip", root_dir=tempdir
         )
         logger.info(f"Wrote {output_fp}")
+
+
+@click.command(
+    name="create-noaa-archive",
+    help="Create a .zip archive of the repository and ancillary data directory for NOAA.",
+)
+@click.option(
+    "--output-dir",
+    required=True,
+    type=click.Path(
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        writable=True,
+        resolve_path=True,
+        path_type=Path,
+    ),
+    help=(
+        "Base output directory for standard ECDR outputs."
+        " Subdirectories are created for outputs of"
+        " different stages of processing."
+    ),
+    show_default=True,
+)
+@click.option(
+    "--seaice-ecdr-ref",
+    required=True,
+    type=str,
+    help="Ref of this code (`seaice_ecdr`) to include in the archive.",
+)
+def cli(output_dir: Path, seaice_ecdr_ref: str):
+    make_archive_for_noaa(output_dir=output_dir, ref=seaice_ecdr_ref)
+
+
+if __name__ == "__main__":
+    cli()
