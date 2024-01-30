@@ -47,7 +47,6 @@ import numpy as np
 import numpy.typing as npt
 import xarray as xr
 from pm_icecon.land_spillover import create_land90
-from scipy.interpolate import griddata
 from scipy.ndimage import zoom
 from scipy.signal import convolve2d
 
@@ -370,6 +369,7 @@ def calc_new_minconc(
     return new_minconc
 
 
+'''
 def calc_invalid_ice_mask(
     hires_iim,
     hires_surftype,
@@ -424,6 +424,7 @@ def calc_invalid_ice_mask(
                 new_iim_bool_slice[302, 297] = 0
 
     return new_iim_bool
+'''
 
 
 def calc_polehole_bitmask(
@@ -474,54 +475,95 @@ def adapt_min_conc(old_anc_fn, hires_adj123):
     return new_minconc
 
 
-# def adapt_invalid_ice_masks(old_anc_fn, surftype):
-# def adapt_invalid_ice_masks(fixed_validmask_fn, old_anc_fn, surftype):
-def adapt_invalid_ice_masks(fixed_validmask_fn, old_anc_fn, surftype):
+# def use_fixed_invalid_ice_masks(old_anc_fn, surftype):
+# def use_fixed_invalid_ice_masks(fixed_validmask_fn, old_anc_fn, surftype):
+def use_fixed_invalid_ice_masks(fixed_validmask_fn, old_anc_fn, hires_surftype):
     """Adapt the old invalid ice masks to this grid res."""
     oldds = xr.load_dataset(old_anc_fn)
-
     fixedds = xr.load_dataset(fixed_validmask_fn)
-    oldvalids = np.array(fixedds["valid_ice_mask"])
-    # oldvalids = np.array(oldds["valid_ice_mask"])
+    ydim, xdim = hires_surftype.shape
 
-    oldlandmask = np.array(oldds["landmask"])
-    is_old_ocean = oldlandmask == 0
+    # Values of old valids are:
+    #  0: invalid ice
+    #  1: valid ice
+    #  2: non-connected ocean (ignore validity)
+    #  3: land
+    old_valids = np.array(fixedds["valid_ice_mask"])
+    old_landmask = np.array(oldds["landmask"])
 
-    is_new_ocean = surftype == 50
-    ydim, xdim = surftype.shape
+    is_lores_ocean = old_landmask == 0
+    is_new_ocean = hires_surftype == 50
 
-    is_oldocean_on12 = np.zeros((ydim, xdim), dtype=is_new_ocean.dtype)
-    for joff in range(2):
-        for ioff in range(2):
-            is_oldocean_on12[joff::2, ioff::2] = is_old_ocean
-    needs_extrap = is_new_ocean & ~is_oldocean_on12
-    valid_indexes = np.where(~needs_extrap)
-    yi, xi = np.where(needs_extrap)
-
-    new_invalids = np.zeros((12, ydim, xdim), dtype=np.uint8)
-    for month in range(12):
-        oldvalid = oldvalids[month, :, :]
-        new_invalid = new_invalids[month, :, :]
-        oldvalid[~is_old_ocean] = 0
+    # Where 25km ocean, copy the 25km valid ice to the 12.5km ocean cells
+    new_hires_valids = np.zeros((12, ydim, xdim), dtype=np.uint8)
+    new_hires_valids[:] = 255
+    for m in range(12):
         for joff in range(2):
             for ioff in range(2):
-                # Convert old 0s to 1 and old 1s to 0
-                new_invalid[joff::2, ioff::2] = 1 - oldvalid[:]
+                slice_new = new_hires_valids[m, joff::2, ioff::2]  # Destination
+                slice_old = old_valids[m, :, :]  # Source
+                is_hires_ocean = is_new_ocean[joff::2, ioff::2]
+                is_mappable = (
+                    is_hires_ocean
+                    & is_lores_ocean
+                    & ((slice_old == 0) | (slice_old == 1))
+                )
 
-        # Need to fill where new ocean did not have old ocean
-        valid_values = new_invalid[valid_indexes]
-        extrapolated_values = griddata(
-            valid_indexes,
-            valid_values,
-            (yi, xi),
-            method="nearest",
-        )
-        new_invalid[yi, xi] = extrapolated_values
+                slice_new[is_mappable] = slice_old[is_mappable]
 
-    # Mask out all values that are not zero
-    new_invalids[new_invalids > 0] = 1
+        # here, new_hires_valids[m, :, :] has 0, 1, 255(notyetmapped)
+        new_field = new_hires_valids[m, :, :]
 
-    return new_invalids
+        kernel = np.ones((3, 3), dtype=np.uint8)
+
+        n_missing = np.sum(np.where(new_field == 255, 1, 0))
+        n_missing_prior = n_missing
+        while n_missing > 0:
+            # Expand the valid mask
+            is_valid = new_field == 1
+            convolved = convolve2d(
+                is_valid.astype(np.uint8),
+                kernel,
+                mode="same",
+                boundary="fill",
+                fillvalue=0,
+            )
+            is_expanded_valid = (convolved > 0) & is_new_ocean & (new_field == 255)
+            new_field[is_expanded_valid] = 1
+
+            # Expand the not valid mask
+            is_not_valid = new_field == 0
+            convolved = convolve2d(
+                is_not_valid.astype(np.uint8),
+                kernel,
+                mode="same",
+                boundary="fill",
+                fillvalue=0,
+            )
+            is_expanded_notvalid = (convolved > 0) & is_new_ocean & (new_field == 255)
+            new_field[is_expanded_notvalid] = 0
+
+            n_missing = np.sum(np.where(new_field == 255, 1, 0))
+
+            if n_missing == n_missing_prior:
+                print(f"Stopping because {n_missing} unreachable points")
+                break
+
+            n_missing_prior = n_missing
+
+        assert np.all((new_field[is_new_ocean] == 0) | (new_field[is_new_ocean] == 1))
+
+    # Here, new_hires_valids[m, ydim, xdim] has values:
+    #  0: invalid ice
+    #  1: valid ice
+    # 255: not valid-able (ie non-ocean)
+
+    # Swap valid ice mask to invalid ice mask and cause all non-ocean to be invalid
+    new_hires_invalids = np.zeros(new_hires_valids.shape, np.uint8)
+    new_hires_invalids[new_hires_valids == 0] = 1
+    new_hires_invalids[new_hires_valids > 1] = 1
+
+    return new_hires_invalids
 
 
 def generate_ecdr_anc_12p5_file(gridid):
@@ -714,8 +756,8 @@ def generate_ecdr_anc_12p5_file(gridid):
     else:
         raise RuntimeError("Don't know what hemisphere we're in...")
 
-    # invalid_ice_masks = adapt_invalid_ice_masks(old_anc_fn, ds["surface_type"].data)
-    invalid_ice_masks = adapt_invalid_ice_masks(
+    # invalid_ice_masks = use_fixed_invalid_ice_masks(old_anc_fn, ds["surface_type"].data)
+    invalid_ice_masks = use_fixed_invalid_ice_masks(
         valid_ice_fn, old_anc_fn, ds["surface_type"].data
     )
     ds["invalid_ice_mask"] = xr.DataArray(
