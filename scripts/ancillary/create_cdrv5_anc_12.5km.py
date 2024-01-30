@@ -397,10 +397,12 @@ def calc_invalid_ice_mask(
     for m in range(n_months):
         hires_iim_slice = hires_iim_float[m, :, :]
         hires_iim_slice[is_non_ocean] = np.nan
+        """
         # Note that the invalid ice mask is set to invalid for lakes
         # but we don't want to allow that here
         hires_iim_slice[hires_surftype.data == 75] = np.nan
         hires_iim_slice[hires_surftype.data == 200] = np.nan
+        """
 
         # Re-arrange the high resolution array by the scale factor...
         hires_grouped = hires_iim_slice.reshape(
@@ -472,10 +474,16 @@ def adapt_min_conc(old_anc_fn, hires_adj123):
     return new_minconc
 
 
-def adapt_invalid_ice_masks(old_anc_fn, surftype):
+# def adapt_invalid_ice_masks(old_anc_fn, surftype):
+# def adapt_invalid_ice_masks(fixed_validmask_fn, old_anc_fn, surftype):
+def adapt_invalid_ice_masks(fixed_validmask_fn, old_anc_fn, surftype):
     """Adapt the old invalid ice masks to this grid res."""
     oldds = xr.load_dataset(old_anc_fn)
-    oldvalids = np.array(oldds["valid_ice_mask"])
+
+    fixedds = xr.load_dataset(fixed_validmask_fn)
+    oldvalids = np.array(fixedds["valid_ice_mask"])
+    # oldvalids = np.array(oldds["valid_ice_mask"])
+
     oldlandmask = np.array(oldds["landmask"])
     is_old_ocean = oldlandmask == 0
 
@@ -509,6 +517,9 @@ def adapt_invalid_ice_masks(old_anc_fn, surftype):
             method="nearest",
         )
         new_invalid[yi, xi] = extrapolated_values
+
+    # Mask out all values that are not zero
+    new_invalids[new_invalids > 0] = 1
 
     return new_invalids
 
@@ -693,7 +704,20 @@ def generate_ecdr_anc_12p5_file(gridid):
     )
 
     #   Invalid ice masks are from cdralgos used in CDRv4
-    invalid_ice_masks = adapt_invalid_ice_masks(old_anc_fn, ds["surface_type"].data)
+    # TODO: Currently, this involves using valid_ice_masks that have
+    # been externally generated and are in this directory after running
+    # python  ./fix_cdrv4_validicemasks.py
+    if gridid == "psn12.5":
+        valid_ice_fn = "fixed_cdrv4_masks_nh.nc"
+    elif gridid == "pss12.5":
+        valid_ice_fn = "fixed_cdrv4_masks_sh.nc"
+    else:
+        raise RuntimeError("Don't know what hemisphere we're in...")
+
+    # invalid_ice_masks = adapt_invalid_ice_masks(old_anc_fn, ds["surface_type"].data)
+    invalid_ice_masks = adapt_invalid_ice_masks(
+        valid_ice_fn, old_anc_fn, ds["surface_type"].data
+    )
     ds["invalid_ice_mask"] = xr.DataArray(
         name="invalid_ice_mask",
         data=invalid_ice_masks,
