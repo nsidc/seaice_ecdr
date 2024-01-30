@@ -158,7 +158,7 @@ def fix_valid_ice_masks(vimda, surfmaskda):
     new_vim.tofile(f"new_vim_{xdim}x{ydim}x{n_months}.dat")
     old_vim.tofile(f"old_vim_{xdim}x{ydim}x{n_months}.dat")
 
-    return xr.DataArray(new_vim)
+    return new_vim
 
 
 if __name__ == "__main__":
@@ -166,9 +166,28 @@ if __name__ == "__main__":
     ds = xr.load_dataset(
         "/projects/DATASETS/NOAA/G02202_V4/ancillary/G02202-cdr-ancillary-nh.nc"
     )
-    valid_ice_masks = ds.valid_ice_mask
+    old_valid_ice_masks = ds.valid_ice_mask
     surfmask = ds.landmask
-    new_valid_ice_masks = fix_valid_ice_masks(valid_ice_masks, surfmask)
-    new_valid_ice_masks.to_netcdf("fixed_cdrv4_masks.nc")
+    valid_ice_masks = fix_valid_ice_masks(old_valid_ice_masks, surfmask)
+    new_vim_da = xr.DataArray(
+        name="valid_ice_mask",
+        data=valid_ice_masks,
+        dims=old_valid_ice_masks.dims,
+        attrs=old_valid_ice_masks.attrs,
+    )
+    new_vim_da.to_netcdf("fixed_cdrv4_masks_nh.nc")
 
-    print("Now, run for SH...")
+    # Run SH
+    ds = xr.load_dataset(
+        "/projects/DATASETS/NOAA/G02202_V4/ancillary/G02202-cdr-ancillary-sh.nc"
+    )
+    old_valid_ice_masks = ds.valid_ice_mask
+    surfmask = ds.landmask
+    valid_ice_masks = fix_valid_ice_masks(old_valid_ice_masks, surfmask)
+    new_vim_da = xr.DataArray(
+        name="valid_ice_mask",
+        data=valid_ice_masks,
+        dims=old_valid_ice_masks.dims,
+        attrs=old_valid_ice_masks.attrs,
+    )
+    new_vim_da.to_netcdf("fixed_cdrv4_masks_sh.nc")
