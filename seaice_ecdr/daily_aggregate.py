@@ -87,7 +87,7 @@ def _update_ncrcat_daily_ds(
         resolution=resolution,
     )
     ds["latitude"] = surf_geo_ds.latitude
-    ds["longitude"] = surf_geo_ds.latitude
+    ds["longitude"] = surf_geo_ds.longitude
 
     # setup global attrs
     # Set global attributes

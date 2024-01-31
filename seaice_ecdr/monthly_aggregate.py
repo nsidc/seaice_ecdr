@@ -81,7 +81,7 @@ def _update_ncrcat_monthly_ds(
         resolution=resolution,
     )
     agg_ds["latitude"] = surf_geo_ds.latitude
-    agg_ds["longitude"] = surf_geo_ds.latitude
+    agg_ds["longitude"] = surf_geo_ds.longitude
 
     # setup global attrs
     # Set global attributes
