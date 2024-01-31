@@ -338,8 +338,7 @@ def _get_nsidc_0007_tbs(*, hemisphere: Hemisphere, date: dt.date) -> EcdrTbData:
         ecdr_tbs = EcdrTbs(
             v19=xr_tbs.v18.data,
             h19=xr_tbs.h18.data,
-            # TODO: re-use v18 here? Something else for v22 channel?
-            v22=xr_tbs.v18.data,
+            v22=xr_tbs.v37.data,
             v37=xr_tbs.v37.data,
             h37=xr_tbs.h37.data,
         )
