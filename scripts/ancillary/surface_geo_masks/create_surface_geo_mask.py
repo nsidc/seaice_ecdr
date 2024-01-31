@@ -110,7 +110,7 @@ def get_geoarray_coord(gridid, coord_name):
         return None
 
 
-def _psn_125_near_pole_hole_mask() -> npt.NDArray[np.bool_]:
+def _amsr2_psn125_near_pole_hole_mask() -> npt.NDArray[np.bool_]:
     """Return a mask of the area near the pole hole for the psn125 grid.
 
     Identify pole hole pixels for psn12.5
@@ -132,10 +132,40 @@ def _psn_125_near_pole_hole_mask() -> npt.NDArray[np.bool_]:
     return pole_pixels_bool
 
 
+def _amsre_psn125_near_pole_hole_mask() -> npt.NDArray[np.bool_]:
+    """Return a mask of the area near the pole hole for the psn125 grid.
+
+    Identify pole hole pixels for psn12.5
+    These pixels were identified by examining AE_SI12-derived NH fields in 2005
+       and are one ortho and diag from the commonly no-data pixels near
+       the pole that year from AE_SI12 products
+    """
+    pole_pixels = np.zeros((896, 608), dtype=np.uint8)
+    pole_pixels[460, 305 : 311 + 1] = 1
+    pole_pixels[461, 303 : 313 + 1] = 1
+    pole_pixels[462, 302 : 314 + 1] = 1
+    pole_pixels[463, 301 : 314 + 1] = 1
+    pole_pixels[464, 301 : 314 + 1] = 1
+
+    pole_pixels[465 : 470 + 1, 300 : 315 + 1] = 1
+
+    pole_pixels[471, 301 : 314 + 1] = 1
+    pole_pixels[472, 301 : 314 + 1] = 1
+    pole_pixels[473, 302 : 313 + 1] = 1
+    pole_pixels[474, 303 : 312 + 1] = 1
+    pole_pixels[474, 304 : 310 + 1] = 1
+
+    pole_pixels_bool = pole_pixels.astype(bool)
+
+    return pole_pixels_bool
+
+
 def get_polehole_mask(gridid, sensor):
     """Return the polemask for this sensor."""
-    if sensor == "am2":
-        polemask_data = _psn_125_near_pole_hole_mask()
+    if sensor == "ame":
+        polemask_data = _amsre_psn125_near_pole_hole_mask()
+    elif sensor == "am2":
+        polemask_data = _amsr2_psn125_near_pole_hole_mask()
     elif sensor in NSIDC0051_SOURCES:
         ds0051 = xr.load_dataset(
             SAMPLE_0051_DAILY_NH_NCFN[sensor],

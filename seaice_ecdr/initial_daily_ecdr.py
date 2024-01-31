@@ -203,8 +203,8 @@ def calculate_bt_nt_cdr_raw_conc(
         nt_tiepoints=nt_coefs["nt_tiepoints"],
     )
 
-    # Now calculate CDR SIC
-    is_bt_seaice = (bt_conc > 0) & (bt_conc <= 100)
+    # Now calculate CDR SIC, requiring BT SIC to be at least 10%
+    is_bt_seaice = (bt_conc >= 10) & (bt_conc <= 100)
     use_nt_values = (nt_conc > bt_conc) & is_bt_seaice
     # Note: Here, values without sea ice (because no TBs) have val np.nan
     cdr_conc = bt_conc.copy()
@@ -387,7 +387,7 @@ def compute_initial_daily_ecdr_dataset(
             satellite="amsre",
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform == "F17":
+    elif platform in get_args(NSIDC_0001_SATS):
         bt_coefs_init = pmi_bt_params_0001.get_F17_bootstrap_params(
             date=date,
             satellite=platform,
@@ -866,6 +866,7 @@ def initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
     )
+
     initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,

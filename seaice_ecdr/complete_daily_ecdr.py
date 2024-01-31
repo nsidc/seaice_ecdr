@@ -3,6 +3,8 @@
 """
 import copy
 import datetime as dt
+import sys
+import traceback
 from functools import cache
 from pathlib import Path
 from typing import Iterable, cast, get_args
@@ -582,6 +584,7 @@ def create_cdecdr_for_date_range(
 ) -> None:
     """Generate the complete daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
+        """
         logger.warning("skipping the error capture...")
         make_cdecdr_netcdf(
             date=date,
@@ -589,8 +592,8 @@ def create_cdecdr_for_date_range(
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
         )
-
         """
+
         try:
             make_cdecdr_netcdf(
                 date=date,
@@ -622,7 +625,6 @@ def create_cdecdr_for_date_range(
             with open(err_filepath.parent / err_filename, "w") as f:
                 traceback.print_exc(file=f)
                 traceback.print_exc(file=sys.stdout)
-        """
 
 
 @click.command(name="cdecdr")

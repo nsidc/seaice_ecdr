@@ -13,7 +13,7 @@ import xarray as xr
 #   sudo apt install libgl1
 # Also, the opencv-pytypes package is only available from pip3, not from mamba
 #   hence the type-ignore here
-from cv2 import INTER_LINEAR, resize  # type: ignore[import-not-found]
+from cv2 import INTER_LINEAR, resize
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 from scipy.interpolate import griddata
@@ -345,7 +345,6 @@ def reproject_ideds_25to12(
     block_regrid_vars = (
         "spatial_interpolation_flag",
         "invalid_ice_mask",
-        "pole_mask",
         "invalid_tb_mask",
         "bt_weather_mask",
         "nt_weather_mask",
@@ -353,6 +352,15 @@ def reproject_ideds_25to12(
     for var_name in block_regrid_vars:
         reprojected_ideds[var_name] = regrid_da_25to12(
             da25=initial_ecdr_ds[var_name],
+            hemisphere=hemisphere,
+            reprojection_da=reprojection_da,
+            prefer_block=True,
+        )
+
+    # Southern Hemisphere files do not have a polehole mask
+    if "pole_mask" in initial_ecdr_ds.data_vars.keys():
+        reprojected_ideds["pole_mask"] = regrid_da_25to12(
+            da25=initial_ecdr_ds["pole_mask"],
             hemisphere=hemisphere,
             reprojection_da=reprojection_da,
             prefer_block=True,

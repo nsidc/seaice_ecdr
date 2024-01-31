@@ -101,17 +101,19 @@ def get_platform_start_dates() -> OrderedDict[dt.date, SUPPORTED_SAT]:
         logger.info(f"Read platform start dates from {override_file}")
 
     else:
+        # TODO: Cast the keys as dt.date's and the values as SUPPORTED_SAT's
+        #       at definition rather than afterwards?
         _platform_start_dates = OrderedDict(
             {
                 dt.date(1978, 10, 25): "n07",
                 dt.date(1987, 7, 10): "F08",
                 dt.date(1991, 12, 3): "F11",
                 dt.date(1995, 10, 1): "F13",
-                dt.date(2002, 6, 1): "ame",  # AMSR-E is first AMSR sat
-                # F17 starts while AMSR-E is up, on 2008-01-01. We don't use
-                # F17 until 2011-10-04.
+                dt.date(2002, 6, 1): "ame",
+                # F17 starts on 2008-01-01, while AMSR-E is active,
+                # but we don't use F17 until 2011-10-04 when AMSR-E is inactive.
                 dt.date(2011, 10, 4): "F17",
-                dt.date(2012, 7, 3): "am2",  # AMSR2
+                dt.date(2012, 7, 3): "am2",
             }
         )
 
