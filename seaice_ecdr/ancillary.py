@@ -355,3 +355,40 @@ def get_adj123_field(
     adj123_da = ancillary_ds.adj123
 
     return adj123_da
+
+
+def get_empty_ds_with_time(
+    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS, date: dt.date
+) -> xr.Dataset:
+    """Return an "empty" xarray dataset with x, y, crs, and time set."""
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    time_as_int = (date - dt.date(1970, 1, 1)).days
+    time_da = xr.DataArray(
+        name="time",
+        data=[int(time_as_int)],
+        dims=["time"],
+        attrs={
+            "standard_name": "time",
+            "long_name": "ANSI date",
+            "calendar": "standard",
+            "axis": "T",
+            "units": "days since 1970-01-01",
+            "coverage_content_type": "coordinate",
+            "valid_range": [int(0), int(30000)],
+        },
+    )
+
+    return_ds = xr.Dataset(
+        data_vars=dict(
+            x=ancillary_ds.x,
+            y=ancillary_ds.y,
+            crs=ancillary_ds.crs,
+            time=time_da,
+        ),
+    )
+
+    return return_ds

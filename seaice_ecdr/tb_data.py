@@ -12,9 +12,58 @@ from pm_tb_data.fetch.amsr.ae_si import get_ae_si_tbs_from_disk
 from pm_tb_data.fetch.amsr.au_si import get_au_si_tbs
 from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
 from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS, get_nsidc_0001_tbs_from_disk
+from pm_tb_data.fetch.nsidc_0007 import get_nsidc_0007_tbs_from_disk
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.platforms import SUPPORTED_SAT, get_platform_by_date
+
+EXPECTED_ECDR_TB_NAMES = ("h19", "v19", "v22", "h37", "v37")
+
+
+@dataclass
+class EcdrTbs:
+    v19: npt.NDArray
+    h19: npt.NDArray
+    v22: npt.NDArray
+    v37: npt.NDArray
+    h37: npt.NDArray
+
+
+@dataclass
+class EcdrTbData:
+    tbs: EcdrTbs
+    resolution: ECDR_SUPPORTED_RESOLUTIONS
+    data_source: str
+    platform: SUPPORTED_SAT
+
+
+def get_null_grid(
+    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> npt.NDArray:
+    grid_shapes = {
+        "25": {"north": (448, 304), "south": (332, 316)},
+        "12.5": {"north": (896, 608), "south": (664, 632)},
+    }
+
+    null_grid = np.full(grid_shapes[resolution][hemisphere], np.nan)
+
+    return null_grid
+
+
+def get_null_ecdr_tbs(
+    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+) -> EcdrTbs:
+    null_grid = get_null_grid(hemisphere=hemisphere, resolution=resolution)
+
+    null_ecdr_tbs = EcdrTbs(
+        v19=null_grid.copy(),
+        h19=null_grid.copy(),
+        v22=null_grid.copy(),
+        v37=null_grid.copy(),
+        h37=null_grid.copy(),
+    )
+
+    return null_ecdr_tbs
 
 
 def _pm_icecon_amsr_res_str(
@@ -155,23 +204,6 @@ def create_null_au_si_tbs(
     return null_tbs
 
 
-@dataclass
-class EcdrTbs:
-    v19: npt.NDArray
-    h19: npt.NDArray
-    v22: npt.NDArray
-    v37: npt.NDArray
-    h37: npt.NDArray
-
-
-@dataclass
-class EcdrTbData:
-    tbs: EcdrTbs
-    resolution: ECDR_SUPPORTED_RESOLUTIONS
-    data_source: str
-    platform: SUPPORTED_SAT
-
-
 def ecdr_tbs_from_amsr_channels(*, xr_tbs: xr.Dataset) -> EcdrTbs:
     return EcdrTbs(
         v19=xr_tbs.v18.data,
@@ -259,6 +291,13 @@ def _get_nsidc_0001_tbs(
             resolution=nsidc0001_resolution,
             sat=platform,
         )
+        # TODO: this is confusing. It seems like this does the same remapping as
+        # `ecdr_tbs_from_amsr_channels`. We don't need both, and the name should
+        # be generic enough to reflect that. Do all 0001 platforms share the
+        # same remapping? IS there any input data we use that doesn't get
+        # remapped this way?
+        # All platforms in 0001 (F08, F11, F13, and F17 have the same channels:
+        # ['h19', 'v19', 'v22', 'h37', 'v37']
         xr_tbs = rename_0001_tbs(input_ds=xr_tbs_0001)
     except FileNotFoundError:
         logger.warning(f"Using null TBs for {platform} on {date}")
@@ -284,6 +323,39 @@ def _get_nsidc_0001_tbs(
     return ecdr_tb_data
 
 
+def _get_nsidc_0007_tbs(*, hemisphere: Hemisphere, date: dt.date) -> EcdrTbData:
+    NSIDC0007_DATA_DIR = Path("/projects/DATASETS/nsidc0007_smmr_radiance_seaice_v01/")
+    # resolution in km
+    SMMR_RESOLUTION: Final = "25"
+
+    try:
+        xr_tbs = get_nsidc_0007_tbs_from_disk(
+            date=date,
+            hemisphere=hemisphere,
+            data_dir=NSIDC0007_DATA_DIR,
+        )
+        # Available channels: h06, h37, v37, h10, v18, v10, h18, v06
+        ecdr_tbs = EcdrTbs(
+            v19=xr_tbs.v18.data,
+            h19=xr_tbs.h18.data,
+            v22=xr_tbs.v37.data,
+            v37=xr_tbs.v37.data,
+            h37=xr_tbs.h37.data,
+        )
+    except FileNotFoundError:
+        logger.warning(f"Using null TBs for SMMR/n07 on {date}")
+        ecdr_tbs = get_null_ecdr_tbs(hemisphere=hemisphere, resolution=SMMR_RESOLUTION)
+
+    ecdr_tb_data = EcdrTbData(
+        tbs=ecdr_tbs,
+        resolution=SMMR_RESOLUTION,
+        data_source="NSIDC-0007",
+        platform="n07",
+    )
+
+    return ecdr_tb_data
+
+
 def get_ecdr_tb_data(
     *,
     date: dt.date,
@@ -300,6 +372,8 @@ def get_ecdr_tb_data(
             date=date,
             hemisphere=hemisphere,
         )
-    # TODO: support SMMR/platform="n07"
+    elif platform == "n07":
+        # SMMR
+        return _get_nsidc_0007_tbs(date=date, hemisphere=hemisphere)
     else:
         raise RuntimeError(f"Platform not supported: {platform}")

@@ -24,6 +24,7 @@ import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import pm_icecon.nt.params.nsidc0001 as nt_0001_params
 import xarray as xr
 from loguru import logger
+from pm_icecon.bt.params.nsidc0007 import get_smmr_params
 from pm_icecon.bt.xfer_tbs import xfer_rss_tbs
 from pm_icecon.errors import UnexpectedSatelliteError
 from pm_icecon.fill_polehole import fill_pole_hole
@@ -37,6 +38,7 @@ from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.ancillary import (
     get_adj123_field,
+    get_empty_ds_with_time,
     get_invalid_ice_mask,
     get_land90_conc_field,
     get_land_mask,
@@ -45,13 +47,10 @@ from seaice_ecdr.ancillary import (
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
-from seaice_ecdr.tb_data import EcdrTbData, get_ecdr_tb_data
+from seaice_ecdr.tb_data import EXPECTED_ECDR_TB_NAMES, EcdrTbData, get_ecdr_tb_data
 from seaice_ecdr.util import date_range, standard_daily_filename
-
-EXPECTED_TB_NAMES = ("h19", "v19", "v22", "h37", "v37")
 
 
 def cdr_bootstrap(
@@ -226,9 +225,9 @@ def _setup_ecdr_ds(
         resolution=tb_data.resolution,
     )
 
-    # TODO: These fields should derive from the ancillary file,
-    #       not get_dataset_for_grid_id()
-    ecdr_ide_ds = get_dataset_for_grid_id(grid_id, date)
+    ecdr_ide_ds = get_empty_ds_with_time(
+        hemisphere=hemisphere, resolution=tb_data.resolution, date=date
+    )
 
     # Set initial global attributes
 
@@ -253,7 +252,7 @@ def _setup_ecdr_ds(
     )
 
     # Move TBs to ecdr_ds
-    for tbname in EXPECTED_TB_NAMES:
+    for tbname in EXPECTED_ECDR_TB_NAMES:
         tb_varname = f"{tbname}_day"
         tbdata = getattr(tb_data.tbs, tbname)
         freq = tbname[1:]
@@ -301,7 +300,7 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     # Spatially interpolate the brightness temperatures
-    for tbname in EXPECTED_TB_NAMES:
+    for tbname in EXPECTED_ECDR_TB_NAMES:
         tb_day_name = f"{tbname}_day"
         tb_si_varname = f"{tb_day_name}_si"
         tb_si_data = spatial_interp_tbs(ecdr_ide_ds[tb_day_name].data[0, :, :])
@@ -336,7 +335,7 @@ def compute_initial_daily_ecdr_dataset(
         "h37": 16,
         "pole_filled": 32,
     }
-    for tbname in EXPECTED_TB_NAMES:
+    for tbname in EXPECTED_ECDR_TB_NAMES:
         tb_varname = f"{tbname}_day"
         si_varname = f"{tbname}_day_si"
         is_tb_si_diff = (
@@ -394,6 +393,8 @@ def compute_initial_daily_ecdr_dataset(
             satellite=platform,
             gridid=ecdr_ide_ds.grid_id,
         )
+    elif platform == "n07":
+        bt_coefs_init = get_smmr_params(hemisphere=hemisphere, date=date)
     else:
         raise RuntimeError(f"platform bootstrap params not implemented: {platform}")
 
@@ -844,7 +845,6 @@ def reproject_ideds(
             initial_ecdr_ds=initial_ecdr_ds,
             date=date,
             hemisphere=hemisphere,
-            tb_resolution=tb_resolution,
             resolution=resolution,
         )
     else:

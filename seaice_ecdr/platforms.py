@@ -221,8 +221,6 @@ def _platform_start_dates_are_consistent(
 
 def get_platform_by_date(
     date: dt.date,
-    *,
-    platform_availability: OrderedDict = PLATFORM_AVAILABILITY,
 ) -> SUPPORTED_SAT:
     """Return the platform for this date."""
     platform_start_dates = get_platform_start_dates()
