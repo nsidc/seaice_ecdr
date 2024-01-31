@@ -24,6 +24,7 @@ import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import pm_icecon.nt.params.nsidc0001 as nt_0001_params
 import xarray as xr
 from loguru import logger
+from pm_icecon.bt.params.nsidc0007 import get_smmr_params
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
 from pm_icecon.land_spillover import apply_nt2_land_spillover
@@ -371,6 +372,8 @@ def compute_initial_daily_ecdr_dataset(
             satellite=platform,
             gridid=ecdr_ide_ds.grid_id,
         )
+    elif platform == "n07":
+        bt_coefs_init = get_smmr_params(hemisphere=hemisphere, date=date)
     else:
         raise RuntimeError(f"platform bootstrap params not implemented: {platform}")
 
