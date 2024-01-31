@@ -31,6 +31,8 @@ from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
 EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
 
 
+# TODO: this is very similar to the `_setup_ecdr_ds`. DRY out? is any of this
+# necessary, or can we just copy the attrs from the `initial_ecdr_ds`?
 def _setup_ecdr_ds_replacement(
     *,
     date: dt.date,
@@ -328,6 +330,9 @@ def reproject_ideds_25to12(
         resolution=resolution,
         hemisphere=hemisphere,
     )
+    # add data_source and platform to the dataset attrs.
+    reprojected_ideds.attrs["data_source"] = initial_ecdr_ds.data_source
+    reprojected_ideds.attrs["platform"] = initial_ecdr_ds.platform
 
     # Pull from ancillary file
     reprojected_ideds["land_mask"] = get_land_mask(
