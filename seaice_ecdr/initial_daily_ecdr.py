@@ -49,10 +49,8 @@ from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
-from seaice_ecdr.tb_data import EcdrTbData, get_ecdr_tb_data
+from seaice_ecdr.tb_data import EXPECTED_ECDR_TB_NAMES, EcdrTbData, get_ecdr_tb_data
 from seaice_ecdr.util import date_range, standard_daily_filename
-
-EXPECTED_TB_NAMES = ("h19", "v19", "v22", "h37", "v37")
 
 
 def cdr_bootstrap(
@@ -254,7 +252,7 @@ def _setup_ecdr_ds(
     )
 
     # Move TBs to ecdr_ds
-    for tbname in EXPECTED_TB_NAMES:
+    for tbname in EXPECTED_ECDR_TB_NAMES:
         tb_varname = f"{tbname}_day"
         tbdata = getattr(tb_data.tbs, tbname)
         freq = tbname[1:]
@@ -302,7 +300,7 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     # Spatially interpolate the brightness temperatures
-    for tbname in EXPECTED_TB_NAMES:
+    for tbname in EXPECTED_ECDR_TB_NAMES:
         tb_day_name = f"{tbname}_day"
         tb_si_varname = f"{tb_day_name}_si"
         tb_si_data = spatial_interp_tbs(ecdr_ide_ds[tb_day_name].data[0, :, :])
@@ -337,7 +335,7 @@ def compute_initial_daily_ecdr_dataset(
         "h37": 16,
         "pole_filled": 32,
     }
-    for tbname in EXPECTED_TB_NAMES:
+    for tbname in EXPECTED_ECDR_TB_NAMES:
         tb_varname = f"{tbname}_day"
         si_varname = f"{tbname}_day_si"
         is_tb_si_diff = (

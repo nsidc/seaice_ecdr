@@ -17,6 +17,8 @@ from pm_tb_data.fetch.nsidc_0007 import get_nsidc_0007_tbs_from_disk
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.platforms import SUPPORTED_SAT, get_platform_by_date
 
+EXPECTED_ECDR_TB_NAMES = ("h19", "v19", "v22", "h37", "v37")
+
 
 @dataclass
 class EcdrTbs:

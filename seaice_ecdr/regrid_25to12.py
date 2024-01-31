@@ -27,8 +27,7 @@ from seaice_ecdr.ancillary import (
 )
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
-
-EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
+from seaice_ecdr.tb_data import EXPECTED_ECDR_TB_NAMES
 
 
 # TODO: this is very similar to the `_setup_ecdr_ds`. DRY out? is any of this
@@ -310,7 +309,7 @@ def reproject_ideds_25to12(
     # Note: TBs are reinterpreted as continuous fields
     reprojected_tbs = {}
     for key in initial_ecdr_ds.data_vars.keys():
-        for expected_tb_name in EXPECTED_TB_NAMES:
+        for expected_tb_name in EXPECTED_ECDR_TB_NAMES:
             if expected_tb_name in key:
                 tb_dataarray = initial_ecdr_ds.variables[key]
                 tbda_12 = regrid_da_25to12_bilinear(
