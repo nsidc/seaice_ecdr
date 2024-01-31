@@ -13,7 +13,7 @@ import xarray as xr
 #   sudo apt install libgl1
 # Also, the opencv-pytypes package is only available from pip3, not from mamba
 #   hence the type-ignore here
-from cv2 import INTER_LINEAR, resize  # type: ignore[import]
+from cv2 import INTER_LINEAR, resize
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 from scipy.interpolate import griddata

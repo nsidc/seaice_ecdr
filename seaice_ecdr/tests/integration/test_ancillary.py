@@ -22,7 +22,8 @@ def test_verify_invalid_ice_mask_is_boolean():  # noqa
     then using it to mask data in xarray will fail."""
     invalid_ice_mask = ancillary.get_invalid_ice_mask(
         hemisphere="north",
-        month=11,
+        date=dt.date(2013, 11, 1),
         resolution="12.5",
+        platform="am2",
     )
     assert invalid_ice_mask.dtype == "bool"
