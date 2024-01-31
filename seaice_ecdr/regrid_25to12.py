@@ -22,11 +22,11 @@ from scipy.signal import convolve2d
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
     get_adj123_field,
+    get_empty_ds_with_time,
     get_land_mask,
     get_ocean_mask,
 )
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.gridid_to_xr_dataarray import get_empty_ds_with_time
 from seaice_ecdr.tb_data import EXPECTED_ECDR_TB_NAMES
 
 
