@@ -379,6 +379,7 @@ def compute_initial_daily_ecdr_dataset(
     logger.info("Initialized spatial_interpolation_flag with TB fill locations")
 
     platform = get_platform_by_date(date)
+    nsidc0001_sats = ("F17", "F13", "F11", "F08")
     if platform == "am2":
         bt_coefs_init = pmi_bt_params_amsr2.get_ausi_amsr2_bootstrap_params(
             date=date,
@@ -391,7 +392,7 @@ def compute_initial_daily_ecdr_dataset(
             satellite="amsre",
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform == "F17":
+    elif platform in nsidc0001_sats:
         bt_coefs_init = pmi_bt_params_0001.get_F17_bootstrap_params(
             date=date,
             satellite=platform,
@@ -834,6 +835,81 @@ def rename_0001_tbs(
     return new_ds
 
 
+def create_null_0001_tbs(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> xr.Dataset:
+    """Create xr dataset containing all null-value data for all tbs."""
+    chan_desc = {
+        "h18": "near-19 GHz horizontal daily average Tbs",
+        "v18": "near-19 GHz vertical daily average Tbs",
+        "v23": "near-22 GHz vertical daily average Tbs",
+        "h36": "near-37 GHz horizontal daily average Tbs",
+        "v36": "near-37 GHz vertical daily average Tbs",
+    }
+
+    if hemisphere == "north" and resolution == "25":
+        xdim = 304
+        ydim = 448
+    elif hemisphere == "south" and resolution == "25":
+        xdim = 316
+        ydim = 332
+    else:
+        value_error_string = f"""
+        Could not create null_set of TBs for
+          hemisphere: {hemisphere}
+          resolution: {resolution}
+        """
+        raise ValueError(value_error_string)
+
+    null_array = np.zeros((ydim, xdim), dtype=np.float64)
+    null_array[:] = np.nan
+    common_tb_attrs = {
+        "_FillValue": 0,
+        "units": "degree_kelvin",
+        "standard_name": "brightness_temperature",
+        "packing_convention": "netCDF",
+        "packing_convention_description": "unpacked = scale_factor x packed + add_offset",
+        "scale_factor": 0.1,
+        "add_offset": 0.0,
+    }
+    null_tbs = xr.Dataset(
+        data_vars=dict(
+            h18=(
+                ["YDim", "XDim"],
+                null_array,
+                common_tb_attrs,
+            ),
+            v18=(
+                ["YDim", "XDim"],
+                null_array,
+                common_tb_attrs,
+            ),
+            v23=(
+                ["YDim", "XDim"],
+                null_array,
+                common_tb_attrs,
+            ),
+            h36=(
+                ["YDim", "XDim"],
+                null_array,
+                common_tb_attrs,
+            ),
+            v36=(
+                ["YDim", "XDim"],
+                null_array,
+                common_tb_attrs,
+            ),
+        ),
+    )
+
+    for key in chan_desc.keys():
+        null_tbs.data_vars[key].attrs.update({"long_name": chan_desc[key]})
+
+    return null_tbs
+
+
 def create_null_au_si_tbs(
     *,
     hemisphere: Hemisphere,
@@ -964,6 +1040,7 @@ def initial_daily_ecdr_dataset(
     This uses AU_SI12 TBs
     and others..."""
     platform = get_platform_by_date(date)
+    nsidc0001_sats = ("F17", "F13", "F11", "F08")
     if platform == "am2":
         au_si_resolution_str = _pm_icecon_amsr_res_str(resolution=resolution)
         try:
@@ -1005,7 +1082,7 @@ def initial_daily_ecdr_dataset(
                 f" resolution={resolution}"
             )
         tb_resolution = resolution
-    elif platform == "F17":
+    elif platform in nsidc0001_sats:
         NSIDC0001_DATA_DIR = Path("/ecs/DP4/PM/NSIDC-0001.006/")
         # NSIDC-0001 TBs for siconc are all at 25km
         nsidc0001_resolution: Final = "25"
@@ -1020,10 +1097,9 @@ def initial_daily_ecdr_dataset(
             xr_tbs = rename_0001_tbs(input_ds=xr_tbs_0001)
         except FileNotFoundError:
             logger.warning(f"Using null TBs for {platform} on {date}")
-            print("this needs to be create_null_0001_tbs()")
-            xr_tbs = create_null_au_si_tbs(
+            xr_tbs = create_null_0001_tbs(
                 hemisphere=hemisphere,
-                resolution=resolution,
+                resolution=nsidc0001_resolution,
             )
             logger.warning(
                 f"Used all-null TBS for date={date},"
