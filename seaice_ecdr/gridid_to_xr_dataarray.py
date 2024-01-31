@@ -16,7 +16,7 @@ from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import get_ancillary_ds
 
 
-def get_dataset_for_grid_id(
+def get_empty_ds_with_time(
     *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS, date: dt.date
 ) -> xr.Dataset:
     """Return xarray dataset.

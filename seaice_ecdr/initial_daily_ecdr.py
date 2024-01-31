@@ -46,7 +46,7 @@ from seaice_ecdr.ancillary import (
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
+from seaice_ecdr.gridid_to_xr_dataarray import get_empty_ds_with_time
 from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
 from seaice_ecdr.tb_data import EXPECTED_ECDR_TB_NAMES, EcdrTbData, get_ecdr_tb_data
@@ -225,7 +225,7 @@ def _setup_ecdr_ds(
         resolution=tb_data.resolution,
     )
 
-    ecdr_ide_ds = get_dataset_for_grid_id(
+    ecdr_ide_ds = get_empty_ds_with_time(
         hemisphere=hemisphere, resolution=tb_data.resolution, date=date
     )
 

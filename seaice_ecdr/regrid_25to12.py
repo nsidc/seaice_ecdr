@@ -26,7 +26,7 @@ from seaice_ecdr.ancillary import (
     get_ocean_mask,
 )
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
+from seaice_ecdr.gridid_to_xr_dataarray import get_empty_ds_with_time
 from seaice_ecdr.tb_data import EXPECTED_ECDR_TB_NAMES
 
 
@@ -46,8 +46,8 @@ def _setup_ecdr_ds_replacement(
     )
 
     # TODO: These fields should derive from the ancillary file,
-    #       not get_dataset_for_grid_id()
-    ecdr_ide_ds = get_dataset_for_grid_id(
+    #       not get_empty_ds_with_time()
+    ecdr_ide_ds = get_empty_ds_with_time(
         hemisphere=hemisphere, resolution=resolution, date=date
     )
 
