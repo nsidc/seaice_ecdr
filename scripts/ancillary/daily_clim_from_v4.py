@@ -50,7 +50,7 @@ def make_v5_climatology(*, hemisphere: Hemisphere):
         ),
         coords=dict(
             # 366 days to account for leap years.
-            doy=np.arange(1, 366 + 1, dtype=np.uint8),
+            doy=np.arange(1, 366 + 1, dtype=np.int16),
             y=ancillary_ds.y,
             x=ancillary_ds.x,
         ),
