@@ -375,7 +375,6 @@ def compute_initial_daily_ecdr_dataset(
     logger.info("Initialized spatial_interpolation_flag with TB fill locations")
 
     platform = get_platform_by_date(date)
-    nsidc0001_sats = ("F17", "F13", "F11", "F08")
     if platform == "am2":
         bt_coefs_init = pmi_bt_params_amsr2.get_ausi_amsr2_bootstrap_params(
             date=date,
@@ -388,7 +387,7 @@ def compute_initial_daily_ecdr_dataset(
             satellite="amsre",
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform in nsidc0001_sats:
+    elif platform in get_args(NSIDC_0001_SATS):
         bt_coefs_init = pmi_bt_params_0001.get_F17_bootstrap_params(
             date=date,
             satellite=platform,
