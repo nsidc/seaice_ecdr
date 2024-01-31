@@ -225,9 +225,9 @@ def _setup_ecdr_ds(
         resolution=tb_data.resolution,
     )
 
-    # TODO: These fields should derive from the ancillary file,
-    #       not get_dataset_for_grid_id()
-    ecdr_ide_ds = get_dataset_for_grid_id(grid_id, date)
+    ecdr_ide_ds = get_dataset_for_grid_id(
+        hemisphere=hemisphere, resolution=tb_data.resolution, date=date
+    )
 
     # Set initial global attributes
 
