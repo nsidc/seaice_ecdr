@@ -847,7 +847,6 @@ def reproject_ideds(
             initial_ecdr_ds=initial_ecdr_ds,
             date=date,
             hemisphere=hemisphere,
-            tb_resolution=tb_resolution,
             resolution=resolution,
         )
     else:

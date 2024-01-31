@@ -301,7 +301,6 @@ def reproject_ideds_25to12(
     initial_ecdr_ds,
     date,
     hemisphere,
-    tb_resolution,
     resolution,
 ):
     # Determine reprojection_masks
