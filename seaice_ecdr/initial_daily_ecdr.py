@@ -24,6 +24,8 @@ import pm_icecon.nt.params.amsr2 as nt_amsr2_params
 import pm_icecon.nt.params.nsidc0001 as nt_0001_params
 import xarray as xr
 from loguru import logger
+from pm_icecon.bt.xfer_tbs import xfer_rss_tbs
+from pm_icecon.errors import UnexpectedSatelliteError
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
 from pm_icecon.land_spillover import apply_nt2_land_spillover
@@ -32,7 +34,7 @@ from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_tb_data._types import NORTH, Hemisphere
 from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.ancillary import (
     get_adj123_field,
     get_invalid_ice_mask,
@@ -58,6 +60,7 @@ def cdr_bootstrap(
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
     bt_coefs,
+    platform: SUPPORTED_SAT,
 ):
     """Generate the raw bootstrap concentration field."""
     wtp_37v = bt_coefs["bt_wtp_v37"]
@@ -67,6 +70,24 @@ def cdr_bootstrap(
     itp_37v = bt_coefs["bt_itp_v37"]
     itp_37h = bt_coefs["bt_itp_h37"]
     itp_19v = bt_coefs["bt_itp_v19"]
+
+    # Transform TBs for the bootstrap calculation
+    try:
+        transformed = xfer_rss_tbs(
+            tbs=dict(
+                v37=tb_v37,
+                h37=tb_h37,
+                v19=tb_v19,
+            ),
+            platform=platform.lower(),
+        )
+        tb_v37 = transformed["v37"]
+        tb_h37 = transformed["h37"]
+        tb_v19 = transformed["v19"]
+    except UnexpectedSatelliteError:
+        logger.warning(
+            f"No BT Tb transformation to F13 available for {platform=}. Using untransformed Tbs instead."
+        )
 
     bt_conc = bt.calc_bootstrap_conc(
         tb_v37=tb_v37,
@@ -163,6 +184,7 @@ def calculate_bt_nt_cdr_raw_conc(
     tb_v19: npt.NDArray,
     bt_coefs: dict,
     nt_coefs: NtCoefs,
+    platform: SUPPORTED_SAT,
 ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     """Run the CDR algorithm."""
     # First, get bootstrap conc.
@@ -171,6 +193,7 @@ def calculate_bt_nt_cdr_raw_conc(
         tb_h37=tb_h37,
         tb_v19=tb_v19,
         bt_coefs=bt_coefs,
+        platform=platform,
     )
 
     # Get nasateam conc. Note that concentrations from nasateam may be >100%.
@@ -375,6 +398,8 @@ def compute_initial_daily_ecdr_dataset(
         raise RuntimeError(f"platform bootstrap params not implemented: {platform}")
 
     # Add the function that generates the bt_tb_mask to bt_coefs
+    # TODO: there's no reason to assign the function to this dictionary. It
+    # makes tracking down how the mask is created difficult!
     bt_coefs_init["bt_tb_data_mask_function"] = bt.tb_data_mask
 
     # Get the bootstrap fields and assign them to ide_ds DataArrays
@@ -454,12 +479,40 @@ def compute_initial_daily_ecdr_dataset(
         },
     )
 
+    bt_v37 = ecdr_ide_ds["v37_day_si"].data[0, :, :]
+    bt_h37 = ecdr_ide_ds["h37_day_si"].data[0, :, :]
+    bt_v22 = ecdr_ide_ds["v22_day_si"].data[0, :, :]
+    bt_v19 = ecdr_ide_ds["v19_day_si"].data[0, :, :]
+
+    # Transform TBs for the bootstrap calculation
+    # TODO: DRY out this code some...These transformations also occur for the
+    # bootstrap SIC conc. We only want to transform Tbs for the bootstrap SIC
+    # calc and the weather filtering.
+    try:
+        transformed = xfer_rss_tbs(
+            tbs=dict(
+                v37=bt_v37,
+                h37=bt_h37,
+                v19=bt_v19,
+                v22=bt_v22,
+            ),
+            platform=platform.lower(),
+        )
+        bt_v37 = transformed["v37"]
+        bt_h37 = transformed["h37"]
+        bt_v19 = transformed["v19"]
+        bt_v22 = transformed["v22"]
+    except UnexpectedSatelliteError:
+        logger.warning(
+            f"No BT Tb transformation to F13 available for {platform=}. Using untransformed Tbs instead."
+        )
+
     # Compute the BT weather mask
     bt_weather_mask = bt.get_weather_mask(
-        v37=ecdr_ide_ds["v37_day_si"].data[0, :, :],
-        h37=ecdr_ide_ds["h37_day_si"].data[0, :, :],
-        v22=ecdr_ide_ds["v22_day_si"].data[0, :, :],
-        v19=ecdr_ide_ds["v19_day_si"].data[0, :, :],
+        v37=bt_v37,
+        h37=bt_h37,
+        v22=bt_v22,
+        v19=bt_v19,
         land_mask=ecdr_ide_ds["land_mask"].data,
         tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
         ln1=bt_coefs_init["vh37_lnline"],
@@ -556,6 +609,7 @@ def compute_initial_daily_ecdr_dataset(
         tb_v19=ecdr_ide_ds["v19_day_si"].data[0, :, :],
         bt_coefs=bt_coefs,
         nt_coefs=nt_coefs,
+        platform=platform,
     )
 
     # Apply masks
