@@ -18,7 +18,7 @@ from pm_tb_data._types import NORTH, Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.constants import CDR_ANCILLARY_DIR
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.platforms import get_platform_by_date
+from seaice_ecdr.platforms import SUPPORTED_SAT, get_platform_by_date
 
 
 def get_ancillary_filepath(
@@ -198,15 +198,62 @@ def nh_polehole_mask(
     return polehole_mask
 
 
+def get_smmr_ancillary_filepath(*, hemisphere) -> Path:
+    """Return filepath to SMMR ancillary NetCDF.
+
+    Contains a day-of-year climatology used for SMMR.
+    """
+    grid_id = get_grid_id(
+        hemisphere=hemisphere,
+        # Hard-coded to 25km resolution, which is what we expect for SMMR.
+        resolution="25",
+    )
+    fn = f"ecdr-ancillary-{grid_id}-smmr-invalid-ice.nc"
+    filepath = CDR_ANCILLARY_DIR / fn
+
+    return filepath
+
+
+def get_smmr_invalid_ice_mask(*, date: dt.date, hemisphere: Hemisphere) -> xr.DataArray:
+    ancillary_file = get_smmr_ancillary_filepath(hemisphere=hemisphere)
+
+    with xr.open_dataset(ancillary_file) as ds:
+        invalid_ice_mask = ds.invalid_ice_mask.copy().astype(bool)
+
+    doy = date.timetuple().tm_yday
+
+    icemask_for_doy = invalid_ice_mask.sel(doy=doy)
+
+    # Drop the DOY dim. This is consistent with the other case returned by
+    # `get_invalid_ice_mask`, which has `month` as a dimension instead.
+    icemask_for_doy = icemask_for_doy.drop_vars("doy")
+
+    return icemask_for_doy
+
+
 def get_invalid_ice_mask(
-    *, hemisphere: Hemisphere, month: int, resolution: ECDR_SUPPORTED_RESOLUTIONS
+    *,
+    hemisphere: Hemisphere,
+    date: dt.date,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    platform: SUPPORTED_SAT,
 ) -> xr.DataArray:
+    """Return an invalid ice mask for the given date.
+
+    SMMR (n07) uses a day-of-year based climatology. All other platforms use a
+    month-based mask.
+    """
+    # SMMR / n07 case:
+    if platform == "n07":
+        return get_smmr_invalid_ice_mask(hemisphere=hemisphere, date=date)
+
+    # All other platforms:
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
     )
 
-    invalid_ice_mask = ancillary_ds.invalid_ice_mask.sel(month=month)
+    invalid_ice_mask = ancillary_ds.invalid_ice_mask.sel(month=date.month)
 
     # The invalid ice mask is indexed by month in the ancillary dataset. Drop
     # that coordinate.
