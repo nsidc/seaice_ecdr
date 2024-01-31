@@ -21,6 +21,7 @@ from seaice_ecdr.initial_daily_ecdr import (
 from seaice_ecdr.platforms import (
     get_platform_by_date,
 )
+from seaice_ecdr.tb_data import EcdrTbData, ecdr_tbs_from_amsr_channels
 
 
 def compute_nrt_initial_daily_ecdr_dataset(
@@ -37,11 +38,17 @@ def compute_nrt_initial_daily_ecdr_dataset(
         data_dir=lance_amsr2_input_dir,
     )
 
+    tb_data = EcdrTbData(
+        tbs=ecdr_tbs_from_amsr_channels(xr_tbs=xr_tbs),
+        resolution="12.5",
+        data_source="LANCE AU_SI12",
+        platform="am2",
+    )
+
     nrt_initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
-        resolution=resolution,
-        xr_tbs=xr_tbs,
+        tb_data=tb_data,
     )
 
     return nrt_initial_ecdr_ds

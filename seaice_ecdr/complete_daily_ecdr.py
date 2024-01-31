@@ -153,8 +153,8 @@ def read_melt_elements(
     )
     return (
         np.squeeze(tie_ds["cdr_conc"].to_numpy()),
-        tie_ds["h18_day_si"].to_numpy(),
-        tie_ds["h36_day_si"].to_numpy(),
+        tie_ds["h19_day_si"].to_numpy(),
+        tie_ds["h37_day_si"].to_numpy(),
     )
 
 
@@ -516,14 +516,6 @@ def make_cdecdr_netcdf(
 ) -> Path:
     logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
 
-    """ Rewriting the au_si specific code here...
-    cde_ds = complete_daily_ecdr_dataset_for_au_si_tbs(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-    )
-    """
     cde_ds = complete_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,

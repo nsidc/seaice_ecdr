@@ -18,7 +18,7 @@ from pm_tb_data._types import NORTH, Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.constants import CDR_ANCILLARY_DIR
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.platforms import get_platform_by_date
+from seaice_ecdr.platforms import SUPPORTED_SAT, get_platform_by_date
 
 
 def get_ancillary_filepath(
@@ -128,10 +128,18 @@ def get_surfacetype_da(
             y=yvar,
             x=xvar,
         ),
+        # TODO: get these attrs from ancillary file.
         attrs={
             "grid_mapping": "crs",
             "flag_values": surftype_flag_values_arr,
             "flag_meanings": surftype_flag_meanings_str,
+            "standard_name": "area_type",
+            "long_name": "Mask for ocean, lake, polehole, coast, and land areas",
+            "comment": (
+                "Note: Not all of the flag meanings derive from the current list of"
+                " acceptable labels for area_type because there are area types in"
+                " this field that are not present in that list."
+            ),
         },
     )
 
@@ -183,15 +191,62 @@ def nh_polehole_mask(
     return polehole_mask
 
 
+def get_smmr_ancillary_filepath(*, hemisphere) -> Path:
+    """Return filepath to SMMR ancillary NetCDF.
+
+    Contains a day-of-year climatology used for SMMR.
+    """
+    grid_id = get_grid_id(
+        hemisphere=hemisphere,
+        # Hard-coded to 25km resolution, which is what we expect for SMMR.
+        resolution="25",
+    )
+    fn = f"ecdr-ancillary-{grid_id}-smmr-invalid-ice.nc"
+    filepath = CDR_ANCILLARY_DIR / fn
+
+    return filepath
+
+
+def get_smmr_invalid_ice_mask(*, date: dt.date, hemisphere: Hemisphere) -> xr.DataArray:
+    ancillary_file = get_smmr_ancillary_filepath(hemisphere=hemisphere)
+
+    with xr.open_dataset(ancillary_file) as ds:
+        invalid_ice_mask = ds.invalid_ice_mask.copy().astype(bool)
+
+    doy = date.timetuple().tm_yday
+
+    icemask_for_doy = invalid_ice_mask.sel(doy=doy)
+
+    # Drop the DOY dim. This is consistent with the other case returned by
+    # `get_invalid_ice_mask`, which has `month` as a dimension instead.
+    icemask_for_doy = icemask_for_doy.drop_vars("doy")
+
+    return icemask_for_doy
+
+
 def get_invalid_ice_mask(
-    *, hemisphere: Hemisphere, month: int, resolution: ECDR_SUPPORTED_RESOLUTIONS
+    *,
+    hemisphere: Hemisphere,
+    date: dt.date,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    platform: SUPPORTED_SAT,
 ) -> xr.DataArray:
+    """Return an invalid ice mask for the given date.
+
+    SMMR (n07) uses a day-of-year based climatology. All other platforms use a
+    month-based mask.
+    """
+    # SMMR / n07 case:
+    if platform == "n07":
+        return get_smmr_invalid_ice_mask(hemisphere=hemisphere, date=date)
+
+    # All other platforms:
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
     )
 
-    invalid_ice_mask = ancillary_ds.invalid_ice_mask.sel(month=month)
+    invalid_ice_mask = ancillary_ds.invalid_ice_mask.sel(month=date.month)
 
     # The invalid ice mask is indexed by month in the ancillary dataset. Drop
     # that coordinate.
@@ -307,3 +362,40 @@ def get_adj123_field(
     adj123_da = ancillary_ds.adj123
 
     return adj123_da
+
+
+def get_empty_ds_with_time(
+    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS, date: dt.date
+) -> xr.Dataset:
+    """Return an "empty" xarray dataset with x, y, crs, and time set."""
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    time_as_int = (date - dt.date(1970, 1, 1)).days
+    time_da = xr.DataArray(
+        name="time",
+        data=[int(time_as_int)],
+        dims=["time"],
+        attrs={
+            "standard_name": "time",
+            "long_name": "ANSI date",
+            "calendar": "standard",
+            "axis": "T",
+            "units": "days since 1970-01-01",
+            "coverage_content_type": "coordinate",
+            "valid_range": [int(0), int(30000)],
+        },
+    )
+
+    return_ds = xr.Dataset(
+        data_vars=dict(
+            x=ancillary_ds.x,
+            y=ancillary_ds.y,
+            crs=ancillary_ds.crs,
+            time=time_da,
+        ),
+    )
+
+    return return_ds

@@ -15,10 +15,6 @@ import xarray as xr
 #   hence the type-ignore here
 from cv2 import INTER_LINEAR, resize  # type: ignore[import]
 from loguru import logger
-
-# TODO: default flag values are specific to the ECDR, and should probably be
-# defined in this repo instead of `pm_icecon`.
-from pm_icecon.constants import DEFAULT_FLAG_VALUES
 from pm_tb_data._types import Hemisphere
 from scipy.interpolate import griddata
 from scipy.signal import convolve2d
@@ -26,15 +22,16 @@ from scipy.signal import convolve2d
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
     get_adj123_field,
+    get_empty_ds_with_time,
     get_land_mask,
     get_ocean_mask,
 )
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.gridid_to_xr_dataarray import get_dataset_for_grid_id
-
-EXPECTED_TB_NAMES = ("h18", "v18", "v23", "h36", "v36")
+from seaice_ecdr.tb_data import EXPECTED_ECDR_TB_NAMES
 
 
+# TODO: this is very similar to the `_setup_ecdr_ds`. DRY out? is any of this
+# necessary, or can we just copy the attrs from the `initial_ecdr_ds`?
 def _setup_ecdr_ds_replacement(
     *,
     date: dt.date,
@@ -49,15 +46,16 @@ def _setup_ecdr_ds_replacement(
     )
 
     # TODO: These fields should derive from the ancillary file,
-    #       not get_dataset_for_grid_id()
-    ecdr_ide_ds = get_dataset_for_grid_id(grid_id, date)
+    #       not get_empty_ds_with_time()
+    ecdr_ide_ds = get_empty_ds_with_time(
+        hemisphere=hemisphere, resolution=resolution, date=date
+    )
 
     # Set initial global attributes
 
     # Note: these attributes should probably go with
     #       a variable named "CDR_parameters" or similar
     ecdr_ide_ds.attrs["grid_id"] = grid_id
-    ecdr_ide_ds.attrs["missing_value"] = DEFAULT_FLAG_VALUES.missing
 
     file_date = dt.date(1970, 1, 1) + dt.timedelta(
         days=int(ecdr_ide_ds.variables["time"].data)
@@ -304,7 +302,6 @@ def reproject_ideds_25to12(
     initial_ecdr_ds,
     date,
     hemisphere,
-    tb_resolution,
     resolution,
 ):
     # Determine reprojection_masks
@@ -314,7 +311,7 @@ def reproject_ideds_25to12(
     # Note: TBs are reinterpreted as continuous fields
     reprojected_tbs = {}
     for key in initial_ecdr_ds.data_vars.keys():
-        for expected_tb_name in EXPECTED_TB_NAMES:
+        for expected_tb_name in EXPECTED_ECDR_TB_NAMES:
             if expected_tb_name in key:
                 tb_dataarray = initial_ecdr_ds.variables[key]
                 tbda_12 = regrid_da_25to12_bilinear(
@@ -333,6 +330,9 @@ def reproject_ideds_25to12(
         resolution=resolution,
         hemisphere=hemisphere,
     )
+    # add data_source and platform to the dataset attrs.
+    reprojected_ideds.attrs["data_source"] = initial_ecdr_ds.data_source
+    reprojected_ideds.attrs["platform"] = initial_ecdr_ds.platform
 
     # Pull from ancillary file
     reprojected_ideds["land_mask"] = get_land_mask(

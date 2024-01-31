@@ -146,7 +146,7 @@ def _mock_daily_ds_for_month():
         [0, 0.16, 0.16],
         # at_least_half_the_days_have_sea_ice_conc_exceeds_0.30 and 15 and average_concentration_exceeds_0.15
         [0, 0.31, 0.31],
-        # region_masked_by_ocean_climatology
+        # invalid_ice_mask_applied
         [0, 0, 0],
         # at_least_one_day_during_month_has_spatial_interpolation
         [0.03, 0.02, 0.01],
@@ -167,7 +167,7 @@ def _mock_daily_ds_for_month():
         [50, 50, 50],
         # at_least_half_the_days_have_sea_ice_conc_exceeds_0.30 and 15 and average_concentration_exceeds_0.15
         [50, 50, 50],
-        # region_masked_by_ocean_climatology
+        # invalid_ice_mask_applied
         [50, 50, 50],
         # at_least_one_day_during_month_has_spatial_interpolation
         [50, 50, 50],
@@ -188,11 +188,11 @@ def _mock_daily_ds_for_month():
         [np.nan, np.nan, np.nan],
         # at_least_half_the_days_have_sea_ice_conc_exceeds_0.30
         [np.nan, np.nan, np.nan],
-        # region_masked_by_ocean_climatology
+        # invalid_ice_mask_applied
         [
-            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["valid_ice_mask_applied"],
-            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["valid_ice_mask_applied"],
-            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["valid_ice_mask_applied"],
+            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["invalid_ice_mask_applied"],
+            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["invalid_ice_mask_applied"],
+            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["invalid_ice_mask_applied"],
         ],
         # at_least_one_day_during_month_has_spatial_interpolation
         [
@@ -301,9 +301,7 @@ def test_calc_qa_of_cdr_seaice_conc_monthly():
             + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
-                "region_masked_by_ocean_climatology"
-            ],
+            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["invalid_ice_mask_applied"],
             QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
                 "at_least_one_day_during_month_has_spatial_interpolation"
             ],

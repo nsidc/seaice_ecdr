@@ -49,6 +49,7 @@ def finalize_cdecdr_ds(
         ds["cdr_seaice_conc"].data,
         {
             "standard_name": "sea_ice_area_fraction",
+            "coverage_content_type": "image",
             "units": "1",
             "long_name": (
                 "NOAA/NSIDC Climate Data Record of Passive Microwave"
@@ -88,7 +89,7 @@ def finalize_cdecdr_ds(
         2,  # NT_weather_filter_applied
         4,  # Land_spillover_filter_applied
         8,  # No_input_data
-        16,  # Valid_ice_mask_applied
+        16,  # invalid_ice_mask_applied
         32,  # Spatial_interpolation_applied
         64,  # Temporal_interpolation_applied
     ]
@@ -97,7 +98,7 @@ def finalize_cdecdr_ds(
         " NT_weather_filter_applied"
         " Land_spillover_filter_applied"
         " No_input_data"
-        " valid_ice_mask_applied"
+        " invalid_ice_mask_applied"
         " spatial_interpolation_applied"
         " temporal_interpolation_applied"
     )
@@ -299,6 +300,7 @@ def finalize_cdecdr_ds(
         ds["raw_bt_seaice_conc"].data,
         {
             "standard_name": "sea_ice_area_fraction",
+            "coverage_content_type": "image",
             "units": "1",
             "long_name": (
                 "Bootstrap sea ice concntration;"
@@ -318,13 +320,16 @@ def finalize_cdecdr_ds(
         ds["raw_nt_seaice_conc"].data,
         {
             "standard_name": "sea_ice_area_fraction",
+            "coverage_content_type": "image",
             "units": "1",
             "long_name": (
                 "NASA Team sea ice concntration;"
                 " raw field with no masking or filtering"
             ),
             "grid_mapping": "crs",
-            "valid_range": np.array((0, 100), dtype=np.uint8),
+            # We set a `valid_min` of 0 because we allow nasateam raw
+            # concentrations >100%. We do not set an upper limit.
+            "valid_min": 0,
         },
     )
 
@@ -333,11 +338,8 @@ def finalize_cdecdr_ds(
         time=ds.time,
         temporality="daily",
         aggregate=False,
-        # TODO: support alternative source datasets. Will be AU_SI12 for AMSR2,
-        # AE_SI12 for AMSR-E, and NSIDC-0001 for SSMIS, SSM/I, and SMMR
-        source="Generated from AU_SI12",
-        # TODO: set sat from source
-        sats=["am2"],
+        source="Generated from {ds_in.data_source}",
+        sats=[ds_in.platform],
     )
     ds.attrs = new_global_attrs
 
