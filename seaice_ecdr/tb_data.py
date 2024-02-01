@@ -142,13 +142,6 @@ def create_null_au_si_tbs(
         elif resolution == "25":
             xdim = 316
             ydim = 332
-    else:
-        value_error_string = f"""
-        Could not create null_set of TBs for
-          hemisphere: {hemisphere}
-          resolution: {resolution}
-        """
-        raise ValueError(value_error_string)
 
     null_array = np.zeros((ydim, xdim), dtype=np.float64)
     null_array[:] = np.nan
