@@ -516,8 +516,6 @@ def make_cdecdr_netcdf(
     ecdr_data_dir: Path,
     overwrite_cde: bool = False,
 ) -> Path:
-    logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
-
     cde_filepath = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
@@ -526,6 +524,7 @@ def make_cdecdr_netcdf(
     )
 
     if overwrite_cde or not cde_filepath.is_file():
+        logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
         cde_ds = complete_daily_ecdr_dataset(
             date=date,
             hemisphere=hemisphere,
@@ -535,20 +534,22 @@ def make_cdecdr_netcdf(
 
         cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere)
 
+        """
         output_path = get_ecdr_filepath(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
         )
+        """
 
         written_cde_ncfile = write_cde_netcdf(
             cde_ds=cde_ds,
-            output_filepath=output_path,
+            output_filepath=cde_filepath,
         )
         logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
 
-    return output_path
+    return cde_filepath
 
 
 def read_or_create_and_read_cdecdr_ds(
