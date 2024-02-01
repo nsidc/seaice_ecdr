@@ -32,6 +32,7 @@ from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.params import get_cdr_nt_params
 from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_tb_data._types import NORTH, Hemisphere
+from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.ancillary import (
@@ -276,6 +277,31 @@ def _setup_ecdr_ds(
         )
 
     return ecdr_ide_ds
+
+
+def get_nasateam_weather_mask(
+    *, ecdr_ide_ds: xr.Dataset, nt_coefs
+) -> npt.NDArray[np.bool_]:
+    # Apply masks
+    # Get Nasateam weather filter
+    # NOTE: Here is where we could force SMMR to not compute a value
+    #       because it has no v22 channel?
+    nt_gr_2219 = nt.compute_ratio(
+        ecdr_ide_ds["v22_day_si"].data[0, :, :],
+        ecdr_ide_ds["v19_day_si"].data[0, :, :],
+    )
+    nt_gr_3719 = nt.compute_ratio(
+        ecdr_ide_ds["v37_day_si"].data[0, :, :],
+        ecdr_ide_ds["v19_day_si"].data[0, :, :],
+    )
+    nt_weather_mask = nt.get_weather_filter_mask(
+        gr_2219=nt_gr_2219,
+        gr_3719=nt_gr_3719,
+        gr_2219_threshold=nt_coefs["nt_gradient_thresholds"]["2219"],
+        gr_3719_threshold=nt_coefs["nt_gradient_thresholds"]["3719"],
+    )
+
+    return nt_weather_mask
 
 
 def compute_initial_daily_ecdr_dataset(
@@ -620,23 +646,8 @@ def compute_initial_daily_ecdr_dataset(
         platform=platform,
     )
 
-    # Apply masks
-    # Get Nasateam weather filter
-    # NOTE: Here is where we could force SMMR to not compute a value
-    #       because it has no v22 channel?
-    nt_gr_2219 = nt.compute_ratio(
-        ecdr_ide_ds["v22_day_si"].data[0, :, :],
-        ecdr_ide_ds["v19_day_si"].data[0, :, :],
-    )
-    nt_gr_3719 = nt.compute_ratio(
-        ecdr_ide_ds["v37_day_si"].data[0, :, :],
-        ecdr_ide_ds["v19_day_si"].data[0, :, :],
-    )
-    nt_weather_mask = nt.get_weather_filter_mask(
-        gr_2219=nt_gr_2219,
-        gr_3719=nt_gr_3719,
-        gr_2219_threshold=nt_coefs["nt_gradient_thresholds"]["2219"],
-        gr_3719_threshold=nt_coefs["nt_gradient_thresholds"]["3719"],
+    nt_weather_mask = get_nasateam_weather_mask(
+        ecdr_ide_ds=ecdr_ide_ds, nt_coefs=nt_coefs
     )
 
     ecdr_ide_ds["nt_weather_mask"] = (
