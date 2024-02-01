@@ -280,28 +280,34 @@ def _setup_ecdr_ds(
 
 
 def get_nasateam_weather_mask(
-    *, ecdr_ide_ds: xr.Dataset, nt_coefs
+    *,
+    ecdr_ide_ds: xr.Dataset,
+    nt_coefs: NtCoefs,
 ) -> npt.NDArray[np.bool_]:
-    # Apply masks
     # Get Nasateam weather filter
     # NOTE: Here is where we could force SMMR to not compute a value
     #       because it has no v22 channel?
-    nt_gr_2219 = nt.compute_ratio(
-        ecdr_ide_ds["v22_day_si"].data[0, :, :],
-        ecdr_ide_ds["v19_day_si"].data[0, :, :],
-    )
     nt_gr_3719 = nt.compute_ratio(
         ecdr_ide_ds["v37_day_si"].data[0, :, :],
         ecdr_ide_ds["v19_day_si"].data[0, :, :],
     )
-    nt_weather_mask = nt.get_weather_filter_mask(
-        gr_2219=nt_gr_2219,
-        gr_3719=nt_gr_3719,
-        gr_2219_threshold=nt_coefs["nt_gradient_thresholds"]["2219"],
-        gr_3719_threshold=nt_coefs["nt_gradient_thresholds"]["3719"],
-    )
 
-    return nt_weather_mask
+    nt_3719_weather_mask = nt_gr_3719 > nt_coefs["nt_gradient_thresholds"]["3719"]
+
+    # SMMR does not have a 22v channel that's suitable for the nt weather
+    # filter. Instead, we just re-use the 3719 gradient ratios for 2219.
+    if ecdr_ide_ds.platform == "n07":
+        return nt_3719_weather_mask
+
+    nt_gr_2219 = nt.compute_ratio(
+        ecdr_ide_ds["v22_day_si"].data[0, :, :],
+        ecdr_ide_ds["v19_day_si"].data[0, :, :],
+    )
+    nt_2219_weather_mask = nt_gr_2219 > nt_coefs["nt_gradient_thresholds"]["2219"]
+
+    weather_mask = nt_3719_weather_mask | nt_2219_weather_mask
+
+    return weather_mask
 
 
 def compute_initial_daily_ecdr_dataset(
@@ -646,6 +652,7 @@ def compute_initial_daily_ecdr_dataset(
         platform=platform,
     )
 
+    # Apply masks
     nt_weather_mask = get_nasateam_weather_mask(
         ecdr_ide_ds=ecdr_ide_ds, nt_coefs=nt_coefs
     )
