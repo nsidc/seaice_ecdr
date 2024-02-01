@@ -20,8 +20,6 @@ import pm_icecon.bt.params.ausi_amsr2 as pmi_bt_params_amsr2
 import pm_icecon.bt.params.ausi_amsre as pmi_bt_params_amsre
 import pm_icecon.bt.params.nsidc0001 as pmi_bt_params_0001
 import pm_icecon.nt.compute_nt_ic as nt
-import pm_icecon.nt.params.amsr2 as nt_amsr2_params
-import pm_icecon.nt.params.nsidc0001 as nt_0001_params
 import xarray as xr
 from loguru import logger
 from pm_icecon.bt.params.nsidc0007 import get_smmr_params
@@ -31,9 +29,9 @@ from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
 from pm_icecon.land_spillover import apply_nt2_land_spillover
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
+from pm_icecon.nt.params import get_cdr_nt_params
 from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_tb_data._types import NORTH, Hemisphere
-from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.ancillary import (
@@ -433,22 +431,10 @@ def compute_initial_daily_ecdr_dataset(
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
 
-    if platform == "am2":
-        nt_params = nt_amsr2_params.get_amsr2_params(
-            hemisphere=hemisphere,
-        )
-    elif platform == "ame":
-        # TODO: AMSRE should get its own NT parameters...
-        nt_params = nt_amsr2_params.get_amsr2_params(
-            hemisphere=hemisphere,
-        )
-    elif platform in get_args(NSIDC_0001_SATS):
-        nt_params = nt_0001_params.get_0001_nt_params(
-            hemisphere=hemisphere,
-            platform=platform,
-        )
-    else:
-        raise RuntimeError(f"Dont know how to get NT parameters for: {platform}")
+    nt_params = get_cdr_nt_params(
+        hemisphere=hemisphere,
+        platform=platform,
+    )
 
     nt_coefs = NtCoefs(
         nt_tiepoints=nt_params.tiepoints,
