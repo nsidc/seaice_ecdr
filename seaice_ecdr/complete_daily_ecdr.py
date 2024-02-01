@@ -73,6 +73,7 @@ def read_or_create_and_read_tiecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    overwrite_tie: bool = False,
 ) -> xr.Dataset:
     """Read an tiecdr netCDF file, creating it if it doesn't exist."""
     tie_filepath = get_tie_filepath(
@@ -82,7 +83,7 @@ def read_or_create_and_read_tiecdr_ds(
         ecdr_data_dir=ecdr_data_dir,
     )
     # TODO: This only creates if file is missing.  We may want an overwrite opt
-    if not tie_filepath.is_file():
+    if overwrite_tie or not tie_filepath.is_file():
         make_tiecdr_netcdf(
             date=date,
             hemisphere=hemisphere,
@@ -513,30 +514,39 @@ def make_cdecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    overwrite_cde: bool = False,
 ) -> Path:
     logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
 
-    cde_ds = complete_daily_ecdr_dataset(
+    cde_filepath = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
 
-    cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere)
+    if overwrite_cde or not cde_filepath.is_file():
+        cde_ds = complete_daily_ecdr_dataset(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+        )
 
-    output_path = get_ecdr_filepath(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-    )
+        cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere)
 
-    written_cde_ncfile = write_cde_netcdf(
-        cde_ds=cde_ds,
-        output_filepath=output_path,
-    )
-    logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
+        output_path = get_ecdr_filepath(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+
+        written_cde_ncfile = write_cde_netcdf(
+            cde_ds=cde_ds,
+            output_filepath=output_path,
+        )
+        logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
 
     return output_path
 
@@ -567,6 +577,7 @@ def read_or_create_and_read_cdecdr_ds(
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
+            overwrite_cde=overwrite_cde,
         )
     logger.info(f"Reading cdeCDR file from: {cde_filepath}")
     cde_ds = xr.load_dataset(cde_filepath)
@@ -581,6 +592,7 @@ def create_cdecdr_for_date_range(
     end_date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    overwrite_cde: bool = False,
 ) -> None:
     """Generate the complete daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
@@ -590,6 +602,7 @@ def create_cdecdr_for_date_range(
                 hemisphere=hemisphere,
                 resolution=resolution,
                 ecdr_data_dir=ecdr_data_dir,
+                overwrite_cde=overwrite_cde,
             )
 
         # TODO: either catch and re-throw this exception or throw an error after

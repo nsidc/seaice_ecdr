@@ -132,7 +132,7 @@ def create_null_au_si_tbs(
         if resolution == "12.5":
             xdim = 608
             ydim = 896
-        if resolution == "25":
+        elif resolution == "25":
             xdim = 304
             ydim = 448
     elif hemisphere == "south":
