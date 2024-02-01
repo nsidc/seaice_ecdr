@@ -15,7 +15,7 @@ import xarray as xr
 #   hence the type-ignore here
 # Sometimes, mypy wants this ignore to be: ignore[import-not-found]
 # from cv2 import INTER_LINEAR, resize  # type: ignore[import-not-found]
-from cv2 import INTER_LINEAR, resize  # type: ignore[import]
+from cv2 import INTER_LINEAR, resize
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 from scipy.interpolate import griddata

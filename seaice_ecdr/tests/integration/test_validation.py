@@ -18,9 +18,7 @@ def test_validate_outputs(ecdr_data_dir_test_path):  # noqa
             hemisphere=hemisphere,
             start_date=dt.date(2022, 3, 1),
             end_date=dt.date(2022, 3, 4),
-            # Sometimes, mypy wants: # type:ignore[arg-type]
-            # product=product_type,
-            product=product_type,
+            product=product_type,  # type: ignore[arg-type]
             ecdr_data_dir=ecdr_data_dir_test_path,
         )
 
