@@ -70,5 +70,6 @@ module = [
   "netCDF4.*",
   "rasterio.*",
   "yaml.*",
+  "cv.*",
 ]
 ignore_missing_imports = true
