@@ -285,8 +285,6 @@ def get_nasateam_weather_mask(
     nt_coefs: NtCoefs,
 ) -> npt.NDArray[np.bool_]:
     # Get Nasateam weather filter
-    # NOTE: Here is where we could force SMMR to not compute a value
-    #       because it has no v22 channel?
     nt_gr_3719 = nt.compute_ratio(
         ecdr_ide_ds["v37_day_si"].data[0, :, :],
         ecdr_ide_ds["v19_day_si"].data[0, :, :],
