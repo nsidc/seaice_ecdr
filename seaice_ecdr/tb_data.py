@@ -128,12 +128,20 @@ def create_null_au_si_tbs(
         "v89": "89.0 GHz vertical daily average Tbs",
     }
 
-    if hemisphere == "north" and resolution == "12.5":
-        xdim = 608
-        ydim = 896
-    elif hemisphere == "south" and resolution == "12.5":
-        xdim = 632
-        ydim = 664
+    if hemisphere == "north":
+        if resolution == "12.5":
+            xdim = 608
+            ydim = 896
+        if resolution == "25":
+            xdim = 304
+            ydim = 448
+    elif hemisphere == "south":
+        if resolution == "12.5":
+            xdim = 632
+            ydim = 664
+        elif resolution == "25":
+            xdim = 316
+            ydim = 332
     else:
         value_error_string = f"""
         Could not create null_set of TBs for
