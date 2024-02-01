@@ -357,6 +357,9 @@ def compute_initial_daily_ecdr_dataset(
         )
         spatint_bitmask_arr[land_mask.data] = 0
 
+        # Drop the un-spatially interpolated TB field to save space and compute
+        ecdr_ide_ds = ecdr_ide_ds.drop_vars(tb_varname)
+
     spat_int_flag_mask_values = np.array([1, 2, 4, 8, 16, 32], dtype=np.uint8)
     ecdr_ide_ds["spatial_interpolation_flag"] = (
         ("time", "y", "x"),
