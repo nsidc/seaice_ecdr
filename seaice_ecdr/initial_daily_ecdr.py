@@ -284,6 +284,16 @@ def get_nasateam_weather_mask(
     ecdr_ide_ds: xr.Dataset,
     nt_coefs: NtCoefs,
 ) -> npt.NDArray[np.bool_]:
+    """Return the "nasateam" weather mask.
+
+    TODO: the nasateam weather mask is the combination of two seaparate masks:
+    one generated from the ratio between v37 and v19 and the other generated
+    from a ratio between the v22 and v19 channels. When data are available to
+    compute masks for both of these ratios, one single mask is returned, which
+    is a combination of the aforementioned masks. Ideally, we separate these out
+    and keep track of the masks separately so that we can evaluate the effect
+    each has on the final output.
+    """
     # Get Nasateam weather filter
     nt_gr_3719 = nt.compute_ratio(
         ecdr_ide_ds["v37_day_si"].data[0, :, :],
