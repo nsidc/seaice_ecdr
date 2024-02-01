@@ -104,11 +104,12 @@ def cdr_bootstrap(
         missing_flag_value=255,
     )
 
-    # Se any bootstrap concentrations below 10% to 0.
+    # Set any bootstrap concentrations below 10% to 0.
+    # TODO: Verify we want to clamp BT value here?
     bt_conc[bt_conc < 10] = 0
 
     # Remove bt_conc flags (e.g., missing)
-    bt_conc[bt_conc > 200] = np.nan
+    bt_conc[bt_conc >= 250] = np.nan
 
     return bt_conc
 
@@ -173,6 +174,7 @@ class NtCoefs(TypedDict):
     nt_gradient_thresholds: NasateamGradientRatioThresholds
 
 
+# TODO: We should probably break this function up into separate bt, nt, cdr calc
 def calculate_bt_nt_cdr_raw_conc(
     *,
     tb_h19: npt.NDArray,
@@ -269,6 +271,7 @@ def _setup_ecdr_ds(
             },
             {
                 "zlib": True,
+                # TODO: these TB fields can be expressly packed as uint16
             },
         )
 
@@ -281,6 +284,8 @@ def compute_initial_daily_ecdr_dataset(
     hemisphere: Hemisphere,
     tb_data: EcdrTbData,
     fill_the_pole_hole: bool = False,
+    # SS: Does this need to have tb_resolution?
+    # tb_resolution: ECDR_SUPPORTED_RESOLUTIONS | None = None,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -291,6 +296,7 @@ def compute_initial_daily_ecdr_dataset(
     fields. Its difficult to understand what's in the resulting dataset without
     manually inspecting the result of running this code.
     """
+    # SS: Does this need to know tb_resolution?
     ecdr_ide_ds = _setup_ecdr_ds(
         date=date,
         tb_data=tb_data,
@@ -312,9 +318,10 @@ def compute_initial_daily_ecdr_dataset(
                 "standard_name": "brightness_temperature",
                 "long_name": tb_si_longname,
                 "units": tb_units,
-                "valid_range": [np.float64(10.0), np.float64(3500.0)],
+                "valid_range": [np.float64(10.0), np.float64(350.0)],
             },
             {
+                # TODO: this can be packed as uint16
                 "zlib": True,
             },
         )
@@ -325,6 +332,7 @@ def compute_initial_daily_ecdr_dataset(
     spatint_bitmask_arr = np.zeros((ydim, xdim), dtype=np.uint8)
     # TODO: Long term reminder: we want to use "band" labels rather than
     #       exact GHz frequencies -- which vary by satellite -- to ID channels
+    # TODO: This mapping should be found in some configuration elsewhere
     TB_SPATINT_BITMASK_MAP = {
         "v19": 1,
         "h19": 2,
@@ -347,6 +355,10 @@ def compute_initial_daily_ecdr_dataset(
         )
         spatint_bitmask_arr[land_mask.data] = 0
 
+        # Drop the un-spatially interpolated TB field to save space and compute
+        ecdr_ide_ds = ecdr_ide_ds.drop_vars(tb_varname)
+
+    spat_int_flag_mask_values = np.array([1, 2, 4, 8, 16, 32], dtype=np.uint8)
     ecdr_ide_ds["spatial_interpolation_flag"] = (
         ("time", "y", "x"),
         np.expand_dims(spatint_bitmask_arr, axis=0),
@@ -355,16 +367,16 @@ def compute_initial_daily_ecdr_dataset(
             "standard_name": "status_flag",
             "long_name": "spatial_interpolation_flag",
             "units": 1,
-            "valid_range": [np.uint8(0), np.uint8(63)],
-            "flag_masks": np.array([1, 2, 4, 8, 16, 32], dtype=np.uint8),
+            "flag_masks": spat_int_flag_mask_values,
             "flag_meanings": (
                 "19v_tb_value_interpolated"
                 " 19h_tb_value_interpolated"
                 " 22v_tb_value_interpolated"
                 " 37v_tb_value_interpolated"
                 " 37h_tb_value_interpolated"
-                " Pole_hole_spatially_interpolated_(Arctic_only)"
+                " Pole_hole_spatially_interpolated"
             ),
+            "valid_range": [np.uint8(0), np.sum(spat_int_flag_mask_values)],
         },
         {
             "zlib": True,
@@ -385,7 +397,9 @@ def compute_initial_daily_ecdr_dataset(
             satellite="amsre",
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform == "F17":
+    # elif platform == "F17":
+    elif platform in get_args(NSIDC_0001_SATS):
+        # TODO: rename get_F17... to get_0001...
         bt_coefs_init = pmi_bt_params_0001.get_F17_bootstrap_params(
             date=date,
             satellite=platform,
@@ -467,6 +481,10 @@ def compute_initial_daily_ecdr_dataset(
         },
     )
 
+    # TODO: this mapping is in preparation for using separately-transformed
+    #       TBs in the Bootstrap algorithm.  The better approach would be to
+    #       adjust the parameters for each platform so that this tranformation
+    #       would not be needed.  That's...a fair bit of work though.
     bt_v37 = ecdr_ide_ds["v37_day_si"].data[0, :, :]
     bt_h37 = ecdr_ide_ds["h37_day_si"].data[0, :, :]
     bt_v22 = ecdr_ide_ds["v22_day_si"].data[0, :, :]
@@ -505,6 +523,8 @@ def compute_initial_daily_ecdr_dataset(
         tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
         ln1=bt_coefs_init["vh37_lnline"],
         date=date,
+        # TODO: in the (distant?) future, we will want these to come
+        #       from a bt_coefs structure, not bt_coefs_init
         wintrc=bt_coefs_init["wintrc"],
         wslope=bt_coefs_init["wslope"],
         wxlimt=bt_coefs_init["wxlimt"],
@@ -602,6 +622,8 @@ def compute_initial_daily_ecdr_dataset(
 
     # Apply masks
     # Get Nasateam weather filter
+    # NOTE: Here is where we could force SMMR to not compute a value
+    #       because it has no v22 channel?
     nt_gr_2219 = nt.compute_ratio(
         ecdr_ide_ds["v22_day_si"].data[0, :, :],
         ecdr_ide_ds["v19_day_si"].data[0, :, :],
@@ -663,13 +685,16 @@ def compute_initial_daily_ecdr_dataset(
         conc=cdr_conc,
         adj123=adj123.data,
         l90c=l90c.data,
+        anchoring_siconc=50.0,
+        affect_dist3=True,
     )
 
     spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = 1
 
     # Fill the NH pole hole
     # TODO: Should check for NH and have grid-dependent filling scheme
-    # NOTE: Usually, the pole hole will be filled in pass 3, along with melt onset calc.
+    # NOTE: Usually, the pole hole will be filled in pass 3 ("complete_daily"),
+    #       along with melt onset calc.
     if fill_the_pole_hole and hemisphere == NORTH:
         cdr_conc_pre_polefill = cdr_conc.copy()
         platform = get_platform_by_date(date)
@@ -693,9 +718,8 @@ def compute_initial_daily_ecdr_dataset(
             )
             logger.info("Updated spatial_interpolation with pole hole value")
 
-    # Mask out land and clamp conc to between 10-100%.
-    # TODO: using the land mask here is not enough! We need to mask out all
-    # "non-ocean" pixels, which includes coast & lakes.
+    # Mask out non-ocean pixels and clamp conc to between 10-100%.
+    # TODO: These values should be in a configuration file/structure
     cdr_conc[land_mask.data] = np.nan
     cdr_conc[cdr_conc < 10] = 0
     cdr_conc[cdr_conc > 100] = 100
@@ -762,6 +786,7 @@ def compute_initial_daily_ecdr_dataset(
     # Add the final cdr_conc value to the xarray dataset
     # Rescale conc values to 0-1
     cdr_conc = cdr_conc / 100.0
+    # TODO: rename this variable from "conc" to "cdr_conc_init" or similar
     ecdr_ide_ds["conc"] = (
         ("time", "y", "x"),
         np.expand_dims(cdr_conc, axis=0),
@@ -893,7 +918,7 @@ def write_ide_netcdf(
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
 
     for excluded_field in excluded_fields:
-        if excluded_field in ide_ds.variables.keys():
+        if excluded_field in ide_ds.data_vars.keys():
             ide_ds = ide_ds.drop_vars(excluded_field)
 
     nc_encoding = {}
@@ -905,6 +930,7 @@ def write_ide_netcdf(
             pass
         elif varname not in uncompressed_fields and varname in tb_fields:
             # Encode tb vals with int16
+            # TODO: With uint16, these values could have scale factor 0.01
             nc_encoding[varname] = {
                 "zlib": True,
                 "dtype": "int16",
@@ -924,7 +950,6 @@ def write_ide_netcdf(
         ],
     )
 
-    # Return the path if it exists
     return output_filepath
 
 
@@ -950,8 +975,6 @@ def get_idecdr_filepath(
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        # TODO: extract to kwarg!!!
-        # sat="am2",
         sat=platform,
         resolution=resolution,
     )
@@ -990,7 +1013,7 @@ def make_idecdr_netcdf(
         output_filepath=output_path,
         excluded_fields=excluded_fields,
     )
-    logger.info(f"Wrote intermed daily ncfile: {written_ide_ncfile}")
+    logger.info(f"Wrote initial daily ncfile: {written_ide_ncfile}")
 
 
 def create_idecdr_for_date_range(
@@ -1023,6 +1046,8 @@ def create_idecdr_for_date_range(
                     "land_mask",
                     "pole_mask",
                     "invalid_tb_mask",
+                    "bt_weather_mask",
+                    "nt_weather_mask",
                 ]
             make_idecdr_netcdf(
                 date=date,

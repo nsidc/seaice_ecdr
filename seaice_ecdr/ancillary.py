@@ -53,14 +53,10 @@ def get_ancillary_ds(
 
 
 def bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
-    # TODO: where do we encounter the ValueError that requires setting
-    # `meaning.lower()`? Can we just use a `.lower()` on the `flag_meanings` and
-    # `meaning` to be consistent and never run into this problem? Are there any
-    # cases where case matters?
     try:
         index = var.flag_meanings.split(" ").index(meaning)
     except ValueError:
-        index = var.flag_meanings.split(" ").index(meaning.lower())
+        raise ValueError(f"Could not determine pole hole mask for {meaning}")
 
     value = var.flag_masks[index]
 
@@ -79,7 +75,7 @@ def get_surfacetype_da(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    sat,
+    platform,
 ) -> xr.DataArray:
     """Return a dataarray with surface type information for this date."""
     ancillary_ds = get_ancillary_ds(
@@ -93,13 +89,9 @@ def get_surfacetype_da(
     polehole_surface_type = 100
     if "polehole_bitmask" in ancillary_ds.data_vars.keys():
         polehole_bitmask = ancillary_ds.polehole_bitmask
-        if sat is None:
-            sat = get_platform_by_date(date)
-        elif sat == "ame":
-            # TODO: Verify that AMSR-E pole hole is same as AMSR2
-            # Use the AMSR2 pole hole for AMSR-E
-            sat = "am2"
-        polehole_bitlabel = f"{sat}_polemask"
+        if platform is None:
+            platform = get_platform_by_date(date)
+        polehole_bitlabel = f"{platform}_polemask"
         polehole_bitvalue = bitmask_value_for_meaning(
             var=polehole_bitmask,
             meaning=polehole_bitlabel,
@@ -176,8 +168,6 @@ def nh_polehole_mask(
         sat = get_platform_by_date(
             date=date,
         )
-    elif sat == "ame":
-        sat = "am2"
 
     polehole_bitlabel = f"{sat}_polemask"
     polehole_bitvalue = bitmask_value_for_meaning(
@@ -228,6 +218,9 @@ def get_smmr_invalid_ice_mask(*, date: dt.date, hemisphere: Hemisphere) -> xr.Da
     # `get_invalid_ice_mask`, which has `month` as a dimension instead.
     icemask_for_doy = icemask_for_doy.drop_vars("doy")
 
+    # Ice mask needs to be boolean
+    icemask_for_doy = icemask_for_doy.astype("bool")
+
     return icemask_for_doy
 
 
@@ -258,6 +251,10 @@ def get_invalid_ice_mask(
     # The invalid ice mask is indexed by month in the ancillary dataset. Drop
     # that coordinate.
     invalid_ice_mask = invalid_ice_mask.drop_vars("month")
+
+    # xarray does not currently permit netCDF files with boolean data type
+    # so this array must be explicitly cast as boolean upon being read in.
+    invalid_ice_mask = invalid_ice_mask.astype("bool")
 
     return invalid_ice_mask
 
@@ -298,7 +295,8 @@ def get_land_mask(
 ) -> xr.DataArray:
     """Return a binary mask where True values represent `land`.
 
-    This mask includes both land & coast.
+    This mask includes land, coast, and lake and is therefore more of a
+    not-ocean mask
     """
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
@@ -315,8 +313,16 @@ def get_land_mask(
         var=surface_type,
         meaning="coast",
     )
+    lake_val = flag_value_for_meaning(
+        var=surface_type,
+        meaning="lake",
+    )
 
-    land_mask = (surface_type == land_val) | (surface_type == coast_val)
+    land_mask = (
+        (surface_type == land_val)
+        | (surface_type == coast_val)
+        | (surface_type == lake_val)
+    )
 
     land_mask.attrs = dict(
         grid_mapping="crs",

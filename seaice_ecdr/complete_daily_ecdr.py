@@ -3,6 +3,8 @@
 """
 import copy
 import datetime as dt
+import sys
+import traceback
 from functools import cache
 from pathlib import Path
 from typing import Iterable, cast, get_args
@@ -307,7 +309,7 @@ def complete_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        sat=platform,
+        platform=platform,
     )
     # Force use of the cde_ds coords instead of the x, y, time vars
     # from the ancillary file (which *should* be compatible...but we
@@ -582,15 +584,6 @@ def create_cdecdr_for_date_range(
 ) -> None:
     """Generate the complete daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
-        logger.warning("skipping the error capture...")
-        make_cdecdr_netcdf(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-        )
-
-        """
         try:
             make_cdecdr_netcdf(
                 date=date,
@@ -622,7 +615,6 @@ def create_cdecdr_for_date_range(
             with open(err_filepath.parent / err_filename, "w") as f:
                 traceback.print_exc(file=f)
                 traceback.print_exc(file=sys.stdout)
-        """
 
 
 @click.command(name="cdecdr")
