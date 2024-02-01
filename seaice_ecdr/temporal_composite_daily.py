@@ -355,17 +355,21 @@ def read_or_create_and_read_idecdr_ds(
     )
     if overwrite_ide or not ide_filepath.is_file():
         excluded_idecdr_fields = [
-            "h18_day",
-            "v18_day",
-            "v23_day",
-            "h36_day",
-            "v36_day",
+            "h19_day",
+            "v19_day",
+            "v22_day",
+            "h37_day",
+            "v37_day",
             # "h18_day_si",  # include this field for melt onset calculation
-            "v18_day_si",
-            "v23_day_si",
+            "v19_day_si",
+            "v22_day_si",
             # "h36_day_si",  # include this field for melt onset calculation
-            "v36_day_si",
-            "NT_icecon_min",
+            "v37_day_si",
+            "land_mask",
+            "invalid_ice_mask",
+            "pole_mask",
+            "bt_weather_mask",
+            "nt_weather_mask",
         ]
         make_idecdr_netcdf(
             date=date,
