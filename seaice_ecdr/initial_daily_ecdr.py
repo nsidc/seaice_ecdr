@@ -1043,9 +1043,9 @@ def make_idecdr_netcdf(
 
 
 def create_idecdr_for_date(
+    date: dt.date,
     *,
     hemisphere: Hemisphere,
-    date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
     verbose_intermed_ncfile: bool = False,
