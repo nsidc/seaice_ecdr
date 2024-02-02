@@ -54,7 +54,7 @@ def make_archive_for_noaa(
     *, output_dir: Path, seaice_ecdr_ref: str, pm_icecon_ref: str, pm_tb_data_ref
 ):
     with tempfile.TemporaryDirectory() as tempdir:
-        archive_name = f"archive_{dt.date.today():%Y%m%d}"
+        archive_name = f"seaice_ecdr_{dt.date.today():%Y%m%d}"
         archive_dir = Path(tempdir) / archive_name
         archive_dir.mkdir()
         clone_repo(
