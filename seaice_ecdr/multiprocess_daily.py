@@ -2,11 +2,12 @@ import datetime as dt
 from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Final
+from typing import Final, get_args
 
-from loguru import logger
+import click
 from pm_tb_data._types import Hemisphere
 
+from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.complete_daily_ecdr import create_cdecdr_for_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import create_idecdr_for_date
@@ -14,10 +15,68 @@ from seaice_ecdr.temporal_composite_daily import create_tiecdr_for_date
 from seaice_ecdr.util import date_range
 
 
+@click.command(name="multiprocess-daily")
+@click.option(
+    "-d",
+    "--start-date",
+    required=True,
+    type=click.DateTime(
+        formats=(
+            "%Y-%m-%d",
+            "%Y%m%d",
+            "%Y.%m.%d",
+        )
+    ),
+    callback=datetime_to_date,
+)
+@click.option(
+    "--end-date",
+    required=True,
+    type=click.DateTime(
+        formats=(
+            "%Y-%m-%d",
+            "%Y%m%d",
+            "%Y.%m.%d",
+        )
+    ),
+    # Like `datetime_to_date` but allows `None`.
+    callback=lambda _ctx, _param, value: value if value is None else value.date(),
+    default=None,
+    help="If given, run temporal composite for `--date` through this end date.",
+)
+@click.option(
+    "-h",
+    "--hemisphere",
+    required=True,
+    type=click.Choice(get_args(Hemisphere)),
+)
+@click.option(
+    "--ecdr-data-dir",
+    required=True,
+    type=click.Path(
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        writable=True,
+        resolve_path=True,
+        path_type=Path,
+    ),
+    default=STANDARD_BASE_OUTPUT_DIR,
+    help=(
+        "Base output directory for standard ECDR outputs."
+        " Subdirectories are created for outputs of"
+        " different stages of processing."
+    ),
+    show_default=True,
+)
+@click.option(
+    "--overwrite",
+    is_flag=True,
+)
 def cli(
-    hemisphere: Hemisphere,
     start_date: dt.date,
     end_date: dt.date,
+    hemisphere: Hemisphere,
     ecdr_data_dir: Path,
     overwrite: bool,
 ):
@@ -56,22 +115,9 @@ def cli(
         overwrite_cde=overwrite,
     )
 
-    logger.info("About to multiprocess. Removing logger for now to reduce clutter.")
-    logger.remove()
-    # leave one core free.
-    # num_cores = os.cpu_count() - 1
-    # logger.info(f"Multiprocessing daily data with {num_cores=}")
+    # Use 6 cores. This seems to perform well. Using the max number available
+    # can cause issues...
     with Pool(6) as multi_pool:
         multi_pool.map(_create_idecdr_wrapper, initial_file_dates)
         multi_pool.map(_create_tiecdr_wrapper, dates)
         multi_pool.map(_complete_daily_wrapper, dates)
-
-
-if __name__ == "__main__":
-    cli(
-        hemisphere="north",
-        start_date=dt.date(2022, 1, 1),
-        end_date=dt.date(2022, 1, 30),
-        ecdr_data_dir=STANDARD_BASE_OUTPUT_DIR,
-        overwrite=True,
-    )
