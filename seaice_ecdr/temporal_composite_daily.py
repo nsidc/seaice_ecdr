@@ -173,6 +173,10 @@ def iter_dates_near_date(
     near-real-time use, because data from "the future" are not available.
     """
     earliest_date = target_date - dt.timedelta(days=day_range)
+    # Limit earliest date to Oct 25, 1978
+    if earliest_date < dt.date(1978, 10, 25):
+        earliest_date = dt.date(1978, 10, 25)
+
     if skip_future:
         latest_date = target_date
     else:
