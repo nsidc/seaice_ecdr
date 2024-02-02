@@ -477,6 +477,48 @@ def read_or_create_and_read_cdecdr_ds(
     return cde_ds
 
 
+def create_cdecdr_for_date(
+    date: dt.date,
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
+    overwrite_cde: bool = False,
+) -> None:
+    try:
+        make_cdecdr_netcdf(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+            overwrite_cde=overwrite_cde,
+        )
+
+    # TODO: either catch and re-throw this exception or throw an error after
+    # attempting to make the netcdf for each date. The exit code should be
+    # non-zero in such a case.
+    except Exception:
+        logger.error(
+            "Failed to create complete daily NetCDF for"
+            f" {hemisphere=}, {date=}, {resolution=}."
+        )
+        # TODO: These error logs should be written to e.g.,
+        # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
+        # to handle automatically logging error details to such a file.
+        # TODO: Perhaps this function should come from seaice_ecdr
+        err_filepath = get_ecdr_filepath(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+        err_filename = err_filepath.name + ".error"
+        logger.info(f"Writing error info to {err_filename}")
+        with open(err_filepath.parent / err_filename, "w") as f:
+            traceback.print_exc(file=f)
+            traceback.print_exc(file=sys.stdout)
+
+
 def create_cdecdr_for_date_range(
     *,
     hemisphere: Hemisphere,
@@ -488,38 +530,13 @@ def create_cdecdr_for_date_range(
 ) -> None:
     """Generate the complete daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
-        try:
-            make_cdecdr_netcdf(
-                date=date,
-                hemisphere=hemisphere,
-                resolution=resolution,
-                ecdr_data_dir=ecdr_data_dir,
-                overwrite_cde=overwrite_cde,
-            )
-
-        # TODO: either catch and re-throw this exception or throw an error after
-        # attempting to make the netcdf for each date. The exit code should be
-        # non-zero in such a case.
-        except Exception:
-            logger.error(
-                "Failed to create complete daily NetCDF for"
-                f" {hemisphere=}, {date=}, {resolution=}."
-            )
-            # TODO: These error logs should be written to e.g.,
-            # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
-            # to handle automatically logging error details to such a file.
-            # TODO: Perhaps this function should come from seaice_ecdr
-            err_filepath = get_ecdr_filepath(
-                date=date,
-                hemisphere=hemisphere,
-                resolution=resolution,
-                ecdr_data_dir=ecdr_data_dir,
-            )
-            err_filename = err_filepath.name + ".error"
-            logger.info(f"Writing error info to {err_filename}")
-            with open(err_filepath.parent / err_filename, "w") as f:
-                traceback.print_exc(file=f)
-                traceback.print_exc(file=sys.stdout)
+        create_cdecdr_for_date(
+            hemisphere=hemisphere,
+            date=date,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+            overwrite_cde=overwrite_cde,
+        )
 
 
 @click.command(name="cdecdr")

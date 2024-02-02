@@ -1250,9 +1250,9 @@ def make_tiecdr_netcdf(
 
 
 def create_tiecdr_for_date(
+    date: dt.date,
     *,
     hemisphere: Hemisphere,
-    date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
 ) -> None:
