@@ -7,15 +7,13 @@ def _get_checksum(filepath):
         return hashlib.md5(file.read()).hexdigest()
 
 
-def write_checksum_file(input_filepath, output_dir):
-    input_filepath = Path(input_filepath)
-
+def write_checksum_file(*, input_filepath: Path, output_dir: Path):
     checksum = _get_checksum(input_filepath)
 
     size_in_bytes = input_filepath.stat().st_size
     filename = input_filepath.name
 
-    output_dir = Path(output_dir)
+    output_dir = output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     output_filepath = output_dir / (filename + ".mnf")
 
