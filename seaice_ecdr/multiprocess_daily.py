@@ -120,4 +120,4 @@ def cli(
     with Pool(6) as multi_pool:
         multi_pool.map(_create_idecdr_wrapper, initial_file_dates)
         multi_pool.map(_create_tiecdr_wrapper, dates)
-        multi_pool.map(_complete_daily_wrapper, dates)
+        # multi_pool.map(_complete_daily_wrapper, dates)

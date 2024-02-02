@@ -159,7 +159,7 @@ def make_daily_aggregate_netcdf_for_year(
     "--year",
     required=True,
     type=int,
-    help="Year for which to create the monthly file.",
+    help="Year for which to create the daily-aggregate file.",
 )
 @click.option(
     "-h",
@@ -196,7 +196,7 @@ def make_daily_aggregate_netcdf_for_year(
     "--end-year",
     required=False,
     type=int,
-    help="Year for which to create the monthly file.",
+    help="Last year for which to create the daily-aggregate file.",
     default=None,
 )
 def cli(
