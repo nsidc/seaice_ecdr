@@ -205,14 +205,47 @@ def create_null_au_si_tbs(
     return null_tbs
 
 
+# TODO: This is being used by non-amsr channels, eg from 0001
 def ecdr_tbs_from_amsr_channels(*, xr_tbs: xr.Dataset) -> EcdrTbs:
-    return EcdrTbs(
-        v19=xr_tbs.v18.data,
-        h19=xr_tbs.h18.data,
-        v22=xr_tbs.v23.data,
-        v37=xr_tbs.v36.data,
-        h37=xr_tbs.h36.data,
-    )
+    try:
+        return EcdrTbs(
+            v19=xr_tbs.v18.data,
+            h19=xr_tbs.h18.data,
+            v22=xr_tbs.v23.data,
+            v37=xr_tbs.v36.data,
+            h37=xr_tbs.h36.data,
+        )
+    except AttributeError:
+        # This error happens when at least one of the TB fields is missing
+        # eg on 10/10/1995 SH for 22v (from F13)
+        is_found = []
+        is_missing = []
+        # TODO: This key list should be an EXPECTED_TB_NAMES list or similar?
+        for key in ("v18", "h18", "v23", "v36", "h36"):
+            try:
+                is_found.append(key)
+            except KeyError:
+                is_missing.append(key)
+
+        existing_tbvar = is_found[0]
+        if len(is_missing) > 0:
+            for missing_tbvar in is_missing:
+                # TODO: It would be better to create a missing_tb dataarray
+                #       from "first principals" rather than copy() and zero.
+                #       Even better, there should be a check at the point
+                #       of data ingest that ensures that we have all expected
+                #       TB fields.
+                xr_tbs[missing_tbvar] = xr_tbs[existing_tbvar].copy()
+                xr_tbs[missing_tbvar][:] = np.nan
+            logger.warning(f"WARNING: created NULL values for tb {missing_tbvar}")
+
+        return EcdrTbs(
+            v19=xr_tbs.v18.data,
+            h19=xr_tbs.h18.data,
+            v22=xr_tbs.v23.data,
+            v37=xr_tbs.v36.data,
+            h37=xr_tbs.h36.data,
+        )
 
 
 def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
@@ -313,6 +346,8 @@ def _get_nsidc_0001_tbs(
             f" resolution={tb_resolution}"
         )
 
+    # TODO: For debugging TBs, consider a print/log statement such as this:
+    # print(f'platform: {platform} with tbs: {xr_tbs.data_vars.keys()}')
     ecdr_tb_data = EcdrTbData(
         # TODO: does 0001 need a different mapping?
         tbs=ecdr_tbs_from_amsr_channels(xr_tbs=xr_tbs),
