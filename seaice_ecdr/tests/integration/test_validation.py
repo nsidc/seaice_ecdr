@@ -1,9 +1,9 @@
+import csv
 import datetime as dt
 import itertools
-from typing import get_args
 
 import pytest
-from pm_tb_data._types import Hemisphere
+from pm_tb_data._types import NORTH
 
 from seaice_ecdr.tests.integration import ecdr_data_dir_test_path  # noqa
 from seaice_ecdr.validation import validate_outputs
@@ -12,7 +12,11 @@ from seaice_ecdr.validation import validate_outputs
 @pytest.mark.order(after="test_monthly.py::test_make_monthly_nc")
 def test_validate_outputs(ecdr_data_dir_test_path):  # noqa
     for product_type, hemisphere in itertools.product(
-        ("daily", "monthly"), get_args(Hemisphere)
+        # TODO: currently just iterate over NORTH, because that's what data is
+        # created for in the depdendent tests. We may consider creating monthly
+        # data too.
+        ("daily", "monthly"),
+        (NORTH,),
     ):
         outputs = validate_outputs(
             hemisphere=hemisphere,
@@ -25,10 +29,11 @@ def test_validate_outputs(ecdr_data_dir_test_path):  # noqa
         assert outputs["error_filepath"].is_file()
         assert outputs["log_filepath"].is_file()
 
-        # TODO: uncomment? The assertion isn't true in all cases (currently)
-        # because we do no thresholding of conc values but we consider anything
-        # less than 10% to be "bad", which results in an error code of -999.
-        # with open(outputs["error_filepath"], "r") as error_csv:
-        #     reader = csv.DictReader(error_csv)
-        #     for row in reader:
-        #         assert row["error_code"] == 0
+        # TODO: daily data currently produces an error code due to SIC values
+        # <10%. We think this arises from temporal interpolation of the daily
+        # fields.
+        if product_type == "monthly":
+            with open(outputs["error_filepath"], "r") as error_csv:
+                reader = csv.DictReader(error_csv)
+                for row in reader:
+                    assert row["error_code"] == "0"
