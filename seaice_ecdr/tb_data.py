@@ -223,6 +223,8 @@ def ecdr_tbs_from_amsr_channels(*, xr_tbs: xr.Dataset) -> EcdrTbs:
         # TODO: This key list should be an EXPECTED_TB_NAMES list or similar?
         for key in ("v18", "h18", "v23", "v36", "h36"):
             try:
+                tbvar = xr_tbs[key]
+                assert tbvar.shape is not None
                 is_found.append(key)
             except KeyError:
                 is_missing.append(key)
