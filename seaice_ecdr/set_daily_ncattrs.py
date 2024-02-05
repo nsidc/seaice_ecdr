@@ -338,7 +338,7 @@ def finalize_cdecdr_ds(
         time=ds.time,
         temporality="daily",
         aggregate=False,
-        source="Generated from {ds_in.data_source}",
+        source=f"Generated from {ds_in.data_source}",
         sats=[ds_in.platform],
     )
     ds.attrs = new_global_attrs
