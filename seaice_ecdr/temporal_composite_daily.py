@@ -173,8 +173,11 @@ def iter_dates_near_date(
     near-real-time use, because data from "the future" are not available.
     """
     earliest_date = target_date - dt.timedelta(days=day_range)
-    # Limit earliest date to Oct 25, 1978
+    # TODO: Determine this minimum date from available sats
     if earliest_date < dt.date(1978, 10, 25):
+        logger.warning(
+            f"Resetting temporal interpolation earliest date from {earliest_date} to {dt.date(1978, 10, 25)}"
+        )
         earliest_date = dt.date(1978, 10, 25)
 
     if skip_future:
@@ -364,10 +367,10 @@ def read_or_create_and_read_idecdr_ds(
             "v22_day",
             "h37_day",
             "v37_day",
-            # "h18_day_si",  # include this field for melt onset calculation
+            # "h19_day_si",  # include this field for melt onset calculation
             "v19_day_si",
             "v22_day_si",
-            # "h36_day_si",  # include this field for melt onset calculation
+            # "h37_day_si",  # include this field for melt onset calculation
             "v37_day_si",
             "land_mask",
             "invalid_ice_mask",
@@ -650,11 +653,11 @@ def temporally_interpolated_ecdr_dataset(
         #      bitmask_flags and bitmask_flag_meanings fields of the
         #      DataArray variable.
         TB_SPATINT_BITMASK_MAP = {
-            "v18": 1,
-            "h18": 2,
-            "v23": 4,
-            "v36": 8,
-            "h36": 16,
+            "v19": 1,
+            "h19": 2,
+            "v22": 4,
+            "v37": 8,
+            "h37": 16,
             "pole_filled": 32,
         }
         tie_ds["spatial_interpolation_flag"] = tie_ds[
@@ -968,11 +971,11 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         #      bitmask_flags and bitmask_flag_meanings fields of the
         #      DataArray variable.
         TB_SPATINT_BITMASK_MAP = {
-            "v18": 1,
-            "h18": 2,
-            "v23": 4,
-            "v36": 8,
-            "h36": 16,
+            "v19": 1,
+            "h19": 2,
+            "v22": 4,
+            "v37": 8,
+            "h37": 16,
             "pole_filled": 32,
         }
         tie_ds["spatial_interpolation_flag"] = tie_ds[
@@ -1163,7 +1166,7 @@ def write_tie_netcdf(
     output_filepath: Path,
     uncompressed_fields: Iterable[str] = ["crs", "time", "y", "x"],
     excluded_fields: Iterable[str] = [],
-    tb_fields: Iterable[str] = ("h18_day_si", "h36_day_si"),
+    tb_fields: Iterable[str] = ("h19_day_si", "h37_day_si"),
     conc_fields: Iterable[str] = (
         "conc",
         "cdr_conc_ti",

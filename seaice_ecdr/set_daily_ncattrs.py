@@ -7,8 +7,8 @@ from pm_tb_data._types import NORTH, Hemisphere
 from seaice_ecdr.nc_attrs import get_global_attrs
 
 CDECDR_FIELDS_TO_DROP = [
-    "h18_day_si",
-    "h36_day_si",
+    "h19_day_si",
+    "h37_day_si",
     "land_mask",
     "pole_mask",
     "invalid_ice_mask",
