@@ -81,7 +81,6 @@ def read_or_create_and_read_tiecdr_ds(
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
-    # TODO: This only creates if file is missing.  We may want an overwrite opt
     if overwrite_tie or not tie_filepath.is_file():
         make_tiecdr_netcdf(
             date=date,
