@@ -503,7 +503,6 @@ def create_cdecdr_for_date(
         # TODO: These error logs should be written to e.g.,
         # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
         # to handle automatically logging error details to such a file.
-        # TODO: Perhaps this function should come from seaice_ecdr
         err_filepath = get_ecdr_filepath(
             date=date,
             hemisphere=hemisphere,
