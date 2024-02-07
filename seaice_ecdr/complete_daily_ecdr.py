@@ -15,7 +15,7 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
     get_land_mask,
     get_surfacetype_da,
@@ -53,11 +53,10 @@ def get_ecdr_filepath(
 ) -> Path:
     """Return the complete daily eCDR file path."""
     platform = get_platform_by_date(date)
-    sat = cast(SUPPORTED_SAT, platform)
     ecdr_filename = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        sat=sat,
+        sat=platform,
         resolution=resolution,
     )
     ecdr_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir)
