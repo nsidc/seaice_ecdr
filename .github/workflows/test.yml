@@ -40,8 +40,8 @@ jobs:
         with:
           repository: "nsidc/pm_icecon"
           # TODO: change ref back to `main` once
-          # https://github.com/nsidc/pm_icecon/pull/39 is merged.
-          ref: "add_f17_bt_params"
+          # https://github.com/nsidc/pm_icecon/pull/51 is merged.
+          ref: "new-support-25km"
           path: "pm_icecon"
       - name: "Check out pm_tb_data repository"
         uses: "actions/checkout@v3"

@@ -75,7 +75,7 @@ def get_surfacetype_da(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    platform,
+    platform: SUPPORTED_SAT,
 ) -> xr.DataArray:
     """Return a dataarray with surface type information for this date."""
     ancillary_ds = get_ancillary_ds(
@@ -89,8 +89,6 @@ def get_surfacetype_da(
     polehole_surface_type = 100
     if "polehole_bitmask" in ancillary_ds.data_vars.keys():
         polehole_bitmask = ancillary_ds.polehole_bitmask
-        if platform is None:
-            platform = get_platform_by_date(date)
         polehole_bitlabel = f"{platform}_polemask"
         polehole_bitvalue = bitmask_value_for_meaning(
             var=polehole_bitmask,
