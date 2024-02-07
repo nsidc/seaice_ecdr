@@ -14,8 +14,14 @@ from seaice_ecdr.ancillary import get_ancillary_ds
 from seaice_ecdr.constants import CDR_ANCILLARY_DIR
 from seaice_ecdr.grid_id import get_grid_id
 
-# TODO: update this path to a local copy of the `seaice_cdr`.
-CDR_V4_ANCILLARY_DIR = Path("/home/trst2284/code/seaice_cdr/source/ancillary/")
+CDR_V4_CODE_DIR = Path("~/seaice_cdr").resolve()
+if not CDR_V4_CODE_DIR.is_dir():
+    # Alert the user to this dependency.
+    raise RuntimeError(
+        "The `seaice_cdr` (https://bitbucket.org/nsidc/seaice_cdr/) repository is"
+        " expected to be manually cloned to `CDR_V4_CODE_DIR` for this script to work."
+    )
+CDR_V4_ANCILLARY_DIR = CDR_V4_CODE_DIR / "/source/ancillary/"
 
 
 def get_v4_climatology(*, hemisphere: Hemisphere) -> xr.Dataset:
