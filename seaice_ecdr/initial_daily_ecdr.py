@@ -437,7 +437,6 @@ def compute_initial_daily_ecdr_dataset(
             satellite="amsre",
             gridid=ecdr_ide_ds.grid_id,
         )
-    # elif platform == "F17":
     elif platform in get_args(NSIDC_0001_SATS):
         # TODO: rename get_F17... to get_0001...
         bt_coefs_init = pmi_bt_params_0001.get_F17_bootstrap_params(
