@@ -53,11 +53,10 @@ def get_ancillary_ds(
 
 
 def bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
-    try:
-        index = var.flag_meanings.split(" ").index(meaning)
-    except ValueError:
-        raise ValueError(f"Could not determine pole hole mask for {meaning}")
+    if meaning not in var.flag_meanings:
+        raise ValueError(f"Could not determine bitmask value for {meaning=}")
 
+    index = var.flag_meanings.split(" ").index(meaning)
     value = var.flag_masks[index]
 
     return value
