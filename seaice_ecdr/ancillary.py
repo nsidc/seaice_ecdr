@@ -327,8 +327,6 @@ def get_non_ocean_mask(
 
     non_ocean_mask.attrs = dict(
         grid_mapping="crs",
-        # TODO: standard name for non-ocean mask?
-        # standard_name="binary_mask",
         long_name="non-ocean mask",
         comment="Mask indicating where non-ocean is",
         units="1",
