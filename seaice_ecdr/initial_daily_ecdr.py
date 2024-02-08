@@ -40,7 +40,7 @@ from seaice_ecdr.ancillary import (
     get_empty_ds_with_time,
     get_invalid_ice_mask,
     get_land90_conc_field,
-    get_land_mask,
+    get_non_ocean_mask,
     nh_polehole_mask,
 )
 from seaice_ecdr.cli.util import datetime_to_date
@@ -389,11 +389,11 @@ def compute_initial_daily_ecdr_dataset(
             != ecdr_ide_ds[si_varname].data[0, :, :]
         ) & (~np.isnan(ecdr_ide_ds[si_varname].data[0, :, :]))
         spatint_bitmask_arr[is_tb_si_diff] += TB_SPATINT_BITMASK_MAP[tbname]
-        land_mask = get_land_mask(
+        non_ocean_mask = get_non_ocean_mask(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
         )
-        spatint_bitmask_arr[land_mask.data] = 0
+        spatint_bitmask_arr[non_ocean_mask.data] = 0
 
         # Drop the un-spatially interpolated TB field to save space and compute
         ecdr_ide_ds = ecdr_ide_ds.drop_vars(tb_varname)
@@ -461,15 +461,15 @@ def compute_initial_daily_ecdr_dataset(
         platform=platform,
     )
 
-    land_mask = get_land_mask(
+    non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=tb_data.resolution,
     )
 
     ecdr_ide_ds["invalid_ice_mask"] = invalid_ice_mask.expand_dims(dim="time")
 
-    # Encode land_mask
-    ecdr_ide_ds["land_mask"] = land_mask
+    # Encode non_ocean_mask
+    ecdr_ide_ds["non_ocean_mask"] = non_ocean_mask
 
     # Encode pole_mask
     # TODO: I think this is currently unused
@@ -557,7 +557,7 @@ def compute_initial_daily_ecdr_dataset(
         h37=bt_h37,
         v22=bt_v22,
         v19=bt_v19,
-        land_mask=ecdr_ide_ds["land_mask"].data,
+        land_mask=ecdr_ide_ds["non_ocean_mask"].data,
         tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
         ln1=bt_coefs_init["vh37_lnline"],
         date=date,
@@ -601,7 +601,7 @@ def compute_initial_daily_ecdr_dataset(
         bt_coefs.pop(coef, None)
 
     bt_coefs["vh37_lnline"] = bt.get_linfit(
-        land_mask=ecdr_ide_ds["land_mask"].data,
+        land_mask=ecdr_ide_ds["non_ocean_mask"].data,
         tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
         tbx=ecdr_ide_ds["v37_day_si"].data[0, :, :],
         tby=ecdr_ide_ds["h37_day_si"].data[0, :, :],
@@ -635,7 +635,7 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     bt_coefs["v1937_lnline"] = bt.get_linfit(
-        land_mask=ecdr_ide_ds["land_mask"].data,
+        land_mask=ecdr_ide_ds["non_ocean_mask"].data,
         tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
         tbx=ecdr_ide_ds["v37_day_si"].data[0, :, :],
         tby=ecdr_ide_ds["v19_day_si"].data[0, :, :],
@@ -744,7 +744,7 @@ def compute_initial_daily_ecdr_dataset(
 
     # Mask out non-ocean pixels and clamp conc to between 10-100%.
     # TODO: These values should be in a configuration file/structure
-    cdr_conc[land_mask.data] = np.nan
+    cdr_conc[non_ocean_mask.data] = np.nan
     cdr_conc[cdr_conc < 10] = 0
     cdr_conc[cdr_conc > 100] = 100
 
@@ -845,7 +845,7 @@ def compute_initial_daily_ecdr_dataset(
     qa_bitmask[invalid_tb_mask & ~ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 8
     qa_bitmask[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 16
     qa_bitmask[ecdr_ide_ds["spatial_interpolation_flag"].data[0, :, :] != 0] += 32
-    qa_bitmask[land_mask] = 0
+    qa_bitmask[non_ocean_mask] = 0
 
     ecdr_ide_ds["qa_of_cdr_seaice_conc"] = (
         ("time", "y", "x"),
@@ -1063,7 +1063,7 @@ def create_idecdr_for_date(
             # "h37_day_si",  # include this field for melt onset calculation
             "v37_day_si",
             "NT_icecon_min",
-            "land_mask",
+            "non_ocean_mask",
             "pole_mask",
             "invalid_tb_mask",
             "bt_weather_mask",

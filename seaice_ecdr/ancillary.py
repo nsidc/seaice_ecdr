@@ -290,13 +290,14 @@ def get_ocean_mask(
     return ocean_mask
 
 
-def get_land_mask(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+def get_non_ocean_mask(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.DataArray:
-    """Return a binary mask where True values represent `land`.
+    """Return a binary mask where True values represent non-ocean pixels.
 
-    This mask includes land, coast, and lake and is therefore more of a
-    not-ocean mask
+    This mask includes land, coast, and lake.
     """
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
@@ -318,23 +319,24 @@ def get_land_mask(
         meaning="lake",
     )
 
-    land_mask = (
+    non_ocean_mask = (
         (surface_type == land_val)
         | (surface_type == coast_val)
         | (surface_type == lake_val)
     )
 
-    land_mask.attrs = dict(
+    non_ocean_mask.attrs = dict(
         grid_mapping="crs",
-        standard_name="land_binary_mask",
-        long_name="land mask",
-        comment="Mask indicating where land is",
+        # TODO: standard name for non-ocean mask?
+        # standard_name="binary_mask",
+        long_name="non-ocean mask",
+        comment="Mask indicating where non-ocean is",
         units="1",
     )
 
-    land_mask.encoding = dict(zlib=True)
+    non_ocean_mask.encoding = dict(zlib=True)
 
-    return land_mask
+    return non_ocean_mask
 
 
 def get_land90_conc_field(

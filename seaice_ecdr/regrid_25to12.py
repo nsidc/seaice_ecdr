@@ -25,7 +25,7 @@ from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
     get_adj123_field,
     get_empty_ds_with_time,
-    get_land_mask,
+    get_non_ocean_mask,
     get_ocean_mask,
 )
 from seaice_ecdr.grid_id import get_grid_id
@@ -337,7 +337,7 @@ def reproject_ideds_25to12(
     reprojected_ideds.attrs["platform"] = initial_ecdr_ds.platform
 
     # Pull from ancillary file
-    reprojected_ideds["land_mask"] = get_land_mask(
+    reprojected_ideds["non_ocean_mask"] = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
     )

@@ -19,7 +19,7 @@ from pm_icecon.fill_polehole import fill_pole_hole
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
-from seaice_ecdr.ancillary import get_land_mask, nh_polehole_mask
+from seaice_ecdr.ancillary import get_non_ocean_mask, nh_polehole_mask
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
@@ -207,7 +207,7 @@ def temporally_composite_dataarray(
     interp_range: int = 5,
     one_sided_limit: int = 3,
     still_missing_flag: int = 255,
-    land_mask: xr.DataArray,
+    non_ocean_mask: xr.DataArray,
 ) -> tuple[xr.DataArray, npt.NDArray]:
     """Temporally composite a DataArray referenced to given reference date
     up to interp_range days.
@@ -332,7 +332,7 @@ def temporally_composite_dataarray(
     temporal_flags[have_only_next] = ndist[have_only_next]
 
     # Ensure flag values do not occur over land
-    temporal_flags[land_mask.data] = 0
+    temporal_flags[non_ocean_mask.data] = 0
 
     temp_comp_da.data[0, :, :] = temp_comp_2d[:, :]
 
@@ -372,7 +372,7 @@ def read_or_create_and_read_idecdr_ds(
             "v22_day_si",
             # "h37_day_si",  # include this field for melt onset calculation
             "v37_day_si",
-            "land_mask",
+            "non_ocean_mask",
             "invalid_ice_mask",
             "pole_mask",
             "bt_weather_mask",
@@ -572,7 +572,7 @@ def temporally_interpolated_ecdr_dataset(
         },
     )
 
-    land_mask = get_land_mask(
+    non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
     )
@@ -580,7 +580,7 @@ def temporally_interpolated_ecdr_dataset(
         target_date=date,
         da=var_stack,
         interp_range=interp_range,
-        land_mask=land_mask,
+        non_ocean_mask=non_ocean_mask,
     )
 
     tie_ds["cdr_conc_ti"] = ti_var
@@ -693,7 +693,7 @@ def temporally_interpolated_ecdr_dataset(
         },
     )
 
-    land_mask = get_land_mask(
+    non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
     )
@@ -701,7 +701,7 @@ def temporally_interpolated_ecdr_dataset(
         target_date=date,
         da=bt_var_stack,
         interp_range=interp_range,
-        land_mask=land_mask,
+        non_ocean_mask=non_ocean_mask,
     )
 
     # Create filled bootstrap field
@@ -725,7 +725,7 @@ def temporally_interpolated_ecdr_dataset(
         target_date=date,
         da=nt_var_stack,
         interp_range=interp_range,
-        land_mask=land_mask,
+        non_ocean_mask=non_ocean_mask,
     )
 
     # Note: this pole-filling code is copy-pasted from the cdr_conc
@@ -892,7 +892,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         },
     )
 
-    land_mask = get_land_mask(
+    land_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
     )
@@ -1011,7 +1011,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         },
     )
 
-    land_mask = get_land_mask(
+    land_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
     )
