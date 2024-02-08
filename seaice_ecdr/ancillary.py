@@ -63,6 +63,9 @@ def bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
 
 
 def flag_value_for_meaning(*, var: xr.DataArray, meaning: str):
+    if meaning not in var.flag_meanings:
+        raise ValueError(f"Could not determine flag value for {meaning=}")
+
     index = var.flag_meanings.split(" ").index(meaning)
     value = var.flag_values[index]
 
