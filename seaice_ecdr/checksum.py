@@ -1,5 +1,11 @@
+"""Code for writing checksum files for complete ECDR output nc files.
+
+This module can be run as a script to (re-)generate checksum files for all
+existing standard (not NRT) output files.
+"""
 import hashlib
 from pathlib import Path
+from typing import Literal
 
 from loguru import logger
 
@@ -11,14 +17,22 @@ def _get_checksum(filepath):
         return hashlib.md5(file.read()).hexdigest()
 
 
-def write_checksum_file(*, input_filepath: Path, output_dir: Path):
+def write_checksum_file(
+    *,
+    input_filepath: Path,
+    ecdr_data_dir: Path,
+    product_type: Literal["complete_daily", "monthly", "aggregate"],
+):
+    checksum_dir = get_checksum_dir(ecdr_data_dir=ecdr_data_dir)
+    checksum_product_dir = checksum_dir / product_type
+    checksum_product_dir.mkdir(exist_ok=True)
+
     checksum = _get_checksum(input_filepath)
 
     size_in_bytes = input_filepath.stat().st_size
     filename = input_filepath.name
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-    output_filepath = output_dir / (filename + ".mnf")
+    output_filepath = checksum_product_dir / (filename + ".mnf")
 
     with open(output_filepath, "w") as checksum_file:
         checksum_file.write(f"{filename},{checksum},{size_in_bytes}")
@@ -28,18 +42,18 @@ def write_checksum_file(*, input_filepath: Path, output_dir: Path):
 
 def get_checksum_dir(*, ecdr_data_dir: Path):
     checksum_dir = ecdr_data_dir / "checksums"
+    checksum_dir.mkdir(exist_ok=True)
 
     return checksum_dir
 
 
 if __name__ == "__main__":
     ecdr_data_dir = STANDARD_BASE_OUTPUT_DIR
-    checksum_dir = ecdr_data_dir / "checksums"
-    checksum_dir.mkdir(exist_ok=True)
-
     for product in ("complete_daily", "monthly", "aggregate"):
         input_dir = ecdr_data_dir / product
-        output_dir = checksum_dir / product
-        output_dir.mkdir(exist_ok=True)
         for nc_filepath in input_dir.glob("*.nc"):
-            write_checksum_file(input_filepath=nc_filepath, output_dir=output_dir)
+            write_checksum_file(
+                input_filepath=nc_filepath,
+                ecdr_data_dir=ecdr_data_dir,
+                product_type=product,  # type: ignore[arg-type]
+            )
