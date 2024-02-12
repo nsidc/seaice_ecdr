@@ -13,6 +13,7 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import get_ancillary_ds
+from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
@@ -157,6 +158,13 @@ def make_daily_aggregate_netcdf_for_year(
         )
 
     logger.info(f"Wrote daily aggregate file for year={year} to {output_path}")
+
+    # Write checksum file for the aggregate daily output.
+    write_checksum_file(
+        input_filepath=output_path,
+        ecdr_data_dir=ecdr_data_dir,
+        product_type="aggregate",
+    )
 
 
 @click.command(name="daily-aggregate")
