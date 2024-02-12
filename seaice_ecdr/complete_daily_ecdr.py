@@ -204,6 +204,10 @@ def create_melt_onset_field(
             dtype=np.uint8,
         )
         logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
+    # TODO: This is a bug.  This should result in empty melt-onset fields in
+    #       2012 from start-of-melt until July 3, 2012.  To fix, delete this
+    #       comment-block and the elif block which fills the prior_melt_onset_field
+    #       with the no_melt_flag.
     # TODO: Currently, only AMSR2 is used for this product.  The first data
     #       for AMSR2 are on July 2, 2012.  The melt_onset_field requires
     #       the previous day's melt onset field during the melt season.
