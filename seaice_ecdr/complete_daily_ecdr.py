@@ -256,10 +256,6 @@ def complete_daily_ecdr_dataset(
 ) -> xr.Dataset:
     """Create xr dataset containing the complete daily enhanced CDR.
 
-    Note: this began as a copy of:
-        complete_daily_ecdr_dataset_for_au_si_tbs()
-    ...but is being rewritten so that it is not specific to au_si_tbs
-
     This function returns
     - a Dataset containing
       - The melt onset field
