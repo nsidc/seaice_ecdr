@@ -907,16 +907,6 @@ def make_tiecdr_netcdf(
     fill_the_pole_hole: bool = True,
 ) -> None:
     logger.info(f"Creating tiecdr for {date=}, {hemisphere=}, {resolution=}")
-    """ Replacing the au_si specific code...
-    tie_ds = temporally_interpolated_ecdr_dataset_for_au_si_tbs(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        interp_range=interp_range,
-        ecdr_data_dir=ecdr_data_dir,
-        fill_the_pole_hole=fill_the_pole_hole,
-    )
-    """
     tie_ds = temporally_interpolated_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
