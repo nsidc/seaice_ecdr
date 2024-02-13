@@ -1,7 +1,7 @@
 import datetime as dt
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, get_args
+from typing import Final, cast, get_args
 
 import numpy as np
 import numpy.typing as npt
@@ -64,21 +64,6 @@ def get_null_ecdr_tbs(
     )
 
     return null_ecdr_tbs
-
-
-def _pm_icecon_amsr_res_str(
-    *, resolution: ECDR_SUPPORTED_RESOLUTIONS
-) -> AMSR_RESOLUTIONS:
-    """Given an AMSR ECDR resolution string, return a compatible `pm_icecon` resolution string."""
-    _ecdr_pm_icecon_resolution_mapping: dict[
-        ECDR_SUPPORTED_RESOLUTIONS, AMSR_RESOLUTIONS
-    ] = {
-        "12.5": "12",
-        "25": "25",
-    }
-    au_si_resolution_str = _ecdr_pm_icecon_resolution_mapping[resolution]
-
-    return au_si_resolution_str
 
 
 def map_tbs_to_ecdr_channels(
@@ -165,7 +150,11 @@ def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
 
 def _get_ame_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
     tb_resolution: Final = "12.5"
-    ame_resolution_str = _pm_icecon_amsr_res_str(resolution=tb_resolution)
+    ame_resolution_str = {
+        "12.5": "12",
+        "25": "25",
+    }[tb_resolution]
+    ame_resolution_str = cast(AMSR_RESOLUTIONS, ame_resolution_str)
     AME_DATA_DIR = Path("/ecs/DP4/AMSA/AE_SI12.003/")
     data_source: Final = "AE_SI12"
     try:
