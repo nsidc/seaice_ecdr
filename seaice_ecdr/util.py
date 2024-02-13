@@ -2,6 +2,7 @@ import datetime as dt
 import re
 from typing import Iterator, cast, get_args
 
+import numpy as np
 import pandas as pd
 from pm_tb_data._types import Hemisphere
 
@@ -105,3 +106,15 @@ def date_range(*, start_date: dt.date, end_date: dt.date) -> Iterator[dt.date]:
     """Yield a dt.date object representing each day between start_date and end_date."""
     for pd_timestamp in pd.date_range(start=start_date, end=end_date, freq="D"):
         yield pd_timestamp.date()
+
+
+def get_dates_by_year(dates: list[dt.date]) -> list[list[dt.date]]:
+    """Given a list of dates, return the dates grouped by year."""
+    years = sorted(np.unique([date.year for date in dates]))
+    dates_by_year = {}
+    for year in years:
+        dates_by_year[year] = sorted([date for date in dates if date.year == year])
+
+    dates_by_year_list = list(dates_by_year.values())
+
+    return dates_by_year_list

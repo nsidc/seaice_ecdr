@@ -12,7 +12,25 @@ from seaice_ecdr.complete_daily_ecdr import create_cdecdr_for_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import create_idecdr_for_date
 from seaice_ecdr.temporal_composite_daily import create_tiecdr_for_date
-from seaice_ecdr.util import date_range
+from seaice_ecdr.util import date_range, get_dates_by_year
+
+
+def create_cdecdr_for_dates(
+    dates: list[dt.date],
+    *,
+    hemisphere: Hemisphere,
+    resolution,
+    ecdr_data_dir: Path,
+    overwrite_cde: bool = False,
+):
+    for date in dates:
+        create_cdecdr_for_date(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+            overwrite_cde=overwrite_cde,
+        )
 
 
 @click.command(name="multiprocess-daily")
@@ -81,6 +99,7 @@ def cli(
     overwrite: bool,
 ):
     dates = list(date_range(start_date=start_date, end_date=end_date))
+    dates_by_year = get_dates_by_year(dates)
 
     # craete a range of dates that includes the interpolation range. This
     # ensures that data expected for temporal interpolation of the requested
@@ -108,7 +127,7 @@ def cli(
     )
 
     _complete_daily_wrapper = partial(
-        create_cdecdr_for_date,
+        create_cdecdr_for_dates,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
@@ -120,5 +139,10 @@ def cli(
     with Pool(6) as multi_pool:
         multi_pool.map(_create_idecdr_wrapper, initial_file_dates)
         multi_pool.map(_create_tiecdr_wrapper, dates)
-        # Cannot do complete_daily this way because melt requires prior dates
-        # multi_pool.map(_complete_daily_wrapper, dates)
+
+        # The complete daily data must be generated sequentially within
+        # each year. This is because the melt onset calculation requires access to
+        # previous days' worth of complete daily data. Since the melt season is
+        # DOY 50-244, we don't need to worry about the beginning of the year
+        # requesting data for previous years of melt data.
+        multi_pool.map(_complete_daily_wrapper, dates_by_year)

@@ -3,6 +3,7 @@ from typing import Final
 
 from pm_tb_data._types import NORTH, SOUTH
 
+from seaice_ecdr.multiprocess_daily import get_dates_by_year
 from seaice_ecdr.util import (
     date_range,
     sat_from_filename,
@@ -127,3 +128,33 @@ def test_date_range():
     actual = list(date_range(start_date=start_date, end_date=end_date))
 
     assert expected == actual
+
+
+def test_get_dates_by_year():
+    actual = get_dates_by_year(
+        [
+            dt.date(2021, 1, 3),
+            dt.date(2021, 1, 2),
+            dt.date(2022, 1, 1),
+            dt.date(1997, 3, 2),
+            dt.date(1997, 4, 15),
+            dt.date(2022, 1, 2),
+        ]
+    )
+
+    expected = [
+        [
+            dt.date(1997, 3, 2),
+            dt.date(1997, 4, 15),
+        ],
+        [
+            dt.date(2021, 1, 2),
+            dt.date(2021, 1, 3),
+        ],
+        [
+            dt.date(2022, 1, 1),
+            dt.date(2022, 1, 2),
+        ],
+    ]
+
+    assert actual == expected
