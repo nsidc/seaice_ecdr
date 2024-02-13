@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Final, get_args
 
 import click
-import numpy as np
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.cli.util import datetime_to_date
@@ -13,18 +12,7 @@ from seaice_ecdr.complete_daily_ecdr import create_cdecdr_for_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import create_idecdr_for_date
 from seaice_ecdr.temporal_composite_daily import create_tiecdr_for_date
-from seaice_ecdr.util import date_range
-
-
-def get_dates_by_year(dates: list[dt.date]) -> list[list[dt.date]]:
-    years = np.unique([date.year for date in dates])
-    dates_by_year = {}
-    for year in years:
-        dates_by_year[year] = [date for date in dates if date.year == year]
-
-    dates_by_year_list = list(dates_by_year.values())
-
-    return dates_by_year_list
+from seaice_ecdr.util import date_range, get_dates_by_year
 
 
 def create_cdecdr_for_dates(
@@ -151,4 +139,10 @@ def cli(
     with Pool(6) as multi_pool:
         multi_pool.map(_create_idecdr_wrapper, initial_file_dates)
         multi_pool.map(_create_tiecdr_wrapper, dates)
+
+        # The complete daily data must be generated sequentially within
+        # each year. This is because the melt onset calculation requires access to
+        # previous days' worth of complete daily data. Since the melt season is
+        # DOY 50-244, we don't need to worry about the beginning of the year
+        # requesting data for previous years of melt data.
         multi_pool.map(_complete_daily_wrapper, dates_by_year)
