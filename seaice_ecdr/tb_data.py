@@ -81,8 +81,8 @@ def _pm_icecon_amsr_res_str(
     return au_si_resolution_str
 
 
-# TODO: Eventually, these should be renamed based on microwave
-#       band names, not AMSR2 TB channel frequencies
+# TODO: Note in the documentation that we are using legacy labels
+#       for the various microwave channels, eg v19, v22, etc
 def rename_0001_tbs(
     *,
     input_ds: xr.Dataset,
