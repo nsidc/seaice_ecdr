@@ -17,25 +17,40 @@ def _get_checksum(filepath):
         return hashlib.md5(file.read()).hexdigest()
 
 
+def get_checksum_filepath(
+    *,
+    input_filepath: Path,
+    ecdr_data_dir: Path,
+    product_type: Literal["complete_daily", "monthly", "aggregate"],
+) -> Path:
+    checksum_dir = get_checksum_dir(ecdr_data_dir=ecdr_data_dir)
+    checksum_product_dir = checksum_dir / product_type
+    checksum_product_dir.mkdir(exist_ok=True)
+
+    checksum_filename = input_filepath.name + ".mnf"
+    checksum_dir = get_checksum_dir(ecdr_data_dir=ecdr_data_dir)
+    checksum_filepath = checksum_dir / product_type / checksum_filename
+
+    return checksum_filepath
+
+
 def write_checksum_file(
     *,
     input_filepath: Path,
     ecdr_data_dir: Path,
     product_type: Literal["complete_daily", "monthly", "aggregate"],
 ):
-    checksum_dir = get_checksum_dir(ecdr_data_dir=ecdr_data_dir)
-    checksum_product_dir = checksum_dir / product_type
-    checksum_product_dir.mkdir(exist_ok=True)
-
     checksum = _get_checksum(input_filepath)
 
     size_in_bytes = input_filepath.stat().st_size
-    filename = input_filepath.name
-
-    output_filepath = checksum_product_dir / (filename + ".mnf")
+    output_filepath = get_checksum_filepath(
+        input_filepath=input_filepath,
+        ecdr_data_dir=ecdr_data_dir,
+        product_type=product_type,
+    )
 
     with open(output_filepath, "w") as checksum_file:
-        checksum_file.write(f"{filename},{checksum},{size_in_bytes}")
+        checksum_file.write(f"{input_filepath.name},{checksum},{size_in_bytes}")
 
     logger.info(f"Wrote checksum file {output_filepath}")
 
