@@ -215,13 +215,12 @@ def _get_nsidc_0001_tbs(
         )
 
         ecdr_tbs = map_tbs_to_ecdr_channels(
-            # TODO/Note: this mapping is the same as used for `am2`.
             mapping=dict(
-                v19="v18",
-                h19="h18",
-                v22="v23",
-                v37="v36",
-                h37="h36",
+                v19="v19",
+                h19="h19",
+                v22="v22",
+                v37="v37",
+                h37="h37",
             ),
             xr_tbs=xr_tbs_0001,
             hemisphere=hemisphere,
