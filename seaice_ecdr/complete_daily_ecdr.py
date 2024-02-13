@@ -17,7 +17,7 @@ from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
-    get_land_mask,
+    get_non_ocean_mask,
     get_surfacetype_da,
 )
 from seaice_ecdr.cli.util import datetime_to_date
@@ -241,11 +241,11 @@ def create_melt_onset_field(
         tb_h37=tb_h37,
     )
     # Apply land mask
-    land_mask = get_land_mask(
+    non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    is_melted_today[0, land_mask.data] = False
+    is_melted_today[0, non_ocean_mask.data] = False
 
     have_prior_melt_values = prior_melt_onset_field != no_melt_flag
     is_missing_prior = prior_melt_onset_field == no_melt_flag

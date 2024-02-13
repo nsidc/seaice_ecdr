@@ -9,7 +9,7 @@ from seaice_ecdr.nc_attrs import get_global_attrs
 CDECDR_FIELDS_TO_DROP = [
     "h19_day_si",
     "h37_day_si",
-    "land_mask",
+    "non_ocean_mask",
     "pole_mask",
     "invalid_ice_mask",
     "invalid_tb_mask",
