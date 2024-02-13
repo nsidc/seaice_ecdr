@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Final, get_args
 
 import click
+import numpy as np
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.cli.util import datetime_to_date
@@ -13,6 +14,35 @@ from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import create_idecdr_for_date
 from seaice_ecdr.temporal_composite_daily import create_tiecdr_for_date
 from seaice_ecdr.util import date_range
+
+
+def get_dates_by_year(dates: list[dt.date]) -> list[list[dt.date]]:
+    years = np.unique([date.year for date in dates])
+    dates_by_year = {}
+    for year in years:
+        dates_by_year[year] = [date for date in dates if date.year == year]
+
+    dates_by_year_list = list(dates_by_year.values())
+
+    return dates_by_year_list
+
+
+def create_cdecdr_for_dates(
+    dates: list[dt.date],
+    *,
+    hemisphere: Hemisphere,
+    resolution,
+    ecdr_data_dir: Path,
+    overwrite_cde: bool = False,
+):
+    for date in dates:
+        create_cdecdr_for_date(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+            overwrite_cde=overwrite_cde,
+        )
 
 
 @click.command(name="multiprocess-daily")
@@ -81,6 +111,7 @@ def cli(
     overwrite: bool,
 ):
     dates = list(date_range(start_date=start_date, end_date=end_date))
+    dates_by_year = get_dates_by_year(dates)
 
     # craete a range of dates that includes the interpolation range. This
     # ensures that data expected for temporal interpolation of the requested
@@ -108,7 +139,7 @@ def cli(
     )
 
     _complete_daily_wrapper = partial(
-        create_cdecdr_for_date,
+        create_cdecdr_for_dates,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
@@ -120,5 +151,4 @@ def cli(
     with Pool(6) as multi_pool:
         multi_pool.map(_create_idecdr_wrapper, initial_file_dates)
         multi_pool.map(_create_tiecdr_wrapper, dates)
-        # Cannot do complete_daily this way because melt requires prior dates
-        # multi_pool.map(_complete_daily_wrapper, dates)
+        multi_pool.map(_complete_daily_wrapper, dates_by_year)
