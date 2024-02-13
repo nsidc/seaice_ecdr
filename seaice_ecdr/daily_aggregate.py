@@ -31,11 +31,13 @@ def _get_daily_complete_filepaths_for_year(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
     data_list = []
+    # This is the beginning of the satellite record, so we can skip anything
+    # before this date when 1978 is given.
+    # TODO: pull this start date from the platforms config.
     if year == 1978:
         start_date = dt.date(1978, 10, 25)
     else:
         start_date = dt.date(year, 1, 1)
-    # for period in pd.period_range(start=dt.date(year, 1, 1), end=dt.date(year, 12, 31)):
     for period in pd.period_range(start=start_date, end=dt.date(year, 12, 31)):
         expected_fp = get_ecdr_filepath(
             date=period.to_timestamp().date(),

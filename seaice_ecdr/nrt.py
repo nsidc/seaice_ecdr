@@ -1,7 +1,7 @@
 """Code to run NRT ECDR processing."""
 import datetime as dt
 from pathlib import Path
-from typing import get_args
+from typing import Final, get_args
 
 import click
 from pm_tb_data._types import Hemisphere
@@ -10,7 +10,6 @@ from pm_tb_data.fetch.amsr.lance_amsr2 import (
     download_latest_lance_files,
 )
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import LANCE_NRT_DATA_DIR, NRT_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
@@ -21,14 +20,13 @@ from seaice_ecdr.initial_daily_ecdr import (
 from seaice_ecdr.platforms import (
     get_platform_by_date,
 )
-from seaice_ecdr.tb_data import EcdrTbData, ecdr_tbs_from_amsr_channels
+from seaice_ecdr.tb_data import EcdrTbData, map_tbs_to_ecdr_channels
 
 
 def compute_nrt_initial_daily_ecdr_dataset(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     lance_amsr2_input_dir: Path,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
@@ -37,11 +35,29 @@ def compute_nrt_initial_daily_ecdr_dataset(
         hemisphere=hemisphere,
         data_dir=lance_amsr2_input_dir,
     )
+    tb_resolution: Final = "12.5"
+    data_source: Final = "LANCE AU_SI12"
+
+    ecdr_tbs = map_tbs_to_ecdr_channels(
+        # TODO/Note: this mapping is the same as used for `am2`.
+        mapping=dict(
+            v19="v18",
+            h19="h18",
+            v22="v23",
+            v37="v36",
+            h37="h36",
+        ),
+        xr_tbs=xr_tbs,
+        hemisphere=hemisphere,
+        resolution=tb_resolution,
+        date=date,
+        data_source=data_source,
+    )
 
     tb_data = EcdrTbData(
-        tbs=ecdr_tbs_from_amsr_channels(xr_tbs=xr_tbs),
-        resolution="12.5",
-        data_source="LANCE AU_SI12",
+        tbs=ecdr_tbs,
+        resolution=tb_resolution,
+        data_source=data_source,
         platform="am2",
     )
 
@@ -123,12 +139,6 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     show_default=True,
 )
 @click.option(
-    "-r",
-    "--resolution",
-    required=True,
-    type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
-)
-@click.option(
     "--lance-amsr2-input-dir",
     required=True,
     type=click.Path(
@@ -148,7 +158,6 @@ def nrt_initial_daily_ecdr(
     date: dt.date,
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     lance_amsr2_input_dir: Path,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data.
@@ -158,7 +167,6 @@ def nrt_initial_daily_ecdr(
     nrt_initial_ecdr_ds = compute_nrt_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
-        resolution=resolution,
         lance_amsr2_input_dir=lance_amsr2_input_dir,
     )
 
@@ -167,8 +175,8 @@ def nrt_initial_daily_ecdr(
         hemisphere=hemisphere,
         date=date,
         platform=platform,
-        resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        resolution="12.5",
     )
 
     write_ide_netcdf(

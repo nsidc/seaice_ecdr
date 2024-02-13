@@ -11,10 +11,6 @@ import xarray as xr
 # NOTE: Use of opencv -- in python "cv2" -- requires a binary library
 # on the VM:
 #   sudo apt install libgl1
-# Also, the opencv-pytypes package is only available from pip3, not from mamba
-#   hence the type-ignore here
-# Sometimes, mypy wants this ignore to be: ignore[import-not-found]
-# from cv2 import INTER_LINEAR, resize  # type: ignore[import-not-found]
 from cv2 import INTER_LINEAR, resize
 from loguru import logger
 from pm_tb_data._types import Hemisphere

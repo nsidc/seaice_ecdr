@@ -1,7 +1,7 @@
 import datetime as dt
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, get_args
+from typing import Final, cast, get_args
 
 import numpy as np
 import numpy.typing as npt
@@ -66,203 +66,72 @@ def get_null_ecdr_tbs(
     return null_ecdr_tbs
 
 
-def _pm_icecon_amsr_res_str(
-    *, resolution: ECDR_SUPPORTED_RESOLUTIONS
-) -> AMSR_RESOLUTIONS:
-    """Given an AMSR ECDR resolution string, return a compatible `pm_icecon` resolution string."""
-    _ecdr_pm_icecon_resolution_mapping: dict[
-        ECDR_SUPPORTED_RESOLUTIONS, AMSR_RESOLUTIONS
-    ] = {
-        "12.5": "12",
-        "25": "25",
-    }
-    au_si_resolution_str = _ecdr_pm_icecon_resolution_mapping[resolution]
-
-    return au_si_resolution_str
-
-
-# TODO: Note in the documentation that we are using legacy labels
-#       for the various microwave channels, eg v19, v22, etc
-def rename_0001_tbs(
+def map_tbs_to_ecdr_channels(
     *,
-    input_ds: xr.Dataset,
-) -> xr.Dataset:
-    """Rename 0001 TB fields for use with siconc code written for AMSR2."""
-    nsidc0001_to_amsr_tb_mapping = {
-        "h19": "h18",
-        "v19": "v18",
-        "v22": "v23",
-        "h37": "h36",
-        "v37": "v36",
-    }
-
-    new_tbs = {}
-    for key in input_ds.data_vars.keys():
-        data_var = input_ds.data_vars[key]
-        new_key = nsidc0001_to_amsr_tb_mapping[key]
-        new_tbs[new_key] = xr.DataArray(
-            data_var.data,
-            dims=("fake_y", "fake_x"),
-            attrs=data_var.attrs,
-        )
-
-    new_ds = xr.Dataset(new_tbs)
-
-    return new_ds
-
-
-def create_null_au_si_tbs(
-    *,
+    mapping: dict[str, str],
+    xr_tbs: xr.Dataset,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-) -> xr.Dataset:
-    """Create xr dataset containing all null-value data for all tbs."""
-    chan_desc = {
-        "h18": "18.7 GHz horizontal daily average Tbs",
-        "v18": "18.7 GHz vertical daily average Tbs",
-        "h23": "23.8 GHz horizontal daily average Tbs",
-        "v23": "23.8 GHz vertical daily average Tbs",
-        "h36": "36.5 GHz horizontal daily average Tbs",
-        "v36": "36.5 GHz vertical daily average Tbs",
-        "h89": "89.0 GHz horizontal daily average Tbs",
-        "v89": "89.0 GHz vertical daily average Tbs",
-    }
+    data_source: str,
+    date: dt.date,
+) -> EcdrTbs:
+    """Map tbs from source to ECDR channels.
 
-    if hemisphere == "north":
-        if resolution == "12.5":
-            xdim = 608
-            ydim = 896
-        elif resolution == "25":
-            xdim = 304
-            ydim = 448
-    elif hemisphere == "south":
-        if resolution == "12.5":
-            xdim = 632
-            ydim = 664
-        elif resolution == "25":
-            xdim = 316
-            ydim = 332
+    `mapping` should be a dictionary with keys representing the expected ECDR
+    channel names. The values should be input data sources' channel names (these
+    should be variables in the `xr_tbs` dataset).
 
-    null_array = np.zeros((ydim, xdim), dtype=np.float64)
-    null_array[:] = np.nan
-    common_tb_attrs = {
-        "_FillValue": 0,
-        "units": "degree_kelvin",
-        "standard_name": "brightness_temperature",
-        "packing_convention": "netCDF",
-        "packing_convention_description": "unpacked = scale_factor x packed + add_offset",
-        "scale_factor": 0.1,
-        "add_offset": 0.0,
-    }
-    null_tbs = xr.Dataset(
-        data_vars=dict(
-            h18=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            v18=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            h23=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            v23=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            h36=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            v36=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            h89=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            v89=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-        ),
-    )
+    If the provided `xr_tbs` does not contain a variable given in the
+    `mapping`'s keys, a null grid will be genereated for that channel and a
+    warning is raised. For example, this happens at least once: on 10/10/1995 SH
+    for 22v (from F13).
+    """
+    remapped_tbs = {}
+    for dest_chan, source_chan in mapping.items():
+        if source_chan in xr_tbs.variables.keys():
+            remapped_tbs[dest_chan] = xr_tbs[source_chan].data
+        else:
+            # Create null tbs for this channel.
+            logger.warning(
+                f"WARNING: created NULL values for tb {dest_chan} because the"
+                f" provided dataset for {hemisphere=} {resolution=} {data_source=} {date=} does not"
+                f" contain the expected source channel {source_chan}"
+            )
+            remapped_tbs[dest_chan] = get_null_grid(
+                hemisphere=hemisphere,
+                resolution=resolution,
+            )
 
-    for key in chan_desc.keys():
-        null_tbs.data_vars[key].attrs.update({"long_name": chan_desc[key]})
+    ecdr_tbs = EcdrTbs(**remapped_tbs)
 
-    return null_tbs
-
-
-# TODO: This is being used by non-amsr channels, eg from 0001
-def ecdr_tbs_from_amsr_channels(*, xr_tbs: xr.Dataset) -> EcdrTbs:
-    try:
-        return EcdrTbs(
-            v19=xr_tbs.v18.data,
-            h19=xr_tbs.h18.data,
-            v22=xr_tbs.v23.data,
-            v37=xr_tbs.v36.data,
-            h37=xr_tbs.h36.data,
-        )
-    except AttributeError:
-        # This error happens when at least one of the TB fields is missing
-        # eg on 10/10/1995 SH for 22v (from F13)
-        is_found = []
-        is_missing = []
-        # TODO: This key list should be an EXPECTED_TB_NAMES list or similar?
-        for key in ("v18", "h18", "v23", "v36", "h36"):
-            try:
-                tbvar = xr_tbs[key]
-                assert tbvar.shape is not None
-                is_found.append(key)
-            except KeyError:
-                is_missing.append(key)
-
-        existing_tbvar = is_found[0]
-        if len(is_missing) > 0:
-            for missing_tbvar in is_missing:
-                # TODO: It would be better to create a missing_tb dataarray
-                #       from "first principals" rather than copy() and zero.
-                #       Even better, there should be a check at the point
-                #       of data ingest that ensures that we have all expected
-                #       TB fields.
-                xr_tbs[missing_tbvar] = xr_tbs[existing_tbvar].copy()
-                xr_tbs[missing_tbvar][:] = np.nan
-            logger.warning(f"WARNING: created NULL values for tb {missing_tbvar}")
-
-        return EcdrTbs(
-            v19=xr_tbs.v18.data,
-            h19=xr_tbs.h18.data,
-            v22=xr_tbs.v23.data,
-            v37=xr_tbs.v36.data,
-            h37=xr_tbs.h36.data,
-        )
+    return ecdr_tbs
 
 
 def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
     tb_resolution: Final = "12.5"
+    data_source: Final = "AU_SI12"
     try:
         xr_tbs = get_au_si_tbs(
             date=date,
             hemisphere=hemisphere,
             resolution="12",
         )
-    except FileNotFoundError:
-        xr_tbs = create_null_au_si_tbs(
+        ecdr_tbs = map_tbs_to_ecdr_channels(
+            mapping=dict(
+                v19="v18",
+                h19="h18",
+                v22="v23",
+                v37="v36",
+                h37="h36",
+            ),
+            xr_tbs=xr_tbs,
             hemisphere=hemisphere,
             resolution=tb_resolution,
+            date=date,
+            data_source=data_source,
         )
+    except FileNotFoundError:
+        ecdr_tbs = get_null_ecdr_tbs(hemisphere=hemisphere, resolution=tb_resolution)
         logger.warning(
             f"Used all-null TBS for date={date},"
             f" hemisphere={hemisphere},"
@@ -270,9 +139,9 @@ def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
         )
 
     ecdr_tb_data = EcdrTbData(
-        tbs=ecdr_tbs_from_amsr_channels(xr_tbs=xr_tbs),
+        tbs=ecdr_tbs,
         resolution=tb_resolution,
-        data_source="AU_SI12",
+        data_source=data_source,
         platform="am2",
     )
 
@@ -281,8 +150,13 @@ def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
 
 def _get_ame_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
     tb_resolution: Final = "12.5"
-    ame_resolution_str = _pm_icecon_amsr_res_str(resolution=tb_resolution)
+    ame_resolution_str = {
+        "12.5": "12",
+        "25": "25",
+    }[tb_resolution]
+    ame_resolution_str = cast(AMSR_RESOLUTIONS, ame_resolution_str)
     AME_DATA_DIR = Path("/ecs/DP4/AMSA/AE_SI12.003/")
+    data_source: Final = "AE_SI12"
     try:
         xr_tbs = get_ae_si_tbs_from_disk(
             date=date,
@@ -290,12 +164,23 @@ def _get_ame_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
             data_dir=AME_DATA_DIR,
             resolution=ame_resolution_str,
         )
-    except FileNotFoundError:
-        logger.warning(f"Using null AU_SI12 for AME on {date}")
-        xr_tbs = create_null_au_si_tbs(
+        ecdr_tbs = map_tbs_to_ecdr_channels(
+            # TODO/Note: this mapping is the same as used for `am2`.
+            mapping=dict(
+                v19="v18",
+                h19="h18",
+                v22="v23",
+                v37="v36",
+                h37="h36",
+            ),
+            xr_tbs=xr_tbs,
             hemisphere=hemisphere,
             resolution=tb_resolution,
+            date=date,
+            data_source=data_source,
         )
+    except FileNotFoundError:
+        ecdr_tbs = get_null_ecdr_tbs(hemisphere=hemisphere, resolution=tb_resolution)
         logger.warning(
             f"Used all-null TBS for date={date},"
             f" hemisphere={hemisphere},"
@@ -303,9 +188,9 @@ def _get_ame_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
         )
 
     ecdr_tb_data = EcdrTbData(
-        tbs=ecdr_tbs_from_amsr_channels(xr_tbs=xr_tbs),
+        tbs=ecdr_tbs,
         resolution=tb_resolution,
-        data_source="AE_SI12",
+        data_source=data_source,
         platform="ame",
     )
 
@@ -319,6 +204,7 @@ def _get_nsidc_0001_tbs(
     # NSIDC-0001 TBs for siconc are all at 25km
     nsidc0001_resolution: Final = "25"
     tb_resolution: Final = nsidc0001_resolution
+    data_source: Final = "NSIDC-0001"
     try:
         xr_tbs_0001 = get_nsidc_0001_tbs_from_disk(
             date=date,
@@ -327,34 +213,38 @@ def _get_nsidc_0001_tbs(
             resolution=nsidc0001_resolution,
             sat=platform,
         )
-        # TODO: this is confusing. It seems like this does the same remapping as
-        # `ecdr_tbs_from_amsr_channels`. We don't need both, and the name should
-        # be generic enough to reflect that. Do all 0001 platforms share the
-        # same remapping? IS there any input data we use that doesn't get
-        # remapped this way?
-        # All platforms in 0001 (F08, F11, F13, and F17 have the same channels:
-        # ['h19', 'v19', 'v22', 'h37', 'v37']
-        xr_tbs = rename_0001_tbs(input_ds=xr_tbs_0001)
-    except FileNotFoundError:
-        logger.warning(f"Using null TBs for {platform} on {date}")
-        print("this needs to be create_null_0001_tbs()")
-        xr_tbs = create_null_au_si_tbs(
+
+        ecdr_tbs = map_tbs_to_ecdr_channels(
+            mapping=dict(
+                v19="v19",
+                h19="h19",
+                v22="v22",
+                v37="v37",
+                h37="h37",
+            ),
+            xr_tbs=xr_tbs_0001,
             hemisphere=hemisphere,
             resolution=tb_resolution,
+            date=date,
+            data_source=data_source,
+        )
+    except FileNotFoundError:
+        ecdr_tbs = get_null_ecdr_tbs(
+            hemisphere=hemisphere, resolution=nsidc0001_resolution
         )
         logger.warning(
             f"Used all-null TBS for date={date},"
             f" hemisphere={hemisphere},"
             f" resolution={tb_resolution}"
+            f" platform={platform}"
         )
 
     # TODO: For debugging TBs, consider a print/log statement such as this:
     # print(f'platform: {platform} with tbs: {xr_tbs.data_vars.keys()}')
     ecdr_tb_data = EcdrTbData(
-        # TODO: does 0001 need a different mapping?
-        tbs=ecdr_tbs_from_amsr_channels(xr_tbs=xr_tbs),
+        tbs=ecdr_tbs,
         resolution=tb_resolution,
-        data_source="NSIDC-0001",
+        data_source=data_source,
         platform=platform,  # type: ignore[arg-type]
     )
 
@@ -365,6 +255,7 @@ def _get_nsidc_0007_tbs(*, hemisphere: Hemisphere, date: dt.date) -> EcdrTbData:
     NSIDC0007_DATA_DIR = Path("/projects/DATASETS/nsidc0007_smmr_radiance_seaice_v01/")
     # resolution in km
     SMMR_RESOLUTION: Final = "25"
+    data_source: Final = "NSIDC-0007"
 
     try:
         xr_tbs = get_nsidc_0007_tbs_from_disk(
@@ -372,13 +263,20 @@ def _get_nsidc_0007_tbs(*, hemisphere: Hemisphere, date: dt.date) -> EcdrTbData:
             hemisphere=hemisphere,
             data_dir=NSIDC0007_DATA_DIR,
         )
-        # Available channels: h06, h37, v37, h10, v18, v10, h18, v06
-        ecdr_tbs = EcdrTbs(
-            v19=xr_tbs.v18.data,
-            h19=xr_tbs.h18.data,
-            v22=xr_tbs.v37.data,
-            v37=xr_tbs.v37.data,
-            h37=xr_tbs.h37.data,
+
+        ecdr_tbs = map_tbs_to_ecdr_channels(
+            mapping=dict(
+                v19="v18",
+                h19="h18",
+                v22="v37",
+                v37="v37",
+                h37="h37",
+            ),
+            xr_tbs=xr_tbs,
+            hemisphere=hemisphere,
+            resolution=SMMR_RESOLUTION,
+            date=date,
+            data_source=data_source,
         )
     except FileNotFoundError:
         logger.warning(f"Using null TBs for SMMR/n07 on {date}")
@@ -387,7 +285,7 @@ def _get_nsidc_0007_tbs(*, hemisphere: Hemisphere, date: dt.date) -> EcdrTbData:
     ecdr_tb_data = EcdrTbData(
         tbs=ecdr_tbs,
         resolution=SMMR_RESOLUTION,
-        data_source="NSIDC-0007",
+        data_source=data_source,
         platform="n07",
     )
 

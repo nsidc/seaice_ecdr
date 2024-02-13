@@ -106,7 +106,6 @@ def cdr_bootstrap(
     )
 
     # Set any bootstrap concentrations below 10% to 0.
-    # TODO: Verify we want to clamp BT value here?
     bt_conc[bt_conc < 10] = 0
 
     # Remove bt_conc flags (e.g., missing)
