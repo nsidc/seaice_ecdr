@@ -31,6 +31,9 @@ def _get_daily_complete_filepaths_for_year(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
     data_list = []
+    # This is the beginning of the satellite record, so we can skip anything
+    # before this date when 1978 is given.
+    # TODO: pull this start date from the platforms config.
     if year == 1978:
         start_date = dt.date(1978, 10, 25)
     else:
