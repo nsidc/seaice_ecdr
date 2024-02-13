@@ -35,7 +35,6 @@ def _get_daily_complete_filepaths_for_year(
         start_date = dt.date(1978, 10, 25)
     else:
         start_date = dt.date(year, 1, 1)
-    # for period in pd.period_range(start=dt.date(year, 1, 1), end=dt.date(year, 12, 31)):
     for period in pd.period_range(start=start_date, end=dt.date(year, 12, 31)):
         expected_fp = get_ecdr_filepath(
             date=period.to_timestamp().date(),
