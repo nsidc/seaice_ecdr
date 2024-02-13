@@ -39,7 +39,7 @@ def write_checksum_file(
     input_filepath: Path,
     ecdr_data_dir: Path,
     product_type: Literal["complete_daily", "monthly", "aggregate"],
-):
+) -> Path:
     checksum = _get_checksum(input_filepath)
 
     size_in_bytes = input_filepath.stat().st_size
@@ -53,6 +53,8 @@ def write_checksum_file(
         checksum_file.write(f"{input_filepath.name},{checksum},{size_in_bytes}")
 
     logger.info(f"Wrote checksum file {output_filepath}")
+
+    return output_filepath
 
 
 def get_checksum_dir(*, ecdr_data_dir: Path):
