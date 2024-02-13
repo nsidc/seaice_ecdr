@@ -81,130 +81,6 @@ def _pm_icecon_amsr_res_str(
     return au_si_resolution_str
 
 
-# TODO: Note in the documentation that we are using legacy labels
-#       for the various microwave channels, eg v19, v22, etc
-def rename_0001_tbs(
-    *,
-    input_ds: xr.Dataset,
-) -> xr.Dataset:
-    """Rename 0001 TB fields for use with siconc code written for AMSR2."""
-    nsidc0001_to_amsr_tb_mapping = {
-        "h19": "h18",
-        "v19": "v18",
-        "v22": "v23",
-        "h37": "h36",
-        "v37": "v36",
-    }
-
-    new_tbs = {}
-    for key in input_ds.data_vars.keys():
-        data_var = input_ds.data_vars[key]
-        new_key = nsidc0001_to_amsr_tb_mapping[key]
-        new_tbs[new_key] = xr.DataArray(
-            data_var.data,
-            dims=("fake_y", "fake_x"),
-            attrs=data_var.attrs,
-        )
-
-    new_ds = xr.Dataset(new_tbs)
-
-    return new_ds
-
-
-def create_null_au_si_tbs(
-    *,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-) -> xr.Dataset:
-    """Create xr dataset containing all null-value data for all tbs."""
-    chan_desc = {
-        "h18": "18.7 GHz horizontal daily average Tbs",
-        "v18": "18.7 GHz vertical daily average Tbs",
-        "h23": "23.8 GHz horizontal daily average Tbs",
-        "v23": "23.8 GHz vertical daily average Tbs",
-        "h36": "36.5 GHz horizontal daily average Tbs",
-        "v36": "36.5 GHz vertical daily average Tbs",
-        "h89": "89.0 GHz horizontal daily average Tbs",
-        "v89": "89.0 GHz vertical daily average Tbs",
-    }
-
-    if hemisphere == "north":
-        if resolution == "12.5":
-            xdim = 608
-            ydim = 896
-        elif resolution == "25":
-            xdim = 304
-            ydim = 448
-    elif hemisphere == "south":
-        if resolution == "12.5":
-            xdim = 632
-            ydim = 664
-        elif resolution == "25":
-            xdim = 316
-            ydim = 332
-
-    null_array = np.zeros((ydim, xdim), dtype=np.float64)
-    null_array[:] = np.nan
-    common_tb_attrs = {
-        "_FillValue": 0,
-        "units": "degree_kelvin",
-        "standard_name": "brightness_temperature",
-        "packing_convention": "netCDF",
-        "packing_convention_description": "unpacked = scale_factor x packed + add_offset",
-        "scale_factor": 0.1,
-        "add_offset": 0.0,
-    }
-    null_tbs = xr.Dataset(
-        data_vars=dict(
-            h18=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            v18=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            h23=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            v23=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            h36=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            v36=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            h89=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-            v89=(
-                ["YDim", "XDim"],
-                null_array,
-                common_tb_attrs,
-            ),
-        ),
-    )
-
-    for key in chan_desc.keys():
-        null_tbs.data_vars[key].attrs.update({"long_name": chan_desc[key]})
-
-    return null_tbs
-
-
 # TODO: This is being used by non-amsr channels, eg from 0001
 def ecdr_tbs_from_amsr_channels(*, xr_tbs: xr.Dataset) -> EcdrTbs:
     try:
@@ -258,11 +134,9 @@ def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
             hemisphere=hemisphere,
             resolution="12",
         )
+        ecdr_tbs = ecdr_tbs_from_amsr_channels(xr_tbs=xr_tbs)
     except FileNotFoundError:
-        xr_tbs = create_null_au_si_tbs(
-            hemisphere=hemisphere,
-            resolution=tb_resolution,
-        )
+        ecdr_tbs = get_null_ecdr_tbs(hemisphere=hemisphere, resolution=tb_resolution)
         logger.warning(
             f"Used all-null TBS for date={date},"
             f" hemisphere={hemisphere},"
@@ -270,7 +144,7 @@ def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
         )
 
     ecdr_tb_data = EcdrTbData(
-        tbs=ecdr_tbs_from_amsr_channels(xr_tbs=xr_tbs),
+        tbs=ecdr_tbs,
         resolution=tb_resolution,
         data_source="AU_SI12",
         platform="am2",
@@ -290,12 +164,9 @@ def _get_ame_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
             data_dir=AME_DATA_DIR,
             resolution=ame_resolution_str,
         )
+        ecdr_tbs = ecdr_tbs_from_amsr_channels(xr_tbs=xr_tbs)
     except FileNotFoundError:
-        logger.warning(f"Using null AU_SI12 for AME on {date}")
-        xr_tbs = create_null_au_si_tbs(
-            hemisphere=hemisphere,
-            resolution=tb_resolution,
-        )
+        ecdr_tbs = get_null_ecdr_tbs(hemisphere=hemisphere, resolution=tb_resolution)
         logger.warning(
             f"Used all-null TBS for date={date},"
             f" hemisphere={hemisphere},"
@@ -303,7 +174,7 @@ def _get_ame_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
         )
 
     ecdr_tb_data = EcdrTbData(
-        tbs=ecdr_tbs_from_amsr_channels(xr_tbs=xr_tbs),
+        tbs=ecdr_tbs,
         resolution=tb_resolution,
         data_source="AE_SI12",
         platform="ame",
@@ -327,32 +198,29 @@ def _get_nsidc_0001_tbs(
             resolution=nsidc0001_resolution,
             sat=platform,
         )
-        # TODO: this is confusing. It seems like this does the same remapping as
-        # `ecdr_tbs_from_amsr_channels`. We don't need both, and the name should
-        # be generic enough to reflect that. Do all 0001 platforms share the
-        # same remapping? IS there any input data we use that doesn't get
-        # remapped this way?
-        # All platforms in 0001 (F08, F11, F13, and F17 have the same channels:
-        # ['h19', 'v19', 'v22', 'h37', 'v37']
-        xr_tbs = rename_0001_tbs(input_ds=xr_tbs_0001)
+
+        ecdr_tbs = EcdrTbs(
+            v19=xr_tbs_0001.v18.data,
+            h19=xr_tbs_0001.h18.data,
+            v22=xr_tbs_0001.v23.data,
+            v37=xr_tbs_0001.v36.data,
+            h37=xr_tbs_0001.h36.data,
+        )
     except FileNotFoundError:
-        logger.warning(f"Using null TBs for {platform} on {date}")
-        print("this needs to be create_null_0001_tbs()")
-        xr_tbs = create_null_au_si_tbs(
-            hemisphere=hemisphere,
-            resolution=tb_resolution,
+        ecdr_tbs = get_null_ecdr_tbs(
+            hemisphere=hemisphere, resolution=nsidc0001_resolution
         )
         logger.warning(
             f"Used all-null TBS for date={date},"
             f" hemisphere={hemisphere},"
             f" resolution={tb_resolution}"
+            f" platform={platform}"
         )
 
     # TODO: For debugging TBs, consider a print/log statement such as this:
     # print(f'platform: {platform} with tbs: {xr_tbs.data_vars.keys()}')
     ecdr_tb_data = EcdrTbData(
-        # TODO: does 0001 need a different mapping?
-        tbs=ecdr_tbs_from_amsr_channels(xr_tbs=xr_tbs),
+        tbs=ecdr_tbs,
         resolution=tb_resolution,
         data_source="NSIDC-0001",
         platform=platform,  # type: ignore[arg-type]
