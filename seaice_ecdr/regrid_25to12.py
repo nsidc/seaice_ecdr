@@ -47,8 +47,6 @@ def _setup_ecdr_ds_replacement(
         resolution=resolution,
     )
 
-    # TODO: These fields should derive from the ancillary file,
-    #       not get_empty_ds_with_time()
     ecdr_ide_ds = get_empty_ds_with_time(
         hemisphere=hemisphere, resolution=resolution, date=date
     )

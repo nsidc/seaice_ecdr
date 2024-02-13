@@ -176,6 +176,10 @@ class NtCoefs(TypedDict):
 
 
 # TODO: We should probably break this function up into separate bt, nt, cdr calc
+# TODO: This was technical debt to quickly gain access to the intermediate
+#       BT and NT fields used in the cdr_conc_raw calculation because we
+#       later decided that we wanted to include the BT and NT raw fields
+#       in the output file.
 def calculate_bt_nt_cdr_raw_conc(
     *,
     tb_h19: npt.NDArray,

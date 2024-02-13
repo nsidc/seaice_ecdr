@@ -204,22 +204,6 @@ def create_melt_onset_field(
             dtype=np.uint8,
         )
         logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
-    # TODO: Currently, only AMSR2 is used for this product.  The first data
-    #       for AMSR2 are on July 2, 2012.  The melt_onset_field requires
-    #       the previous day's melt onset field during the melt season.
-    #       This 'elif' condition captures the case where a prior day's
-    #       melt onset field is required to create the daily file for AMSR2
-    #       but no such onset field is available because pre-AMSR2
-    #       observations are not yet available.
-    elif (date.year == 2012) and (date <= dt.date(2012, 7, 2)):
-        # These are melt season days in first year of AMSR2 data
-        prior_melt_onset_field = filled_ndarray(
-            hemisphere=hemisphere,
-            resolution=resolution,
-            fill_value=no_melt_flag,
-            dtype=np.uint8,
-        )
-        logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
     else:
         prior_melt_onset_field = read_melt_onset_field(
             date=date - dt.timedelta(days=1),
