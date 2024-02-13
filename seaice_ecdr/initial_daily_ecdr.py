@@ -328,8 +328,6 @@ def compute_initial_daily_ecdr_dataset(
     hemisphere: Hemisphere,
     tb_data: EcdrTbData,
     fill_the_pole_hole: bool = False,
-    # SS: Does this need to have tb_resolution?
-    # tb_resolution: ECDR_SUPPORTED_RESOLUTIONS | None = None,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -340,7 +338,6 @@ def compute_initial_daily_ecdr_dataset(
     fields. Its difficult to understand what's in the resulting dataset without
     manually inspecting the result of running this code.
     """
-    # SS: Does this need to know tb_resolution?
     ecdr_ide_ds = _setup_ecdr_ds(
         date=date,
         tb_data=tb_data,
