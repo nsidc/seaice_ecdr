@@ -20,6 +20,7 @@ from seaice_ecdr.ancillary import (
     get_non_ocean_mask,
     get_surfacetype_da,
 )
+from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.melt import (
@@ -351,6 +352,7 @@ def write_cde_netcdf(
     *,
     cde_ds: xr.Dataset,
     output_filepath: Path,
+    ecdr_data_dir: Path,
     uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
     excluded_fields: Iterable[str] = [],
     conc_fields: Iterable[str] = [
@@ -359,7 +361,10 @@ def write_cde_netcdf(
         "cdr_seaice_conc",
     ],
 ) -> Path:
-    """Write the temporally interpolated ECDR to a netCDF file."""
+    """Write the complete, temporally interpolated ECDR to a netCDF file.
+
+    This function also creates a checksum file for the complete daily netcdf.
+    """
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
     for excluded_field in excluded_fields:
         if excluded_field in cde_ds.variables.keys():
@@ -385,6 +390,13 @@ def write_cde_netcdf(
         unlimited_dims=[
             "time",
         ],
+    )
+
+    # Write checksum file for the complete daily output.
+    write_checksum_file(
+        input_filepath=output_filepath,
+        ecdr_data_dir=ecdr_data_dir,
+        product_type="complete_daily",
     )
 
     return output_filepath
@@ -419,6 +431,7 @@ def make_cdecdr_netcdf(
         written_cde_ncfile = write_cde_netcdf(
             cde_ds=cde_ds,
             output_filepath=cde_filepath,
+            ecdr_data_dir=ecdr_data_dir,
         )
         logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
 

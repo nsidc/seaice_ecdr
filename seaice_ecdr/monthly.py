@@ -37,6 +37,7 @@ from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.ancillary import flag_value_for_meaning
+from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
@@ -665,6 +666,13 @@ def make_monthly_nc(
         ],
     )
     logger.info(f"Wrote monthly file for {year=} and {month=} to {output_path}")
+
+    # Write checksum file for the monthly output.
+    write_checksum_file(
+        input_filepath=output_path,
+        ecdr_data_dir=ecdr_data_dir,
+        product_type="monthly",
+    )
 
     return output_path
 
