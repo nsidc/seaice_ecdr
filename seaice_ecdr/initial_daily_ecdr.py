@@ -174,39 +174,12 @@ class NtCoefs(TypedDict):
     nt_gradient_thresholds: NasateamGradientRatioThresholds
 
 
-# TODO: We should probably break this function up into separate bt, nt, cdr calc
-# TODO: This was technical debt to quickly gain access to the intermediate
-#       BT and NT fields used in the cdr_conc_raw calculation because we
-#       later decided that we wanted to include the BT and NT raw fields
-#       in the output file.
-def calculate_bt_nt_cdr_raw_conc(
+def calculate_cdr_conc(
     *,
-    tb_h19: npt.NDArray,
-    tb_v37: npt.NDArray,
-    tb_h37: npt.NDArray,
-    tb_v19: npt.NDArray,
-    bt_coefs: dict,
-    nt_coefs: NtCoefs,
-    platform: SUPPORTED_SAT,
-) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+    bt_conc: npt.NDArray,
+    nt_conc: npt.NDArray,
+) -> npt.NDArray:
     """Run the CDR algorithm."""
-    # First, get bootstrap conc.
-    bt_conc = cdr_bootstrap(
-        tb_v37=tb_v37,
-        tb_h37=tb_h37,
-        tb_v19=tb_v19,
-        bt_coefs=bt_coefs,
-        platform=platform,
-    )
-
-    # Get nasateam conc. Note that concentrations from nasateam may be >100%.
-    nt_conc = cdr_nasateam(
-        tb_h19=tb_h19,
-        tb_v37=tb_v37,
-        tb_v19=tb_v19,
-        nt_tiepoints=nt_coefs["nt_tiepoints"],
-    )
-
     # Now calculate CDR SIC
     is_bt_seaice = (bt_conc > 0) & (bt_conc <= 100)
     use_nt_values = (nt_conc > bt_conc) & is_bt_seaice
@@ -214,7 +187,7 @@ def calculate_bt_nt_cdr_raw_conc(
     cdr_conc = bt_conc.copy()
     cdr_conc[use_nt_values] = nt_conc[use_nt_values]
 
-    return bt_conc, nt_conc, cdr_conc
+    return cdr_conc
 
 
 def _setup_ecdr_ds(
@@ -648,14 +621,24 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     # finally, compute the CDR.
-    bt_conc, nt_conc, cdr_conc_raw = calculate_bt_nt_cdr_raw_conc(
-        tb_h19=ecdr_ide_ds["h19_day_si"].data[0, :, :],
+    bt_conc = cdr_bootstrap(
         tb_v37=ecdr_ide_ds["v37_day_si"].data[0, :, :],
         tb_h37=ecdr_ide_ds["h37_day_si"].data[0, :, :],
         tb_v19=ecdr_ide_ds["v19_day_si"].data[0, :, :],
         bt_coefs=bt_coefs,
-        nt_coefs=nt_coefs,
         platform=platform,
+    )
+
+    nt_conc = cdr_nasateam(
+        tb_h19=ecdr_ide_ds["h19_day_si"].data[0, :, :],
+        tb_v37=ecdr_ide_ds["v37_day_si"].data[0, :, :],
+        tb_v19=ecdr_ide_ds["v19_day_si"].data[0, :, :],
+        nt_tiepoints=nt_coefs["nt_tiepoints"],
+    )
+
+    cdr_conc_raw = calculate_cdr_conc(
+        bt_conc=bt_conc,
+        nt_conc=nt_conc,
     )
 
     # Apply masks
