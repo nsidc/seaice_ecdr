@@ -526,59 +526,31 @@ def filter_field_via_bitmask(
     return output_da
 
 
-def temporally_interpolated_ecdr_dataset(
+# TODO: better function name and docstring. This is first pass at refactor.
+def temporal_interpolation(
     *,
     date: dt.date,
+    fill_the_pole_hole: bool,
+    ide_ds: xr.Dataset,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    cdr_var_stack,
+    bt_var_stack,
+    nt_var_stack,
     interp_range: int = 5,
-    ecdr_data_dir: Path,
-    fill_the_pole_hole: bool = True,
 ) -> xr.Dataset:
-    """Create xr dataset containing the second pass of daily enhanced CDR.
-
-    This function returns
-    - a Dataset containing
-      - The temporally interpolated field. This is 3d: (time, y, x)
-      - a numpy array with the temporal interpolation flags that are
-        determined during the temporal interpolation process
-    """
-    # Read in the idecdr file for this date
-    ide_ds = read_or_create_and_read_idecdr_ds(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-    )
-
     # Copy ide_ds to a new xr tiecdr dataset
     tie_ds = ide_ds.copy(deep=True)
 
     # Update the cdr_conc var with temporally interpolated cdr_conc field
     #   by creating a DataArray with conc fields +/- interp_range around date
-    var_stack = create_sorted_var_timestack(
-        varname="conc",
-        date_list=[
-            iter_date
-            for iter_date in iter_dates_near_date(
-                target_date=date, day_range=interp_range
-            )
-        ],
-        ds_function=read_or_create_and_read_idecdr_ds,
-        ds_function_kwargs={
-            "hemisphere": hemisphere,
-            "resolution": resolution,
-            "ecdr_data_dir": ecdr_data_dir,
-        },
-    )
-
     non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
     )
     ti_var, ti_flags = temporally_composite_dataarray(
         target_date=date,
-        da=var_stack,
+        da=cdr_var_stack,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
     )
@@ -675,50 +647,11 @@ def temporally_interpolated_ecdr_dataset(
         #       distinguish it from the cdr_conc_ti field
         pass
 
-    # Create the cdr_conc standard deviation field
-    # Create filled bootstrap field
-    bt_var_stack = create_sorted_var_timestack(
-        varname="raw_bt_seaice_conc",
-        date_list=[
-            iter_date
-            for iter_date in iter_dates_near_date(
-                target_date=date, day_range=interp_range
-            )
-        ],
-        ds_function=read_or_create_and_read_idecdr_ds,
-        ds_function_kwargs={
-            "hemisphere": hemisphere,
-            "resolution": resolution,
-            "ecdr_data_dir": ecdr_data_dir,
-        },
-    )
-
-    non_ocean_mask = get_non_ocean_mask(
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
     bt_conc, _ = temporally_composite_dataarray(
         target_date=date,
         da=bt_var_stack,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
-    )
-
-    # Create filled bootstrap field
-    nt_var_stack = create_sorted_var_timestack(
-        varname="raw_nt_seaice_conc",
-        date_list=[
-            iter_date
-            for iter_date in iter_dates_near_date(
-                target_date=date, day_range=interp_range
-            )
-        ],
-        ds_function=read_or_create_and_read_idecdr_ds,
-        ds_function_kwargs={
-            "hemisphere": hemisphere,
-            "resolution": resolution,
-            "ecdr_data_dir": ecdr_data_dir,
-        },
     )
 
     nt_conc, _ = temporally_composite_dataarray(
@@ -839,6 +772,96 @@ def temporally_interpolated_ecdr_dataset(
     )
 
     tie_ds = tie_ds.drop_vars("stdev_of_cdr_seaice_conc_raw")
+
+    return tie_ds
+
+
+def temporally_interpolated_ecdr_dataset(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    interp_range: int = 5,
+    ecdr_data_dir: Path,
+    fill_the_pole_hole: bool = True,
+) -> xr.Dataset:
+    """Create xr dataset containing the second pass of daily enhanced CDR.
+
+    This function returns
+    - a Dataset containing
+      - The temporally interpolated field. This is 3d: (time, y, x)
+      - a numpy array with the temporal interpolation flags that are
+        determined during the temporal interpolation process
+    """
+    # Read in the idecdr file for this date
+    ide_ds = read_or_create_and_read_idecdr_ds(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+
+    cdr_var_stack = create_sorted_var_timestack(
+        varname="conc",
+        date_list=[
+            iter_date
+            for iter_date in iter_dates_near_date(
+                target_date=date, day_range=interp_range
+            )
+        ],
+        ds_function=read_or_create_and_read_idecdr_ds,
+        ds_function_kwargs={
+            "hemisphere": hemisphere,
+            "resolution": resolution,
+            "ecdr_data_dir": ecdr_data_dir,
+        },
+    )
+
+    # TODO: comment needs update?
+    # Create the cdr_conc standard deviation field
+    # Create filled bootstrap field
+    bt_var_stack = create_sorted_var_timestack(
+        varname="raw_bt_seaice_conc",
+        date_list=[
+            iter_date
+            for iter_date in iter_dates_near_date(
+                target_date=date, day_range=interp_range
+            )
+        ],
+        ds_function=read_or_create_and_read_idecdr_ds,
+        ds_function_kwargs={
+            "hemisphere": hemisphere,
+            "resolution": resolution,
+            "ecdr_data_dir": ecdr_data_dir,
+        },
+    )
+
+    nt_var_stack = create_sorted_var_timestack(
+        varname="raw_nt_seaice_conc",
+        date_list=[
+            iter_date
+            for iter_date in iter_dates_near_date(
+                target_date=date, day_range=interp_range
+            )
+        ],
+        ds_function=read_or_create_and_read_idecdr_ds,
+        ds_function_kwargs={
+            "hemisphere": hemisphere,
+            "resolution": resolution,
+            "ecdr_data_dir": ecdr_data_dir,
+        },
+    )
+
+    tie_ds = temporal_interpolation(
+        ide_ds=ide_ds,
+        cdr_var_stack=cdr_var_stack,
+        bt_var_stack=bt_var_stack,
+        nt_var_stack=nt_var_stack,
+        date=date,
+        fill_the_pole_hole=fill_the_pole_hole,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
 
     return tie_ds
 
