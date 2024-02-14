@@ -1,4 +1,19 @@
-"""Code to run NRT ECDR processing."""
+"""Code to run NRT ECDR processing.
+
+TODO:
+
+* Think about a missing value. The nrt data will potentially contain missing
+  data since it can only look to the past for filling missing data. A user could
+  probably look at the QA field to find out that spatial/temporal interp hasn't
+  happened for a `np.nan` cell, but this would be extra work. Maybe a fine
+  trade-off for now.
+* Figure out how to leverage the temporal composite and finalization
+  code. Currently most of our code relies on hard-coded expectations about the
+  platform (based on date) and where the data live (ecdr_data_dir). The data dir
+  is easy enough to change, but we may need to override the platform for NRT
+  processing. Some way to tell the code on a global level that it's dealing w/
+  NRT maybe?
+"""
 import datetime as dt
 from pathlib import Path
 from typing import Final, get_args
@@ -30,6 +45,7 @@ def compute_nrt_initial_daily_ecdr_dataset(
     lance_amsr2_input_dir: Path,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
+    # TODO: handle missing data case.
     xr_tbs = access_local_lance_data(
         date=date,
         hemisphere=hemisphere,
@@ -37,6 +53,7 @@ def compute_nrt_initial_daily_ecdr_dataset(
     )
     tb_resolution: Final = "12.5"
     data_source: Final = "LANCE AU_SI12"
+    platform: Final = "am2"
 
     ecdr_tbs = map_tbs_to_ecdr_channels(
         # TODO/Note: this mapping is the same as used for `am2`.
@@ -58,7 +75,7 @@ def compute_nrt_initial_daily_ecdr_dataset(
         tbs=ecdr_tbs,
         resolution=tb_resolution,
         data_source=data_source,
-        platform="am2",
+        platform=platform,
     )
 
     nrt_initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
