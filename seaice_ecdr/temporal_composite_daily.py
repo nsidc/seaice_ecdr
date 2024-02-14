@@ -7,12 +7,11 @@ import sys
 import traceback
 from functools import cache
 from pathlib import Path
-from typing import Callable, Iterable, cast, get_args
+from typing import Iterable, cast, get_args
 
 import click
 import numpy as np
 import numpy.typing as npt
-import pandas as pd
 import xarray as xr
 from loguru import logger
 from pm_icecon.fill_polehole import fill_pole_hole
@@ -391,46 +390,6 @@ def read_or_create_and_read_idecdr_ds(
     return ide_ds
 
 
-def create_sorted_var_timestack(
-    varname: str,
-    date_list: list,
-    ds_function: Callable[..., xr.Dataset],
-    ds_function_kwargs: dict,
-) -> xr.DataArray:
-    """Create dataarray indexed by `time` for the given variable.
-
-    The provided `ds_function`: should take `date` and `ds_function_kwargs` as
-    kwargs. This function should return a dataset containing a variable called
-    `varname` for the provided `date`.
-
-    The return value is a dataarray of the varible given by `varname` with a
-    `time` coordinate containing the dates in `date_list`.
-    """
-    # Use the first date to initialize the dataset
-    init_date = date_list[0]
-    init_ds = ds_function(
-        date=init_date,
-        **ds_function_kwargs,
-    )
-    var_stack = init_ds.data_vars[varname].copy()
-    if len(var_stack.shape) == 2:
-        var_stack = var_stack.expand_dims(time=[pd.to_datetime(init_date)])
-
-    for interp_date in date_list[1:]:
-        interp_ds = ds_function(
-            date=interp_date,
-            **ds_function_kwargs,
-        )
-        this_var = interp_ds.data_vars[varname].copy()
-        if len(this_var.shape) == 2:
-            this_var = this_var.expand_dims(time=[pd.to_datetime(interp_date)])
-        var_stack = xr.concat([var_stack, this_var], "time")
-
-    var_stack = var_stack.sortby("time")
-
-    return var_stack
-
-
 def calc_stddev_field(
     bt_conc,
     nt_conc,
@@ -534,9 +493,7 @@ def temporal_interpolation(
     ide_ds: xr.Dataset,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    cdr_var_stack,
-    bt_var_stack,
-    nt_var_stack,
+    data_stack: xr.Dataset,
     interp_range: int = 5,
 ) -> xr.Dataset:
     # Copy ide_ds to a new xr tiecdr dataset
@@ -550,7 +507,7 @@ def temporal_interpolation(
     )
     ti_var, ti_flags = temporally_composite_dataarray(
         target_date=date,
-        da=cdr_var_stack,
+        da=data_stack.conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
     )
@@ -649,14 +606,14 @@ def temporal_interpolation(
 
     bt_conc, _ = temporally_composite_dataarray(
         target_date=date,
-        da=bt_var_stack,
+        da=data_stack.raw_bt_seaice_conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
     )
 
     nt_conc, _ = temporally_composite_dataarray(
         target_date=date,
-        da=nt_var_stack,
+        da=data_stack.raw_bt_seaice_conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
     )
@@ -801,62 +758,21 @@ def temporally_interpolated_ecdr_dataset(
         ecdr_data_dir=ecdr_data_dir,
     )
 
-    cdr_var_stack = create_sorted_var_timestack(
-        varname="conc",
-        date_list=[
-            iter_date
-            for iter_date in iter_dates_near_date(
-                target_date=date, day_range=interp_range
-            )
-        ],
-        ds_function=read_or_create_and_read_idecdr_ds,
-        ds_function_kwargs={
-            "hemisphere": hemisphere,
-            "resolution": resolution,
-            "ecdr_data_dir": ecdr_data_dir,
-        },
-    )
+    init_datasets = []
+    for iter_date in iter_dates_near_date(target_date=date, day_range=interp_range):
+        init_dataset = read_or_create_and_read_idecdr_ds(
+            date=iter_date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+        init_datasets.append(init_dataset)
 
-    # TODO: comment needs update?
-    # Create the cdr_conc standard deviation field
-    # Create filled bootstrap field
-    bt_var_stack = create_sorted_var_timestack(
-        varname="raw_bt_seaice_conc",
-        date_list=[
-            iter_date
-            for iter_date in iter_dates_near_date(
-                target_date=date, day_range=interp_range
-            )
-        ],
-        ds_function=read_or_create_and_read_idecdr_ds,
-        ds_function_kwargs={
-            "hemisphere": hemisphere,
-            "resolution": resolution,
-            "ecdr_data_dir": ecdr_data_dir,
-        },
-    )
-
-    nt_var_stack = create_sorted_var_timestack(
-        varname="raw_nt_seaice_conc",
-        date_list=[
-            iter_date
-            for iter_date in iter_dates_near_date(
-                target_date=date, day_range=interp_range
-            )
-        ],
-        ds_function=read_or_create_and_read_idecdr_ds,
-        ds_function_kwargs={
-            "hemisphere": hemisphere,
-            "resolution": resolution,
-            "ecdr_data_dir": ecdr_data_dir,
-        },
-    )
+    data_stack = xr.merge(init_datasets).sortby("time")
 
     tie_ds = temporal_interpolation(
         ide_ds=ide_ds,
-        cdr_var_stack=cdr_var_stack,
-        bt_var_stack=bt_var_stack,
-        nt_var_stack=nt_var_stack,
+        data_stack=data_stack,
         date=date,
         fill_the_pole_hole=fill_the_pole_hole,
         hemisphere=hemisphere,
