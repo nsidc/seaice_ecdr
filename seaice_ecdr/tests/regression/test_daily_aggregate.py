@@ -5,6 +5,7 @@ from typing import Final
 import xarray as xr
 from pm_tb_data._types import NORTH
 
+from seaice_ecdr.checksum import get_checksum_filepath
 from seaice_ecdr.complete_daily_ecdr import read_or_create_and_read_cdecdr_ds
 from seaice_ecdr.daily_aggregate import (
     get_daily_aggregate_filepath,
@@ -50,6 +51,14 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
     # Assert that there are data for each of the three expected dates, and that
     # they match the daily final datasets.
     agg_ds = xr.open_dataset(aggregate_filepath)
+
+    # Assert that the checksums exist where we expect them to be.
+    checksum_filepath = get_checksum_filepath(
+        input_filepath=aggregate_filepath,
+        ecdr_data_dir=tmpdir_path,
+        product_type="aggregate",
+    )
+    assert checksum_filepath.is_file()
 
     for day, daily_ds in zip(range(1, 3 + 1), datasets):
         # Select the current day from the aggregate dataset. This drops `time`

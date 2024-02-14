@@ -92,10 +92,12 @@ def test_access_to_standard_output_filename(tmpdir):
     """Verify that standard output file names can be generated."""
     date = dt.date(2021, 2, 19)
     resolution: Final = "12.5"
+    sat = "am2"
 
     ecdr_data_dir = Path(tmpdir)
     sample_ide_filepath = get_idecdr_filepath(
         date=date,
+        platform=sat,
         hemisphere=NORTH,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
@@ -116,7 +118,7 @@ def test_temporal_composite_max_interp_range_9():
             target_date=dt.date(2020, 1, 1),
             da=xr.DataArray(coords=(range(2), range(3), range(4))),
             interp_range=10,
-            land_mask=xr.DataArray([False, False, False]),
+            non_ocean_mask=xr.DataArray([False, False, False]),
         )
 
 
@@ -157,7 +159,7 @@ def test_temporal_composite_da_oneday():
         target_date=mock_date,
         da=initial_data_array,
         interp_range=0,
-        land_mask=xr.full_like(initial_data_array.isel(time=0), False, dtype=bool),
+        non_ocean_mask=xr.full_like(initial_data_array.isel(time=0), False, dtype=bool),
     )
 
     assert np.array_equal(temporal_composite, initial_data_array, equal_nan=True)
@@ -273,7 +275,7 @@ def test_temporal_composite_da_multiday():
         target_date=mock_date,
         da=input_data_array,
         interp_range=time_spread,
-        land_mask=xr.full_like(input_data_array.isel(time=0), False, dtype=bool),
+        non_ocean_mask=xr.full_like(input_data_array.isel(time=0), False, dtype=bool),
     )
 
     assert np.array_equal(

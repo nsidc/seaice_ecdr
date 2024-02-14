@@ -13,6 +13,7 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import get_ancillary_ds
+from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
@@ -30,7 +31,14 @@ def _get_daily_complete_filepaths_for_year(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
     data_list = []
-    for period in pd.period_range(start=dt.date(year, 1, 1), end=dt.date(year, 12, 31)):
+    # This is the beginning of the satellite record, so we can skip anything
+    # before this date when 1978 is given.
+    # TODO: pull this start date from the platforms config.
+    if year == 1978:
+        start_date = dt.date(1978, 10, 25)
+    else:
+        start_date = dt.date(year, 1, 1)
+    for period in pd.period_range(start=start_date, end=dt.date(year, 12, 31)):
         expected_fp = get_ecdr_filepath(
             date=period.to_timestamp().date(),
             hemisphere=hemisphere,
@@ -87,7 +95,7 @@ def _update_ncrcat_daily_ds(
         resolution=resolution,
     )
     ds["latitude"] = surf_geo_ds.latitude
-    ds["longitude"] = surf_geo_ds.latitude
+    ds["longitude"] = surf_geo_ds.longitude
 
     # setup global attrs
     # Set global attributes
@@ -153,13 +161,20 @@ def make_daily_aggregate_netcdf_for_year(
 
     logger.info(f"Wrote daily aggregate file for year={year} to {output_path}")
 
+    # Write checksum file for the aggregate daily output.
+    write_checksum_file(
+        input_filepath=output_path,
+        ecdr_data_dir=ecdr_data_dir,
+        product_type="aggregate",
+    )
+
 
 @click.command(name="daily-aggregate")
 @click.option(
     "--year",
     required=True,
     type=int,
-    help="Year for which to create the monthly file.",
+    help="Year for which to create the daily-aggregate file.",
 )
 @click.option(
     "-h",
@@ -196,7 +211,7 @@ def make_daily_aggregate_netcdf_for_year(
     "--end-year",
     required=False,
     type=int,
-    help="Year for which to create the monthly file.",
+    help="Last year for which to create the daily-aggregate file.",
     default=None,
 )
 def cli(

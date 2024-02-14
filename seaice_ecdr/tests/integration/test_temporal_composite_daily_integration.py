@@ -30,6 +30,7 @@ except ValueError:
 date = dt.date(2021, 2, 19)
 hemisphere = NORTH
 resolution: Final = "12.5"
+platform = "am2"
 
 
 def test_read_or_create_and_read_idecdr_ds(tmpdir):
@@ -37,6 +38,7 @@ def test_read_or_create_and_read_idecdr_ds(tmpdir):
 
     sample_ide_filepath = get_idecdr_filepath(
         date=date,
+        platform=platform,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=Path(tmpdir),

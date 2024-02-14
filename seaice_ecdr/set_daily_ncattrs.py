@@ -2,13 +2,14 @@
 
 import numpy as np
 import xarray as xr
+from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr.nc_attrs import get_global_attrs
 
 CDECDR_FIELDS_TO_DROP = [
-    "h18_day_si",
-    "h36_day_si",
-    "land_mask",
+    "h19_day_si",
+    "h37_day_si",
+    "non_ocean_mask",
     "pole_mask",
     "invalid_ice_mask",
     "invalid_tb_mask",
@@ -25,6 +26,7 @@ CDECDR_FIELDS_TO_RENAME = {
 
 def finalize_cdecdr_ds(
     ds_in: xr.Dataset,
+    hemisphere: Hemisphere,
     fields_to_drop: list = CDECDR_FIELDS_TO_DROP,
     fields_to_rename: dict = CDECDR_FIELDS_TO_RENAME,
 ) -> xr.Dataset:
@@ -47,13 +49,14 @@ def finalize_cdecdr_ds(
         ds["cdr_seaice_conc"].data,
         {
             "standard_name": "sea_ice_area_fraction",
+            "coverage_content_type": "image",
             "units": "1",
             "long_name": (
                 "NOAA/NSIDC Climate Data Record of Passive Microwave"
                 " Sea Ice Concentration"
             ),
             "grid_mapping": "crs",
-            "reference": "https://nsidc.org/data/g02202/versions/5/",
+            "reference": "https://nsidc.org/data/g02202/versions/5",
             "ancillary_variables": "stdev_of_cdr_seaice_conc qa_of_cdr_seaice_conc",
             "valid_range": np.array((0, 100), dtype=np.uint8),
         },
@@ -70,7 +73,7 @@ def finalize_cdecdr_ds(
                 "Passive Microwave Sea Ice"
                 "Concentration Source Estimated Standard Deviation"
             ),
-            "units": 1,
+            "units": "1",
             "grid_mapping": "crs",
             "valid_range": np.array((0.0, 300.0), dtype=np.float32),
         },
@@ -81,6 +84,31 @@ def finalize_cdecdr_ds(
 
     # TODO: Verify that flag mask values have been set properly
     # TODO: Use common dict with key/vals for flag masks/meanings
+    qa_flag_masks = [
+        1,  # BT_weather_filter_applied
+        2,  # NT_weather_filter_applied
+        4,  # Land_spillover_filter_applied
+        8,  # No_input_data
+        16,  # invalid_ice_mask_applied
+        32,  # Spatial_interpolation_applied
+        64,  # Temporal_interpolation_applied
+    ]
+    qa_flag_meanings = (
+        "BT_weather_filter_applied"  # Note: no leading space
+        " NT_weather_filter_applied"
+        " Land_spillover_filter_applied"
+        " No_input_data"
+        " invalid_ice_mask_applied"
+        " spatial_interpolation_applied"
+        " temporal_interpolation_applied"
+    )
+
+    # Melt only occurs in the northern hemisphere. Don't add status flags for SH
+    # here.
+    if hemisphere == NORTH:
+        qa_flag_masks.append(128)  # Melt_start_detected
+        qa_flag_meanings += " melt_start_detected"
+
     ds["qa_of_cdr_seaice_conc"] = (
         ("time", "y", "x"),
         ds["qa_of_cdr_seaice_conc"].data.astype(np.uint8),
@@ -89,30 +117,9 @@ def finalize_cdecdr_ds(
             "long_name": "Passive Microwave Sea Ice Concentration QC flags",
             "units": "1",
             "grid_mapping": "crs",
-            "flag_masks": np.array(
-                (
-                    1,  # BT_weather_filter_applied
-                    2,  # NT_weather_filter_applied
-                    4,  # Land_spillover_filter_applied
-                    8,  # No_input_data
-                    16,  # Valid_ice_mask_applied
-                    32,  # Spatial_interpolation_applied
-                    64,  # Temporal_interpolation_applied
-                    128,  # Melt_start_detected
-                ),
-                dtype=np.uint8,
-            ),
-            "flag_meanings": (
-                "BT_weather_filter_applied"  # Note: no leading space
-                " NT_weather_filter_applied"
-                " Land_spillover_filter_applied"
-                " No_input_data"
-                " valid_ice_mask_applied"
-                " spatial_interpolation_applied"
-                " temporal_interpolation_applied"
-                " melt_start_detected"
-            ),
-            "valid_range": np.array((0, 255), dtype=np.uint8),
+            "flag_masks": np.array(qa_flag_masks, dtype=np.uint8),
+            "flag_meanings": qa_flag_meanings,
+            "valid_range": np.array((0, sum(qa_flag_masks)), dtype=np.uint8),
         },
         {
             "zlib": True,
@@ -146,6 +153,26 @@ def finalize_cdecdr_ds(
         pass
 
     # TODO: Use common dict with key/vals for flag masks/meanings
+    spatial_interp_flag_masks = [
+        1,
+        2,
+        4,
+        8,
+        16,
+    ]
+    spatial_interp_flag_meanings = (
+        "19v_tb_value_interpolated"
+        " 19h_tb_value_interpolated"
+        " 22v_tb_value_interpolated"
+        " 37v_tb_value_interpolated"
+        " 37h_tb_value_interpolated"
+    )
+    if hemisphere == NORTH:
+        spatial_interp_flag_masks.append(32)
+        spatial_interp_flag_meanings += (
+            " pole_hole_spatially_interpolated_(Arctic_only)"
+        )
+
     ds["spatial_interpolation_flag"] = (
         ("time", "y", "x"),
         ds["spatial_interpolation_flag"].data.astype(np.uint8),
@@ -154,28 +181,11 @@ def finalize_cdecdr_ds(
             "long_name": "Passive Microwave Sea Ice Concentration spatial interpolation flags",
             "units": "1",
             "grid_mapping": "crs",
-            "flag_masks": np.array(
-                (
-                    0,
-                    1,
-                    2,
-                    4,
-                    8,
-                    16,
-                    32,
-                ),
-                dtype=np.uint8,
+            "flag_masks": np.array(spatial_interp_flag_masks, dtype=np.uint8),
+            "flag_meanings": spatial_interp_flag_meanings,
+            "valid_range": np.array(
+                (0, sum(spatial_interp_flag_masks)), dtype=np.uint8
             ),
-            "flag_meanings": (
-                "no_spatial_interpolation"
-                " 19v_tb_value_interpolated"
-                " 19h_tb_value_interpolated"
-                " 22v_tb_value_interpolated"
-                " 37v_tb_value_interpolated"
-                " 37h_tb_value_interpolated"
-                " Pole_hole_spatially_interpolated_(Arctic_only)"
-            ),
-            "valid_range": np.array((0, 63), dtype=np.uint8),
         },
         {
             "zlib": True,
@@ -290,6 +300,7 @@ def finalize_cdecdr_ds(
         ds["raw_bt_seaice_conc"].data,
         {
             "standard_name": "sea_ice_area_fraction",
+            "coverage_content_type": "image",
             "units": "1",
             "long_name": (
                 "Bootstrap sea ice concntration;"
@@ -309,13 +320,16 @@ def finalize_cdecdr_ds(
         ds["raw_nt_seaice_conc"].data,
         {
             "standard_name": "sea_ice_area_fraction",
+            "coverage_content_type": "image",
             "units": "1",
             "long_name": (
                 "NASA Team sea ice concntration;"
                 " raw field with no masking or filtering"
             ),
             "grid_mapping": "crs",
-            "valid_range": np.array((0, 100), dtype=np.uint8),
+            # We set a `valid_min` of 0 because we allow nasateam raw
+            # concentrations >100%. We do not set an upper limit.
+            "valid_min": 0,
         },
     )
 
@@ -324,13 +338,10 @@ def finalize_cdecdr_ds(
         time=ds.time,
         temporality="daily",
         aggregate=False,
-        # TODO: support alternative source datasets. Will be AU_SI12 for AMSR2,
-        # AE_SI12 for AMSR-E, and NSIDC-0001 for SSMIS, SSM/I, and SMMR
-        source="Generated from AU_SI12",
-        # TODO: set sat from source
-        sats=["am2"],
+        source=f"Generated from {ds_in.data_source}",
+        sats=[ds_in.platform],
     )
-    ds.attrs.update(new_global_attrs)
+    ds.attrs = new_global_attrs
 
     # Coordinate values should not have _FillValue set
     ds.time.encoding["_FillValue"] = None

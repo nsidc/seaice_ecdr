@@ -12,6 +12,7 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import get_ancillary_ds
+from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.nc_attrs import get_global_attrs
@@ -81,7 +82,7 @@ def _update_ncrcat_monthly_ds(
         resolution=resolution,
     )
     agg_ds["latitude"] = surf_geo_ds.latitude
-    agg_ds["longitude"] = surf_geo_ds.latitude
+    agg_ds["longitude"] = surf_geo_ds.longitude
 
     # setup global attrs
     # Set global attributes
@@ -188,6 +189,13 @@ def cli(
         )
 
     logger.info(f"Wrote monthly aggregate file to {output_filepath}")
+
+    # Write checksum file for the aggregate monthly output.
+    write_checksum_file(
+        input_filepath=output_filepath,
+        ecdr_data_dir=ecdr_data_dir,
+        product_type="aggregate",
+    )
 
     # Cleanup previously existing monthly aggregates.
     existing_fn_pattern = f"sic_ps{hemisphere[0]}{resolution}_??????-??????_*.nc"

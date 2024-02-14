@@ -4,7 +4,7 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 
-GRID_ID = Literal["psn12.5", "pss12.5"]
+GRID_ID = Literal["psn12.5", "pss12.5", "psn25", "pss25"]
 
 
 def get_grid_id(

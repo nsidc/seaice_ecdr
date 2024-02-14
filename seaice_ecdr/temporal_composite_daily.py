@@ -16,18 +16,20 @@ import pandas as pd
 import xarray as xr
 from loguru import logger
 from pm_icecon.fill_polehole import fill_pole_hole
-from pm_icecon.util import date_range
 from pm_tb_data._types import NORTH, Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import get_land_mask, nh_polehole_mask
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr.ancillary import get_non_ocean_mask, nh_polehole_mask
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
     get_idecdr_filepath,
     make_idecdr_netcdf,
 )
-from seaice_ecdr.util import standard_daily_filename
+from seaice_ecdr.platforms import (
+    get_platform_by_date,
+)
+from seaice_ecdr.util import date_range, standard_daily_filename
 
 # Set the default minimum log notification to "info"
 try:
@@ -133,10 +135,14 @@ def get_tie_filepath(
     ecdr_data_dir: Path,
 ) -> Path:
     """Return the complete daily tie file path."""
+
+    platform = get_platform_by_date(date)
+    sat = cast(SUPPORTED_SAT, platform)
+
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        sat="am2",
+        sat=sat,
         resolution=resolution,
     )
     # Add `tiecdr` to the beginning of the standard name to distinguish it as a
@@ -167,6 +173,13 @@ def iter_dates_near_date(
     near-real-time use, because data from "the future" are not available.
     """
     earliest_date = target_date - dt.timedelta(days=day_range)
+    # TODO: Determine this minimum date from available sats
+    if earliest_date < dt.date(1978, 10, 25):
+        logger.warning(
+            f"Resetting temporal interpolation earliest date from {earliest_date} to {dt.date(1978, 10, 25)}"
+        )
+        earliest_date = dt.date(1978, 10, 25)
+
     if skip_future:
         latest_date = target_date
     else:
@@ -194,7 +207,7 @@ def temporally_composite_dataarray(
     interp_range: int = 5,
     one_sided_limit: int = 3,
     still_missing_flag: int = 255,
-    land_mask: xr.DataArray,
+    non_ocean_mask: xr.DataArray,
 ) -> tuple[xr.DataArray, npt.NDArray]:
     """Temporally composite a DataArray referenced to given reference date
     up to interp_range days.
@@ -319,7 +332,7 @@ def temporally_composite_dataarray(
     temporal_flags[have_only_next] = ndist[have_only_next]
 
     # Ensure flag values do not occur over land
-    temporal_flags[land_mask.data] = 0
+    temporal_flags[non_ocean_mask.data] = 0
 
     temp_comp_da.data[0, :, :] = temp_comp_2d[:, :]
 
@@ -336,25 +349,34 @@ def read_or_create_and_read_idecdr_ds(
     overwrite_ide: bool = False,
 ) -> xr.Dataset:
     """Read an idecdr netCDF file, creating it if it doesn't exist."""
+    platform = get_platform_by_date(
+        date,
+    )
+
     ide_filepath = get_idecdr_filepath(
         date=date,
+        platform=platform,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
     if overwrite_ide or not ide_filepath.is_file():
         excluded_idecdr_fields = [
-            "h18_day",
-            "v18_day",
-            "v23_day",
-            "h36_day",
-            "v36_day",
-            # "h18_day_si",  # include this field for melt onset calculation
-            "v18_day_si",
-            "v23_day_si",
-            # "h36_day_si",  # include this field for melt onset calculation
-            "v36_day_si",
-            "NT_icecon_min",
+            "h19_day",
+            "v19_day",
+            "v22_day",
+            "h37_day",
+            "v37_day",
+            # "h19_day_si",  # include this field for melt onset calculation
+            "v19_day_si",
+            "v22_day_si",
+            # "h37_day_si",  # include this field for melt onset calculation
+            "v37_day_si",
+            "non_ocean_mask",
+            "invalid_ice_mask",
+            "pole_mask",
+            "bt_weather_mask",
+            "nt_weather_mask",
         ]
         make_idecdr_netcdf(
             date=date,
@@ -504,7 +526,7 @@ def filter_field_via_bitmask(
     return output_da
 
 
-def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
+def temporally_interpolated_ecdr_dataset(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
@@ -550,7 +572,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         },
     )
 
-    land_mask = get_land_mask(
+    non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
     )
@@ -558,7 +580,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         target_date=date,
         da=var_stack,
         interp_range=interp_range,
-        land_mask=land_mask,
+        non_ocean_mask=non_ocean_mask,
     )
 
     tie_ds["cdr_conc_ti"] = ti_var
@@ -607,7 +629,10 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     #       grid is having its pole hole filled!
     if fill_the_pole_hole and hemisphere == NORTH:
         cdr_conc_pre_polefill = cdr_conc.copy()
-        near_pole_hole_mask = nh_polehole_mask(date=date, resolution=resolution)
+        platform = get_platform_by_date(date)
+        near_pole_hole_mask = nh_polehole_mask(
+            date=date, resolution=resolution, sat=platform
+        )
         cdr_conc_pole_filled = fill_pole_hole(
             conc=cdr_conc,
             near_pole_hole_mask=near_pole_hole_mask.data,
@@ -628,11 +653,11 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         #      bitmask_flags and bitmask_flag_meanings fields of the
         #      DataArray variable.
         TB_SPATINT_BITMASK_MAP = {
-            "v18": 1,
-            "h18": 2,
-            "v23": 4,
-            "v36": 8,
-            "h36": 16,
+            "v19": 1,
+            "h19": 2,
+            "v22": 4,
+            "v37": 8,
+            "h37": 16,
             "pole_filled": 32,
         }
         tie_ds["spatial_interpolation_flag"] = tie_ds[
@@ -668,7 +693,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         },
     )
 
-    land_mask = get_land_mask(
+    non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
     )
@@ -676,7 +701,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         target_date=date,
         da=bt_var_stack,
         interp_range=interp_range,
-        land_mask=land_mask,
+        non_ocean_mask=non_ocean_mask,
     )
 
     # Create filled bootstrap field
@@ -700,7 +725,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
         target_date=date,
         da=nt_var_stack,
         interp_range=interp_range,
-        land_mask=land_mask,
+        non_ocean_mask=non_ocean_mask,
     )
 
     # Note: this pole-filling code is copy-pasted from the cdr_conc
@@ -711,7 +736,10 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
 
         # Fill pole hole of BT
         bt_conc_pre_polefill = bt_conc_2d.copy()
-        near_pole_hole_mask = nh_polehole_mask(date=date, resolution=resolution)
+        platform = get_platform_by_date(date)
+        near_pole_hole_mask = nh_polehole_mask(
+            date=date, resolution=resolution, sat=platform
+        )
         bt_conc_pole_filled = fill_pole_hole(
             conc=bt_conc_2d,
             near_pole_hole_mask=near_pole_hole_mask.data,
@@ -774,7 +802,7 @@ def temporally_interpolated_ecdr_dataset_for_au_si_tbs(
     filter_flags_to_apply = [
         "BT_weather_filter_applied",
         "NT_weather_filter_applied",
-        "valid_ice_mask_applied",
+        "invalid_ice_mask_applied",
     ]
 
     stdev_field_filtered = filter_field_via_bitmask(
@@ -821,7 +849,7 @@ def write_tie_netcdf(
     output_filepath: Path,
     uncompressed_fields: Iterable[str] = ["crs", "time", "y", "x"],
     excluded_fields: Iterable[str] = [],
-    tb_fields: Iterable[str] = ("h18_day_si", "h36_day_si"),
+    tb_fields: Iterable[str] = ("h19_day_si", "h37_day_si"),
     conc_fields: Iterable[str] = (
         "conc",
         "cdr_conc_ti",
@@ -879,7 +907,7 @@ def make_tiecdr_netcdf(
     fill_the_pole_hole: bool = True,
 ) -> None:
     logger.info(f"Creating tiecdr for {date=}, {hemisphere=}, {resolution=}")
-    tie_ds = temporally_interpolated_ecdr_dataset_for_au_si_tbs(
+    tie_ds = temporally_interpolated_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
@@ -901,6 +929,45 @@ def make_tiecdr_netcdf(
     logger.info(f"Wrote temporally interpolated daily ncfile: {written_tie_ncfile}")
 
 
+def create_tiecdr_for_date(
+    date: dt.date,
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
+) -> None:
+    try:
+        make_tiecdr_netcdf(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+
+    # TODO: either catch and re-throw this exception or throw an error after
+    # attempting to make the netcdf for each date. The exit code should be
+    # non-zero in such a case.
+    except Exception:
+        logger.error(
+            "Failed to create NetCDF for " f"{hemisphere=}, {date=}, {resolution=}."
+        )
+        # TODO: These error logs should be written to e.g.,
+        # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
+        # to handle automatically logging error details to such a file.
+        # TODO: Perhaps this function should come from seaice_ecdr
+        err_filepath = get_tie_filepath(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+        err_filename = err_filepath.name + ".error"
+        logger.info(f"Writing error info to {err_filename}")
+        with open(err_filepath.parent / err_filename, "w") as f:
+            traceback.print_exc(file=f)
+            traceback.print_exc(file=sys.stdout)
+
+
 def create_tiecdr_for_date_range(
     *,
     hemisphere: Hemisphere,
@@ -911,36 +978,12 @@ def create_tiecdr_for_date_range(
 ) -> None:
     """Generate the temporally composited daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
-        try:
-            make_tiecdr_netcdf(
-                date=date,
-                hemisphere=hemisphere,
-                resolution=resolution,
-                ecdr_data_dir=ecdr_data_dir,
-            )
-
-        # TODO: either catch and re-throw this exception or throw an error after
-        # attempting to make the netcdf for each date. The exit code should be
-        # non-zero in such a case.
-        except Exception:
-            logger.error(
-                "Failed to create NetCDF for " f"{hemisphere=}, {date=}, {resolution=}."
-            )
-            # TODO: These error logs should be written to e.g.,
-            # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
-            # to handle automatically logging error details to such a file.
-            # TODO: Perhaps this function should come from seaice_ecdr
-            err_filepath = get_tie_filepath(
-                date=date,
-                hemisphere=hemisphere,
-                resolution=resolution,
-                ecdr_data_dir=ecdr_data_dir,
-            )
-            err_filename = err_filepath.name + ".error"
-            logger.info(f"Writing error info to {err_filename}")
-            with open(err_filepath.parent / err_filename, "w") as f:
-                traceback.print_exc(file=f)
-                traceback.print_exc(file=sys.stdout)
+        create_tiecdr_for_date(
+            hemisphere=hemisphere,
+            date=date,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+        )
 
 
 @click.command(name="tiecdr")

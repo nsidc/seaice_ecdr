@@ -13,14 +13,14 @@ import click
 import numpy as np
 import xarray as xr
 from loguru import logger
-from pm_icecon.util import date_range
 from pm_tb_data._types import NORTH, SOUTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
-    get_land_mask,
+    get_non_ocean_mask,
     get_surfacetype_da,
 )
+from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.melt import (
@@ -29,9 +29,12 @@ from seaice_ecdr.melt import (
     MELT_SEASON_LAST_DOY,
     melting,
 )
+from seaice_ecdr.platforms import (
+    get_platform_by_date,
+)
 from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
-from seaice_ecdr.util import standard_daily_filename
+from seaice_ecdr.util import date_range, standard_daily_filename
 
 
 @cache
@@ -50,11 +53,11 @@ def get_ecdr_filepath(
     ecdr_data_dir: Path,
 ) -> Path:
     """Return the complete daily eCDR file path."""
+    platform = get_platform_by_date(date)
     ecdr_filename = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        # TODO: extract this to kwarg!!!
-        sat="am2",
+        sat=platform,
         resolution=resolution,
     )
     ecdr_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir)
@@ -70,6 +73,7 @@ def read_or_create_and_read_tiecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    overwrite_tie: bool = False,
 ) -> xr.Dataset:
     """Read an tiecdr netCDF file, creating it if it doesn't exist."""
     tie_filepath = get_tie_filepath(
@@ -78,8 +82,7 @@ def read_or_create_and_read_tiecdr_ds(
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
-    # TODO: This only creates if file is missing.  We may want an overwrite opt
-    if not tie_filepath.is_file():
+    if overwrite_tie or not tie_filepath.is_file():
         make_tiecdr_netcdf(
             date=date,
             hemisphere=hemisphere,
@@ -150,8 +153,8 @@ def read_melt_elements(
     )
     return (
         np.squeeze(tie_ds["cdr_conc"].to_numpy()),
-        tie_ds["h18_day_si"].to_numpy(),
-        tie_ds["h36_day_si"].to_numpy(),
+        tie_ds["h19_day_si"].to_numpy(),
+        tie_ds["h37_day_si"].to_numpy(),
     )
 
 
@@ -202,22 +205,6 @@ def create_melt_onset_field(
             dtype=np.uint8,
         )
         logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
-    # TODO: Currently, only AMSR2 is used for this product.  The first data
-    #       for AMSR2 are on July 2, 2012.  The melt_onset_field requires
-    #       the previous day's melt onset field during the melt season.
-    #       This 'elif' condition captures the case where a prior day's
-    #       melt onset field is required to create the daily file for AMSR2
-    #       but no such onset field is available because pre-AMSR2
-    #       observations are not yet available.
-    elif (date.year == 2012) and (date <= dt.date(2012, 7, 2)):
-        # These are melt season days in first year of AMSR2 data
-        prior_melt_onset_field = filled_ndarray(
-            hemisphere=hemisphere,
-            resolution=resolution,
-            fill_value=no_melt_flag,
-            dtype=np.uint8,
-        )
-        logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
     else:
         prior_melt_onset_field = read_melt_onset_field(
             date=date - dt.timedelta(days=1),
@@ -239,11 +226,11 @@ def create_melt_onset_field(
         tb_h37=tb_h37,
     )
     # Apply land mask
-    land_mask = get_land_mask(
+    non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    is_melted_today[0, land_mask.data] = False
+    is_melted_today[0, non_ocean_mask.data] = False
 
     have_prior_melt_values = prior_melt_onset_field != no_melt_flag
     is_missing_prior = prior_melt_onset_field == no_melt_flag
@@ -260,7 +247,7 @@ def create_melt_onset_field(
     return melt_onset_field
 
 
-def complete_daily_ecdr_dataset_for_au_si_tbs(
+def complete_daily_ecdr_dataset(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
@@ -297,10 +284,12 @@ def complete_daily_ecdr_dataset_for_au_si_tbs(
     #       The methodology here should be reviewed to see if there is
     #       a "better" way to add a geo-referenced dataarray to an existing
     #       xr Dataset.
+    platform = get_platform_by_date(date)
     surfacetype_da = get_surfacetype_da(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
+        platform=platform,
     )
     # Force use of the cde_ds coords instead of the x, y, time vars
     # from the ancillary file (which *should* be compatible...but we
@@ -359,6 +348,7 @@ def write_cde_netcdf(
     *,
     cde_ds: xr.Dataset,
     output_filepath: Path,
+    ecdr_data_dir: Path,
     uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
     excluded_fields: Iterable[str] = [],
     conc_fields: Iterable[str] = [
@@ -367,7 +357,10 @@ def write_cde_netcdf(
         "cdr_seaice_conc",
     ],
 ) -> Path:
-    """Write the temporally interpolated ECDR to a netCDF file."""
+    """Write the complete, temporally interpolated ECDR to a netCDF file.
+
+    This function also creates a checksum file for the complete daily netcdf.
+    """
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
     for excluded_field in excluded_fields:
         if excluded_field in cde_ds.variables.keys():
@@ -395,6 +388,13 @@ def write_cde_netcdf(
         ],
     )
 
+    # Write checksum file for the complete daily output.
+    write_checksum_file(
+        input_filepath=output_filepath,
+        ecdr_data_dir=ecdr_data_dir,
+        product_type="complete_daily",
+    )
+
     return output_filepath
 
 
@@ -404,31 +404,34 @@ def make_cdecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    overwrite_cde: bool = False,
 ) -> Path:
-    logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
-    cde_ds = complete_daily_ecdr_dataset_for_au_si_tbs(
+    cde_filepath = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
 
-    cde_ds = finalize_cdecdr_ds(cde_ds)
+    if overwrite_cde or not cde_filepath.is_file():
+        logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
+        cde_ds = complete_daily_ecdr_dataset(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+        )
 
-    output_path = get_ecdr_filepath(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-    )
+        cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere)
 
-    written_cde_ncfile = write_cde_netcdf(
-        cde_ds=cde_ds,
-        output_filepath=output_path,
-    )
-    logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
+        written_cde_ncfile = write_cde_netcdf(
+            cde_ds=cde_ds,
+            output_filepath=cde_filepath,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+        logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
 
-    return output_path
+    return cde_filepath
 
 
 def read_or_create_and_read_cdecdr_ds(
@@ -457,11 +460,53 @@ def read_or_create_and_read_cdecdr_ds(
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
+            overwrite_cde=overwrite_cde,
         )
     logger.info(f"Reading cdeCDR file from: {cde_filepath}")
     cde_ds = xr.load_dataset(cde_filepath)
 
     return cde_ds
+
+
+def create_cdecdr_for_date(
+    date: dt.date,
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
+    overwrite_cde: bool = False,
+) -> None:
+    try:
+        make_cdecdr_netcdf(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+            overwrite_cde=overwrite_cde,
+        )
+
+    # TODO: either catch and re-throw this exception or throw an error after
+    # attempting to make the netcdf for each date. The exit code should be
+    # non-zero in such a case.
+    except Exception:
+        logger.error(
+            "Failed to create complete daily NetCDF for"
+            f" {hemisphere=}, {date=}, {resolution=}."
+        )
+        # TODO: These error logs should be written to e.g.,
+        # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
+        # to handle automatically logging error details to such a file.
+        err_filepath = get_ecdr_filepath(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+        err_filename = err_filepath.name + ".error"
+        logger.info(f"Writing error info to {err_filename}")
+        with open(err_filepath.parent / err_filename, "w") as f:
+            traceback.print_exc(file=f)
+            traceback.print_exc(file=sys.stdout)
 
 
 def create_cdecdr_for_date_range(
@@ -471,40 +516,17 @@ def create_cdecdr_for_date_range(
     end_date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    overwrite_cde: bool = False,
 ) -> None:
     """Generate the complete daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
-        try:
-            make_cdecdr_netcdf(
-                date=date,
-                hemisphere=hemisphere,
-                resolution=resolution,
-                ecdr_data_dir=ecdr_data_dir,
-            )
-
-        # TODO: either catch and re-throw this exception or throw an error after
-        # attempting to make the netcdf for each date. The exit code should be
-        # non-zero in such a case.
-        except Exception:
-            logger.error(
-                "Failed to create complete daily NetCDF for"
-                f" {hemisphere=}, {date=}, {resolution=}."
-            )
-            # TODO: These error logs should be written to e.g.,
-            # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
-            # to handle automatically logging error details to such a file.
-            # TODO: Perhaps this function should come from seaice_ecdr
-            err_filepath = get_ecdr_filepath(
-                date=date,
-                hemisphere=hemisphere,
-                resolution=resolution,
-                ecdr_data_dir=ecdr_data_dir,
-            )
-            err_filename = err_filepath.name + ".error"
-            logger.info(f"Writing error info to {err_filename}")
-            with open(err_filepath.parent / err_filename, "w") as f:
-                traceback.print_exc(file=f)
-                traceback.print_exc(file=sys.stdout)
+        create_cdecdr_for_date(
+            hemisphere=hemisphere,
+            date=date,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+            overwrite_cde=overwrite_cde,
+        )
 
 
 @click.command(name="cdecdr")
@@ -584,7 +606,6 @@ def cli(
     projection, resolution, and bounds), and TBtype (TB type includes source and
     methodology for getting those TBs onto the grid)
     """
-
     if end_date is None:
         end_date = copy.copy(date)
 

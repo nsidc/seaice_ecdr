@@ -17,6 +17,8 @@ dependencies:
   - scipy ~=1.8.1
   # Required for aggregating NC files (provides the `ncrcat` CLI)
   - nco ~=5.1.9
+  - pandas ~=1.4.4
+  - opencv ~=4.8.0
 
   #############################
   # Non-imported dependencies #

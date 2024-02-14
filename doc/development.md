@@ -91,3 +91,17 @@ sources.
 To create the surface/geo mask netcdf files (containing e.g., `surface_type` and
 `polehole_bitmask` variables), see
 [scripts/surface_geo_masks/README.md](scripts/surface_geo_masks/README.md)
+
+
+## Making a data release
+
+When making a new release of G02202 based on this code:
+
+* Ensure the `seaice_ecdr.constants.ECDR_PRODUCT_VERSION` has been updated.
+* Ensure the ATBD and other supporting documentation have been updated for the
+  new release, if necessary.
+* Package the code and ancillary data using the
+  `scripts/make_archive_for_noaa.py` python-based CLI. This generates a `.zip`
+  archive containing the `seaice_ecdr`, `pm_icecon`, and `pm_tb_data`
+  repositories and ancillary data. This `.zip` package should then be sent to
+  NOAA for archival.

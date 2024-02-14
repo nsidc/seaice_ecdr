@@ -3,7 +3,9 @@ from typing import Final
 
 from pm_tb_data._types import NORTH, SOUTH
 
+from seaice_ecdr.multiprocess_daily import get_dates_by_year
 from seaice_ecdr.util import (
+    date_range,
     sat_from_filename,
     standard_daily_aggregate_filename,
     standard_daily_filename,
@@ -112,3 +114,47 @@ def test_monthly_sat_from_filename():
     actual_sat = sat_from_filename(fn)
 
     assert expected_sat == actual_sat
+
+
+def test_date_range():
+    start_date = dt.date(2021, 1, 2)
+    end_date = dt.date(2021, 1, 5)
+    expected = [
+        start_date,
+        dt.date(2021, 1, 3),
+        dt.date(2021, 1, 4),
+        end_date,
+    ]
+    actual = list(date_range(start_date=start_date, end_date=end_date))
+
+    assert expected == actual
+
+
+def test_get_dates_by_year():
+    actual = get_dates_by_year(
+        [
+            dt.date(2021, 1, 3),
+            dt.date(2021, 1, 2),
+            dt.date(2022, 1, 1),
+            dt.date(1997, 3, 2),
+            dt.date(1997, 4, 15),
+            dt.date(2022, 1, 2),
+        ]
+    )
+
+    expected = [
+        [
+            dt.date(1997, 3, 2),
+            dt.date(1997, 4, 15),
+        ],
+        [
+            dt.date(2021, 1, 2),
+            dt.date(2021, 1, 3),
+        ],
+        [
+            dt.date(2022, 1, 1),
+            dt.date(2022, 1, 2),
+        ],
+    ]
+
+    assert actual == expected

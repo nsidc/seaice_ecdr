@@ -37,6 +37,7 @@ from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.ancillary import flag_value_for_meaning
+from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
@@ -177,7 +178,7 @@ QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS = OrderedDict(
     nt_weather_filter_applied=2,
     land_spillover_applied=4,
     no_input_data=8,
-    valid_ice_mask_applied=16,
+    invalid_ice_mask_applied=16,
     spatial_interpolation_applied=32,
     temporal_interpolation_applied=64,
     # This flag value only occurs in the Arctic.
@@ -191,7 +192,7 @@ QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS = OrderedDict(
         "average_concentration_exceeds_0.30": 2,
         "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15": 4,
         "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30": 8,
-        "region_masked_by_ocean_climatology": 16,
+        "invalid_ice_mask_applied": 16,
         "at_least_one_day_during_month_has_spatial_interpolation": 32,
         "at_least_one_day_during_month_has_temporal_interpolation": 64,
         "at_least_one_day_during_month_has_melt_detected": 128,
@@ -262,15 +263,15 @@ def calc_qa_of_cdr_seaice_conc_monthly(
         ],
     )
 
-    # Use "valid_ice_mask_applied", which is actually the invalid ice mask.
-    region_masked_by_ocean_climatology = _qa_field_has_flag(
+    # Use "invalid_ice_mask_applied", which is actually the invalid ice mask.
+    invalid_ice_mask_applied = _qa_field_has_flag(
         qa_field=daily_ds_for_month.qa_of_cdr_seaice_conc,
-        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["valid_ice_mask_applied"],
+        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["invalid_ice_mask_applied"],
     ).any(dim="time")
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
-        ~region_masked_by_ocean_climatology,
+        ~invalid_ice_mask_applied,
         qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["region_masked_by_ocean_climatology"],
+        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["invalid_ice_mask_applied"],
     )
 
     at_least_one_day_during_month_has_spatial_interpolation = _qa_field_has_flag(
@@ -315,7 +316,7 @@ def calc_qa_of_cdr_seaice_conc_monthly(
 
     qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.assign_attrs(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QC flags",
-        standard_name="sea_ice_area_fraction status_flag",
+        standard_name="status_flag",
         flag_meanings=" ".join(
             k for k in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.keys()
         ),
@@ -346,6 +347,7 @@ def _calc_conc_monthly(
     conc_monthly = conc_monthly.assign_attrs(
         long_name=long_name,
         standard_name="sea_ice_area_fraction",
+        coverage_content_type="image",
         units="1",
         valid_range=(np.uint8(0), np.uint8(100)),
         grid_mapping="crs",
@@ -373,6 +375,10 @@ def calc_cdr_seaice_conc_monthly(
         name="cdr_seaice_conc_monthly",
     )
 
+    cdr_seaice_conc_monthly.attrs[
+        "reference"
+    ] = "https://nsidc.org/data/g02202/versions/5"
+
     return cdr_seaice_conc_monthly
 
 
@@ -391,6 +397,7 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
         valid_range=(np.float32(0.0), np.float32(1.0)),
         grid_mapping="crs",
+        units="1",
     )
 
     stdv_of_cdr_seaice_conc_monthly.encoding = dict(
@@ -422,12 +429,12 @@ def calc_melt_onset_day_cdr_seaice_conc_monthly(
         melt_onset_day_cdr_seaice_conc_monthly.assign_attrs(
             long_name="Monthly Day of Snow Melt Onset Over Sea Ice",
             units="1",
-            valid_range=(np.ubyte(60), np.ubyte(244)),
+            valid_range=(np.ubyte(60), np.ubyte(255)),
             grid_mapping="crs",
         )
     )
     melt_onset_day_cdr_seaice_conc_monthly.encoding = dict(
-        _FillValue=255,
+        _FillValue=None,
         dtype=np.uint8,
         zlib=True,
     )
@@ -647,6 +654,11 @@ def make_monthly_nc(
         ecdr_data_dir=ecdr_data_dir,
     )
 
+    # Set `x` and `y` `_FillValue` to `None`. Although unset initially, `xarray`
+    # seems to default to `np.nan` for variables without a FillValue.
+    monthly_ds.x.encoding["_FillValue"] = None
+    monthly_ds.y.encoding["_FillValue"] = None
+
     monthly_ds.to_netcdf(
         output_path,
         unlimited_dims=[
@@ -654,6 +666,13 @@ def make_monthly_nc(
         ],
     )
     logger.info(f"Wrote monthly file for {year=} and {month=} to {output_path}")
+
+    # Write checksum file for the monthly output.
+    write_checksum_file(
+        input_filepath=output_path,
+        ecdr_data_dir=ecdr_data_dir,
+        product_type="monthly",
+    )
 
     return output_path
 
