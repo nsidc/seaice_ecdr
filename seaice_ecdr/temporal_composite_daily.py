@@ -490,14 +490,20 @@ def temporal_interpolation(
     *,
     date: dt.date,
     fill_the_pole_hole: bool,
-    ide_ds: xr.Dataset,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     data_stack: xr.Dataset,
     interp_range: int = 5,
 ) -> xr.Dataset:
-    # Copy ide_ds to a new xr tiecdr dataset
-    tie_ds = ide_ds.copy(deep=True)
+    # Initialize a new xr "temporally interpolated CDR" (tiecdr) dataset. The
+    # target date is used to initialize this dataset. We retain the `time`
+    # dimension by specifying `drop=False` and using list notation when using
+    # `sel`.
+    tie_ds = data_stack.sel(
+        time=[dt.datetime(date.year, date.month, date.day)], drop=False
+    ).copy(deep=True)
+    # The `crs` variable doesn't need a time dim, so drop here.
+    tie_ds["crs"] = tie_ds.crs.isel(time=0).drop_vars("time")
 
     # Update the cdr_conc var with temporally interpolated cdr_conc field
     #   by creating a DataArray with conc fields +/- interp_range around date
@@ -750,14 +756,6 @@ def temporally_interpolated_ecdr_dataset(
       - a numpy array with the temporal interpolation flags that are
         determined during the temporal interpolation process
     """
-    # Read in the idecdr file for this date
-    ide_ds = read_or_create_and_read_idecdr_ds(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-    )
-
     init_datasets = []
     for iter_date in iter_dates_near_date(target_date=date, day_range=interp_range):
         init_dataset = read_or_create_and_read_idecdr_ds(
@@ -768,15 +766,14 @@ def temporally_interpolated_ecdr_dataset(
         )
         init_datasets.append(init_dataset)
 
-    data_stack = xr.merge(init_datasets).sortby("time")
+    data_stack = xr.concat(init_datasets, dim="time").sortby("time")
 
     tie_ds = temporal_interpolation(
-        ide_ds=ide_ds,
-        data_stack=data_stack,
-        date=date,
-        fill_the_pole_hole=fill_the_pole_hole,
         hemisphere=hemisphere,
         resolution=resolution,
+        date=date,
+        data_stack=data_stack,
+        fill_the_pole_hole=fill_the_pole_hole,
     )
 
     return tie_ds
