@@ -489,10 +489,10 @@ def filter_field_via_bitmask(
 def temporal_interpolation(
     *,
     date: dt.date,
-    fill_the_pole_hole: bool,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     data_stack: xr.Dataset,
+    fill_the_pole_hole: bool = True,
     interp_range: int = 5,
 ) -> xr.Dataset:
     # Initialize a new xr "temporally interpolated CDR" (tiecdr) dataset. The

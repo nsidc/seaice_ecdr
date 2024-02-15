@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Final, get_args
 
 import click
+import xarray as xr
 from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.amsr.lance_amsr2 import (
     access_local_lance_data,
@@ -36,22 +37,28 @@ from seaice_ecdr.platforms import (
     get_platform_by_date,
 )
 from seaice_ecdr.tb_data import EcdrTbData, map_tbs_to_ecdr_channels
+from seaice_ecdr.temporal_composite_daily import (
+    get_tie_filepath,
+    temporal_interpolation,
+    write_tie_netcdf,
+)
+from seaice_ecdr.util import date_range
+
+LANCE_RESOLUTION: Final = "12.5"
 
 
 def compute_nrt_initial_daily_ecdr_dataset(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    lance_amsr2_input_dir: Path,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
     # TODO: handle missing data case.
     xr_tbs = access_local_lance_data(
         date=date,
         hemisphere=hemisphere,
-        data_dir=lance_amsr2_input_dir,
+        data_dir=LANCE_NRT_DATA_DIR,
     )
-    tb_resolution: Final = "12.5"
     data_source: Final = "LANCE AU_SI12"
     platform: Final = "am2"
 
@@ -66,14 +73,14 @@ def compute_nrt_initial_daily_ecdr_dataset(
         ),
         xr_tbs=xr_tbs,
         hemisphere=hemisphere,
-        resolution=tb_resolution,
+        resolution=LANCE_RESOLUTION,
         date=date,
         data_source=data_source,
     )
 
     tb_data = EcdrTbData(
         tbs=ecdr_tbs,
-        resolution=tb_resolution,
+        resolution=LANCE_RESOLUTION,
         data_source=data_source,
         platform=platform,
     )
@@ -85,6 +92,105 @@ def compute_nrt_initial_daily_ecdr_dataset(
     )
 
     return nrt_initial_ecdr_ds
+
+
+def read_or_create_and_read_nrt_idecdr_ds(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    ecdr_data_dir: Path,
+    overwrite: bool,
+):
+    platform = get_platform_by_date(date)
+    idecdr_filepath = get_idecdr_filepath(
+        hemisphere=hemisphere,
+        date=date,
+        platform=platform,
+        ecdr_data_dir=ecdr_data_dir,
+        resolution="12.5",
+    )
+    if idecdr_filepath.is_file() and not overwrite:
+        ide_ds = xr.load_dataset(idecdr_filepath)
+        return ide_ds
+
+    nrt_initial_ecdr_ds = compute_nrt_initial_daily_ecdr_dataset(
+        date=date,
+        hemisphere=hemisphere,
+    )
+
+    write_ide_netcdf(
+        ide_ds=nrt_initial_ecdr_ds,
+        output_filepath=idecdr_filepath,
+    )
+
+    return nrt_initial_ecdr_ds
+
+
+def temporally_interpolated_nrt_ecdr_dataset(
+    *,
+    hemisphere: Hemisphere,
+    date: dt.date,
+    ecdr_data_dir: Path,
+    overwrite: bool,
+    days_to_look_previously: int = 4,
+) -> xr.Dataset:
+    init_datasets = []
+    for date in date_range(
+        start_date=date - dt.timedelta(days=days_to_look_previously), end_date=date
+    ):
+        init_dataset = read_or_create_and_read_nrt_idecdr_ds(
+            date=date,
+            hemisphere=hemisphere,
+            overwrite=overwrite,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+        init_datasets.append(init_dataset)
+
+    data_stack = xr.concat(init_datasets, dim="time").sortby("time")
+
+    temporally_interpolated_ds = temporal_interpolation(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=LANCE_RESOLUTION,
+        data_stack=data_stack,
+    )
+
+    return temporally_interpolated_ds
+
+
+def read_or_create_and_read_nrt_tiecdr_ds(
+    *,
+    hemisphere: Hemisphere,
+    date: dt.date,
+    ecdr_data_dir: Path,
+    overwrite: bool,
+    days_to_look_previously: int = 4,
+) -> xr.Dataset:
+    tie_filepath = get_tie_filepath(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=LANCE_RESOLUTION,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+
+    if tie_filepath.is_file() and not overwrite:
+        tie_ds = xr.load_dataset(tie_filepath)
+        return tie_ds
+
+    nrt_temporally_interpolated = temporally_interpolated_nrt_ecdr_dataset(
+        hemisphere=hemisphere,
+        date=date,
+        ecdr_data_dir=ecdr_data_dir,
+        overwrite=overwrite,
+        days_to_look_previously=days_to_look_previously,
+    )
+
+    write_tie_netcdf(
+        tie_ds=nrt_temporally_interpolated,
+        output_filepath=tie_filepath,
+    )
+
+    return nrt_temporally_interpolated
 
 
 @click.command(name="download-latest-nrt-data")
@@ -122,7 +228,7 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     download_latest_lance_files(output_dir=output_dir, overwrite=overwrite)
 
 
-@click.command(name="nrt-initial-daily-ecdr")
+@click.command(name="nrt-ecdr-for-day")
 @click.option(
     "-d",
     "--date",
@@ -155,50 +261,19 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     ),
     show_default=True,
 )
-@click.option(
-    "--lance-amsr2-input-dir",
-    required=True,
-    type=click.Path(
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        writable=True,
-        resolve_path=True,
-        path_type=Path,
-    ),
-    show_default=True,
-    default=LANCE_NRT_DATA_DIR,
-    help="Directory in which LANCE AMSR2 NRT files are located.",
-)
-def nrt_initial_daily_ecdr(
+def nrt_ecdr_for_day(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
-    lance_amsr2_input_dir: Path,
 ):
-    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data.
-
-    TODO: Consider renaming this: nrt_initial_daily_ecdr_netcdf()
-    """
-    nrt_initial_ecdr_ds = compute_nrt_initial_daily_ecdr_dataset(
-        date=date,
-        hemisphere=hemisphere,
-        lance_amsr2_input_dir=lance_amsr2_input_dir,
-    )
-
-    platform = get_platform_by_date(date)
-    output_path = get_idecdr_filepath(
+    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
+    read_or_create_and_read_nrt_tiecdr_ds(
         hemisphere=hemisphere,
         date=date,
-        platform=platform,
         ecdr_data_dir=ecdr_data_dir,
-        resolution="12.5",
-    )
-
-    write_ide_netcdf(
-        ide_ds=nrt_initial_ecdr_ds,
-        output_filepath=output_path,
+        # TODO: CLI option.
+        overwrite=True,
     )
 
 
@@ -209,4 +284,4 @@ def nrt_cli():
 
 
 nrt_cli.add_command(download_latest_nrt_data)
-nrt_cli.add_command(nrt_initial_daily_ecdr)
+nrt_cli.add_command(nrt_ecdr_for_day)
