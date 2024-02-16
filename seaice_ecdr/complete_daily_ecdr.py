@@ -367,7 +367,7 @@ def create_melt_onset_field(
     return updated_melt_onset
 
 
-def standard_complete_daily_ecdr_dataset(
+def complete_daily_ecdr_ds(
     *,
     tie_ds: xr.Dataset,
     date: dt.date,
@@ -562,7 +562,7 @@ def make_standard_cdecdr_netcdf(
                 overwrite_cde=overwrite_cde,
             )
 
-        cde_ds = standard_complete_daily_ecdr_dataset(
+        cde_ds = complete_daily_ecdr_ds(
             tie_ds=tie_ds,
             date=date,
             hemisphere=hemisphere,

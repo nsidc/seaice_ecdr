@@ -20,6 +20,7 @@ from typing import Final, get_args
 
 import click
 import xarray as xr
+from loguru import logger
 from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.amsr.lance_amsr2 import (
     access_local_lance_data,
@@ -27,6 +28,11 @@ from pm_tb_data.fetch.amsr.lance_amsr2 import (
 )
 
 from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.complete_daily_ecdr import (
+    complete_daily_ecdr_ds,
+    get_ecdr_filepath,
+    write_cde_netcdf,
+)
 from seaice_ecdr.constants import LANCE_NRT_DATA_DIR, NRT_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
     compute_initial_daily_ecdr_dataset,
@@ -252,7 +258,7 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     ),
     default=NRT_BASE_OUTPUT_DIR,
     help=(
-        "Base output directory for standard ECDR outputs."
+        "Base output directory for NRT ECDR outputs."
         " Subdirectories are created for outputs of"
         " different stages of processing."
     ),
@@ -265,13 +271,35 @@ def nrt_ecdr_for_day(
     ecdr_data_dir: Path,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
-    read_or_create_and_read_nrt_tiecdr_ds(
+    cde_filepath = get_ecdr_filepath(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=LANCE_RESOLUTION,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+
+    tiecdr_ds = read_or_create_and_read_nrt_tiecdr_ds(
         hemisphere=hemisphere,
         date=date,
         ecdr_data_dir=ecdr_data_dir,
         # TODO: CLI option.
         overwrite=True,
     )
+
+    cde_ds = complete_daily_ecdr_ds(
+        tie_ds=tiecdr_ds,
+        date=date,
+        hemisphere=hemisphere,
+        resolution=LANCE_RESOLUTION,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+
+    written_cde_ncfile = write_cde_netcdf(
+        cde_ds=cde_ds,
+        output_filepath=cde_filepath,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+    logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
 
 
 @click.group(name="nrt")
