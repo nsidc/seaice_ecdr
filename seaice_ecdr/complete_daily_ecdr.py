@@ -275,6 +275,17 @@ def update_melt_onset_for_day(
     return melt_onset_field
 
 
+def date_in_melt_seasion(*, date: dt.date) -> bool:
+    day_of_year = int(date.strftime("%j"))
+    outside_of_melt_season = (day_of_year < MELT_SEASON_FIRST_DOY) or (
+        day_of_year > MELT_SEASON_LAST_DOY
+    )
+
+    inside_melt_season = not outside_of_melt_season
+
+    return inside_melt_season
+
+
 def create_melt_onset_field(
     *,
     date: dt.date,
@@ -301,15 +312,12 @@ def create_melt_onset_field(
         return None
 
     day_of_year = int(date.strftime("%j"))
-
     # Determine if the given day of year is within the melt season. If it's not,
     # return an empty melt onset field. The first day should also have an empty
     # melt onset field.
-    outside_of_melt_season = (day_of_year < MELT_SEASON_FIRST_DOY) or (
-        day_of_year > MELT_SEASON_LAST_DOY
-    )
+
     is_first_day_of_melt = day_of_year == MELT_SEASON_FIRST_DOY
-    if outside_of_melt_season:
+    if not date_in_melt_seasion(date=date):
         logger.info(f"returning empty melt_onset_field for {day_of_year}")
         return _empty_melt_onset_field(
             hemisphere=hemisphere,
@@ -545,13 +553,14 @@ def make_standard_cdecdr_netcdf(
         # generates the necessary intermediate files for the target date, and
         # then this code would be solely responsible for reading the previous
         # day's complete field.
-        make_standard_cdecdr_netcdf(
-            date=date - dt.timedelta(days=1),
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-            overwrite_cde=overwrite_cde,
-        )
+        if date_in_melt_seasion(date=date - dt.timedelta(days=1)):
+            make_standard_cdecdr_netcdf(
+                date=date - dt.timedelta(days=1),
+                hemisphere=hemisphere,
+                resolution=resolution,
+                ecdr_data_dir=ecdr_data_dir,
+                overwrite_cde=overwrite_cde,
+            )
 
         cde_ds = standard_complete_daily_ecdr_dataset(
             tie_ds=tie_ds,
