@@ -8,14 +8,14 @@ import click
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.complete_daily_ecdr import create_cdecdr_for_date
+from seaice_ecdr.complete_daily_ecdr import create_standard_cdecdr_for_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import create_idecdr_for_date
 from seaice_ecdr.temporal_composite_daily import create_tiecdr_for_date
 from seaice_ecdr.util import date_range, get_dates_by_year
 
 
-def create_cdecdr_for_dates(
+def create_standard_cdecdr_for_dates(
     dates: list[dt.date],
     *,
     hemisphere: Hemisphere,
@@ -24,7 +24,7 @@ def create_cdecdr_for_dates(
     overwrite_cde: bool = False,
 ):
     for date in dates:
-        create_cdecdr_for_date(
+        create_standard_cdecdr_for_date(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
@@ -127,7 +127,7 @@ def cli(
     )
 
     _complete_daily_wrapper = partial(
-        create_cdecdr_for_dates,
+        create_standard_cdecdr_for_dates,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,

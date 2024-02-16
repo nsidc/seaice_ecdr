@@ -599,7 +599,7 @@ def read_or_create_and_read_standard_cdecdr_ds(
     return cde_ds
 
 
-def create_cdecdr_for_date(
+def create_standard_cdecdr_for_date(
     date: dt.date,
     *,
     hemisphere: Hemisphere,
@@ -640,7 +640,7 @@ def create_cdecdr_for_date(
             traceback.print_exc(file=sys.stdout)
 
 
-def create_cdecdr_for_date_range(
+def create_standard_cdecdr_for_date_range(
     *,
     hemisphere: Hemisphere,
     start_date: dt.date,
@@ -651,7 +651,7 @@ def create_cdecdr_for_date_range(
 ) -> None:
     """Generate the complete daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
-        create_cdecdr_for_date(
+        create_standard_cdecdr_for_date(
             hemisphere=hemisphere,
             date=date,
             resolution=resolution,
@@ -740,7 +740,7 @@ def cli(
     if end_date is None:
         end_date = copy.copy(date)
 
-    create_cdecdr_for_date_range(
+    create_standard_cdecdr_for_date_range(
         hemisphere=hemisphere,
         start_date=date,
         end_date=end_date,
