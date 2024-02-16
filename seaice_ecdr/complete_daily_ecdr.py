@@ -13,7 +13,7 @@ import click
 import numpy as np
 import xarray as xr
 from loguru import logger
-from pm_tb_data._types import NORTH, SOUTH, Hemisphere
+from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
@@ -34,7 +34,7 @@ from seaice_ecdr.platforms import (
 )
 from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
-from seaice_ecdr.util import date_range, standard_daily_filename
+from seaice_ecdr.util import date_range, get_ecdr_grid_shape, standard_daily_filename
 
 
 @cache
@@ -114,25 +114,27 @@ def read_or_create_and_read_tiecdr_ds(
     return tie_ds
 
 
-def _filled_ndarray(
+def _empty_melt_onset_field(
     *,
-    hemisphere,
+    hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    fill_value,
-    dtype=np.uint8,
+    no_melt_flag: int,
 ) -> np.ndarray:
     """Return an array of the shape for this hem/res filled with fill_value."""
-    if hemisphere == NORTH and resolution == "12.5":
-        array_shape = (1, 896, 608)
-    elif hemisphere == SOUTH and resolution == "12.5":
-        array_shape = (1, 664, 632)
-    else:
-        raise RuntimeError(
-            f"Could not determine array shape for {hemisphere}" f" and {resolution}"
-        )
-    array = np.full(array_shape, fill_value, dtype=dtype)
+    # `grid_shape` is 2D.
+    grid_shape = get_ecdr_grid_shape(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    # Add a dim for `time`, making the melt onset field 3D.
+    melt_onset_field_shape = (1, *grid_shape)
+    empty_melt_onset_field = np.full(
+        melt_onset_field_shape,
+        no_melt_flag,
+        dtype=np.uint8,
+    )
 
-    return array
+    return empty_melt_onset_field
 
 
 def read_melt_onset_field_from_complete_daily(
@@ -259,19 +261,28 @@ def create_melt_onset_field(
         return None
 
     day_of_year = int(date.strftime("%j"))
+
+    # Determine if the given day of year is within the melt season. If it's not,
+    # return an empty melt onset field. The first day should also have an empty
+    # melt onset field.
     outside_of_melt_season = (day_of_year < first_melt_doy) or (
         day_of_year > last_melt_doy
     )
     is_first_day_of_melt = day_of_year == first_melt_doy
-    if is_first_day_of_melt or outside_of_melt_season:
-        melt_onset_field = _filled_ndarray(
+    if outside_of_melt_season:
+        logger.info(f"returning empty melt_onset_field for {day_of_year}")
+        return _empty_melt_onset_field(
             hemisphere=hemisphere,
             resolution=resolution,
-            fill_value=no_melt_flag,
-            dtype=np.uint8,
+            no_melt_flag=no_melt_flag,
         )
-        logger.info(f"returning empty melt_onset_field for {day_of_year}")
-        return melt_onset_field
+    elif is_first_day_of_melt:
+        prior_melt_onset_field = _empty_melt_onset_field(
+            hemisphere=hemisphere,
+            resolution=resolution,
+            no_melt_flag=no_melt_flag,
+        )
+        logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
     else:
         prior_melt_onset_field = read_or_create_and_read_melt_onset_field(
             date=date - dt.timedelta(days=1),
