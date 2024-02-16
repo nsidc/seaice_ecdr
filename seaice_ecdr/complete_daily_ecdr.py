@@ -356,7 +356,7 @@ def create_melt_onset_field(
     return updated_melt_onset
 
 
-def complete_daily_ecdr_dataset(
+def standard_complete_daily_ecdr_dataset(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
@@ -450,6 +450,8 @@ def complete_daily_ecdr_dataset(
         other=np.bitwise_or(cde_ds["qa_of_cdr_seaice_conc"], 128),
     )
 
+    cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere)
+
     return cde_ds
 
 
@@ -528,14 +530,12 @@ def make_standard_cdecdr_netcdf(
 
     if overwrite_cde or not cde_filepath.is_file():
         logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
-        cde_ds = complete_daily_ecdr_dataset(
+        cde_ds = standard_complete_daily_ecdr_dataset(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
         )
-
-        cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere)
 
         written_cde_ncfile = write_cde_netcdf(
             cde_ds=cde_ds,
