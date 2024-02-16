@@ -259,7 +259,11 @@ def create_melt_onset_field(
         return None
 
     day_of_year = int(date.strftime("%j"))
-    if (day_of_year < first_melt_doy) or (day_of_year > last_melt_doy):
+    outside_of_melt_season = (day_of_year < first_melt_doy) or (
+        day_of_year > last_melt_doy
+    )
+    is_first_day_of_melt = day_of_year == first_melt_doy
+    if is_first_day_of_melt or outside_of_melt_season:
         melt_onset_field = _filled_ndarray(
             hemisphere=hemisphere,
             resolution=resolution,
@@ -268,15 +272,6 @@ def create_melt_onset_field(
         )
         logger.info(f"returning empty melt_onset_field for {day_of_year}")
         return melt_onset_field
-    elif day_of_year == first_melt_doy:
-        # This is the first day with melt onset
-        prior_melt_onset_field = _filled_ndarray(
-            hemisphere=hemisphere,
-            resolution=resolution,
-            fill_value=no_melt_flag,
-            dtype=np.uint8,
-        )
-        logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
     else:
         prior_melt_onset_field = read_or_create_and_read_melt_onset_field(
             date=date - dt.timedelta(days=1),
