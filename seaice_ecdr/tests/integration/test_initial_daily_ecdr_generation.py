@@ -135,6 +135,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
         hemisphere=test_hemisphere,
         resolution=test_resolution,
         ecdr_data_dir=tmpdir_path,
+        excluded_fields=[],
     )
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,

@@ -122,9 +122,27 @@ def read_or_create_and_read_nrt_idecdr_ds(
             hemisphere=hemisphere,
         )
 
+        excluded_idecdr_fields = [
+            "h19_day",
+            "v19_day",
+            "v22_day",
+            "h37_day",
+            "v37_day",
+            # "h19_day_si",  # include this field for melt onset calculation
+            "v19_day_si",
+            "v22_day_si",
+            # "h37_day_si",  # include this field for melt onset calculation
+            "v37_day_si",
+            "non_ocean_mask",
+            "invalid_ice_mask",
+            "pole_mask",
+            "bt_weather_mask",
+            "nt_weather_mask",
+        ]
         write_ide_netcdf(
             ide_ds=nrt_initial_ecdr_ds,
             output_filepath=idecdr_filepath,
+            excluded_fields=excluded_idecdr_fields,
         )
 
     ide_ds = xr.load_dataset(idecdr_filepath)
