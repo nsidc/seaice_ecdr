@@ -67,6 +67,24 @@ def get_ecdr_filepath(
     return ecdr_filepath
 
 
+def read_tiecdr_ds(
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
+) -> xr.Dataset:
+    tie_filepath = get_tie_filepath(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+    logger.info(f"Reading tieCDR file from: {tie_filepath}")
+    tie_ds = xr.load_dataset(tie_filepath)
+
+    return tie_ds
+
+
 def read_or_create_and_read_tiecdr_ds(
     *,
     date: dt.date,
@@ -89,8 +107,13 @@ def read_or_create_and_read_tiecdr_ds(
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
         )
-    logger.info(f"Reading tieCDR file from: {tie_filepath}")
-    tie_ds = xr.load_dataset(tie_filepath)
+
+    tie_ds = read_tiecdr_ds(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+    )
 
     return tie_ds
 
@@ -434,6 +457,25 @@ def make_cdecdr_netcdf(
     return cde_filepath
 
 
+def read_cdecdr_ds(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
+) -> xr.Dataset:
+    cde_filepath = get_ecdr_filepath(
+        date,
+        hemisphere,
+        resolution,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+    logger.info(f"Reading cdeCDR file from: {cde_filepath}")
+    cde_ds = xr.load_dataset(cde_filepath)
+
+    return cde_ds
+
+
 def read_or_create_and_read_cdecdr_ds(
     *,
     date: dt.date,
@@ -462,8 +504,13 @@ def read_or_create_and_read_cdecdr_ds(
             ecdr_data_dir=ecdr_data_dir,
             overwrite_cde=overwrite_cde,
         )
-    logger.info(f"Reading cdeCDR file from: {cde_filepath}")
-    cde_ds = xr.load_dataset(cde_filepath)
+
+    cde_ds = read_cdecdr_ds(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+    )
 
     return cde_ds
 
