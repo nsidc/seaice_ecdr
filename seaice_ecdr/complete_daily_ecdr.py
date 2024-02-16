@@ -114,7 +114,7 @@ def read_or_create_and_read_tiecdr_ds(
     return tie_ds
 
 
-def filled_ndarray(
+def _filled_ndarray(
     *,
     hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
@@ -260,7 +260,7 @@ def create_melt_onset_field(
 
     day_of_year = int(date.strftime("%j"))
     if (day_of_year < first_melt_doy) or (day_of_year > last_melt_doy):
-        melt_onset_field = filled_ndarray(
+        melt_onset_field = _filled_ndarray(
             hemisphere=hemisphere,
             resolution=resolution,
             fill_value=no_melt_flag,
@@ -270,7 +270,7 @@ def create_melt_onset_field(
         return melt_onset_field
     elif day_of_year == first_melt_doy:
         # This is the first day with melt onset
-        prior_melt_onset_field = filled_ndarray(
+        prior_melt_onset_field = _filled_ndarray(
             hemisphere=hemisphere,
             resolution=resolution,
             fill_value=no_melt_flag,
