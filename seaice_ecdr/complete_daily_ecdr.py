@@ -518,6 +518,9 @@ def make_standard_cdecdr_netcdf(
     """Create a 'standard', complete (ready for prod) daily CDR NetCDF file.
 
     'standard' files are those that use the non-NRT input sources.
+
+    This function is recursive. It will attempt to create earlier complete daily
+    files if they do not exist.
     """
     cde_filepath = get_ecdr_filepath(
         date=date,
