@@ -358,6 +358,7 @@ def create_melt_onset_field(
 
 def standard_complete_daily_ecdr_dataset(
     *,
+    tie_ds: xr.Dataset,
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
@@ -370,12 +371,6 @@ def standard_complete_daily_ecdr_dataset(
       - The melt onset field
       - All appropriate QA and QC fields
     """
-    tie_ds = read_or_create_and_read_standard_tiecdr_ds(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-    )
     cde_ds = tie_ds.copy()
 
     melt_onset_field = create_melt_onset_field(
@@ -530,7 +525,15 @@ def make_standard_cdecdr_netcdf(
 
     if overwrite_cde or not cde_filepath.is_file():
         logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
+
+        tie_ds = read_or_create_and_read_standard_tiecdr_ds(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+        )
         cde_ds = standard_complete_daily_ecdr_dataset(
+            tie_ds=tie_ds,
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
