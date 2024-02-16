@@ -88,7 +88,7 @@ def read_tiecdr_ds(
 
 
 # TODO: this should be in the temporal interpolation module.
-def read_or_create_and_read_tiecdr_ds(
+def read_or_create_and_read_standard_tiecdr_ds(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
@@ -96,7 +96,10 @@ def read_or_create_and_read_tiecdr_ds(
     ecdr_data_dir: Path,
     overwrite_tie: bool = False,
 ) -> xr.Dataset:
-    """Read an tiecdr netCDF file, creating it if it doesn't exist."""
+    """Read an tiecdr netCDF file, creating it if it doesn't exist.
+
+    Uses standard input sources (non-NRT).
+    """
     make_tiecdr_netcdf(
         date=date,
         hemisphere=hemisphere,
@@ -157,7 +160,7 @@ def read_melt_onset_field_from_complete_daily(
     return melt_onset_from_ds
 
 
-def read_or_create_and_read_melt_onset_field(
+def read_or_create_and_read_standard_melt_onset_field(
     *,
     date,
     hemisphere,
@@ -165,7 +168,10 @@ def read_or_create_and_read_melt_onset_field(
     ecdr_data_dir: Path,
     overwrite: bool,
 ) -> npt.NDArray:
-    """Return the melt onset field for this complete daily eCDR file."""
+    """Return the melt onset field for this complete daily eCDR file.
+
+    Uses standard input sources (non-NRT).
+    """
     make_standard_cdecdr_netcdf(
         date=date,
         hemisphere=hemisphere,
@@ -205,7 +211,7 @@ def read_melt_elements_from_tiecdr(
     )
 
 
-def read_or_create_and_read_melt_elements(
+def read_or_create_and_read_standard_melt_elements(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
@@ -213,7 +219,10 @@ def read_or_create_and_read_melt_elements(
     ecdr_data_dir: Path,
     overwrite: bool,
 ):
-    """Return the elements from tiecdr needed to calculate melt."""
+    """Return the elements from tiecdr needed to calculate melt.
+
+    Uses standard input sources (non-NRT).
+    """
     make_tiecdr_netcdf(
         date=date,
         hemisphere=hemisphere,
@@ -313,7 +322,7 @@ def create_melt_onset_field(
         )
         logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
     else:
-        prior_melt_onset_field = read_or_create_and_read_melt_onset_field(
+        prior_melt_onset_field = read_or_create_and_read_standard_melt_onset_field(
             date=date - dt.timedelta(days=1),
             hemisphere=hemisphere,
             resolution=resolution,
@@ -322,7 +331,7 @@ def create_melt_onset_field(
         )
         logger.info(f"using read melt_onset_field for prior for {day_of_year}")
 
-    cdr_conc_ti, tb_h19, tb_h37 = read_or_create_and_read_melt_elements(
+    cdr_conc_ti, tb_h19, tb_h37 = read_or_create_and_read_standard_melt_elements(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
@@ -361,7 +370,7 @@ def complete_daily_ecdr_dataset(
       - The melt onset field
       - All appropriate QA and QC fields
     """
-    tie_ds = read_or_create_and_read_tiecdr_ds(
+    tie_ds = read_or_create_and_read_standard_tiecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
@@ -557,7 +566,7 @@ def read_cdecdr_ds(
     return cde_ds
 
 
-def read_or_create_and_read_cdecdr_ds(
+def read_or_create_and_read_standard_cdecdr_ds(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
@@ -566,6 +575,8 @@ def read_or_create_and_read_cdecdr_ds(
     overwrite_cde: bool = False,
 ) -> xr.Dataset:
     """Read an cdecdr netCDF file, creating it if it doesn't exist.
+
+    Uses standard input sources (non-NRT).
 
     Note: this can be recursive because the melt onset field calculation
     requires the prior day's field values during the melt season.

@@ -6,7 +6,7 @@ import xarray as xr
 from pm_tb_data._types import NORTH
 
 from seaice_ecdr.checksum import get_checksum_filepath
-from seaice_ecdr.complete_daily_ecdr import read_or_create_and_read_cdecdr_ds
+from seaice_ecdr.complete_daily_ecdr import read_or_create_and_read_standard_cdecdr_ds
 from seaice_ecdr.daily_aggregate import (
     get_daily_aggregate_filepath,
     make_daily_aggregate_netcdf_for_year,
@@ -23,7 +23,7 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
     # First, ensure some daily data is created.
     datasets = []
     for day in range(1, 3 + 1):
-        ds = read_or_create_and_read_cdecdr_ds(
+        ds = read_or_create_and_read_standard_cdecdr_ds(
             date=dt.date(year, 3, day),
             hemisphere=hemisphere,
             resolution=resolution,
