@@ -116,7 +116,7 @@ def filled_ndarray(
     return array
 
 
-def read_melt_onset_field(
+def read_or_create_and_read_melt_onset_field(
     *,
     date,
     hemisphere,
@@ -137,7 +137,7 @@ def read_melt_onset_field(
     return melt_onset_from_ds
 
 
-def read_melt_elements(
+def read_or_create_and_read_melt_elements(
     *,
     date,
     hemisphere,
@@ -206,7 +206,7 @@ def create_melt_onset_field(
         )
         logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
     else:
-        prior_melt_onset_field = read_melt_onset_field(
+        prior_melt_onset_field = read_or_create_and_read_melt_onset_field(
             date=date - dt.timedelta(days=1),
             hemisphere=hemisphere,
             resolution=resolution,
@@ -214,7 +214,7 @@ def create_melt_onset_field(
         )
         logger.info(f"using read melt_onset_field for prior for {day_of_year}")
 
-    cdr_conc_ti, tb_h19, tb_h37 = read_melt_elements(
+    cdr_conc_ti, tb_h19, tb_h37 = read_or_create_and_read_melt_elements(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
