@@ -11,6 +11,7 @@ from typing import Iterable, cast, get_args
 
 import click
 import numpy as np
+import numpy.typing as npt
 import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
@@ -118,8 +119,7 @@ def _empty_melt_onset_field(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    no_melt_flag: int,
-) -> np.ndarray:
+) -> npt.NDArray:
     """Return an array of the shape for this hem/res filled with fill_value."""
     # `grid_shape` is 2D.
     grid_shape = get_ecdr_grid_shape(
@@ -130,7 +130,7 @@ def _empty_melt_onset_field(
     melt_onset_field_shape = (1, *grid_shape)
     empty_melt_onset_field = np.full(
         melt_onset_field_shape,
-        no_melt_flag,
+        MELT_ONSET_FILL_VALUE,
         dtype=np.uint8,
     )
 
@@ -143,7 +143,7 @@ def read_melt_onset_field_from_complete_daily(
     hemisphere,
     resolution,
     ecdr_data_dir: Path,
-) -> np.ndarray:
+) -> npt.NDArray:
     cde_ds = read_cdecdr_ds(
         date=date,
         hemisphere=hemisphere,
@@ -164,7 +164,7 @@ def read_or_create_and_read_melt_onset_field(
     resolution,
     ecdr_data_dir: Path,
     overwrite: bool,
-) -> np.ndarray:
+) -> npt.NDArray:
     """Return the melt onset field for this complete daily eCDR file."""
     make_cdecdr_netcdf(
         date=date,
@@ -232,16 +232,47 @@ def read_or_create_and_read_melt_elements(
     return melt_elements
 
 
+def update_melt_onset_for_day(
+    *,
+    prior_melt_onset_field: npt.NDArray,
+    date: dt.date,
+    cdr_conc: npt.NDArray,
+    tb_h19: npt.NDArray,
+    tb_h37: npt.NDArray,
+    non_ocean_mask: npt.NDArray[np.bool_],
+) -> npt.NDArray[np.uint8]:
+    """Return an updated melt onset field given data for the given day."""
+    is_melted_today = melting(
+        concentrations=cdr_conc,
+        tb_h19=tb_h19,
+        tb_h37=tb_h37,
+    )
+    # Apply non-ocean mask
+    is_melted_today[0, non_ocean_mask] = False
+
+    have_prior_melt_values = prior_melt_onset_field != MELT_ONSET_FILL_VALUE
+    is_missing_prior = prior_melt_onset_field == MELT_ONSET_FILL_VALUE
+    has_new_melt = is_missing_prior & is_melted_today
+
+    melt_onset_field = np.zeros(prior_melt_onset_field.shape, dtype=np.uint8)
+    melt_onset_field[:] = MELT_ONSET_FILL_VALUE
+    melt_onset_field[have_prior_melt_values] = prior_melt_onset_field[
+        have_prior_melt_values
+    ]
+
+    day_of_year = int(date.strftime("%j"))
+    melt_onset_field[has_new_melt] = day_of_year
+
+    return melt_onset_field
+
+
 def create_melt_onset_field(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
-    first_melt_doy: int = MELT_SEASON_FIRST_DOY,
-    last_melt_doy: int = MELT_SEASON_LAST_DOY,
-    no_melt_flag: int = MELT_ONSET_FILL_VALUE,
-) -> np.ndarray | None:
+) -> npt.NDArray[np.uint8] | None:
     """Return a uint8 melt onset field (NH only).
 
     Note: this routine creates the melt onset field using input data
@@ -265,22 +296,20 @@ def create_melt_onset_field(
     # Determine if the given day of year is within the melt season. If it's not,
     # return an empty melt onset field. The first day should also have an empty
     # melt onset field.
-    outside_of_melt_season = (day_of_year < first_melt_doy) or (
-        day_of_year > last_melt_doy
+    outside_of_melt_season = (day_of_year < MELT_SEASON_FIRST_DOY) or (
+        day_of_year > MELT_SEASON_LAST_DOY
     )
-    is_first_day_of_melt = day_of_year == first_melt_doy
+    is_first_day_of_melt = day_of_year == MELT_SEASON_FIRST_DOY
     if outside_of_melt_season:
         logger.info(f"returning empty melt_onset_field for {day_of_year}")
         return _empty_melt_onset_field(
             hemisphere=hemisphere,
             resolution=resolution,
-            no_melt_flag=no_melt_flag,
         )
     elif is_first_day_of_melt:
         prior_melt_onset_field = _empty_melt_onset_field(
             hemisphere=hemisphere,
             resolution=resolution,
-            no_melt_flag=no_melt_flag,
         )
         logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
     else:
@@ -300,31 +329,22 @@ def create_melt_onset_field(
         ecdr_data_dir=ecdr_data_dir,
         overwrite=False,
     )
-    is_melted_today = melting(
-        concentrations=cdr_conc_ti,
-        tb_h19=tb_h19,
-        tb_h37=tb_h37,
-    )
-    # Apply land mask
+
     non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    is_melted_today[0, non_ocean_mask.data] = False
 
-    have_prior_melt_values = prior_melt_onset_field != no_melt_flag
-    is_missing_prior = prior_melt_onset_field == no_melt_flag
-    has_new_melt = is_missing_prior & is_melted_today
+    updated_melt_onset = update_melt_onset_for_day(
+        prior_melt_onset_field=prior_melt_onset_field,
+        cdr_conc=cdr_conc_ti,
+        tb_h19=tb_h19,
+        tb_h37=tb_h37,
+        non_ocean_mask=non_ocean_mask.data,
+        date=date,
+    )
 
-    melt_onset_field = np.zeros(prior_melt_onset_field.shape, dtype=np.uint8)
-    melt_onset_field[:] = no_melt_flag
-    melt_onset_field[have_prior_melt_values] = prior_melt_onset_field[
-        have_prior_melt_values
-    ]
-
-    melt_onset_field[has_new_melt] = day_of_year
-
-    return melt_onset_field
+    return updated_melt_onset
 
 
 def complete_daily_ecdr_dataset(
