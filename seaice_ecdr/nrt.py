@@ -109,21 +109,20 @@ def read_or_create_and_read_nrt_idecdr_ds(
         ecdr_data_dir=ecdr_data_dir,
         resolution="12.5",
     )
-    if idecdr_filepath.is_file() and not overwrite:
-        ide_ds = xr.load_dataset(idecdr_filepath)
-        return ide_ds
 
-    nrt_initial_ecdr_ds = compute_nrt_initial_daily_ecdr_dataset(
-        date=date,
-        hemisphere=hemisphere,
-    )
+    if overwrite or not idecdr_filepath.is_file():
+        nrt_initial_ecdr_ds = compute_nrt_initial_daily_ecdr_dataset(
+            date=date,
+            hemisphere=hemisphere,
+        )
 
-    write_ide_netcdf(
-        ide_ds=nrt_initial_ecdr_ds,
-        output_filepath=idecdr_filepath,
-    )
+        write_ide_netcdf(
+            ide_ds=nrt_initial_ecdr_ds,
+            output_filepath=idecdr_filepath,
+        )
 
-    return nrt_initial_ecdr_ds
+    ide_ds = xr.load_dataset(idecdr_filepath)
+    return ide_ds
 
 
 def temporally_interpolated_nrt_ecdr_dataset(
@@ -173,24 +172,22 @@ def read_or_create_and_read_nrt_tiecdr_ds(
         ecdr_data_dir=ecdr_data_dir,
     )
 
-    if tie_filepath.is_file() and not overwrite:
-        tie_ds = xr.load_dataset(tie_filepath)
-        return tie_ds
+    if overwrite or not tie_filepath.is_file():
+        nrt_temporally_interpolated = temporally_interpolated_nrt_ecdr_dataset(
+            hemisphere=hemisphere,
+            date=date,
+            ecdr_data_dir=ecdr_data_dir,
+            overwrite=overwrite,
+            days_to_look_previously=days_to_look_previously,
+        )
 
-    nrt_temporally_interpolated = temporally_interpolated_nrt_ecdr_dataset(
-        hemisphere=hemisphere,
-        date=date,
-        ecdr_data_dir=ecdr_data_dir,
-        overwrite=overwrite,
-        days_to_look_previously=days_to_look_previously,
-    )
+        write_tie_netcdf(
+            tie_ds=nrt_temporally_interpolated,
+            output_filepath=tie_filepath,
+        )
 
-    write_tie_netcdf(
-        tie_ds=nrt_temporally_interpolated,
-        output_filepath=tie_filepath,
-    )
-
-    return nrt_temporally_interpolated
+    tie_ds = xr.load_dataset(tie_filepath)
+    return tie_ds
 
 
 @click.command(name="download-latest-nrt-data")
