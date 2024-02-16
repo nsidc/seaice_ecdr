@@ -67,6 +67,7 @@ def get_ecdr_filepath(
     return ecdr_filepath
 
 
+# TODO: this should be in the temporal interpolation module.
 def read_tiecdr_ds(
     date: dt.date,
     hemisphere: Hemisphere,
@@ -85,6 +86,7 @@ def read_tiecdr_ds(
     return tie_ds
 
 
+# TODO: this should be in the temporal interpolation module.
 def read_or_create_and_read_tiecdr_ds(
     *,
     date: dt.date,
@@ -94,19 +96,13 @@ def read_or_create_and_read_tiecdr_ds(
     overwrite_tie: bool = False,
 ) -> xr.Dataset:
     """Read an tiecdr netCDF file, creating it if it doesn't exist."""
-    tie_filepath = get_tie_filepath(
+    make_tiecdr_netcdf(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        overwrite=overwrite_tie,
     )
-    if overwrite_tie or not tie_filepath.is_file():
-        make_tiecdr_netcdf(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-        )
 
     tie_ds = read_tiecdr_ds(
         date=date,
@@ -139,15 +135,14 @@ def filled_ndarray(
     return array
 
 
-def read_or_create_and_read_melt_onset_field(
+def read_melt_onset_field_from_complete_daily(
     *,
     date,
     hemisphere,
     resolution,
     ecdr_data_dir: Path,
 ) -> np.ndarray:
-    """Return the melt onset field for this complete daily eCDR file."""
-    cde_ds = read_or_create_and_read_cdecdr_ds(
+    cde_ds = read_cdecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
@@ -160,25 +155,79 @@ def read_or_create_and_read_melt_onset_field(
     return melt_onset_from_ds
 
 
-def read_or_create_and_read_melt_elements(
+def read_or_create_and_read_melt_onset_field(
     *,
     date,
     hemisphere,
     resolution,
-    ecdr_data_dir,
-):
-    """Return the elements from tiecdr needed to calculate melt."""
-    tie_ds = read_or_create_and_read_tiecdr_ds(
+    ecdr_data_dir: Path,
+    overwrite: bool,
+) -> np.ndarray:
+    """Return the melt onset field for this complete daily eCDR file."""
+    make_cdecdr_netcdf(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+        overwrite_cde=overwrite,
+    )
+
+    melt_onset = read_melt_onset_field_from_complete_daily(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
+
+    return melt_onset
+
+
+def read_melt_elements_from_tiecdr(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
+):
+    tie_ds = read_tiecdr_ds(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+
     return (
         np.squeeze(tie_ds["cdr_conc"].to_numpy()),
         tie_ds["h19_day_si"].to_numpy(),
         tie_ds["h37_day_si"].to_numpy(),
     )
+
+
+def read_or_create_and_read_melt_elements(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
+    overwrite: bool,
+):
+    """Return the elements from tiecdr needed to calculate melt."""
+    make_tiecdr_netcdf(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+        overwrite=overwrite,
+    )
+
+    melt_elements = read_melt_elements_from_tiecdr(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+
+    return melt_elements
 
 
 def create_melt_onset_field(
@@ -234,6 +283,7 @@ def create_melt_onset_field(
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
+            overwrite=False,
         )
         logger.info(f"using read melt_onset_field for prior for {day_of_year}")
 
@@ -242,6 +292,7 @@ def create_melt_onset_field(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        overwrite=False,
     )
     is_melted_today = melting(
         concentrations=cdr_conc_ti,
@@ -489,21 +540,13 @@ def read_or_create_and_read_cdecdr_ds(
     Note: this can be recursive because the melt onset field calculation
     requires the prior day's field values during the melt season.
     """
-    cde_filepath = get_ecdr_filepath(
-        date,
-        hemisphere,
-        resolution,
+    make_cdecdr_netcdf(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        overwrite_cde=overwrite_cde,
     )
-
-    if overwrite_cde or not cde_filepath.is_file():
-        make_cdecdr_netcdf(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-            overwrite_cde=overwrite_cde,
-        )
 
     cde_ds = read_cdecdr_ds(
         date=date,
