@@ -166,7 +166,7 @@ def read_or_create_and_read_melt_onset_field(
     overwrite: bool,
 ) -> npt.NDArray:
     """Return the melt onset field for this complete daily eCDR file."""
-    make_cdecdr_netcdf(
+    make_standard_cdecdr_netcdf(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
@@ -498,7 +498,7 @@ def write_cde_netcdf(
     return output_filepath
 
 
-def make_cdecdr_netcdf(
+def make_standard_cdecdr_netcdf(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
@@ -506,6 +506,10 @@ def make_cdecdr_netcdf(
     ecdr_data_dir: Path,
     overwrite_cde: bool = False,
 ) -> Path:
+    """Create a 'standard', complete (ready for prod) daily CDR NetCDF file.
+
+    'standard' files are those that use the non-NRT input sources.
+    """
     cde_filepath = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
@@ -566,7 +570,7 @@ def read_or_create_and_read_cdecdr_ds(
     Note: this can be recursive because the melt onset field calculation
     requires the prior day's field values during the melt season.
     """
-    make_cdecdr_netcdf(
+    make_standard_cdecdr_netcdf(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
@@ -593,7 +597,7 @@ def create_cdecdr_for_date(
     overwrite_cde: bool = False,
 ) -> None:
     try:
-        make_cdecdr_netcdf(
+        make_standard_cdecdr_netcdf(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
