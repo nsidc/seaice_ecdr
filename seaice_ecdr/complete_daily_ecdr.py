@@ -315,28 +315,31 @@ def create_melt_onset_field(
             hemisphere=hemisphere,
             resolution=resolution,
         )
-    elif is_first_day_of_melt:
-        prior_melt_onset_field = _empty_melt_onset_field(
-            hemisphere=hemisphere,
-            resolution=resolution,
-        )
-        logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
-    else:
-        prior_melt_onset_field = read_or_create_and_read_standard_melt_onset_field(
-            date=date - dt.timedelta(days=1),
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-            overwrite=False,
-        )
-        logger.info(f"using read melt_onset_field for prior for {day_of_year}")
+    elif not is_first_day_of_melt:
+        try:
+            prior_melt_onset_field = read_melt_onset_field_from_complete_daily(
+                date=date - dt.timedelta(days=1),
+                hemisphere=hemisphere,
+                resolution=resolution,
+                ecdr_data_dir=ecdr_data_dir,
+            )
+            logger.info(f"using read melt_onset_field for prior for {day_of_year}")
+        except FileNotFoundError:
+            logger.warning(
+                f"Tried to read previous melt field for {day_of_year} but the file was not found."
+            )
 
-    cdr_conc_ti, tb_h19, tb_h37 = read_or_create_and_read_standard_melt_elements(
+    prior_melt_onset_field = _empty_melt_onset_field(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
+
+    cdr_conc_ti, tb_h19, tb_h37 = read_melt_elements_from_tiecdr(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
-        overwrite=False,
     )
 
     non_ocean_mask = get_non_ocean_mask(
@@ -532,6 +535,21 @@ def make_standard_cdecdr_netcdf(
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
         )
+
+        # Ensure the previous day's complete daily field exists for the melt
+        # onset calculation/update.
+        # This is a recursive function! Ideally we'd just have code that
+        # generates the necessary intermediate files for the target date, and
+        # then this code would be solely responsible for reading the previous
+        # day's complete field.
+        make_standard_cdecdr_netcdf(
+            date=date - dt.timedelta(days=1),
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+            overwrite_cde=overwrite_cde,
+        )
+
         cde_ds = standard_complete_daily_ecdr_dataset(
             tie_ds=tie_ds,
             date=date,
