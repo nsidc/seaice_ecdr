@@ -998,7 +998,7 @@ def make_idecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
-    excluded_fields: Iterable[str] = [],
+    excluded_fields: Iterable[str],
 ) -> None:
     logger.info(f"Creating idecdr for {date=}, {hemisphere=}, {resolution=}")
     ide_ds = initial_daily_ecdr_dataset(

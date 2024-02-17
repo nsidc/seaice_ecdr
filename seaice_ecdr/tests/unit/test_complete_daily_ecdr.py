@@ -6,6 +6,7 @@ import numpy as np
 from pm_tb_data._types import NORTH, SOUTH
 
 from seaice_ecdr import complete_daily_ecdr as cdecdr
+from seaice_ecdr.melt import MELT_ONSET_FILL_VALUE
 
 
 def test_no_melt_onset_for_southern_hemisphere(tmpdir):
@@ -23,7 +24,6 @@ def test_no_melt_onset_for_southern_hemisphere(tmpdir):
 def test_melt_onset_field_outside_melt_season(tmpdir):
     """Verify that melt onset is all fill value when not in melt season."""
     hemisphere = NORTH
-    no_melt_flag = 255
 
     for date in (dt.date(2020, 2, 1), dt.date(2020, 10, 3)):
         melt_onset_field = cdecdr.create_melt_onset_field(
@@ -31,6 +31,5 @@ def test_melt_onset_field_outside_melt_season(tmpdir):
             hemisphere=hemisphere,
             resolution="12.5",
             ecdr_data_dir=Path(tmpdir),
-            no_melt_flag=no_melt_flag,
         )
-        assert np.all(melt_onset_field == no_melt_flag)
+        assert np.all(melt_onset_field == MELT_ONSET_FILL_VALUE)

@@ -494,6 +494,7 @@ def temporal_interpolation(
     data_stack: xr.Dataset,
     fill_the_pole_hole: bool = True,
     interp_range: int = 5,
+    one_sided_limit: int = 3,
 ) -> xr.Dataset:
     # Initialize a new xr "temporally interpolated CDR" (tiecdr) dataset. The
     # target date is used to initialize this dataset. We retain the `time`
@@ -516,6 +517,7 @@ def temporal_interpolation(
         da=data_stack.conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
+        one_sided_limit=one_sided_limit,
     )
 
     tie_ds["cdr_conc_ti"] = ti_var
@@ -615,6 +617,7 @@ def temporal_interpolation(
         da=data_stack.raw_bt_seaice_conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
+        one_sided_limit=one_sided_limit,
     )
 
     nt_conc, _ = temporally_composite_dataarray(
@@ -622,6 +625,7 @@ def temporal_interpolation(
         da=data_stack.raw_bt_seaice_conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
+        one_sided_limit=one_sided_limit,
     )
 
     # Note: this pole-filling code is copy-pasted from the cdr_conc
@@ -841,16 +845,8 @@ def make_tiecdr_netcdf(
     ecdr_data_dir: Path,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
+    overwrite: bool = False,
 ) -> None:
-    logger.info(f"Creating tiecdr for {date=}, {hemisphere=}, {resolution=}")
-    tie_ds = temporally_interpolated_ecdr_dataset(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        interp_range=interp_range,
-        ecdr_data_dir=ecdr_data_dir,
-        fill_the_pole_hole=fill_the_pole_hole,
-    )
     output_path = get_tie_filepath(
         date=date,
         hemisphere=hemisphere,
@@ -858,11 +854,22 @@ def make_tiecdr_netcdf(
         ecdr_data_dir=ecdr_data_dir,
     )
 
-    written_tie_ncfile = write_tie_netcdf(
-        tie_ds=tie_ds,
-        output_filepath=output_path,
-    )
-    logger.info(f"Wrote temporally interpolated daily ncfile: {written_tie_ncfile}")
+    if overwrite or not output_path.is_file():
+        logger.info(f"Creating tiecdr for {date=}, {hemisphere=}, {resolution=}")
+        tie_ds = temporally_interpolated_ecdr_dataset(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            interp_range=interp_range,
+            ecdr_data_dir=ecdr_data_dir,
+            fill_the_pole_hole=fill_the_pole_hole,
+        )
+
+        written_tie_ncfile = write_tie_netcdf(
+            tie_ds=tie_ds,
+            output_filepath=output_path,
+        )
+        logger.info(f"Wrote temporally interpolated daily ncfile: {written_tie_ncfile}")
 
 
 def create_tiecdr_for_date(

@@ -16,6 +16,7 @@ from pm_tb_data.fetch.nsidc_0007 import get_nsidc_0007_tbs_from_disk
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.platforms import SUPPORTED_SAT, get_platform_by_date
+from seaice_ecdr.util import get_ecdr_grid_shape
 
 EXPECTED_ECDR_TB_NAMES = ("h19", "v19", "v22", "h37", "v37")
 
@@ -40,12 +41,11 @@ class EcdrTbData:
 def get_null_grid(
     *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
 ) -> npt.NDArray:
-    grid_shapes = {
-        "25": {"north": (448, 304), "south": (332, 316)},
-        "12.5": {"north": (896, 608), "south": (664, 632)},
-    }
-
-    null_grid = np.full(grid_shapes[resolution][hemisphere], np.nan)
+    grid_shape = get_ecdr_grid_shape(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    null_grid = np.full(grid_shape, np.nan)
 
     return null_grid
 

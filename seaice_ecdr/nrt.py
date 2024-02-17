@@ -20,6 +20,7 @@ from typing import Final, get_args
 
 import click
 import xarray as xr
+from loguru import logger
 from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.amsr.lance_amsr2 import (
     access_local_lance_data,
@@ -27,6 +28,11 @@ from pm_tb_data.fetch.amsr.lance_amsr2 import (
 )
 
 from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.complete_daily_ecdr import (
+    complete_daily_ecdr_ds,
+    get_ecdr_filepath,
+    write_cde_netcdf,
+)
 from seaice_ecdr.constants import LANCE_NRT_DATA_DIR, NRT_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
     compute_initial_daily_ecdr_dataset,
@@ -116,9 +122,27 @@ def read_or_create_and_read_nrt_idecdr_ds(
             hemisphere=hemisphere,
         )
 
+        excluded_idecdr_fields = [
+            "h19_day",
+            "v19_day",
+            "v22_day",
+            "h37_day",
+            "v37_day",
+            # "h19_day_si",  # include this field for melt onset calculation
+            "v19_day_si",
+            "v22_day_si",
+            # "h37_day_si",  # include this field for melt onset calculation
+            "v37_day_si",
+            "non_ocean_mask",
+            "invalid_ice_mask",
+            "pole_mask",
+            "bt_weather_mask",
+            "nt_weather_mask",
+        ]
         write_ide_netcdf(
             ide_ds=nrt_initial_ecdr_ds,
             output_filepath=idecdr_filepath,
+            excluded_fields=excluded_idecdr_fields,
         )
 
     ide_ds = xr.load_dataset(idecdr_filepath)
@@ -131,7 +155,7 @@ def temporally_interpolated_nrt_ecdr_dataset(
     date: dt.date,
     ecdr_data_dir: Path,
     overwrite: bool,
-    days_to_look_previously: int = 4,
+    days_to_look_previously: int = 5,
 ) -> xr.Dataset:
     init_datasets = []
     for date in date_range(
@@ -152,6 +176,8 @@ def temporally_interpolated_nrt_ecdr_dataset(
         hemisphere=hemisphere,
         resolution=LANCE_RESOLUTION,
         data_stack=data_stack,
+        interp_range=days_to_look_previously,
+        one_sided_limit=days_to_look_previously,
     )
 
     return temporally_interpolated_ds
@@ -252,26 +278,64 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     ),
     default=NRT_BASE_OUTPUT_DIR,
     help=(
-        "Base output directory for standard ECDR outputs."
+        "Base output directory for NRT ECDR outputs."
         " Subdirectories are created for outputs of"
         " different stages of processing."
     ),
     show_default=True,
+)
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    help=(
+        "Overwrite intermediate and final outputs. CAUTION: because lance data is temporary,"
+        " this action could be destructive in a permenant way. E.g,. if input data for a"
+        " day that this CLI is being run for was previously generated with available"
+        " lance data, but that data no longer exists, the resulting file may be empty or"
+        " have significant data gaps. Use this primarily in a development environment."
+    ),
 )
 def nrt_ecdr_for_day(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
+    overwrite: bool,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
-    read_or_create_and_read_nrt_tiecdr_ds(
-        hemisphere=hemisphere,
+    cde_filepath = get_ecdr_filepath(
         date=date,
+        hemisphere=hemisphere,
+        resolution=LANCE_RESOLUTION,
         ecdr_data_dir=ecdr_data_dir,
-        # TODO: CLI option.
-        overwrite=True,
     )
+
+    if cde_filepath.is_file() and not overwrite:
+        logger.info("File for {date=} already exists ({cde_filepath}).")
+        return
+
+    if not cde_filepath.is_file() or overwrite:
+        tiecdr_ds = read_or_create_and_read_nrt_tiecdr_ds(
+            hemisphere=hemisphere,
+            date=date,
+            ecdr_data_dir=ecdr_data_dir,
+            overwrite=True,
+        )
+
+        cde_ds = complete_daily_ecdr_ds(
+            tie_ds=tiecdr_ds,
+            date=date,
+            hemisphere=hemisphere,
+            resolution=LANCE_RESOLUTION,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+
+        written_cde_ncfile = write_cde_netcdf(
+            cde_ds=cde_ds,
+            output_filepath=cde_filepath,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+        logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
 
 
 @click.group(name="nrt")

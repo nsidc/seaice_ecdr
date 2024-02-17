@@ -28,6 +28,8 @@ Other notes:
 
 * In the CDR code, it looks like we use spatially interpolated TBs as input.
 """
+import datetime as dt
+
 import numpy as np
 import numpy.typing as npt
 
@@ -48,6 +50,18 @@ TB_DELTA_THRESHOLD_K = 2
 
 # Concentrations are provided as sea_ice_area_fraction, a number between 0 and 1
 MAX_VALID_CONCENTRATION = 1.0
+
+
+def date_in_nh_melt_season(*, date: dt.date) -> bool:
+    """Return `True` if the date is during the NH melt season."""
+    day_of_year = int(date.strftime("%j"))
+    outside_of_melt_season = (day_of_year < MELT_SEASON_FIRST_DOY) or (
+        day_of_year > MELT_SEASON_LAST_DOY
+    )
+
+    inside_melt_season = not outside_of_melt_season
+
+    return inside_melt_season
 
 
 def melting(

@@ -118,3 +118,18 @@ def get_dates_by_year(dates: list[dt.date]) -> list[list[dt.date]]:
     dates_by_year_list = list(dates_by_year.values())
 
     return dates_by_year_list
+
+
+def get_ecdr_grid_shape(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> tuple[int, int]:
+    grid_shapes = {
+        "25": {"north": (448, 304), "south": (332, 316)},
+        "12.5": {"north": (896, 608), "south": (664, 632)},
+    }
+
+    grid_shape = grid_shapes[resolution][hemisphere]
+
+    return grid_shape

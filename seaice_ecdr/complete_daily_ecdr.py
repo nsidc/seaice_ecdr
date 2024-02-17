@@ -11,9 +11,10 @@ from typing import Iterable, cast, get_args
 
 import click
 import numpy as np
+import numpy.typing as npt
 import xarray as xr
 from loguru import logger
-from pm_tb_data._types import NORTH, SOUTH, Hemisphere
+from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
@@ -27,6 +28,7 @@ from seaice_ecdr.melt import (
     MELT_ONSET_FILL_VALUE,
     MELT_SEASON_FIRST_DOY,
     MELT_SEASON_LAST_DOY,
+    date_in_nh_melt_season,
     melting,
 )
 from seaice_ecdr.platforms import (
@@ -34,7 +36,7 @@ from seaice_ecdr.platforms import (
 )
 from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
-from seaice_ecdr.util import date_range, standard_daily_filename
+from seaice_ecdr.util import date_range, get_ecdr_grid_shape, standard_daily_filename
 
 
 @cache
@@ -67,7 +69,27 @@ def get_ecdr_filepath(
     return ecdr_filepath
 
 
-def read_or_create_and_read_tiecdr_ds(
+# TODO: this should be in the temporal interpolation module.
+def read_tiecdr_ds(
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
+) -> xr.Dataset:
+    tie_filepath = get_tie_filepath(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+    logger.info(f"Reading tieCDR file from: {tie_filepath}")
+    tie_ds = xr.load_dataset(tie_filepath)
+
+    return tie_ds
+
+
+# TODO: this should be in the temporal interpolation module.
+def read_or_create_and_read_standard_tiecdr_ds(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
@@ -75,56 +97,58 @@ def read_or_create_and_read_tiecdr_ds(
     ecdr_data_dir: Path,
     overwrite_tie: bool = False,
 ) -> xr.Dataset:
-    """Read an tiecdr netCDF file, creating it if it doesn't exist."""
-    tie_filepath = get_tie_filepath(
+    """Read an tiecdr netCDF file, creating it if it doesn't exist.
+
+    Uses standard input sources (non-NRT).
+    """
+    make_tiecdr_netcdf(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+        overwrite=overwrite_tie,
+    )
+
+    tie_ds = read_tiecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
-    if overwrite_tie or not tie_filepath.is_file():
-        make_tiecdr_netcdf(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-        )
-    logger.info(f"Reading tieCDR file from: {tie_filepath}")
-    tie_ds = xr.load_dataset(tie_filepath)
 
     return tie_ds
 
 
-def filled_ndarray(
+def _empty_melt_onset_field(
     *,
-    hemisphere,
+    hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    fill_value,
-    dtype=np.uint8,
-) -> np.ndarray:
+) -> npt.NDArray:
     """Return an array of the shape for this hem/res filled with fill_value."""
-    if hemisphere == NORTH and resolution == "12.5":
-        array_shape = (1, 896, 608)
-    elif hemisphere == SOUTH and resolution == "12.5":
-        array_shape = (1, 664, 632)
-    else:
-        raise RuntimeError(
-            f"Could not determine array shape for {hemisphere}" f" and {resolution}"
-        )
-    array = np.full(array_shape, fill_value, dtype=dtype)
+    # `grid_shape` is 2D.
+    grid_shape = get_ecdr_grid_shape(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    # Add a dim for `time`, making the melt onset field 3D.
+    melt_onset_field_shape = (1, *grid_shape)
+    empty_melt_onset_field = np.full(
+        melt_onset_field_shape,
+        MELT_ONSET_FILL_VALUE,
+        dtype=np.uint8,
+    )
 
-    return array
+    return empty_melt_onset_field
 
 
-def read_melt_onset_field(
+def read_melt_onset_field_from_complete_daily(
     *,
     date,
     hemisphere,
     resolution,
     ecdr_data_dir: Path,
-) -> np.ndarray:
-    """Return the melt onset field for this complete daily eCDR file."""
-    cde_ds = read_or_create_and_read_cdecdr_ds(
+) -> npt.NDArray:
+    cde_ds = read_cdecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
@@ -137,25 +161,59 @@ def read_melt_onset_field(
     return melt_onset_from_ds
 
 
-def read_melt_elements(
+def read_melt_elements_from_tiecdr(
     *,
-    date,
-    hemisphere,
-    resolution,
-    ecdr_data_dir,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
 ):
-    """Return the elements from tiecdr needed to calculate melt."""
-    tie_ds = read_or_create_and_read_tiecdr_ds(
+    tie_ds = read_tiecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
+
     return (
         np.squeeze(tie_ds["cdr_conc"].to_numpy()),
         tie_ds["h19_day_si"].to_numpy(),
         tie_ds["h37_day_si"].to_numpy(),
     )
+
+
+def update_melt_onset_for_day(
+    *,
+    prior_melt_onset_field: npt.NDArray,
+    date: dt.date,
+    cdr_conc: npt.NDArray,
+    tb_h19: npt.NDArray,
+    tb_h37: npt.NDArray,
+    non_ocean_mask: npt.NDArray[np.bool_],
+) -> npt.NDArray[np.uint8]:
+    """Return an updated melt onset field given data for the given day."""
+    is_melted_today = melting(
+        concentrations=cdr_conc,
+        tb_h19=tb_h19,
+        tb_h37=tb_h37,
+    )
+    # Apply non-ocean mask
+    is_melted_today[0, non_ocean_mask] = False
+
+    have_prior_melt_values = prior_melt_onset_field != MELT_ONSET_FILL_VALUE
+    is_missing_prior = prior_melt_onset_field == MELT_ONSET_FILL_VALUE
+    has_new_melt = is_missing_prior & is_melted_today
+
+    melt_onset_field = np.zeros(prior_melt_onset_field.shape, dtype=np.uint8)
+    melt_onset_field[:] = MELT_ONSET_FILL_VALUE
+    melt_onset_field[have_prior_melt_values] = prior_melt_onset_field[
+        have_prior_melt_values
+    ]
+
+    day_of_year = int(date.strftime("%j"))
+    melt_onset_field[has_new_melt] = day_of_year
+
+    return melt_onset_field
 
 
 def create_melt_onset_field(
@@ -164,10 +222,7 @@ def create_melt_onset_field(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
-    first_melt_doy: int = MELT_SEASON_FIRST_DOY,
-    last_melt_doy: int = MELT_SEASON_LAST_DOY,
-    no_melt_flag: int = MELT_ONSET_FILL_VALUE,
-) -> np.ndarray | None:
+) -> npt.NDArray[np.uint8] | None:
     """Return a uint8 melt onset field (NH only).
 
     Note: this routine creates the melt onset field using input data
@@ -187,68 +242,73 @@ def create_melt_onset_field(
         return None
 
     day_of_year = int(date.strftime("%j"))
-    if (day_of_year < first_melt_doy) or (day_of_year > last_melt_doy):
-        melt_onset_field = filled_ndarray(
-            hemisphere=hemisphere,
-            resolution=resolution,
-            fill_value=no_melt_flag,
-            dtype=np.uint8,
-        )
+    # Determine if the given day of year is within the melt season. If it's not,
+    # return an empty melt onset field.
+    if not date_in_nh_melt_season(date=date):
         logger.info(f"returning empty melt_onset_field for {day_of_year}")
-        return melt_onset_field
-    elif day_of_year == first_melt_doy:
-        # This is the first day with melt onset
-        prior_melt_onset_field = filled_ndarray(
+        return _empty_melt_onset_field(
             hemisphere=hemisphere,
             resolution=resolution,
-            fill_value=no_melt_flag,
-            dtype=np.uint8,
+        )
+
+    is_first_day_of_melt = day_of_year == MELT_SEASON_FIRST_DOY
+    if is_first_day_of_melt:
+        # The first day of the melt seasion should start with an empty melt
+        # onset field.
+        prior_melt_onset_field = _empty_melt_onset_field(
+            hemisphere=hemisphere,
+            resolution=resolution,
         )
         logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
     else:
-        prior_melt_onset_field = read_melt_onset_field(
-            date=date - dt.timedelta(days=1),
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-        )
-        logger.info(f"using read melt_onset_field for prior for {day_of_year}")
+        # During the melt season, try to read the previous day's input as a
+        # starting point. Use an empty melt onset field if no data for the
+        # previous day is available.
+        try:
+            prior_melt_onset_field = read_melt_onset_field_from_complete_daily(
+                date=date - dt.timedelta(days=1),
+                hemisphere=hemisphere,
+                resolution=resolution,
+                ecdr_data_dir=ecdr_data_dir,
+            )
+            logger.info(f"using read melt_onset_field for prior for {day_of_year}")
+        except FileNotFoundError:
+            logger.warning(
+                f"Tried to read previous melt field for {day_of_year} but the file was not found."
+            )
+            prior_melt_onset_field = _empty_melt_onset_field(
+                hemisphere=hemisphere,
+                resolution=resolution,
+            )
+            logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
 
-    cdr_conc_ti, tb_h19, tb_h37 = read_melt_elements(
+    cdr_conc_ti, tb_h19, tb_h37 = read_melt_elements_from_tiecdr(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
-    is_melted_today = melting(
-        concentrations=cdr_conc_ti,
-        tb_h19=tb_h19,
-        tb_h37=tb_h37,
-    )
-    # Apply land mask
+
     non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    is_melted_today[0, non_ocean_mask.data] = False
 
-    have_prior_melt_values = prior_melt_onset_field != no_melt_flag
-    is_missing_prior = prior_melt_onset_field == no_melt_flag
-    has_new_melt = is_missing_prior & is_melted_today
+    updated_melt_onset = update_melt_onset_for_day(
+        prior_melt_onset_field=prior_melt_onset_field,
+        cdr_conc=cdr_conc_ti,
+        tb_h19=tb_h19,
+        tb_h37=tb_h37,
+        non_ocean_mask=non_ocean_mask.data,
+        date=date,
+    )
 
-    melt_onset_field = np.zeros(prior_melt_onset_field.shape, dtype=np.uint8)
-    melt_onset_field[:] = no_melt_flag
-    melt_onset_field[have_prior_melt_values] = prior_melt_onset_field[
-        have_prior_melt_values
-    ]
-
-    melt_onset_field[has_new_melt] = day_of_year
-
-    return melt_onset_field
+    return updated_melt_onset
 
 
-def complete_daily_ecdr_dataset(
+def complete_daily_ecdr_ds(
     *,
+    tie_ds: xr.Dataset,
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
@@ -261,12 +321,6 @@ def complete_daily_ecdr_dataset(
       - The melt onset field
       - All appropriate QA and QC fields
     """
-    tie_ds = read_or_create_and_read_tiecdr_ds(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-    )
     cde_ds = tie_ds.copy()
 
     melt_onset_field = create_melt_onset_field(
@@ -341,6 +395,8 @@ def complete_daily_ecdr_dataset(
         other=np.bitwise_or(cde_ds["qa_of_cdr_seaice_conc"], 128),
     )
 
+    cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere)
+
     return cde_ds
 
 
@@ -398,7 +454,7 @@ def write_cde_netcdf(
     return output_filepath
 
 
-def make_cdecdr_netcdf(
+def make_standard_cdecdr_netcdf(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
@@ -406,6 +462,13 @@ def make_cdecdr_netcdf(
     ecdr_data_dir: Path,
     overwrite_cde: bool = False,
 ) -> Path:
+    """Create a 'standard', complete (ready for prod) daily CDR NetCDF file.
+
+    'standard' files are those that use the non-NRT input sources.
+
+    This function is recursive. It will attempt to create earlier complete daily
+    files if they do not exist.
+    """
     cde_filepath = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
@@ -415,14 +478,36 @@ def make_cdecdr_netcdf(
 
     if overwrite_cde or not cde_filepath.is_file():
         logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
-        cde_ds = complete_daily_ecdr_dataset(
+
+        tie_ds = read_or_create_and_read_standard_tiecdr_ds(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
         )
 
-        cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere)
+        # Ensure the previous day's complete daily field exists for the melt
+        # onset calculation/update.
+        # This is a recursive function! Ideally we'd just have code that
+        # generates the necessary intermediate files for the target date, and
+        # then this code would be solely responsible for reading the previous
+        # day's complete field.
+        if date_in_nh_melt_season(date=date - dt.timedelta(days=1)):
+            make_standard_cdecdr_netcdf(
+                date=date - dt.timedelta(days=1),
+                hemisphere=hemisphere,
+                resolution=resolution,
+                ecdr_data_dir=ecdr_data_dir,
+                overwrite_cde=overwrite_cde,
+            )
+
+        cde_ds = complete_daily_ecdr_ds(
+            tie_ds=tie_ds,
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+        )
 
         written_cde_ncfile = write_cde_netcdf(
             cde_ds=cde_ds,
@@ -434,7 +519,26 @@ def make_cdecdr_netcdf(
     return cde_filepath
 
 
-def read_or_create_and_read_cdecdr_ds(
+def read_cdecdr_ds(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
+) -> xr.Dataset:
+    cde_filepath = get_ecdr_filepath(
+        date,
+        hemisphere,
+        resolution,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+    logger.info(f"Reading cdeCDR file from: {cde_filepath}")
+    cde_ds = xr.load_dataset(cde_filepath)
+
+    return cde_ds
+
+
+def read_or_create_and_read_standard_cdecdr_ds(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
@@ -444,31 +548,30 @@ def read_or_create_and_read_cdecdr_ds(
 ) -> xr.Dataset:
     """Read an cdecdr netCDF file, creating it if it doesn't exist.
 
+    Uses standard input sources (non-NRT).
+
     Note: this can be recursive because the melt onset field calculation
     requires the prior day's field values during the melt season.
     """
-    cde_filepath = get_ecdr_filepath(
-        date,
-        hemisphere,
-        resolution,
+    make_standard_cdecdr_netcdf(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        overwrite_cde=overwrite_cde,
     )
 
-    if overwrite_cde or not cde_filepath.is_file():
-        make_cdecdr_netcdf(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-            overwrite_cde=overwrite_cde,
-        )
-    logger.info(f"Reading cdeCDR file from: {cde_filepath}")
-    cde_ds = xr.load_dataset(cde_filepath)
+    cde_ds = read_cdecdr_ds(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+    )
 
     return cde_ds
 
 
-def create_cdecdr_for_date(
+def create_standard_cdecdr_for_date(
     date: dt.date,
     *,
     hemisphere: Hemisphere,
@@ -477,7 +580,7 @@ def create_cdecdr_for_date(
     overwrite_cde: bool = False,
 ) -> None:
     try:
-        make_cdecdr_netcdf(
+        make_standard_cdecdr_netcdf(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
@@ -509,7 +612,7 @@ def create_cdecdr_for_date(
             traceback.print_exc(file=sys.stdout)
 
 
-def create_cdecdr_for_date_range(
+def create_standard_cdecdr_for_date_range(
     *,
     hemisphere: Hemisphere,
     start_date: dt.date,
@@ -520,7 +623,7 @@ def create_cdecdr_for_date_range(
 ) -> None:
     """Generate the complete daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
-        create_cdecdr_for_date(
+        create_standard_cdecdr_for_date(
             hemisphere=hemisphere,
             date=date,
             resolution=resolution,
@@ -609,7 +712,7 @@ def cli(
     if end_date is None:
         end_date = copy.copy(date)
 
-    create_cdecdr_for_date_range(
+    create_standard_cdecdr_for_date_range(
         hemisphere=hemisphere,
         start_date=date,
         end_date=end_date,
