@@ -243,10 +243,7 @@ def create_melt_onset_field(
 
     day_of_year = int(date.strftime("%j"))
     # Determine if the given day of year is within the melt season. If it's not,
-    # return an empty melt onset field. The first day should also have an empty
-    # melt onset field.
-
-    is_first_day_of_melt = day_of_year == MELT_SEASON_FIRST_DOY
+    # return an empty melt onset field.
     if not date_in_nh_melt_season(date=date):
         logger.info(f"returning empty melt_onset_field for {day_of_year}")
         return _empty_melt_onset_field(
@@ -254,13 +251,19 @@ def create_melt_onset_field(
             resolution=resolution,
         )
 
+    is_first_day_of_melt = day_of_year == MELT_SEASON_FIRST_DOY
     if is_first_day_of_melt:
+        # The first day of the melt seasion should start with an empty melt
+        # onset field.
         prior_melt_onset_field = _empty_melt_onset_field(
             hemisphere=hemisphere,
             resolution=resolution,
         )
         logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
     else:
+        # During the melt season, try to read the previous day's input as a
+        # starting point. Use an empty melt onset field if no data for the
+        # previous day is available.
         try:
             prior_melt_onset_field = read_melt_onset_field_from_complete_daily(
                 date=date - dt.timedelta(days=1),
