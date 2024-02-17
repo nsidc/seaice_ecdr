@@ -292,9 +292,6 @@ def test_temporal_composite_da_multiday_nrt():
     """
     still_missing_flag = 255
 
-    # Set up mock array so that left (=prior) day test values are 20 if exist
-    # Temporal flag values start at zero; add 10*prior_dist, add 1*next_dist,
-
     expected_temporal_flags = np.array(
         [
             [40, 30, 10],
