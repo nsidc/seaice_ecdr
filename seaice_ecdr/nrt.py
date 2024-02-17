@@ -284,11 +284,23 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     ),
     show_default=True,
 )
+@click.option(
+    "--overwrite",
+    is_flag=True,
+    help=(
+        "Overwrite intermediate and final outputs. CAUTION: because lance data is temporary,"
+        " this action could be destructive in a permenant way. E.g,. if input data for a"
+        " day that this CLI is being run for was previously generated with available"
+        " lance data, but that data no longer exists, the resulting file may be empty or"
+        " have significant data gaps. Use this primarily in a development environment."
+    ),
+)
 def nrt_ecdr_for_day(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
+    overwrite: bool,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
     cde_filepath = get_ecdr_filepath(
@@ -298,28 +310,32 @@ def nrt_ecdr_for_day(
         ecdr_data_dir=ecdr_data_dir,
     )
 
-    tiecdr_ds = read_or_create_and_read_nrt_tiecdr_ds(
-        hemisphere=hemisphere,
-        date=date,
-        ecdr_data_dir=ecdr_data_dir,
-        # TODO: CLI option.
-        overwrite=True,
-    )
+    if cde_filepath.is_file() and not overwrite:
+        logger.info("File for {date=} already exists ({cde_filepath}).")
+        return
 
-    cde_ds = complete_daily_ecdr_ds(
-        tie_ds=tiecdr_ds,
-        date=date,
-        hemisphere=hemisphere,
-        resolution=LANCE_RESOLUTION,
-        ecdr_data_dir=ecdr_data_dir,
-    )
+    if not cde_filepath.is_file() or overwrite:
+        tiecdr_ds = read_or_create_and_read_nrt_tiecdr_ds(
+            hemisphere=hemisphere,
+            date=date,
+            ecdr_data_dir=ecdr_data_dir,
+            overwrite=True,
+        )
 
-    written_cde_ncfile = write_cde_netcdf(
-        cde_ds=cde_ds,
-        output_filepath=cde_filepath,
-        ecdr_data_dir=ecdr_data_dir,
-    )
-    logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
+        cde_ds = complete_daily_ecdr_ds(
+            tie_ds=tiecdr_ds,
+            date=date,
+            hemisphere=hemisphere,
+            resolution=LANCE_RESOLUTION,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+
+        written_cde_ncfile = write_cde_netcdf(
+            cde_ds=cde_ds,
+            output_filepath=cde_filepath,
+            ecdr_data_dir=ecdr_data_dir,
+        )
+        logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
 
 
 @click.group(name="nrt")
