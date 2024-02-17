@@ -28,6 +28,7 @@ from seaice_ecdr.melt import (
     MELT_ONSET_FILL_VALUE,
     MELT_SEASON_FIRST_DOY,
     MELT_SEASON_LAST_DOY,
+    date_in_nh_melt_season,
     melting,
 )
 from seaice_ecdr.platforms import (
@@ -215,17 +216,6 @@ def update_melt_onset_for_day(
     return melt_onset_field
 
 
-def date_in_melt_season(*, date: dt.date) -> bool:
-    day_of_year = int(date.strftime("%j"))
-    outside_of_melt_season = (day_of_year < MELT_SEASON_FIRST_DOY) or (
-        day_of_year > MELT_SEASON_LAST_DOY
-    )
-
-    inside_melt_season = not outside_of_melt_season
-
-    return inside_melt_season
-
-
 def create_melt_onset_field(
     *,
     date: dt.date,
@@ -257,7 +247,7 @@ def create_melt_onset_field(
     # melt onset field.
 
     is_first_day_of_melt = day_of_year == MELT_SEASON_FIRST_DOY
-    if not date_in_melt_season(date=date):
+    if not date_in_nh_melt_season(date=date):
         logger.info(f"returning empty melt_onset_field for {day_of_year}")
         return _empty_melt_onset_field(
             hemisphere=hemisphere,
@@ -493,7 +483,7 @@ def make_standard_cdecdr_netcdf(
         # generates the necessary intermediate files for the target date, and
         # then this code would be solely responsible for reading the previous
         # day's complete field.
-        if date_in_melt_season(date=date - dt.timedelta(days=1)):
+        if date_in_nh_melt_season(date=date - dt.timedelta(days=1)):
             make_standard_cdecdr_netcdf(
                 date=date - dt.timedelta(days=1),
                 hemisphere=hemisphere,

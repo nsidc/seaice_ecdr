@@ -1,3 +1,5 @@
+import datetime as dt
+
 import numpy as np
 import numpy.testing as npt
 
@@ -91,3 +93,8 @@ def test_with_both_missing_values():
     actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
     npt.assert_array_equal(expected, actual)
+
+
+def test_date_in_melt_season():
+    assert melt.date_in_nh_melt_season(date=dt.date(2021, 5, 1))
+    assert not melt.date_in_nh_melt_season(date=dt.date(2021, 1, 1))
