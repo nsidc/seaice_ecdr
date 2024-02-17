@@ -284,6 +284,95 @@ def test_temporal_composite_da_multiday():
     assert np.array_equal(temporal_flags, expected_temporal_flags, equal_nan=True)
 
 
+def test_temporal_composite_da_multiday_nrt():
+    """Verify that temporal composite over multiple days during NRT processing.
+
+    This tests that temporal compositing "fills-forward" when data isn't
+    available for days after the target date.
+    """
+    still_missing_flag = 255
+
+    # Set up mock array so that left (=prior) day test values are 20 if exist
+    # Temporal flag values start at zero; add 10*prior_dist, add 1*next_dist,
+
+    expected_temporal_flags = np.array(
+        [
+            [40, 30, 10],
+            [30, 0, 10],
+            [still_missing_flag, 10, 10],
+        ],
+    )
+    expected_temporal_composite_data = np.array(
+        [
+            [
+                [21, 33, 44],
+                [14, 98, 13],
+                [np.nan, 37, 12],
+            ],
+        ]
+    )
+    # --- begin mock data ----------------------------------------------
+    mock_data = np.array(
+        [
+            [
+                # this is target date minus 4 days
+                [21, 22, 23],
+                [np.nan, np.nan, np.nan],
+                [np.nan, np.nan, np.nan],
+            ],
+            [
+                # this is target date minus 3 day
+                [np.nan, 33, np.nan],
+                [14, np.nan, np.nan],
+                [np.nan, np.nan, 12],
+            ],
+            [
+                # this is target date minus 2 day
+                [np.nan, np.nan, np.nan],
+                [np.nan, 99, np.nan],
+                [np.nan, 99, np.nan],
+            ],
+            [
+                # this is target date minus 1 days
+                [np.nan, np.nan, 44],
+                [np.nan, 100, 13],
+                [np.nan, 37, 12],
+            ],
+            [
+                # this is the target-date
+                [np.nan, np.nan, np.nan],
+                [np.nan, 98, np.nan],
+                [np.nan, np.nan, np.nan],
+            ],
+        ]
+    )
+    # --- end mock data ------------------------------------------------
+    tdim, ydim, xdim = mock_data.shape
+    mock_xvals = np.arange(xdim)
+    mock_yvals = np.arange(ydim)
+
+    mock_date = dt.date(2023, 1, 10)
+    mock_start_date = mock_date - dt.timedelta(days=tdim - 1)
+    mock_dates = pd.date_range(mock_start_date, periods=tdim)
+
+    input_data_array = compose_tyx_dataarray(
+        mock_data, mock_xvals, mock_yvals, mock_dates
+    )
+
+    temporal_composite, temporal_flags = temporally_composite_dataarray(
+        target_date=mock_date,
+        da=input_data_array,
+        interp_range=5,
+        one_sided_limit=5,
+        non_ocean_mask=xr.full_like(input_data_array.isel(time=0), False, dtype=bool),
+    )
+
+    assert np.array_equal(
+        temporal_composite.data, expected_temporal_composite_data, equal_nan=True
+    )
+    assert np.array_equal(temporal_flags, expected_temporal_flags, equal_nan=True)
+
+
 def test_get_days_from_temporinterp_flags():
     """Verify correct days-to-retrieve per temporal_interpolation_flag."""
     target_date = dt.date(2022, 3, 3)
