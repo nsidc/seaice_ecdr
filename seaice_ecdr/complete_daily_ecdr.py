@@ -215,7 +215,7 @@ def update_melt_onset_for_day(
     return melt_onset_field
 
 
-def date_in_melt_seasion(*, date: dt.date) -> bool:
+def date_in_melt_season(*, date: dt.date) -> bool:
     day_of_year = int(date.strftime("%j"))
     outside_of_melt_season = (day_of_year < MELT_SEASON_FIRST_DOY) or (
         day_of_year > MELT_SEASON_LAST_DOY
@@ -257,7 +257,7 @@ def create_melt_onset_field(
     # melt onset field.
 
     is_first_day_of_melt = day_of_year == MELT_SEASON_FIRST_DOY
-    if not date_in_melt_seasion(date=date):
+    if not date_in_melt_season(date=date):
         logger.info(f"returning empty melt_onset_field for {day_of_year}")
         return _empty_melt_onset_field(
             hemisphere=hemisphere,
@@ -493,7 +493,7 @@ def make_standard_cdecdr_netcdf(
         # generates the necessary intermediate files for the target date, and
         # then this code would be solely responsible for reading the previous
         # day's complete field.
-        if date_in_melt_seasion(date=date - dt.timedelta(days=1)):
+        if date_in_melt_season(date=date - dt.timedelta(days=1)):
             make_standard_cdecdr_netcdf(
                 date=date - dt.timedelta(days=1),
                 hemisphere=hemisphere,
