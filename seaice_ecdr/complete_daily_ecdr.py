@@ -160,36 +160,6 @@ def read_melt_onset_field_from_complete_daily(
     return melt_onset_from_ds
 
 
-def read_or_create_and_read_standard_melt_onset_field(
-    *,
-    date,
-    hemisphere,
-    resolution,
-    ecdr_data_dir: Path,
-    overwrite: bool,
-) -> npt.NDArray:
-    """Return the melt onset field for this complete daily eCDR file.
-
-    Uses standard input sources (non-NRT).
-    """
-    make_standard_cdecdr_netcdf(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-        overwrite_cde=overwrite,
-    )
-
-    melt_onset = read_melt_onset_field_from_complete_daily(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-    )
-
-    return melt_onset
-
-
 def read_melt_elements_from_tiecdr(
     *,
     date: dt.date,
@@ -209,36 +179,6 @@ def read_melt_elements_from_tiecdr(
         tie_ds["h19_day_si"].to_numpy(),
         tie_ds["h37_day_si"].to_numpy(),
     )
-
-
-def read_or_create_and_read_standard_melt_elements(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
-    overwrite: bool,
-):
-    """Return the elements from tiecdr needed to calculate melt.
-
-    Uses standard input sources (non-NRT).
-    """
-    make_tiecdr_netcdf(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-        overwrite=overwrite,
-    )
-
-    melt_elements = read_melt_elements_from_tiecdr(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-    )
-
-    return melt_elements
 
 
 def update_melt_onset_for_day(
