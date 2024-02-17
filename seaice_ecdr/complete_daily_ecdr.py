@@ -253,7 +253,14 @@ def create_melt_onset_field(
             hemisphere=hemisphere,
             resolution=resolution,
         )
-    elif not is_first_day_of_melt:
+
+    if is_first_day_of_melt:
+        prior_melt_onset_field = _empty_melt_onset_field(
+            hemisphere=hemisphere,
+            resolution=resolution,
+        )
+        logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
+    else:
         try:
             prior_melt_onset_field = read_melt_onset_field_from_complete_daily(
                 date=date - dt.timedelta(days=1),
@@ -266,12 +273,11 @@ def create_melt_onset_field(
             logger.warning(
                 f"Tried to read previous melt field for {day_of_year} but the file was not found."
             )
-
-    prior_melt_onset_field = _empty_melt_onset_field(
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-    logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
+            prior_melt_onset_field = _empty_melt_onset_field(
+                hemisphere=hemisphere,
+                resolution=resolution,
+            )
+            logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
 
     cdr_conc_ti, tb_h19, tb_h37 = read_melt_elements_from_tiecdr(
         date=date,
