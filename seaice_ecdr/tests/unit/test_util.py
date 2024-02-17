@@ -3,6 +3,7 @@ from typing import Final
 
 from pm_tb_data._types import NORTH, SOUTH
 
+from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.multiprocess_daily import get_dates_by_year
 from seaice_ecdr.util import (
     date_range,
@@ -15,7 +16,7 @@ from seaice_ecdr.util import (
 
 
 def test_daily_filename_north():
-    expected = "sic_psn12.5_20210101_am2_v05r00.nc"
+    expected = f"sic_psn12.5_20210101_am2_{ECDR_PRODUCT_VERSION}.nc"
 
     actual = standard_daily_filename(
         hemisphere=NORTH, resolution="12.5", sat="am2", date=dt.date(2021, 1, 1)
@@ -25,7 +26,7 @@ def test_daily_filename_north():
 
 
 def test_daily_filename_south():
-    expected = "sic_pss12.5_20210101_am2_v05r00.nc"
+    expected = f"sic_pss12.5_20210101_am2_{ECDR_PRODUCT_VERSION}.nc"
 
     actual = standard_daily_filename(
         hemisphere=SOUTH, resolution="12.5", sat="am2", date=dt.date(2021, 1, 1)
@@ -35,7 +36,7 @@ def test_daily_filename_south():
 
 
 def test_daily_aggregate_filename():
-    expected = "sic_psn12.5_20210101-20211231_v05r00.nc"
+    expected = f"sic_psn12.5_20210101-20211231_{ECDR_PRODUCT_VERSION}.nc"
 
     actual = standard_daily_aggregate_filename(
         hemisphere=NORTH,
@@ -48,7 +49,7 @@ def test_daily_aggregate_filename():
 
 
 def test_monthly_filename_north():
-    expected = "sic_psn12.5_202101_am2_v05r00.nc"
+    expected = f"sic_psn12.5_202101_am2_{ECDR_PRODUCT_VERSION}.nc"
 
     actual = standard_monthly_filename(
         hemisphere=NORTH,
@@ -62,7 +63,7 @@ def test_monthly_filename_north():
 
 
 def test_monthly_filename_south():
-    expected = "sic_pss12.5_202101_am2_v05r00.nc"
+    expected = f"sic_pss12.5_202101_am2_{ECDR_PRODUCT_VERSION}.nc"
 
     actual = standard_monthly_filename(
         hemisphere=SOUTH,
@@ -76,7 +77,7 @@ def test_monthly_filename_south():
 
 
 def test_monthly_aggregate_filename():
-    expected = "sic_pss12.5_202101-202112_v05r00.nc"
+    expected = f"sic_pss12.5_202101-202112_{ECDR_PRODUCT_VERSION}.nc"
 
     actual = standard_monthly_aggregate_filename(
         hemisphere=SOUTH,
