@@ -155,7 +155,7 @@ def temporally_interpolated_nrt_ecdr_dataset(
     date: dt.date,
     ecdr_data_dir: Path,
     overwrite: bool,
-    days_to_look_previously: int = 4,
+    days_to_look_previously: int = 5,
 ) -> xr.Dataset:
     init_datasets = []
     for date in date_range(
@@ -176,6 +176,8 @@ def temporally_interpolated_nrt_ecdr_dataset(
         hemisphere=hemisphere,
         resolution=LANCE_RESOLUTION,
         data_stack=data_stack,
+        interp_range=days_to_look_previously,
+        one_sided_limit=days_to_look_previously,
     )
 
     return temporally_interpolated_ds

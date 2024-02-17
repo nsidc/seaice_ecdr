@@ -494,6 +494,7 @@ def temporal_interpolation(
     data_stack: xr.Dataset,
     fill_the_pole_hole: bool = True,
     interp_range: int = 5,
+    one_sided_limit: int = 3,
 ) -> xr.Dataset:
     # Initialize a new xr "temporally interpolated CDR" (tiecdr) dataset. The
     # target date is used to initialize this dataset. We retain the `time`
@@ -516,6 +517,7 @@ def temporal_interpolation(
         da=data_stack.conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
+        one_sided_limit=one_sided_limit,
     )
 
     tie_ds["cdr_conc_ti"] = ti_var
@@ -615,6 +617,7 @@ def temporal_interpolation(
         da=data_stack.raw_bt_seaice_conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
+        one_sided_limit=one_sided_limit,
     )
 
     nt_conc, _ = temporally_composite_dataarray(
@@ -622,6 +625,7 @@ def temporal_interpolation(
         da=data_stack.raw_bt_seaice_conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
+        one_sided_limit=one_sided_limit,
     )
 
     # Note: this pole-filling code is copy-pasted from the cdr_conc
