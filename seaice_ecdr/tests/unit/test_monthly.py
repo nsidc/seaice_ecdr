@@ -32,27 +32,27 @@ def test__get_daily_complete_filepaths_for_month(fs):
     year = 2022
     month = 3
     _fake_files_for_test_year_month_and_hemisphere = [
-        complete_dir / "sic_psn12.5_20220301_am2_v05r00.nc",
-        complete_dir / "sic_psn12.5_20220302_am2_v05r00.nc",
-        complete_dir / "sic_psn12.5_20220303_am2_v05r00.nc",
+        complete_dir / "sic_psn12.5_20220301_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220302_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220303_am2_v05r01.nc",
     ]
     _fake_files = [
-        complete_dir / "sic_psn12.5_20220201_am2_v05r00.nc",
-        complete_dir / "sic_pss12.5_20220201_am2_v05r00.nc",
-        complete_dir / "sic_psn12.5_20220202_am2_v05r00.nc",
-        complete_dir / "sic_pss12.5_20220202_am2_v05r00.nc",
-        complete_dir / "sic_psn12.5_20220203_am2_v05r00.nc",
-        complete_dir / "sic_pss12.5_20220203_am2_v05r00.nc",
-        complete_dir / "sic_pss12.5_20220301_am2_v05r00.nc",
-        complete_dir / "sic_pss12.5_20220302_am2_v05r00.nc",
-        complete_dir / "sic_pss12.5_20220303_am2_v05r00.nc",
+        complete_dir / "sic_psn12.5_20220201_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220201_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220202_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220202_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220203_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220203_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220301_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220302_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220303_am2_v05r01.nc",
         *_fake_files_for_test_year_month_and_hemisphere,
-        complete_dir / "sic_psn12.5_20220401_am2_v05r00.nc",
-        complete_dir / "sic_pss12.5_20220401_am2_v05r00.nc",
-        complete_dir / "sic_psn12.5_20220402_am2_v05r00.nc",
-        complete_dir / "sic_pss12.5_20220402_am2_v05r00.nc",
-        complete_dir / "sic_psn12.5_20220403_am2_v05r00.nc",
-        complete_dir / "sic_pss12.5_20220403_am2_v05r00.nc",
+        complete_dir / "sic_psn12.5_20220401_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220401_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220402_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220402_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220403_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220403_am2_v05r01.nc",
     ]
     for _file in _fake_files:
         fs.create_file(_file)
