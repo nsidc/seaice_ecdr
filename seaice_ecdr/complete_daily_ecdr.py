@@ -360,10 +360,12 @@ def complete_daily_ecdr_ds(
     # TODO: Need to ensure that the cdr_seaice_conc field does not have values
     #       where seaice cannot occur, eg over land or lakes
 
-    # Update cde_ds with melt onset info
+    # If no melt_onset_field, then finalize nc attrs and return dataset
     if melt_onset_field is None:
+        cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere)
         return cde_ds
 
+    # Update cde_ds with melt onset info
     cde_ds["melt_onset_day_cdr_seaice_conc"] = (
         ("time", "y", "x"),
         melt_onset_field,
@@ -492,6 +494,9 @@ def make_standard_cdecdr_netcdf(
         # generates the necessary intermediate files for the target date, and
         # then this code would be solely responsible for reading the previous
         # day's complete field.
+        # TODO: this computation is only necessary or NH files which have
+        #       the melt onset field.  SH never has the melt onset field
+        #       (or at least not for the current version of the CDR).
         if date_in_nh_melt_season(date=date - dt.timedelta(days=1)):
             make_standard_cdecdr_netcdf(
                 date=date - dt.timedelta(days=1),
