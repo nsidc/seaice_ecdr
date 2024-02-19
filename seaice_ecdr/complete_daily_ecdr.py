@@ -222,8 +222,11 @@ def create_melt_onset_field(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
-) -> npt.NDArray[np.uint8] | None:
-    """Return a uint8 melt onset field (NH only).
+) -> npt.NDArray[np.uint8]:
+    """Return a uint8 melt onset field.
+
+    It is expected that melt only be calculated in the northern hemisphere. A
+    `RuntimeError` is raised if `south` is passed for `hemisphere`.
 
     Note: this routine creates the melt onset field using input data
     from today (and yesterday if needed).
@@ -239,7 +242,9 @@ def create_melt_onset_field(
     for the current day.
     """
     if hemisphere != NORTH:
-        return None
+        raise RuntimeError(
+            "The CDR melt algorithm is not designed for use in the Southern hemisphere."
+        )
 
     day_of_year = int(date.strftime("%j"))
     # Determine if the given day of year is within the melt season. If it's not,
@@ -321,14 +326,9 @@ def complete_daily_ecdr_ds(
       - The melt onset field
       - All appropriate QA and QC fields
     """
+    # Initialize the complete daily ECDR dataset (cde) using the temporally
+    # interpolated ECDR (tie) dataset provided to this function.
     cde_ds = tie_ds.copy()
-
-    melt_onset_field = create_melt_onset_field(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-    )
 
     # Add the surface-type field
     # TODO: Setting a DataArray directly into a Dataset changes the
@@ -360,45 +360,47 @@ def complete_daily_ecdr_ds(
     # TODO: Need to ensure that the cdr_seaice_conc field does not have values
     #       where seaice cannot occur, eg over land or lakes
 
-    # If no melt_onset_field, then finalize nc attrs and return dataset
-    # TODO: Re-implement the logic around melt onset?  Eg: Handle the melt_onset_field
-    #       if it exists.  Then finalize the Dataset and only return from this function
-    #       at the end of the function
-    if melt_onset_field is None:
-        cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere)
-        return cde_ds
+    # For the northern hemisphere, create the melt onset field and add it to the
+    # dataset. The southern hemisphere does not include a melt onset field.
+    if hemisphere == NORTH:
+        melt_onset_field = create_melt_onset_field(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ecdr_data_dir=ecdr_data_dir,
+        )
 
-    # Update cde_ds with melt onset info
-    cde_ds["melt_onset_day_cdr_seaice_conc"] = (
-        ("time", "y", "x"),
-        melt_onset_field,
-        {
-            "grid_mapping": "crs",
-            "standard_name": "status_flag",
-            "comment": (
-                "Value of 255 means no melt detected yet or the date is"
-                " outside the melt season.  Other values indicate the day"
-                " of year when melt was first detected at this location."
-            ),
-        },
-        {
-            "zlib": True,
-        },
-    )
+        # Update cde_ds with melt onset info
+        cde_ds["melt_onset_day_cdr_seaice_conc"] = (
+            ("time", "y", "x"),
+            melt_onset_field,
+            {
+                "grid_mapping": "crs",
+                "standard_name": "status_flag",
+                "comment": (
+                    "Value of 255 means no melt detected yet or the date is"
+                    " outside the melt season.  Other values indicate the day"
+                    " of year when melt was first detected at this location."
+                ),
+            },
+            {
+                "zlib": True,
+            },
+        )
 
-    # the np.squeeze() function here is to remove the time dim so that
-    # this becomes a 2d array for updating the qa_... field
-    is_melt_has_occurred = np.squeeze(
-        (MELT_SEASON_FIRST_DOY <= cde_ds["melt_onset_day_cdr_seaice_conc"].data)
-        & (cde_ds["melt_onset_day_cdr_seaice_conc"].data <= MELT_SEASON_LAST_DOY)
-    )
-    # TODO: the flag value being "or"ed to the bitmask should be looked
-    #       up as the temporally-interpolation-has-occured value
-    #       rather than hardcoded as '128'.
-    cde_ds["qa_of_cdr_seaice_conc"] = cde_ds["qa_of_cdr_seaice_conc"].where(
-        ~is_melt_has_occurred,
-        other=np.bitwise_or(cde_ds["qa_of_cdr_seaice_conc"], 128),
-    )
+        # the np.squeeze() function here is to remove the time dim so that
+        # this becomes a 2d array for updating the qa_... field
+        is_melt_has_occurred = np.squeeze(
+            (MELT_SEASON_FIRST_DOY <= cde_ds["melt_onset_day_cdr_seaice_conc"].data)
+            & (cde_ds["melt_onset_day_cdr_seaice_conc"].data <= MELT_SEASON_LAST_DOY)
+        )
+        # TODO: the flag value being "or"ed to the bitmask should be looked
+        #       up as the temporally-interpolation-has-occured value
+        #       rather than hardcoded as '128'.
+        cde_ds["qa_of_cdr_seaice_conc"] = cde_ds["qa_of_cdr_seaice_conc"].where(
+            ~is_melt_has_occurred,
+            other=np.bitwise_or(cde_ds["qa_of_cdr_seaice_conc"], 128),
+        )
 
     cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere)
 
