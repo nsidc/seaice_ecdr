@@ -319,7 +319,7 @@ def nrt_ecdr_for_day(
             hemisphere=hemisphere,
             date=date,
             ecdr_data_dir=ecdr_data_dir,
-            overwrite=True,
+            overwrite=overwrite,
         )
 
         cde_ds = complete_daily_ecdr_ds(
