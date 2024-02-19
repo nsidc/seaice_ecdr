@@ -361,6 +361,9 @@ def complete_daily_ecdr_ds(
     #       where seaice cannot occur, eg over land or lakes
 
     # If no melt_onset_field, then finalize nc attrs and return dataset
+    # TODO: Re-implement the logic around melt onset?  Eg: Handle the melt_onset_field
+    #       if it exists.  Then finalize the Dataset and only return from this function
+    #       at the end of the function
     if melt_onset_field is None:
         cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere)
         return cde_ds
