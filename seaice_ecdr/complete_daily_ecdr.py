@@ -544,15 +544,14 @@ def make_standard_cdecdr_netcdf(
         )
 
         # Ensure the previous day's complete daily field exists for the melt
-        # onset calculation/update.
+        # onset calculation/update (NH only!).
         # This is a recursive function! Ideally we'd just have code that
         # generates the necessary intermediate files for the target date, and
         # then this code would be solely responsible for reading the previous
         # day's complete field.
-        # TODO: this computation is only necessary or NH files which have
-        #       the melt onset field.  SH never has the melt onset field
-        #       (or at least not for the current version of the CDR).
-        if date_in_nh_melt_season(date=date - dt.timedelta(days=1)):
+        if hemisphere == NORTH and date_in_nh_melt_season(
+            date=date - dt.timedelta(days=1)
+        ):
             make_standard_cdecdr_netcdf(
                 date=date - dt.timedelta(days=1),
                 hemisphere=hemisphere,
