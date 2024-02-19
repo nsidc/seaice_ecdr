@@ -26,6 +26,7 @@ from seaice_ecdr.initial_daily_ecdr import (
     make_idecdr_netcdf,
 )
 from seaice_ecdr.platforms import (
+    get_first_platform_start_date,
     get_platform_by_date,
 )
 from seaice_ecdr.util import date_range, standard_daily_filename
@@ -172,12 +173,12 @@ def iter_dates_near_date(
     near-real-time use, because data from "the future" are not available.
     """
     earliest_date = target_date - dt.timedelta(days=day_range)
-    # TODO: Determine this minimum date from available sats
-    if earliest_date < dt.date(1978, 10, 25):
+    beginning_of_platform_coverage = get_first_platform_start_date()
+    if earliest_date < beginning_of_platform_coverage:
         logger.warning(
-            f"Resetting temporal interpolation earliest date from {earliest_date} to {dt.date(1978, 10, 25)}"
+            f"Resetting temporal interpolation earliest date from {earliest_date} to {beginning_of_platform_coverage}"
         )
-        earliest_date = dt.date(1978, 10, 25)
+        earliest_date = beginning_of_platform_coverage
 
     if skip_future:
         latest_date = target_date
