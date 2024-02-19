@@ -256,3 +256,11 @@ def get_platform_by_date(
                 break
 
     return return_platform
+
+
+def get_first_platform_start_date() -> dt.date:
+    """Return the start date of the first platform."""
+    platform_start_dates = get_platform_start_dates()
+    earliest_date = min(platform_start_dates.keys())
+
+    return earliest_date

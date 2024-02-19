@@ -6,10 +6,6 @@ from seaice_ecdr.daily_aggregate import cli as daily_aggregate_cli
 from seaice_ecdr.initial_daily_ecdr import cli as ecdr_cli
 from seaice_ecdr.monthly import cli as monthly_cli
 from seaice_ecdr.monthly_aggregate import cli as monthly_aggregate_cli
-
-# TODO: The multiprocess daily invocation causes an error if the
-#       temporal_composite_daily interpolation attempts to access
-#       a day prior to the start of SMMR (10/25/1978)
 from seaice_ecdr.multiprocess_daily import cli as multiprocess_daily_cli
 from seaice_ecdr.nrt import nrt_cli
 from seaice_ecdr.temporal_composite_daily import cli as tiecdr_cli
