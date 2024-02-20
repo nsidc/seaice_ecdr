@@ -51,12 +51,15 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
-from seaice_ecdr.ancillary import bitmask_value_for_meaning, flag_value_for_meaning
+from seaice_ecdr.ancillary import (
+    bitmask_value_for_meaning,
+    flag_value_for_meaning,
+)
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION, STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.monthly import get_monthly_dir
-from seaice_ecdr.util import date_range
+from seaice_ecdr.util import date_range, get_num_missing_pixels
 
 VALIDATION_RESOLUTION: Final = "12.5"
 
@@ -258,9 +261,12 @@ def get_pixel_counts(
     # Ice-free pixels (conc == 0)
     num_ice_free_pixels = int((seaice_conc_var == 0).sum())
 
-    # TODO: we don't have missing pixels. Remove? Some other measure?
-    # Leave hard-codded to 0?
-    num_missing_pixels = 0
+    # Get the number of missing pixels in the cdr conc field.
+    num_missing_pixels = get_num_missing_pixels(
+        seaice_conc_var=seaice_conc_var,
+        hemisphere=hemisphere,
+        resolution=VALIDATION_RESOLUTION,
+    )
 
     # Per CDR v4, "bad" ice pixels are outside the expected range.
     # Note: we use 0.0999 instead of 0.1 because SIC values of 10% are

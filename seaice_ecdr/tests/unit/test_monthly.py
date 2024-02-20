@@ -7,15 +7,15 @@ import pytest
 import xarray as xr
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr import monthly
+from seaice_ecdr import monthly, util
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_dir
 from seaice_ecdr.monthly import (
     QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS,
     QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS,
-    _calc_conc_monthly,
     _get_daily_complete_filepaths_for_month,
     _qa_field_has_flag,
     _sat_for_month,
+    calc_cdr_seaice_conc_monthly,
     calc_melt_onset_day_cdr_seaice_conc_monthly,
     calc_qa_of_cdr_seaice_conc_monthly,
     calc_stdv_of_cdr_seaice_conc_monthly,
@@ -330,7 +330,7 @@ def test_calc_qa_of_cdr_seaice_conc_monthly():
     npt.assert_array_equal(expected_flags, actual.values)
 
 
-def test__calc_conc_monthly():
+def test__calc_conc_monthly(monkeypatch):
     # time ->
     pixel_one = np.array([0.12, 0.15, 0.23])
     pixel_two = np.array([0.46, 0.55, 0.54])
@@ -352,13 +352,33 @@ def test__calc_conc_monthly():
         ),
     )
 
-    actual = _calc_conc_monthly(
-        daily_conc_for_month=mock_daily_conc,
-        long_name="mock_long_name",
-        name="mock_name",
+    mock_daily_ds = xr.Dataset(
+        data_vars=dict(
+            cdr_seaice_conc=mock_daily_conc,
+        )
     )
 
-    assert actual.attrs["long_name"] == "mock_long_name"
+    # Mock the ocean mask used to determine if there are any missing pixels.
+    _mock_oceanmask = xr.DataArray(
+        [
+            True,
+            True,
+            True,
+            True,
+        ],
+        dims=("y",),
+        coords=dict(y=list(range(4))),
+    )
+    monkeypatch.setattr(
+        util, "get_ocean_mask", lambda *_args, **_kwargs: _mock_oceanmask
+    )
+
+    actual = calc_cdr_seaice_conc_monthly(
+        daily_ds_for_month=mock_daily_ds,
+        hemisphere="north",
+        resolution="12.5",
+    )
+
     npt.assert_array_equal(
         actual.values,
         np.array(
@@ -469,10 +489,24 @@ def test_monthly_ds(monkeypatch, tmpdir):
         monthly, "check_min_days_for_valid_month", lambda *_args, **_kwargs: True
     )
 
+    _mock_oceanmask = xr.DataArray(
+        [
+            True,
+            False,
+            True,
+            True,
+        ],
+        dims=("y",),
+        coords=dict(y=list(range(4))),
+    )
+    monkeypatch.setattr(
+        util, "get_ocean_mask", lambda *_args, **_kwargs: _mock_oceanmask
+    )
     actual = make_monthly_ds(
         daily_ds_for_month=_mock_daily_ds,
         sat="am2",
         hemisphere=NORTH,
+        resolution="12.5",
     )
 
     # Test that the dataset only contains the variables we expect.

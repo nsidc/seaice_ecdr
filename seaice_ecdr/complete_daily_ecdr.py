@@ -449,7 +449,7 @@ def complete_daily_ecdr_ds(
             ecdr_data_dir=ecdr_data_dir,
         )
 
-    cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere)
+    cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere, resolution)
 
     # TODO: Need to ensure that the cdr_seaice_conc field does not have values
     #       where seaice cannot occur, eg over land or lakes

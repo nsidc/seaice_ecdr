@@ -262,7 +262,10 @@ def get_invalid_ice_mask(
 def get_ocean_mask(
     *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
 ) -> xr.DataArray:
-    """Return a binary mask where True values represent `ocean`."""
+    """Return a binary mask where True values represent `ocean`.
+
+    This mask includes the polehole for NH.
+    """
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,

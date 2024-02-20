@@ -4,9 +4,11 @@ from typing import Iterator, cast, get_args
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr.ancillary import get_ocean_mask
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 
 
@@ -133,3 +135,20 @@ def get_ecdr_grid_shape(
     grid_shape = grid_shapes[resolution][hemisphere]
 
     return grid_shape
+
+
+def get_num_missing_pixels(
+    *,
+    seaice_conc_var: xr.DataArray,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> int:
+    """The number of missing pixels is anywhere that there are nans over ocean."""
+    ocean_mask = get_ocean_mask(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    num_missing_pixels = int((seaice_conc_var.isnull() & ocean_mask).astype(int).sum())
+
+    return num_missing_pixels

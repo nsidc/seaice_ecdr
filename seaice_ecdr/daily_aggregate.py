@@ -92,6 +92,14 @@ def _update_ncrcat_daily_ds(
     ds["latitude"] = surf_geo_ds.latitude
     ds["longitude"] = surf_geo_ds.longitude
 
+    # Remove the "number of missing pixels" attr from the daily aggregate conc
+    # variable.
+    ds["cdr_seaice_conc"].attrs = {
+        k: v
+        for k, v in ds["cdr_seaice_conc"].attrs.items()
+        if k != "number_of_missing_pixels"
+    }
+
     # setup global attrs
     # Set global attributes
     daily_aggregate_ds_global_attrs = get_global_attrs(
