@@ -846,7 +846,7 @@ def make_tiecdr_netcdf(
     ecdr_data_dir: Path,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
-    overwrite: bool = False,
+    overwrite_tie: bool = False,
 ) -> None:
     output_path = get_tie_filepath(
         date=date,
@@ -855,7 +855,7 @@ def make_tiecdr_netcdf(
         ecdr_data_dir=ecdr_data_dir,
     )
 
-    if overwrite or not output_path.is_file():
+    if overwrite_tie or not output_path.is_file():
         logger.info(f"Creating tiecdr for {date=}, {hemisphere=}, {resolution=}")
         tie_ds = temporally_interpolated_ecdr_dataset(
             date=date,
@@ -879,6 +879,7 @@ def create_tiecdr_for_date(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    overwrite_tie: bool = False,
 ) -> None:
     try:
         make_tiecdr_netcdf(
@@ -886,6 +887,7 @@ def create_tiecdr_for_date(
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
+            overwrite_tie=overwrite_tie,
         )
 
     # TODO: either catch and re-throw this exception or throw an error after

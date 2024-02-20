@@ -119,6 +119,7 @@ def cli(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        overwrite_ide=overwrite,
     )
 
     _create_tiecdr_wrapper = partial(
@@ -126,6 +127,7 @@ def cli(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        overwrite_tie=overwrite,
     )
 
     _complete_daily_wrapper = partial(
