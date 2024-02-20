@@ -14,6 +14,7 @@ min_confidence = 80
 [tool.ruff]
 target-version = "py310"
 
+[tool.ruff.lint]
 extend-fixable = ["I"]
 extend-select = ["I"]
 
@@ -26,10 +27,10 @@ ignore = [
   "D1", "D203", "D213", "E731", "RUF010",
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["seaice_ecdr"]
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 8
 
 [tool.ruff.flake8-quotes]
