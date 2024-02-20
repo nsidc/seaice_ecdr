@@ -489,6 +489,19 @@ def test_monthly_ds(monkeypatch, tmpdir):
         monthly, "check_min_days_for_valid_month", lambda *_args, **_kwargs: True
     )
 
+    _mock_oceanmask = xr.DataArray(
+        [
+            True,
+            False,
+            True,
+            True,
+        ],
+        dims=("y",),
+        coords=dict(y=list(range(4))),
+    )
+    monkeypatch.setattr(
+        util, "get_ocean_mask", lambda *_args, **_kwargs: _mock_oceanmask
+    )
     actual = make_monthly_ds(
         daily_ds_for_month=_mock_daily_ds,
         sat="am2",
