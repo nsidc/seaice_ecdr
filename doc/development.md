@@ -9,6 +9,28 @@ NSIDC VM configuration for this project.
 `pm_icecon`, `seaice_ecdr`, and `pm_tb_data` will be checked out to
 `/home/vagrant/{project_name}`.
 
+### Developing all three projects at once
+
+On dev machines, all three repositories are checked out as described above. The
+`PYTHONPATH` environment variable is set to point to each of these repositories,
+ensuring that changes made to e.g., `pm_icecon` one are reflected when running
+code in `seaice_ecdr`.
+
+To coordinate the dependencies requried for all three libraries, the
+`scripts/make_dev_environment_yml.py` script can be used to generate a
+`dev_environment.yml` that includes the dependencies for all of the
+projects. The developer can then update or re-create the `seaice_ecdr` conda
+environment using this dev environment file:
+
+
+```
+$ conda deactivate seaice_ecdr
+$ conda env remove -n seaice_ecdr
+$ python ./scripts/make_dev_environment_yml.py
+$ mamba env create -f dev_environment.yml
+$ conda activate seaice_ecdr
+```
+
 ### Adding dependencies
 
 To add new dependencies to this project, update the `environment.yml` file with
