@@ -33,7 +33,7 @@ known-first-party = ["seaice_ecdr"]
 [tool.ruff.lint.mccabe]
 max-complexity = 8
 
-[tool.ruff.flake8-quotes]
+[tool.ruff.lint.flake8-quotes]
 inline-quotes = "double"
 
 [tool.pytest.ini_options]
