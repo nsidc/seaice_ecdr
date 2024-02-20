@@ -51,12 +51,15 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
-from seaice_ecdr.ancillary import bitmask_value_for_meaning, flag_value_for_meaning
+from seaice_ecdr.ancillary import (
+    bitmask_value_for_meaning,
+    flag_value_for_meaning,
+)
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION, STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.monthly import get_monthly_dir
-from seaice_ecdr.util import date_range
+from seaice_ecdr.util import date_range, get_num_missing_pixels
 
 VALIDATION_RESOLUTION: Final = "12.5"
 
@@ -207,25 +210,6 @@ def get_error_code(
     return error_code
 
 
-def get_ocean_mask_with_polehole(*, ds: xr.Dataset) -> xr.DataArray:
-    ocean_flag_value = flag_value_for_meaning(
-        var=ds.surface_type_mask,
-        meaning="ocean",
-    )
-    ocean_mask = ds.surface_type_mask == ocean_flag_value
-
-    polehole_meaning = "polehole_mask"
-    if polehole_meaning in ds.surface_type_mask.flag_meanings:
-        polehole_flag_value = flag_value_for_meaning(
-            var=ds.surface_type_mask,
-            meaning=polehole_meaning,
-        )
-        polehole_mask = ds.surface_type_mask == polehole_flag_value
-        ocean_mask = ocean_mask | polehole_mask
-
-    return ocean_mask
-
-
 def get_pixel_counts(
     *,
     ds: xr.Dataset,
@@ -278,10 +262,10 @@ def get_pixel_counts(
     num_ice_free_pixels = int((seaice_conc_var == 0).sum())
 
     # Get the number of missing pixels in the cdr conc field.
-    ocean_mask_with_polehole = get_ocean_mask_with_polehole(ds=ds)
-    # The number of missing pixels is anywhere that there are nans over ocean.
-    num_missing_pixels = int(
-        (seaice_conc_var.isnull() & ocean_mask_with_polehole).astype(int).sum()
+    num_missing_pixels = get_num_missing_pixels(
+        seaice_conc_var=seaice_conc_var,
+        hemisphere=hemisphere,
+        resolution=VALIDATION_RESOLUTION,
     )
 
     # Per CDR v4, "bad" ice pixels are outside the expected range.

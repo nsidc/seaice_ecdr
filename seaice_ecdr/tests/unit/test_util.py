@@ -1,12 +1,16 @@
 import datetime as dt
 from typing import Final
 
+import numpy as np
+import xarray as xr
 from pm_tb_data._types import NORTH, SOUTH
 
+from seaice_ecdr import util
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.multiprocess_daily import get_dates_by_year
 from seaice_ecdr.util import (
     date_range,
+    get_num_missing_pixels,
     sat_from_filename,
     standard_daily_aggregate_filename,
     standard_daily_filename,
@@ -159,3 +163,38 @@ def test_get_dates_by_year():
     ]
 
     assert actual == expected
+
+
+def test_get_num_missing_pixels(monkeypatch):
+    _mock_oceanmask = xr.DataArray(
+        [
+            True,
+            False,
+            True,
+            True,
+        ],
+        dims=("y",),
+        coords=dict(y=list(range(4))),
+    )
+    monkeypatch.setattr(
+        util, "get_ocean_mask", lambda *_args, **_kwargs: _mock_oceanmask
+    )
+
+    _mock_sic = xr.DataArray(
+        [
+            0.99,
+            np.nan,
+            0.25,
+            np.nan,
+        ],
+        dims=("y",),
+        coords=dict(y=list(range(4))),
+    )
+
+    detected_missing = get_num_missing_pixels(
+        seaice_conc_var=_mock_sic,
+        hemisphere="north",
+        resolution="12.5",
+    )
+
+    assert detected_missing == 1

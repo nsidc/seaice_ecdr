@@ -311,7 +311,7 @@ def nrt_ecdr_for_day(
     )
 
     if cde_filepath.is_file() and not overwrite:
-        logger.info("File for {date=} already exists ({cde_filepath}).")
+        logger.info(f"File for {date=} already exists ({cde_filepath}).")
         return
 
     if not cde_filepath.is_file() or overwrite:
