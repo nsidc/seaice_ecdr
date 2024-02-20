@@ -5,11 +5,9 @@
 #  tests/integration/ directory.
 
 import datetime as dt
-import sys
 from pathlib import Path
 from typing import Final
 
-from loguru import logger
 from pm_tb_data._types import NORTH
 
 from seaice_ecdr.initial_daily_ecdr import get_idecdr_filepath
@@ -17,15 +15,6 @@ from seaice_ecdr.temporal_composite_daily import (
     make_tiecdr_netcdf,
     read_or_create_and_read_idecdr_ds,
 )
-
-# Set the default minimum log notification to Warning
-try:
-    logger.remove(0)  # Removes previous logger info
-    logger.add(sys.stderr, level="WARNING")
-except ValueError:
-    logger.debug(f"Started logging in {__name__}")
-    logger.add(sys.stderr, level="WARNING")
-
 
 date = dt.date(2021, 2, 19)
 hemisphere = NORTH
