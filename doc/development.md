@@ -26,7 +26,7 @@ environment using this dev environment file:
 ```
 $ conda deactivate seaice_ecdr
 $ conda env remove -n seaice_ecdr
-$ ./scripts/make_dev_environment_yml.py
+$ python ./scripts/make_dev_environment_yml.py
 $ mamba env create -f dev_environment.yml
 $ conda activate seaice_ecdr
 ```
