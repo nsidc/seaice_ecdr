@@ -99,7 +99,6 @@ def _update_ncrcat_daily_ds(
         for k, v in ds["cdr_seaice_conc"].attrs.items()
         if k != "number_of_missing_pixels"
     }
-    # ds["cdr_seaice_conc]
 
     # setup global attrs
     # Set global attributes
