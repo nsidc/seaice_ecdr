@@ -1,7 +1,6 @@
 """Unit tests for initial daily ECDR generation."""
 
 import datetime as dt
-import sys
 from pathlib import Path
 from typing import Final
 
@@ -9,7 +8,6 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-from loguru import logger
 from pm_tb_data._types import NORTH
 
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
@@ -20,15 +18,6 @@ from seaice_ecdr.temporal_composite_daily import (
     temporally_interpolate_dataarray_using_flags,
     yield_dates_from_temporal_interpolation_flags,
 )
-
-# Set the default minimum log notification to Warning
-# TODO: Think about logging holistically...
-try:
-    logger.remove(0)  # Removes previous logger info
-    logger.add(sys.stderr, level="WARNING")
-except ValueError:
-    logger.debug(f"Started logging in {__name__}")
-    logger.add(sys.stderr, level="WARNING")
 
 
 def compose_tyx_dataarray(

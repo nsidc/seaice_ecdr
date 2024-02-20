@@ -31,14 +31,6 @@ from seaice_ecdr.platforms import (
 )
 from seaice_ecdr.util import date_range, standard_daily_filename
 
-# Set the default minimum log notification to "info"
-try:
-    logger.remove(0)  # Removes previous logger info
-    logger.add(sys.stderr, level="INFO")
-except ValueError:
-    logger.debug(f"Started logging in {__name__}")
-    logger.add(sys.stderr, level="INFO")
-
 
 def yield_dates_from_temporal_interpolation_flags(
     ref_date: dt.date,
