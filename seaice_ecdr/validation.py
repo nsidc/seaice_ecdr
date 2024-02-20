@@ -207,6 +207,25 @@ def get_error_code(
     return error_code
 
 
+def get_ocean_mask_with_polehole(*, ds: xr.Dataset) -> xr.DataArray:
+    ocean_flag_value = flag_value_for_meaning(
+        var=ds.surface_type_mask,
+        meaning="ocean",
+    )
+    ocean_mask = ds.surface_type_mask == ocean_flag_value
+
+    polehole_meaning = "polehole_mask"
+    if polehole_meaning in ds.surface_type_mask.flag_meanings:
+        polehole_flag_value = flag_value_for_meaning(
+            var=ds.surface_type_mask,
+            meaning=polehole_meaning,
+        )
+        polehole_mask = ds.surface_type_mask == polehole_flag_value
+        ocean_mask = ocean_mask | polehole_mask
+
+    return ocean_mask
+
+
 def get_pixel_counts(
     *,
     ds: xr.Dataset,
@@ -258,9 +277,12 @@ def get_pixel_counts(
     # Ice-free pixels (conc == 0)
     num_ice_free_pixels = int((seaice_conc_var == 0).sum())
 
-    # TODO: we don't have missing pixels. Remove? Some other measure?
-    # Leave hard-codded to 0?
-    num_missing_pixels = 0
+    # Get the number of missing pixels in the cdr conc field.
+    ocean_mask_with_polehole = get_ocean_mask_with_polehole(ds=ds)
+    # The number of missing pixels is anywhere that there are nans over ocean.
+    num_missing_pixels = int(
+        (seaice_conc_var.isnull() & ocean_mask_with_polehole).astype(int).sum()
+    )
 
     # Per CDR v4, "bad" ice pixels are outside the expected range.
     # Note: we use 0.0999 instead of 0.1 because SIC values of 10% are
