@@ -1,4 +1,5 @@
 """Add format and test to collections."""
+
 from invoke import Collection
 
 from . import test

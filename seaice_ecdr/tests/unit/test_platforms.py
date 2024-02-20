@@ -1,4 +1,5 @@
 """Test the platforms.py routine for seaice_ecdr."""
+
 import datetime as dt
 from typing import get_args
 

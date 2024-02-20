@@ -556,9 +556,9 @@ def make_monthly_ds(
         melt_onset_day_cdr_seaice_conc_monthly = calc_melt_onset_day_cdr_seaice_conc_monthly(
             daily_melt_onset_for_month=daily_ds_for_month.melt_onset_day_cdr_seaice_conc,
         )
-        monthly_ds_data_vars[
-            "melt_onset_day_cdr_seaice_conc_monthly"
-        ] = melt_onset_day_cdr_seaice_conc_monthly
+        monthly_ds_data_vars["melt_onset_day_cdr_seaice_conc_monthly"] = (
+            melt_onset_day_cdr_seaice_conc_monthly
+        )
 
     monthly_ds = xr.Dataset(
         data_vars=monthly_ds_data_vars,

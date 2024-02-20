@@ -1,4 +1,5 @@
 """entrypoint.py  Contains click commands fo seaice_ecdr."""
+
 import click
 
 from seaice_ecdr.complete_daily_ecdr import cli as complete_daily_cli

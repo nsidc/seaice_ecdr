@@ -1,5 +1,6 @@
 """Code to produce daily aggregate files from daily complete data.
 """
+
 import datetime as dt
 from pathlib import Path
 from tempfile import TemporaryDirectory

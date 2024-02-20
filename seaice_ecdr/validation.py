@@ -39,6 +39,7 @@ varying log file parameters:
     bad: pixels that have an error (invalid sea ice value), should always be 0
     melt: pixels that have ice and are melting (north only, 1 March - 1 September only)
 """
+
 import csv
 import datetime as dt
 import itertools
