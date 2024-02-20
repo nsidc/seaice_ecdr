@@ -106,7 +106,7 @@ def read_or_create_and_read_standard_tiecdr_ds(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
-        overwrite=overwrite_tie,
+        overwrite_tie=overwrite_tie,
     )
 
     tie_ds = read_tiecdr_ds(
