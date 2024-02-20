@@ -1,5 +1,6 @@
 """Code to produce monthly aggregate files from monthly complete data.
 """
+
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import get_args

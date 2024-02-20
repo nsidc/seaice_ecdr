@@ -6,6 +6,7 @@ release, to archive alongside the output data.
 This script creates a .zip file containing a copy of the `seaice_ecdr` git
 repository and the seaice_ecdr.constants.CDR_ANCILLARY_DIR ancillary dir.
 """
+
 import datetime as dt
 import shutil
 import subprocess

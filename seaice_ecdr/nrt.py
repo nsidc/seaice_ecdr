@@ -14,6 +14,7 @@ TODO:
   processing. Some way to tell the code on a global level that it's dealing w/
   NRT maybe?
 """
+
 import datetime as dt
 from pathlib import Path
 from typing import Final, get_args
