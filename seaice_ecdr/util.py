@@ -2,7 +2,7 @@ import datetime as dt
 import re
 import traceback
 from pathlib import Path
-from typing import Iterator, Literal, cast, get_args
+from typing import Iterator, cast, get_args
 
 import numpy as np
 import pandas as pd
@@ -160,7 +160,7 @@ def get_num_missing_pixels(
 def get_err_logfile_dir(
     *,
     ecdr_data_dir: Path,
-    product_type: Literal["complete_daily", "monthly", "aggregate"],
+    product_type: str,
 ):
     errors_dir = ecdr_data_dir / "errors"
     errors_dir.mkdir(exist_ok=True)
@@ -174,7 +174,7 @@ def create_err_logfile(
     *,
     filename: str,
     ecdr_data_dir: Path,
-    product_type: Literal["complete_daily", "monthly", "aggregate"],
+    product_type: str,
 ) -> None:
     err_logfile_dir = get_err_logfile_dir(
         ecdr_data_dir=ecdr_data_dir, product_type=product_type

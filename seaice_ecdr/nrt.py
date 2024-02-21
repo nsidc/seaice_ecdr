@@ -49,7 +49,7 @@ from seaice_ecdr.temporal_composite_daily import (
     temporal_interpolation,
     write_tie_netcdf,
 )
-from seaice_ecdr.util import date_range
+from seaice_ecdr.util import create_err_logfile, date_range
 
 LANCE_RESOLUTION: Final = "12.5"
 
@@ -304,19 +304,19 @@ def nrt_ecdr_for_day(
     overwrite: bool,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
-    try:
-        cde_filepath = get_ecdr_filepath(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=LANCE_RESOLUTION,
-            ecdr_data_dir=ecdr_data_dir,
-        )
+    cde_filepath = get_ecdr_filepath(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=LANCE_RESOLUTION,
+        ecdr_data_dir=ecdr_data_dir,
+    )
 
-        if cde_filepath.is_file() and not overwrite:
-            logger.info(f"File for {date=} already exists ({cde_filepath}).")
-            return
+    if cde_filepath.is_file() and not overwrite:
+        logger.info(f"File for {date=} already exists ({cde_filepath}).")
+        return
 
-        if not cde_filepath.is_file() or overwrite:
+    if not cde_filepath.is_file() or overwrite:
+        try:
             tiecdr_ds = read_or_create_and_read_nrt_tiecdr_ds(
                 hemisphere=hemisphere,
                 date=date,
@@ -338,9 +338,14 @@ def nrt_ecdr_for_day(
                 ecdr_data_dir=ecdr_data_dir,
             )
             logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
-    except Exception as e:
-        logger.exception(f"Failed to create NRT ECDR for {date=} {hemisphere=}")
-        raise e
+        except Exception as e:
+            logger.exception(f"Failed to create NRT ECDR for {date=} {hemisphere=}")
+            create_err_logfile(
+                filename=cde_filepath.name,
+                ecdr_data_dir=ecdr_data_dir,
+                product_type="complete_daily",
+            )
+            raise e
 
 
 @click.group(name="nrt")
