@@ -711,6 +711,10 @@ def create_standard_cdecdr_for_date(
     required=True,
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
+@click.option(
+    "--overwrite",
+    is_flag=True,
+)
 def cli(
     *,
     date: dt.date,
@@ -718,6 +722,7 @@ def cli(
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    overwrite: bool,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.
 
@@ -739,8 +744,7 @@ def cli(
                 date=date,
                 resolution=resolution,
                 ecdr_data_dir=ecdr_data_dir,
-                # TODO:
-                # overwrite_cde=overwrite_cde,
+                overwrite_cde=overwrite,
             )
         except Exception:
             error_dates.append(date)
