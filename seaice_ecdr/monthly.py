@@ -673,7 +673,7 @@ def make_monthly_nc(
             product_type="monthly",
         )
     except Exception as e:
-        logger.exception(f"Failed to create monthly data for year={year} month={month}")
+        logger.exception(f"Failed to create monthly data for {year=} {month=}")
         raise e
 
     return output_path
