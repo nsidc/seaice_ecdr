@@ -653,7 +653,7 @@ def create_standard_cdecdr_for_date(
 
 
 def create_standard_ecdr_for_dates(
-    dates: list[dt.date],
+    dates: Iterable[dt.date],
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
@@ -777,9 +777,8 @@ def cli(
     if end_date is None:
         end_date = copy.copy(date)
 
-    dates = list(date_range(start_date=date, end_date=end_date))
     error_dates = create_standard_ecdr_for_dates(
-        dates=dates,
+        dates=date_range(start_date=date, end_date=end_date),
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
