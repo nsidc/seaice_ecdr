@@ -18,7 +18,7 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
       - name: "Check out repository"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
 
       - name: "Install Conda environment"
         uses: "mamba-org/setup-micromamba@v1"
@@ -28,7 +28,7 @@ jobs:
           environment-name: "seaice_ecdr-ci"
           cache-environment: true
           # Increase this key to trigger cache invalidation
-          cache-environment-key: 1
+          cache-environment-key: 2
 
       # Linter
       - name: "Run pre-commit tests"
@@ -36,13 +36,13 @@ jobs:
 
       # Check out repos resquired for unit tests.
       - name: "Check out pm_icecon repository"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
         with:
           repository: "nsidc/pm_icecon"
           ref: "main"
           path: "pm_icecon"
       - name: "Check out pm_tb_data repository"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@v4"
         with:
           repository: "nsidc/pm_tb_data"
           ref: "main"

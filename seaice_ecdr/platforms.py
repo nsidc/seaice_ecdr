@@ -2,6 +2,14 @@
 
 Routines for dealing with the platform (satellite) and sensors
 for CDRv5
+
+
+TODO: There are a couple of date ranges for which we do not want
+        to produce data files:
+          Aug 12-24, 1984 because there is no SMMR data
+          Dec 3, 1987 - Jan 12, 1988 because no F08 data
+        Also, anything prior to the start of the data record,
+          eg prior to Oct 25, 1978
 """
 
 import datetime as dt
@@ -250,3 +258,11 @@ def get_platform_by_date(
                 break
 
     return return_platform
+
+
+def get_first_platform_start_date() -> dt.date:
+    """Return the start date of the first platform."""
+    platform_start_dates = get_platform_start_dates()
+    earliest_date = min(platform_start_dates.keys())
+
+    return earliest_date
