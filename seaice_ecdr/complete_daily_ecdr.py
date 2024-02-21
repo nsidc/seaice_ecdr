@@ -517,8 +517,8 @@ def write_cde_netcdf(
 
 
 def make_standard_cdecdr_netcdf(
-    *,
     date: dt.date,
+    *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
@@ -539,46 +539,53 @@ def make_standard_cdecdr_netcdf(
     )
 
     if overwrite_cde or not cde_filepath.is_file():
-        logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
+        try:
+            logger.info(f"Creating cdecdr for {date=}, {hemisphere=}, {resolution=}")
 
-        tie_ds = read_or_create_and_read_standard_tiecdr_ds(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-        )
-
-        # Ensure the previous day's complete daily field exists for the melt
-        # onset calculation/update (NH only!).
-        # This is a recursive function! Ideally we'd just have code that
-        # generates the necessary intermediate files for the target date, and
-        # then this code would be solely responsible for reading the previous
-        # day's complete field.
-        if hemisphere == NORTH and date_in_nh_melt_season(
-            date=date - dt.timedelta(days=1)
-        ):
-            make_standard_cdecdr_netcdf(
-                date=date - dt.timedelta(days=1),
+            tie_ds = read_or_create_and_read_standard_tiecdr_ds(
+                date=date,
                 hemisphere=hemisphere,
                 resolution=resolution,
                 ecdr_data_dir=ecdr_data_dir,
-                overwrite_cde=overwrite_cde,
             )
 
-        cde_ds = complete_daily_ecdr_ds(
-            tie_ds=tie_ds,
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-        )
+            # Ensure the previous day's complete daily field exists for the melt
+            # onset calculation/update (NH only!).
+            # This is a recursive function! Ideally we'd just have code that
+            # generates the necessary intermediate files for the target date, and
+            # then this code would be solely responsible for reading the previous
+            # day's complete field.
+            if hemisphere == NORTH and date_in_nh_melt_season(
+                date=date - dt.timedelta(days=1)
+            ):
+                make_standard_cdecdr_netcdf(
+                    date=date - dt.timedelta(days=1),
+                    hemisphere=hemisphere,
+                    resolution=resolution,
+                    ecdr_data_dir=ecdr_data_dir,
+                    overwrite_cde=overwrite_cde,
+                )
 
-        written_cde_ncfile = write_cde_netcdf(
-            cde_ds=cde_ds,
-            output_filepath=cde_filepath,
-            ecdr_data_dir=ecdr_data_dir,
-        )
-        logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
+            cde_ds = complete_daily_ecdr_ds(
+                tie_ds=tie_ds,
+                date=date,
+                hemisphere=hemisphere,
+                resolution=resolution,
+                ecdr_data_dir=ecdr_data_dir,
+            )
+
+            written_cde_ncfile = write_cde_netcdf(
+                cde_ds=cde_ds,
+                output_filepath=cde_filepath,
+                ecdr_data_dir=ecdr_data_dir,
+            )
+            logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
+        except Exception as e:
+            logger.exception(
+                "Failed to create complete daily NetCDF for"
+                f" {hemisphere=}, {date=}, {resolution=}."
+            )
+            raise e
 
     return cde_filepath
 
@@ -635,23 +642,6 @@ def read_or_create_and_read_standard_cdecdr_ds(
     return cde_ds
 
 
-def create_standard_cdecdr_for_date(
-    date: dt.date,
-    *,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
-    overwrite_cde: bool = False,
-) -> None:
-    make_standard_cdecdr_netcdf(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-        overwrite_cde=overwrite_cde,
-    )
-
-
 def create_standard_ecdr_for_dates(
     dates: Iterable[dt.date],
     *,
@@ -664,20 +654,15 @@ def create_standard_ecdr_for_dates(
     error_dates = []
     for date in dates:
         try:
-            create_standard_cdecdr_for_date(
-                hemisphere=hemisphere,
+            make_standard_cdecdr_netcdf(
                 date=date,
+                hemisphere=hemisphere,
                 resolution=resolution,
                 ecdr_data_dir=ecdr_data_dir,
                 overwrite_cde=overwrite_cde,
             )
         except Exception:
             error_dates.append(date)
-            logger.exception(
-                "Failed to create complete daily NetCDF for"
-                f" {hemisphere=}, {date=}, {resolution=}."
-            )
-
             ecdr_filepath = get_ecdr_filepath(
                 date=date,
                 hemisphere=hemisphere,
