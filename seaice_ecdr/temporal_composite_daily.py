@@ -4,8 +4,6 @@
 
 import copy
 import datetime as dt
-import sys
-import traceback
 from functools import cache
 from pathlib import Path
 from typing import Iterable, cast, get_args
@@ -814,8 +812,8 @@ def write_tie_netcdf(
 
 
 def make_tiecdr_netcdf(
-    *,
     date: dt.date,
+    *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
@@ -831,62 +829,29 @@ def make_tiecdr_netcdf(
     )
 
     if overwrite_tie or not output_path.is_file():
-        logger.info(f"Creating tiecdr for {date=}, {hemisphere=}, {resolution=}")
-        tie_ds = temporally_interpolated_ecdr_dataset(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            interp_range=interp_range,
-            ecdr_data_dir=ecdr_data_dir,
-            fill_the_pole_hole=fill_the_pole_hole,
-        )
+        try:
+            logger.info(f"Creating tiecdr for {date=}, {hemisphere=}, {resolution=}")
+            tie_ds = temporally_interpolated_ecdr_dataset(
+                date=date,
+                hemisphere=hemisphere,
+                resolution=resolution,
+                interp_range=interp_range,
+                ecdr_data_dir=ecdr_data_dir,
+                fill_the_pole_hole=fill_the_pole_hole,
+            )
 
-        written_tie_ncfile = write_tie_netcdf(
-            tie_ds=tie_ds,
-            output_filepath=output_path,
-        )
-        logger.info(f"Wrote temporally interpolated daily ncfile: {written_tie_ncfile}")
-
-
-def create_tiecdr_for_date(
-    date: dt.date,
-    *,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
-    overwrite_tie: bool = False,
-) -> None:
-    try:
-        make_tiecdr_netcdf(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-            overwrite_tie=overwrite_tie,
-        )
-
-    # TODO: either catch and re-throw this exception or throw an error after
-    # attempting to make the netcdf for each date. The exit code should be
-    # non-zero in such a case.
-    except Exception:
-        logger.error(
-            "Failed to create NetCDF for " f"{hemisphere=}, {date=}, {resolution=}."
-        )
-        # TODO: These error logs should be written to e.g.,
-        # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
-        # to handle automatically logging error details to such a file.
-        # TODO: Perhaps this function should come from seaice_ecdr
-        err_filepath = get_tie_filepath(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-        )
-        err_filename = err_filepath.name + ".error"
-        logger.info(f"Writing error info to {err_filename}")
-        with open(err_filepath.parent / err_filename, "w") as f:
-            traceback.print_exc(file=f)
-            traceback.print_exc(file=sys.stdout)
+            written_tie_ncfile = write_tie_netcdf(
+                tie_ds=tie_ds,
+                output_filepath=output_path,
+            )
+            logger.info(
+                f"Wrote temporally interpolated daily ncfile: {written_tie_ncfile}"
+            )
+        except Exception as e:
+            logger.exception(
+                "Failed to create NetCDF for " f"{hemisphere=}, {date=}, {resolution=}."
+            )
+            raise e
 
 
 def create_tiecdr_for_date_range(
@@ -896,14 +861,16 @@ def create_tiecdr_for_date_range(
     end_date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    overwrite_tie: bool,
 ) -> None:
     """Generate the temporally composited daily ecdr files for a range of dates."""
     for date in date_range(start_date=start_date, end_date=end_date):
-        create_tiecdr_for_date(
-            hemisphere=hemisphere,
+        make_tiecdr_netcdf(
             date=date,
+            hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
+            overwrite_tie=overwrite_tie,
         )
 
 
@@ -967,6 +934,10 @@ def create_tiecdr_for_date_range(
     required=True,
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
+@click.option(
+    "--overwrite",
+    is_flag=True,
+)
 def cli(
     *,
     date: dt.date,
@@ -974,6 +945,7 @@ def cli(
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    overwrite: bool,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.
 
@@ -987,10 +959,12 @@ def cli(
     if end_date is None:
         end_date = copy.copy(date)
 
+    # TODO: support 'failed' outputs from this CLI?
     create_tiecdr_for_date_range(
         hemisphere=hemisphere,
         start_date=date,
         end_date=end_date,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        overwrite_tie=overwrite,
     )

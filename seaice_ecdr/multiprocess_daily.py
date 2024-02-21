@@ -13,7 +13,7 @@ from seaice_ecdr.complete_daily_ecdr import create_standard_ecdr_for_dates
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import create_idecdr_for_date
 from seaice_ecdr.platforms import get_first_platform_start_date
-from seaice_ecdr.temporal_composite_daily import create_tiecdr_for_date
+from seaice_ecdr.temporal_composite_daily import make_tiecdr_netcdf
 from seaice_ecdr.util import date_range, get_dates_by_year, raise_error_for_dates
 
 
@@ -106,7 +106,7 @@ def cli(
     )
 
     _create_tiecdr_wrapper = partial(
-        create_tiecdr_for_date,
+        make_tiecdr_netcdf,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
