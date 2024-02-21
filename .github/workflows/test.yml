@@ -28,7 +28,7 @@ jobs:
           environment-name: "seaice_ecdr-ci"
           cache-environment: true
           # Increase this key to trigger cache invalidation
-          cache-environment-key: 1
+          cache-environment-key: 2
 
       # Linter
       - name: "Run pre-commit tests"
