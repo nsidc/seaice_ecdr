@@ -1,10 +1,13 @@
 import datetime as dt
 import re
-from typing import Iterator, cast, get_args
+import traceback
+from pathlib import Path
+from typing import Iterator, Literal, cast, get_args
 
 import numpy as np
 import pandas as pd
 import xarray as xr
+from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
@@ -152,3 +155,31 @@ def get_num_missing_pixels(
     num_missing_pixels = int((seaice_conc_var.isnull() & ocean_mask).astype(int).sum())
 
     return num_missing_pixels
+
+
+def get_err_logfile_dir(
+    *,
+    ecdr_data_dir: Path,
+    product_type: Literal["complete_daily", "monthly", "aggregate"],
+):
+    errors_dir = ecdr_data_dir / "errors"
+    errors_dir.mkdir(exist_ok=True)
+    err_logfile_dir = errors_dir / product_type
+    err_logfile_dir.mkdir(exist_ok=True)
+
+    return err_logfile_dir
+
+
+def create_err_logfile(
+    *,
+    filename: str,
+    ecdr_data_dir: Path,
+    product_type: Literal["complete_daily", "monthly", "aggregate"],
+) -> None:
+    err_logfile_dir = get_err_logfile_dir(
+        ecdr_data_dir=ecdr_data_dir, product_type=product_type
+    )
+    err_filepath = err_logfile_dir / (filename + ".error")
+    with open(err_filepath, "w") as f:
+        traceback.print_exc(file=f)
+    logger.warning(f"Wrote error info to {err_filepath}")

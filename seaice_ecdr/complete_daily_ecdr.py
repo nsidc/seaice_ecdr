@@ -4,8 +4,6 @@
 
 import copy
 import datetime as dt
-import sys
-import traceback
 from functools import cache
 from pathlib import Path
 from typing import Iterable, cast, get_args
@@ -37,7 +35,12 @@ from seaice_ecdr.platforms import (
 )
 from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
-from seaice_ecdr.util import date_range, get_ecdr_grid_shape, standard_daily_filename
+from seaice_ecdr.util import (
+    create_err_logfile,
+    date_range,
+    get_ecdr_grid_shape,
+    standard_daily_filename,
+)
 
 
 @cache
@@ -639,57 +642,13 @@ def create_standard_cdecdr_for_date(
     ecdr_data_dir: Path,
     overwrite_cde: bool = False,
 ) -> None:
-    try:
-        make_standard_cdecdr_netcdf(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-            overwrite_cde=overwrite_cde,
-        )
-
-    # TODO: either catch and re-throw this exception or throw an error after
-    # attempting to make the netcdf for each date. The exit code should be
-    # non-zero in such a case.
-    except Exception:
-        logger.error(
-            "Failed to create complete daily NetCDF for"
-            f" {hemisphere=}, {date=}, {resolution=}."
-        )
-        # TODO: These error logs should be written to e.g.,
-        # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
-        # to handle automatically logging error details to such a file.
-        err_filepath = get_ecdr_filepath(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-        )
-        err_filename = err_filepath.name + ".error"
-        logger.info(f"Writing error info to {err_filename}")
-        with open(err_filepath.parent / err_filename, "w") as f:
-            traceback.print_exc(file=f)
-            traceback.print_exc(file=sys.stdout)
-
-
-def create_standard_cdecdr_for_date_range(
-    *,
-    hemisphere: Hemisphere,
-    start_date: dt.date,
-    end_date: dt.date,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
-    overwrite_cde: bool = False,
-) -> None:
-    """Generate the complete daily ecdr files for a range of dates."""
-    for date in date_range(start_date=start_date, end_date=end_date):
-        create_standard_cdecdr_for_date(
-            hemisphere=hemisphere,
-            date=date,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-            overwrite_cde=overwrite_cde,
-        )
+    make_standard_cdecdr_netcdf(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+        overwrite_cde=overwrite_cde,
+    )
 
 
 @click.command(name="cdecdr")
@@ -772,10 +731,38 @@ def cli(
     if end_date is None:
         end_date = copy.copy(date)
 
-    create_standard_cdecdr_for_date_range(
-        hemisphere=hemisphere,
-        start_date=date,
-        end_date=end_date,
-        resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
-    )
+    error_dates = []
+    for date in date_range(start_date=date, end_date=end_date):
+        try:
+            1 / 0
+            create_standard_cdecdr_for_date(
+                hemisphere=hemisphere,
+                date=date,
+                resolution=resolution,
+                ecdr_data_dir=ecdr_data_dir,
+                # TODO:
+                # overwrite_cde=overwrite_cde,
+            )
+        except Exception:
+            error_dates.append(date)
+            logger.exception(
+                "Failed to create complete daily NetCDF for"
+                f" {hemisphere=}, {date=}, {resolution=}."
+            )
+
+            ecdr_filepath = get_ecdr_filepath(
+                date=date,
+                hemisphere=hemisphere,
+                resolution=resolution,
+                ecdr_data_dir=ecdr_data_dir,
+            )
+            create_err_logfile(
+                filename=ecdr_filepath.name,
+                ecdr_data_dir=ecdr_data_dir,
+                product_type="complete_daily",
+            )
+
+    if error_dates:
+        raise RuntimeError(
+            f"Encountered {len(error_dates)} failures. Data for the following dates were not created: {error_dates}"
+        )
