@@ -734,7 +734,6 @@ def cli(
     error_dates = []
     for date in date_range(start_date=date, end_date=end_date):
         try:
-            1 / 0
             create_standard_cdecdr_for_date(
                 hemisphere=hemisphere,
                 date=date,
@@ -763,6 +762,10 @@ def cli(
             )
 
     if error_dates:
+        str_formatted_dates = "\n".join(
+            date.strftime("%Y-%m-%d") for date in error_dates
+        )
         raise RuntimeError(
-            f"Encountered {len(error_dates)} failures. Data for the following dates were not created: {error_dates}"
+            f"Encountered {len(error_dates)} failures."
+            f" Data for the following dates were not created:\n{str_formatted_dates}"
         )
