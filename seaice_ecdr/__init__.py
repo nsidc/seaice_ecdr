@@ -1,3 +1,4 @@
+import os
 import sys
 
 from loguru import logger
@@ -8,5 +9,6 @@ try:
 except ValueError:
     logger.debug(f"Started logging in {__name__}")
 
-logger.add(sys.stderr, level="WARNING")
-logger.add(sys.stdout, level="INFO")
+env = os.environ.get("ENVIRONMENT")
+_default_log_level = "DEBUG" if env == "dev" else "INFO"
+logger.add(sys.stdout, level=_default_log_level)
