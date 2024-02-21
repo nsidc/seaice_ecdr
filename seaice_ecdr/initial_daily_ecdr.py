@@ -6,8 +6,6 @@ Notes:
 """
 
 import datetime as dt
-import sys
-import traceback
 from functools import cache
 from pathlib import Path
 from typing import Iterable, TypedDict, cast, get_args
@@ -1037,7 +1035,6 @@ def create_idecdr_for_date(
     overwrite_ide: bool = False,
     verbose_intermed_ncfile: bool = False,
 ) -> None:
-    platform = get_platform_by_date(date)
     excluded_fields = []
     if not verbose_intermed_ncfile:
         excluded_fields = [
@@ -1071,25 +1068,20 @@ def create_idecdr_for_date(
     # TODO: either catch and re-throw this exception or throw an error after
     # attempting to make the netcdf for each date. The exit code should be
     # non-zero in such a case.
-    except Exception:
-        logger.error(
+    except Exception as e:
+        logger.exception(
             "Failed to create NetCDF for " f"{hemisphere=}, {date=}, {resolution=}."
         )
-        # TODO: These error logs should be written to e.g.,
-        # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
-        # to handle automatically logging error details to such a file.
-        err_filepath = get_idecdr_filepath(
-            date=date,
-            platform=platform,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-        )
-        err_filename = err_filepath.name + ".error"
-        logger.info(f"Writing error info to {err_filename}")
-        with open(err_filepath.parent / err_filename, "w") as f:
-            traceback.print_exc(file=f)
-            traceback.print_exc(file=sys.stdout)
+        # TODO: err logfile for intiial daily data?
+        # platform = get_platform_by_date(date)
+        # err_filepath = get_idecdr_filepath(
+        #     date=date,
+        #     platform=platform,
+        #     hemisphere=hemisphere,
+        #     resolution=resolution,
+        #     ecdr_data_dir=ecdr_data_dir,
+        # )
+        raise e
 
 
 @click.command(name="idecdr")

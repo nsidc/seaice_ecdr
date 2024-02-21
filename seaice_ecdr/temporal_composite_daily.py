@@ -23,8 +23,8 @@ from seaice_ecdr.ancillary import get_non_ocean_mask, nh_polehole_mask
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
+    create_idecdr_for_date,
     get_idecdr_filepath,
-    make_idecdr_netcdf,
 )
 from seaice_ecdr.platforms import (
     get_first_platform_start_date,
@@ -354,29 +354,11 @@ def read_or_create_and_read_idecdr_ds(
         ecdr_data_dir=ecdr_data_dir,
     )
     if overwrite_ide or not ide_filepath.is_file():
-        excluded_idecdr_fields = [
-            "h19_day",
-            "v19_day",
-            "v22_day",
-            "h37_day",
-            "v37_day",
-            # "h19_day_si",  # include this field for melt onset calculation
-            "v19_day_si",
-            "v22_day_si",
-            # "h37_day_si",  # include this field for melt onset calculation
-            "v37_day_si",
-            "non_ocean_mask",
-            "invalid_ice_mask",
-            "pole_mask",
-            "bt_weather_mask",
-            "nt_weather_mask",
-        ]
-        make_idecdr_netcdf(
+        create_idecdr_for_date(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
-            excluded_fields=excluded_idecdr_fields,
         )
     logger.debug(f"Reading ideCDR file from: {ide_filepath}")
     ide_ds = xr.load_dataset(ide_filepath)
