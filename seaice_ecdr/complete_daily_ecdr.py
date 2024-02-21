@@ -660,6 +660,7 @@ def create_standard_ecdr_for_dates(
     ecdr_data_dir: Path,
     overwrite_cde: bool = False,
 ) -> list[dt.date]:
+    """TODO: docstring"""
     error_dates = []
     for date in dates:
         try:
