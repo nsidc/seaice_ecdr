@@ -17,7 +17,7 @@ repos:
       - id: "ruff"
         # NOTE: "--exit-non-zero-on-fix" is important for CI to function
         # correctly!
-        args: ["--diff", "--fix", "--exit-non-zero-on-fix", "--verbose", "--line-length=88"]
+        args: ["--fix", "--exit-non-zero-on-fix", "--verbose", "--line-length=88"]
 
   - repo: "https://github.com/psf/black"
     rev: "24.2.0"

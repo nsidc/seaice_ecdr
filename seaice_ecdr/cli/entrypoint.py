@@ -3,6 +3,7 @@
 import click
 
 from seaice_ecdr.complete_daily_ecdr import cli as complete_daily_cli
+
 # TODO: The daily-aggregate processing is very parallelizable because
 #       each year is indendent of every other year.  It could be
 #       implemented with multi-processing to speed up production
