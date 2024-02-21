@@ -41,7 +41,11 @@ from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
-from seaice_ecdr.util import sat_from_filename, standard_monthly_filename
+from seaice_ecdr.util import (
+    get_num_missing_pixels,
+    sat_from_filename,
+    standard_monthly_filename,
+)
 
 
 def check_min_days_for_valid_month(
@@ -335,22 +339,32 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     return qa_of_cdr_seaice_conc_monthly
 
 
-def _calc_conc_monthly(
+def calc_cdr_seaice_conc_monthly(
     *,
-    daily_conc_for_month: xr.DataArray,
-    long_name: str,
-    name: str,
+    daily_ds_for_month: xr.Dataset,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.DataArray:
+    """Create the `cdr_seaice_conc_monthly` variable."""
+    daily_conc_for_month = daily_ds_for_month.cdr_seaice_conc
     conc_monthly = daily_conc_for_month.mean(dim="time")
 
-    conc_monthly.name = name
+    num_missing_conc_pixels = get_num_missing_pixels(
+        seaice_conc_var=conc_monthly,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    conc_monthly.name = "cdr_seaice_conc_monthly"
     conc_monthly = conc_monthly.assign_attrs(
-        long_name=long_name,
+        long_name="NOAA/NSIDC Climate Data Record of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration",
         standard_name="sea_ice_area_fraction",
         coverage_content_type="image",
         units="1",
         valid_range=(np.uint8(0), np.uint8(100)),
         grid_mapping="crs",
+        reference="https://nsidc.org/data/g02202/versions/5",
+        number_of_missing_pixels=num_missing_conc_pixels,
     )
 
     conc_monthly.encoding.update(
@@ -362,24 +376,6 @@ def _calc_conc_monthly(
     )
 
     return conc_monthly
-
-
-def calc_cdr_seaice_conc_monthly(
-    *,
-    daily_ds_for_month: xr.Dataset,
-) -> xr.DataArray:
-    """Create the `cdr_seaice_conc_monthly` variable."""
-    cdr_seaice_conc_monthly = _calc_conc_monthly(
-        daily_conc_for_month=daily_ds_for_month.cdr_seaice_conc,
-        long_name="NOAA/NSIDC Climate Data Record of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration",
-        name="cdr_seaice_conc_monthly",
-    )
-
-    cdr_seaice_conc_monthly.attrs[
-        "reference"
-    ] = "https://nsidc.org/data/g02202/versions/5"
-
-    return cdr_seaice_conc_monthly
 
 
 def calc_stdv_of_cdr_seaice_conc_monthly(
@@ -510,6 +506,7 @@ def make_monthly_ds(
     daily_ds_for_month: xr.Dataset,
     sat: SUPPORTED_SAT,
     hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
     """Create a monthly dataset from daily data.
 
@@ -526,6 +523,8 @@ def make_monthly_ds(
     # The `cdr_seaice_conc` variable has temporally filled data and flags.
     cdr_seaice_conc_monthly = calc_cdr_seaice_conc_monthly(
         daily_ds_for_month=daily_ds_for_month,
+        hemisphere=hemisphere,
+        resolution=resolution,
     )
 
     # Create `stdev_of_cdr_seaice_conc_monthly`, the standard deviation of the
@@ -557,9 +556,9 @@ def make_monthly_ds(
         melt_onset_day_cdr_seaice_conc_monthly = calc_melt_onset_day_cdr_seaice_conc_monthly(
             daily_melt_onset_for_month=daily_ds_for_month.melt_onset_day_cdr_seaice_conc,
         )
-        monthly_ds_data_vars[
-            "melt_onset_day_cdr_seaice_conc_monthly"
-        ] = melt_onset_day_cdr_seaice_conc_monthly
+        monthly_ds_data_vars["melt_onset_day_cdr_seaice_conc_monthly"] = (
+            melt_onset_day_cdr_seaice_conc_monthly
+        )
 
     monthly_ds = xr.Dataset(
         data_vars=monthly_ds_data_vars,
@@ -643,6 +642,7 @@ def make_monthly_nc(
         daily_ds_for_month=daily_ds_for_month,
         sat=sat,
         hemisphere=hemisphere,
+        resolution=resolution,
     )
 
     output_path = get_monthly_filepath(

@@ -1,6 +1,7 @@
 """Routines for generating temporally composited file.
 
 """
+
 import copy
 import datetime as dt
 import sys
@@ -26,17 +27,10 @@ from seaice_ecdr.initial_daily_ecdr import (
     make_idecdr_netcdf,
 )
 from seaice_ecdr.platforms import (
+    get_first_platform_start_date,
     get_platform_by_date,
 )
 from seaice_ecdr.util import date_range, standard_daily_filename
-
-# Set the default minimum log notification to "info"
-try:
-    logger.remove(0)  # Removes previous logger info
-    logger.add(sys.stderr, level="INFO")
-except ValueError:
-    logger.debug(f"Started logging in {__name__}")
-    logger.add(sys.stderr, level="INFO")
 
 
 def yield_dates_from_temporal_interpolation_flags(
@@ -172,12 +166,12 @@ def iter_dates_near_date(
     near-real-time use, because data from "the future" are not available.
     """
     earliest_date = target_date - dt.timedelta(days=day_range)
-    # TODO: Determine this minimum date from available sats
-    if earliest_date < dt.date(1978, 10, 25):
+    beginning_of_platform_coverage = get_first_platform_start_date()
+    if earliest_date < beginning_of_platform_coverage:
         logger.warning(
-            f"Resetting temporal interpolation earliest date from {earliest_date} to {dt.date(1978, 10, 25)}"
+            f"Resetting temporal interpolation earliest date from {earliest_date} to {beginning_of_platform_coverage}"
         )
-        earliest_date = dt.date(1978, 10, 25)
+        earliest_date = beginning_of_platform_coverage
 
     if skip_future:
         latest_date = target_date
@@ -845,7 +839,7 @@ def make_tiecdr_netcdf(
     ecdr_data_dir: Path,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
-    overwrite: bool = False,
+    overwrite_tie: bool = False,
 ) -> None:
     output_path = get_tie_filepath(
         date=date,
@@ -854,7 +848,7 @@ def make_tiecdr_netcdf(
         ecdr_data_dir=ecdr_data_dir,
     )
 
-    if overwrite or not output_path.is_file():
+    if overwrite_tie or not output_path.is_file():
         logger.info(f"Creating tiecdr for {date=}, {hemisphere=}, {resolution=}")
         tie_ds = temporally_interpolated_ecdr_dataset(
             date=date,
@@ -878,6 +872,7 @@ def create_tiecdr_for_date(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    overwrite_tie: bool = False,
 ) -> None:
     try:
         make_tiecdr_netcdf(
@@ -885,6 +880,7 @@ def create_tiecdr_for_date(
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
+            overwrite_tie=overwrite_tie,
         )
 
     # TODO: either catch and re-throw this exception or throw an error after

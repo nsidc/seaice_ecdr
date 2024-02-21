@@ -1,5 +1,6 @@
 """Code to produce monthly aggregate files from monthly complete data.
 """
+
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import get_args
@@ -83,6 +84,12 @@ def _update_ncrcat_monthly_ds(
     )
     agg_ds["latitude"] = surf_geo_ds.latitude
     agg_ds["longitude"] = surf_geo_ds.longitude
+
+    agg_ds["cdr_seaice_conc_monthly"].attrs = {
+        k: v
+        for k, v in agg_ds["cdr_seaice_conc_monthly"].attrs.items()
+        if k != "number_of_missing_pixels"
+    }
 
     # setup global attrs
     # Set global attributes

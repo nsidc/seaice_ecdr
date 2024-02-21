@@ -3,6 +3,7 @@
 This module can be run as a script to (re-)generate checksum files for all
 existing standard (not NRT) output files.
 """
+
 import hashlib
 from pathlib import Path
 from typing import Literal

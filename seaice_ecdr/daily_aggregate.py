@@ -1,5 +1,6 @@
 """Code to produce daily aggregate files from daily complete data.
 """
+
 import datetime as dt
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -18,6 +19,7 @@ from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
+from seaice_ecdr.platforms import get_first_platform_start_date
 from seaice_ecdr.util import sat_from_filename, standard_daily_aggregate_filename
 
 
@@ -31,13 +33,7 @@ def _get_daily_complete_filepaths_for_year(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
     data_list = []
-    # This is the beginning of the satellite record, so we can skip anything
-    # before this date when 1978 is given.
-    # TODO: pull this start date from the platforms config.
-    if year == 1978:
-        start_date = dt.date(1978, 10, 25)
-    else:
-        start_date = dt.date(year, 1, 1)
+    start_date = max(dt.date(year, 1, 1), get_first_platform_start_date())
     for period in pd.period_range(start=start_date, end=dt.date(year, 12, 31)):
         expected_fp = get_ecdr_filepath(
             date=period.to_timestamp().date(),
@@ -96,6 +92,14 @@ def _update_ncrcat_daily_ds(
     )
     ds["latitude"] = surf_geo_ds.latitude
     ds["longitude"] = surf_geo_ds.longitude
+
+    # Remove the "number of missing pixels" attr from the daily aggregate conc
+    # variable.
+    ds["cdr_seaice_conc"].attrs = {
+        k: v
+        for k, v in ds["cdr_seaice_conc"].attrs.items()
+        if k != "number_of_missing_pixels"
+    }
 
     # setup global attrs
     # Set global attributes

@@ -999,13 +999,8 @@ def make_idecdr_netcdf(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
     excluded_fields: Iterable[str],
+    overwrite_ide: bool = False,
 ) -> None:
-    logger.info(f"Creating idecdr for {date=}, {hemisphere=}, {resolution=}")
-    ide_ds = initial_daily_ecdr_dataset(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
     platform = get_platform_by_date(date)
     output_path = get_idecdr_filepath(
         date=date,
@@ -1015,12 +1010,22 @@ def make_idecdr_netcdf(
         resolution=resolution,
     )
 
-    written_ide_ncfile = write_ide_netcdf(
-        ide_ds=ide_ds,
-        output_filepath=output_path,
-        excluded_fields=excluded_fields,
-    )
-    logger.info(f"Wrote initial daily ncfile: {written_ide_ncfile}")
+    if overwrite_ide or not output_path.is_file():
+        logger.info(f"Creating idecdr for {date=}, {hemisphere=}, {resolution=}")
+        ide_ds = initial_daily_ecdr_dataset(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+        )
+
+        written_ide_ncfile = write_ide_netcdf(
+            ide_ds=ide_ds,
+            output_filepath=output_path,
+            excluded_fields=excluded_fields,
+        )
+        logger.info(f"Wrote initial daily ncfile: {written_ide_ncfile}")
+    else:
+        logger.info(f"idecdr file exists and {overwrite_ide=}: {output_path=}")
 
 
 def create_idecdr_for_date(
@@ -1029,6 +1034,7 @@ def create_idecdr_for_date(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    overwrite_ide: bool = False,
     verbose_intermed_ncfile: bool = False,
 ) -> None:
     platform = get_platform_by_date(date)
@@ -1059,6 +1065,7 @@ def create_idecdr_for_date(
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
             excluded_fields=excluded_fields,
+            overwrite_ide=overwrite_ide,
         )
 
     # TODO: either catch and re-throw this exception or throw an error after

@@ -14,6 +14,7 @@ TODO:
   processing. Some way to tell the code on a global level that it's dealing w/
   NRT maybe?
 """
+
 import datetime as dt
 from pathlib import Path
 from typing import Final, get_args
@@ -311,7 +312,7 @@ def nrt_ecdr_for_day(
     )
 
     if cde_filepath.is_file() and not overwrite:
-        logger.info("File for {date=} already exists ({cde_filepath}).")
+        logger.info(f"File for {date=} already exists ({cde_filepath}).")
         return
 
     if not cde_filepath.is_file() or overwrite:
@@ -319,7 +320,7 @@ def nrt_ecdr_for_day(
             hemisphere=hemisphere,
             date=date,
             ecdr_data_dir=ecdr_data_dir,
-            overwrite=True,
+            overwrite=overwrite,
         )
 
         cde_ds = complete_daily_ecdr_ds(
