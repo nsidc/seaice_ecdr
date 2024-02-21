@@ -183,3 +183,14 @@ def create_err_logfile(
     with open(err_filepath, "w") as f:
         traceback.print_exc(file=f)
     logger.warning(f"Wrote error info to {err_filepath}")
+
+
+def raise_error_for_dates(*, error_dates: list[dt.date]) -> None:
+    if error_dates:
+        str_formatted_dates = "\n".join(
+            date.strftime("%Y-%m-%d") for date in error_dates
+        )
+        raise RuntimeError(
+            f"Encountered {len(error_dates)} failures."
+            f" Data for the following dates were not created:\n{str_formatted_dates}"
+        )

@@ -39,6 +39,7 @@ from seaice_ecdr.util import (
     create_err_logfile,
     date_range,
     get_ecdr_grid_shape,
+    raise_error_for_dates,
     standard_daily_filename,
 )
 
@@ -651,6 +652,45 @@ def create_standard_cdecdr_for_date(
     )
 
 
+def create_standard_ecdr_for_dates(
+    dates: list[dt.date],
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ecdr_data_dir: Path,
+    overwrite_cde: bool = False,
+) -> list[dt.date]:
+    error_dates = []
+    for date in dates:
+        try:
+            create_standard_cdecdr_for_date(
+                hemisphere=hemisphere,
+                date=date,
+                resolution=resolution,
+                ecdr_data_dir=ecdr_data_dir,
+                overwrite_cde=overwrite_cde,
+            )
+        except Exception:
+            error_dates.append(date)
+            logger.exception(
+                "Failed to create complete daily NetCDF for"
+                f" {hemisphere=}, {date=}, {resolution=}."
+            )
+
+            ecdr_filepath = get_ecdr_filepath(
+                date=date,
+                hemisphere=hemisphere,
+                resolution=resolution,
+                ecdr_data_dir=ecdr_data_dir,
+            )
+            create_err_logfile(
+                filename=ecdr_filepath.name,
+                ecdr_data_dir=ecdr_data_dir,
+                product_type="complete_daily",
+            )
+    return error_dates
+
+
 @click.command(name="cdecdr")
 @click.option(
     "-d",
@@ -736,40 +776,12 @@ def cli(
     if end_date is None:
         end_date = copy.copy(date)
 
-    error_dates = []
-    for date in date_range(start_date=date, end_date=end_date):
-        try:
-            create_standard_cdecdr_for_date(
-                hemisphere=hemisphere,
-                date=date,
-                resolution=resolution,
-                ecdr_data_dir=ecdr_data_dir,
-                overwrite_cde=overwrite,
-            )
-        except Exception:
-            error_dates.append(date)
-            logger.exception(
-                "Failed to create complete daily NetCDF for"
-                f" {hemisphere=}, {date=}, {resolution=}."
-            )
-
-            ecdr_filepath = get_ecdr_filepath(
-                date=date,
-                hemisphere=hemisphere,
-                resolution=resolution,
-                ecdr_data_dir=ecdr_data_dir,
-            )
-            create_err_logfile(
-                filename=ecdr_filepath.name,
-                ecdr_data_dir=ecdr_data_dir,
-                product_type="complete_daily",
-            )
-
-    if error_dates:
-        str_formatted_dates = "\n".join(
-            date.strftime("%Y-%m-%d") for date in error_dates
-        )
-        raise RuntimeError(
-            f"Encountered {len(error_dates)} failures."
-            f" Data for the following dates were not created:\n{str_formatted_dates}"
-        )
+    dates = list(date_range(start_date=date, end_date=end_date))
+    error_dates = create_standard_ecdr_for_dates(
+        dates=dates,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ecdr_data_dir=ecdr_data_dir,
+        overwrite_cde=overwrite,
+    )
+    raise_error_for_dates(error_dates=error_dates)
