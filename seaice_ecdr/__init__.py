@@ -9,3 +9,4 @@ except ValueError:
     logger.debug(f"Started logging in {__name__}")
 
 logger.add(sys.stderr, level="WARNING")
+logger.add(sys.stdout, level="INFO")
