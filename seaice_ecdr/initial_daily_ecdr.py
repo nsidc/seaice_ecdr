@@ -49,7 +49,7 @@ from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
 from seaice_ecdr.tb_data import EXPECTED_ECDR_TB_NAMES, EcdrTbData, get_ecdr_tb_data
-from seaice_ecdr.util import date_range, standard_daily_filename
+from seaice_ecdr.util import standard_daily_filename
 
 
 def cdr_bootstrap(
@@ -1092,26 +1092,6 @@ def create_idecdr_for_date(
             traceback.print_exc(file=sys.stdout)
 
 
-def create_idecdr_for_date_range(
-    *,
-    hemisphere: Hemisphere,
-    start_date: dt.date,
-    end_date: dt.date,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
-    verbose_intermed_ncfile: bool = False,
-) -> None:
-    """Generate the initial daily ecdr files for a range of dates."""
-    for date in date_range(start_date=start_date, end_date=end_date):
-        create_idecdr_for_date(
-            hemisphere=hemisphere,
-            date=date,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-            verbose_intermed_ncfile=verbose_intermed_ncfile,
-        )
-
-
 @click.command(name="idecdr")
 @click.option(
     "-d",
@@ -1183,10 +1163,9 @@ def cli(
     methodology for getting those TBs onto the grid)
     """
 
-    create_idecdr_for_date_range(
+    create_idecdr_for_date(
         hemisphere=hemisphere,
-        start_date=date,
-        end_date=date,
+        date=date,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
         verbose_intermed_ncfile=verbose_intermed_ncfile,
