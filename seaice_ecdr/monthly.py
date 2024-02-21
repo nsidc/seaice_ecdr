@@ -748,15 +748,31 @@ def cli(
     if end_month is None:
         end_month = month
 
+    error_periods = []
     for period in pd.period_range(
         start=pd.Period(year=year, month=month, freq="M"),
         end=pd.Period(year=end_year, month=end_month, freq="M"),
         freq="M",
     ):
-        make_monthly_nc(
-            year=period.year,
-            month=period.month,
-            ecdr_data_dir=ecdr_data_dir,
-            hemisphere=hemisphere,
-            resolution=resolution,
+        try:
+            make_monthly_nc(
+                year=period.year,
+                month=period.month,
+                ecdr_data_dir=ecdr_data_dir,
+                hemisphere=hemisphere,
+                resolution=resolution,
+            )
+        except Exception:
+            logger.exception(
+                f"Failed to create monthly data for year={period.year} month={period.month}"
+            )
+            error_periods.append(period)
+
+    if error_periods:
+        str_formatted_dates = "\n".join(
+            period.strftime("%Y-%m") for period in error_periods
+        )
+        raise RuntimeError(
+            f"Encountered {len(error_periods)} failures."
+            f" Data for the following months were not created:\n{str_formatted_dates}"
         )
