@@ -83,7 +83,7 @@ def read_tiecdr_ds(
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
-    logger.info(f"Reading tieCDR file from: {tie_filepath}")
+    logger.debug(f"Reading tieCDR file from: {tie_filepath}")
     tie_ds = xr.load_dataset(tie_filepath)
 
     return tie_ds
@@ -251,7 +251,7 @@ def create_melt_onset_field(
     # Determine if the given day of year is within the melt season. If it's not,
     # return an empty melt onset field.
     if not date_in_nh_melt_season(date=date):
-        logger.info(f"returning empty melt_onset_field for {day_of_year}")
+        logger.debug(f"returning empty melt_onset_field for {day_of_year}")
         return _empty_melt_onset_field(
             hemisphere=hemisphere,
             resolution=resolution,
@@ -265,7 +265,7 @@ def create_melt_onset_field(
             hemisphere=hemisphere,
             resolution=resolution,
         )
-        logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
+        logger.debug(f"using empty melt_onset_field for prior for {day_of_year}")
     else:
         # During the melt season, try to read the previous day's input as a
         # starting point. Use an empty melt onset field if no data for the
@@ -277,7 +277,7 @@ def create_melt_onset_field(
                 resolution=resolution,
                 ecdr_data_dir=ecdr_data_dir,
             )
-            logger.info(f"using read melt_onset_field for prior for {day_of_year}")
+            logger.debug(f"using read melt_onset_field for prior for {day_of_year}")
         except FileNotFoundError:
             logger.warning(
                 f"Tried to read previous melt field for {day_of_year} but the file was not found."
@@ -286,7 +286,7 @@ def create_melt_onset_field(
                 hemisphere=hemisphere,
                 resolution=resolution,
             )
-            logger.info(f"using empty melt_onset_field for prior for {day_of_year}")
+            logger.debug(f"using empty melt_onset_field for prior for {day_of_year}")
 
     cdr_conc_ti, tb_h19, tb_h37 = read_melt_elements_from_tiecdr(
         date=date,
@@ -592,7 +592,7 @@ def read_cdecdr_ds(
         resolution,
         ecdr_data_dir=ecdr_data_dir,
     )
-    logger.info(f"Reading cdeCDR file from: {cde_filepath}")
+    logger.debug(f"Reading cdeCDR file from: {cde_filepath}")
     cde_ds = xr.load_dataset(cde_filepath)
 
     return cde_ds

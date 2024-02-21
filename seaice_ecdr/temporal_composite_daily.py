@@ -213,7 +213,7 @@ def temporally_composite_dataarray(
     one_sided_limit is the max number of days we are willing to look in only
     one direction.  It will generally (always?) be less than the interp_range.
     """
-    logger.info(f"Temporally compositing {da.name} dataarray around {target_date}")
+    logger.debug(f"Temporally compositing {da.name} dataarray around {target_date}")
     # Our flag system requires that the value be expressible by no more than
     # nine days in either direction
     if interp_range > 9:
@@ -378,7 +378,7 @@ def read_or_create_and_read_idecdr_ds(
             ecdr_data_dir=ecdr_data_dir,
             excluded_fields=excluded_idecdr_fields,
         )
-    logger.info(f"Reading ideCDR file from: {ide_filepath}")
+    logger.debug(f"Reading ideCDR file from: {ide_filepath}")
     ide_ds = xr.load_dataset(ide_filepath)
 
     return ide_ds
@@ -568,7 +568,7 @@ def temporal_interpolation(
             conc=cdr_conc,
             near_pole_hole_mask=near_pole_hole_mask.data,
         )
-        logger.info("Filled pole hole")
+        logger.debug("Filled pole hole")
         # Need to use not-isnan() here because NaN == NaN evaluates to False
         is_pole_filled = (cdr_conc_pole_filled != cdr_conc_pre_polefill) & (
             ~np.isnan(cdr_conc_pole_filled)
@@ -598,7 +598,7 @@ def temporal_interpolation(
             other=TB_SPATINT_BITMASK_MAP["pole_filled"],
         )
 
-        logger.info("Updated spatial_interpolation with pole hole value")
+        logger.debug("Updated spatial_interpolation with pole hole value")
 
         tie_ds["cdr_conc"].data[0, :, :] = cdr_conc_pole_filled[:, :]
     else:
@@ -638,7 +638,7 @@ def temporal_interpolation(
             conc=bt_conc_2d,
             near_pole_hole_mask=near_pole_hole_mask.data,
         )
-        logger.info("Filled pole hole (bt)")
+        logger.debug("Filled pole hole (bt)")
         # Need to use not-isnan() here because NaN == NaN evaluates to False
         is_pole_filled = (bt_conc_pole_filled != bt_conc_pre_polefill) & (
             ~np.isnan(bt_conc_pole_filled)
@@ -651,7 +651,7 @@ def temporal_interpolation(
             conc=nt_conc_2d,
             near_pole_hole_mask=near_pole_hole_mask.data,
         )
-        logger.info("Filled pole hole (nt)")
+        logger.debug("Filled pole hole (nt)")
         # Need to use not-isnan() here because NaN == NaN evaluates to False
         is_pole_filled = (nt_conc_pole_filled != nt_conc_pre_polefill) & (
             ~np.isnan(nt_conc_pole_filled)

@@ -168,10 +168,6 @@ def get_daily_ds_for_month(
 
     ds.attrs["sat"] = sat
 
-    logger.info(
-        f"Created daily ds for {year=} {month=} from {len(ds.time)} complete daily files."
-    )
-
     return ds
 
 
@@ -665,7 +661,9 @@ def make_monthly_nc(
             "time",
         ],
     )
-    logger.info(f"Wrote monthly file for {year=} and {month=} to {output_path}")
+    logger.info(
+        f"Wrote monthly file for {year=} and {month=} using {len(daily_ds_for_month.time)} daily files to {output_path}"
+    )
 
     # Write checksum file for the monthly output.
     write_checksum_file(

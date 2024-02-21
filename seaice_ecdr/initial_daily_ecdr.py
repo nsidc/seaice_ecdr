@@ -395,7 +395,7 @@ def compute_initial_daily_ecdr_dataset(
             "zlib": True,
         },
     )
-    logger.info("Initialized spatial_interpolation_flag with TB fill locations")
+    logger.debug("Initialized spatial_interpolation_flag with TB fill locations")
 
     platform = get_platform_by_date(date)
     if platform == "am2":
@@ -679,7 +679,7 @@ def compute_initial_daily_ecdr_dataset(
     #  4: NT (not yet added)
     spillover_applied = np.zeros((ydim, xdim), dtype=np.uint8)
     cdr_conc_pre_spillover = cdr_conc.copy()
-    logger.info("Applying NT2 land spillover technique...")
+    logger.debug("Applying NT2 land spillover technique...")
     l90c = get_land90_conc_field(
         hemisphere=hemisphere,
         resolution=tb_data.resolution,
@@ -714,7 +714,7 @@ def compute_initial_daily_ecdr_dataset(
             conc=cdr_conc,
             near_pole_hole_mask=near_pole_hole_mask.data,
         )
-        logger.info("Filled pole hole")
+        logger.debug("Filled pole hole")
         is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
         if "spatial_interpolation_bitmask" in ecdr_ide_ds.variables.keys():
             ecdr_ide_ds["spatial_interpolation_flag"] = ecdr_ide_ds[
@@ -723,7 +723,7 @@ def compute_initial_daily_ecdr_dataset(
                 ~is_pole_filled,
                 other=TB_SPATINT_BITMASK_MAP["pole_filled"],
             )
-            logger.info("Updated spatial_interpolation with pole hole value")
+            logger.debug("Updated spatial_interpolation with pole hole value")
 
     # Mask out non-ocean pixels and clamp conc to between 10-100%.
     # TODO: These values should be in a configuration file/structure
@@ -903,7 +903,7 @@ def initial_daily_ecdr_dataset(
             tb_resolution=tb_data.resolution,
             resolution=resolution,
         )
-        logger.info(f"Reprojected ide_ds to {resolution}km")
+        logger.debug(f"Reprojected ide_ds to {resolution}km")
 
     return initial_ecdr_ds
 
