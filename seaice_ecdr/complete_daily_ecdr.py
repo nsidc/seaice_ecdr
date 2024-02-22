@@ -649,7 +649,13 @@ def create_standard_ecdr_for_dates(
     ecdr_data_dir: Path,
     overwrite_cde: bool = False,
 ) -> list[dt.date]:
-    """TODO: docstring"""
+    """Create "standard" (non-NRT) daily ECDR NC files for the provided dates.
+
+    This function will try to create a daily NC file for each day. If any errors
+    are encountered, the dates for which errors occurred are returned as a
+    list. It's the responsiblity of calling-code to ensure that those dates are
+    handled (e.g., raise an error alerting the user to the issue).
+    """
     error_dates = []
     for date in dates:
         try:
