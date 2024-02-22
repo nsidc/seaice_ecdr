@@ -959,7 +959,6 @@ def cli(
     if end_date is None:
         end_date = copy.copy(date)
 
-    # TODO: support 'failed' outputs from this CLI?
     create_tiecdr_for_date_range(
         hemisphere=hemisphere,
         start_date=date,
