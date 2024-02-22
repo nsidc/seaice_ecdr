@@ -18,7 +18,11 @@ from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
-from seaice_ecdr.util import sat_from_filename, standard_monthly_aggregate_filename
+from seaice_ecdr.util import (
+    create_err_logfile,
+    sat_from_filename,
+    standard_monthly_aggregate_filename,
+)
 
 
 def _get_monthly_complete_filepaths(
@@ -143,63 +147,81 @@ def cli(
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> None:
-    monthly_filepaths = _get_monthly_complete_filepaths(
-        hemisphere=hemisphere,
-        ecdr_data_dir=ecdr_data_dir,
-        resolution=resolution,
-    )
-
-    # Create a temporary dir to store a WIP netcdf file. We do this because
-    # using the `ncrcat` CLI tool (included with `nco` dep) is much faster than
-    # xarray at concatenating the data. Then we do some modifications (e.g.,
-    # adding `latitude` and `longitude`, global attrs, etc.) before saving the
-    # data in it's final location.
-    with TemporaryDirectory() as tmpdir:
-        tmp_output_fp = Path(tmpdir) / "temp.nc"
-        concatenate_nc_files(
-            input_filepaths=monthly_filepaths,
-            output_filepath=tmp_output_fp,
-        )
-        ds = xr.open_dataset(tmp_output_fp, chunks=dict(time=1))
-        ds = _update_ncrcat_monthly_ds(
-            agg_ds=ds,
+    try:
+        monthly_filepaths = _get_monthly_complete_filepaths(
             hemisphere=hemisphere,
-            resolution=resolution,
-            monthly_filepaths=monthly_filepaths,
-        )
-
-        start_date = pd.Timestamp(ds.time.min().values).date()
-        end_date = pd.Timestamp(ds.time.max().values).date()
-
-        output_filepath = get_monthly_aggregate_filepath(
-            hemisphere=hemisphere,
-            resolution=resolution,
-            start_year=start_date.year,
-            start_month=start_date.month,
-            end_year=end_date.year,
-            end_month=end_date.month,
             ecdr_data_dir=ecdr_data_dir,
-        )
-        ds.to_netcdf(
-            output_filepath,
-            unlimited_dims=[
-                "time",
-            ],
+            resolution=resolution,
         )
 
-    logger.info(f"Wrote monthly aggregate file to {output_filepath}")
+        if not monthly_filepaths:
+            raise RuntimeError(
+                f"Found no monthly files to aggregate for {hemisphere=} {resolution=} {ecdr_data_dir=}."
+            )
 
-    # Write checksum file for the aggregate monthly output.
-    write_checksum_file(
-        input_filepath=output_filepath,
-        ecdr_data_dir=ecdr_data_dir,
-        product_type="aggregate",
-    )
+        # Create a temporary dir to store a WIP netcdf file. We do this because
+        # using the `ncrcat` CLI tool (included with `nco` dep) is much faster than
+        # xarray at concatenating the data. Then we do some modifications (e.g.,
+        # adding `latitude` and `longitude`, global attrs, etc.) before saving the
+        # data in it's final location.
+        with TemporaryDirectory() as tmpdir:
+            tmp_output_fp = Path(tmpdir) / "temp.nc"
+            concatenate_nc_files(
+                input_filepaths=monthly_filepaths,
+                output_filepath=tmp_output_fp,
+            )
+            ds = xr.open_dataset(tmp_output_fp, chunks=dict(time=1))
+            ds = _update_ncrcat_monthly_ds(
+                agg_ds=ds,
+                hemisphere=hemisphere,
+                resolution=resolution,
+                monthly_filepaths=monthly_filepaths,
+            )
 
-    # Cleanup previously existing monthly aggregates.
-    existing_fn_pattern = f"sic_ps{hemisphere[0]}{resolution}_??????-??????_*.nc"
-    existing_filepaths = list((ecdr_data_dir / "aggregate").glob(existing_fn_pattern))
-    for existing_filepath in existing_filepaths:
-        if existing_filepath != output_filepath:
-            existing_filepath.unlink()
-            logger.info(f"Removed old monthly aggregate file {existing_filepath}")
+            start_date = pd.Timestamp(ds.time.min().values).date()
+            end_date = pd.Timestamp(ds.time.max().values).date()
+
+            output_filepath = get_monthly_aggregate_filepath(
+                hemisphere=hemisphere,
+                resolution=resolution,
+                start_year=start_date.year,
+                start_month=start_date.month,
+                end_year=end_date.year,
+                end_month=end_date.month,
+                ecdr_data_dir=ecdr_data_dir,
+            )
+            ds.to_netcdf(
+                output_filepath,
+                unlimited_dims=[
+                    "time",
+                ],
+            )
+
+        logger.info(f"Wrote monthly aggregate file to {output_filepath}")
+
+        # Write checksum file for the aggregate monthly output.
+        write_checksum_file(
+            input_filepath=output_filepath,
+            ecdr_data_dir=ecdr_data_dir,
+            product_type="aggregate",
+        )
+
+        # Cleanup previously existing monthly aggregates.
+        existing_fn_pattern = f"sic_ps{hemisphere[0]}{resolution}_??????-??????_*.nc"
+        existing_filepaths = list(
+            (ecdr_data_dir / "aggregate").glob(existing_fn_pattern)
+        )
+        for existing_filepath in existing_filepaths:
+            if existing_filepath != output_filepath:
+                existing_filepath.unlink()
+                logger.info(f"Removed old monthly aggregate file {existing_filepath}")
+    except Exception as e:
+        logger.exception(
+            f"Failed to create monthly aggregate for {hemisphere=} {resolution=}"
+        )
+        create_err_logfile(
+            filename=f"monthly_aggregate_{hemisphere}_{resolution}",
+            ecdr_data_dir=ecdr_data_dir,
+            product_type="aggregate",
+        )
+        raise e
