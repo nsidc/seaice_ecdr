@@ -263,5 +263,5 @@ def cli(
         str_formatted_years = "\n".join(str(year) for year in failed_years)
         raise RuntimeError(
             f"Encountered {len(failed_years)} failures."
-            f" Data for the following years were not created:\n{str_formatted_years}"
+            f" Daily aggregates for the following years were not created:\n{str_formatted_years}"
         )
