@@ -1,4 +1,5 @@
 import datetime as dt
+from pathlib import Path
 from typing import Final
 
 import numpy as np
@@ -10,6 +11,7 @@ from seaice_ecdr import util
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.multiprocess_daily import get_dates_by_year
 from seaice_ecdr.util import (
+    create_err_logfile,
     date_range,
     get_num_missing_pixels,
     raise_error_for_dates,
@@ -209,3 +211,22 @@ def test_raise_error_for_dates():
     # If one or more dates are passed, an error should be raised.
     with pytest.raises(RuntimeError):
         raise_error_for_dates(error_dates=[dt.date(2011, 1, 1)])
+
+
+def test_create_err_logfile(tmpdir):
+    some_imaginary_product = "some_imaginary_product"
+    ecdr_data_dir = Path(tmpdir)
+    try:
+        1 / 0
+    except Exception:
+        create_err_logfile(
+            filename="foo",
+            ecdr_data_dir=ecdr_data_dir,
+            product_type=some_imaginary_product,
+        )
+
+    expected_err_path = Path(
+        ecdr_data_dir / "errors" / some_imaginary_product / "foo.error"
+    )
+    assert expected_err_path.is_file()
+    assert "ZeroDivisionError" in expected_err_path.read_text()
