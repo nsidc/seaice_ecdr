@@ -644,43 +644,34 @@ def make_monthly_nc(
         ecdr_data_dir=ecdr_data_dir,
     )
 
-    try:
-        monthly_ds = make_monthly_ds(
-            daily_ds_for_month=daily_ds_for_month,
-            sat=sat,
-            hemisphere=hemisphere,
-            resolution=resolution,
-        )
+    monthly_ds = make_monthly_ds(
+        daily_ds_for_month=daily_ds_for_month,
+        sat=sat,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
 
-        # Set `x` and `y` `_FillValue` to `None`. Although unset initially, `xarray`
-        # seems to default to `np.nan` for variables without a FillValue.
-        monthly_ds.x.encoding["_FillValue"] = None
-        monthly_ds.y.encoding["_FillValue"] = None
+    # Set `x` and `y` `_FillValue` to `None`. Although unset initially, `xarray`
+    # seems to default to `np.nan` for variables without a FillValue.
+    monthly_ds.x.encoding["_FillValue"] = None
+    monthly_ds.y.encoding["_FillValue"] = None
 
-        monthly_ds.to_netcdf(
-            output_path,
-            unlimited_dims=[
-                "time",
-            ],
-        )
-        logger.info(
-            f"Wrote monthly file for {year=} and {month=} using {len(daily_ds_for_month.time)} daily files to {output_path}"
-        )
+    monthly_ds.to_netcdf(
+        output_path,
+        unlimited_dims=[
+            "time",
+        ],
+    )
+    logger.info(
+        f"Wrote monthly file for {year=} and {month=} using {len(daily_ds_for_month.time)} daily files to {output_path}"
+    )
 
-        # Write checksum file for the monthly output.
-        write_checksum_file(
-            input_filepath=output_path,
-            ecdr_data_dir=ecdr_data_dir,
-            product_type="monthly",
-        )
-    except Exception as e:
-        logger.exception(f"Failed to create monthly data for {year=} {month=}")
-        create_err_logfile(
-            filename=output_path.name,
-            ecdr_data_dir=ecdr_data_dir,
-            product_type="monthly",
-        )
-        raise e
+    # Write checksum file for the monthly output.
+    write_checksum_file(
+        input_filepath=output_path,
+        ecdr_data_dir=ecdr_data_dir,
+        product_type="monthly",
+    )
 
     return output_path
 
@@ -774,6 +765,18 @@ def cli(
             )
         except Exception:
             error_periods.append(period)
+            logger.exception(f"Failed to create monthly data for {year=} {month=}")
+            create_err_logfile(
+                filename=standard_monthly_filename(
+                    hemisphere=hemisphere,
+                    resolution=resolution,
+                    sat="error",  # type: ignore[arg-type]
+                    year=period.year,
+                    month=period.month,
+                ),
+                ecdr_data_dir=ecdr_data_dir,
+                product_type="monthly",
+            )
 
     if error_periods:
         str_formatted_dates = "\n".join(
