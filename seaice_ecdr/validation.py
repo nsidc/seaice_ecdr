@@ -461,8 +461,8 @@ def validate_outputs(
                     ),
                 )
 
-    logger.info(f"Wrote {log_filepath}")
-    logger.info(f"Wrote {error_filepath}")
+    logger.success(f"Wrote {log_filepath}")
+    logger.success(f"Wrote {error_filepath}")
 
     return dict(
         log_filepath=log_filepath,

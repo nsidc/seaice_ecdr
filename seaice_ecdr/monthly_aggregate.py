@@ -196,7 +196,7 @@ def cli(
                 ],
             )
 
-        logger.info(f"Wrote monthly aggregate file to {output_filepath}")
+        logger.success(f"Wrote monthly aggregate file to {output_filepath}")
 
         # Write checksum file for the aggregate monthly output.
         write_checksum_file(

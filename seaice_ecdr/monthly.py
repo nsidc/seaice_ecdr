@@ -661,7 +661,7 @@ def make_monthly_nc(
             "time",
         ],
     )
-    logger.info(
+    logger.success(
         f"Wrote monthly file for {year=} and {month=} using {len(daily_ds_for_month.time)} daily files to {output_path}"
     )
 

@@ -578,7 +578,7 @@ def make_standard_cdecdr_netcdf(
                 output_filepath=cde_filepath,
                 ecdr_data_dir=ecdr_data_dir,
             )
-            logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
+            logger.success(f"Wrote complete daily ncfile: {written_cde_ncfile}")
         except Exception as e:
             logger.exception(
                 "Failed to create complete daily NetCDF for"

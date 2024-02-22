@@ -167,7 +167,7 @@ def make_daily_aggregate_netcdf_for_year(
                 ],
             )
 
-        logger.info(f"Wrote daily aggregate file for year={year} to {output_path}")
+        logger.success(f"Wrote daily aggregate file for year={year} to {output_path}")
 
         # Write checksum file for the aggregate daily output.
         write_checksum_file(

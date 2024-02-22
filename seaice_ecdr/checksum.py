@@ -53,7 +53,7 @@ def write_checksum_file(
     with open(output_filepath, "w") as checksum_file:
         checksum_file.write(f"{input_filepath.name},{checksum},{size_in_bytes}")
 
-    logger.info(f"Wrote checksum file {output_filepath}")
+    logger.success(f"Wrote checksum file {output_filepath}")
 
     return output_filepath
 
