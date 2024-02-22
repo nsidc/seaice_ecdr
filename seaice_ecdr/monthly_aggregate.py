@@ -143,12 +143,6 @@ def cli(
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> None:
-    # ds = get_monthly_aggregate_ds(
-    #     hemisphere=hemisphere,
-    #     resolution=resolution,
-    #     ecdr_data_dir=ecdr_data_dir,
-    # )
-
     monthly_filepaths = _get_monthly_complete_filepaths(
         hemisphere=hemisphere,
         ecdr_data_dir=ecdr_data_dir,
@@ -174,8 +168,6 @@ def cli(
             monthly_filepaths=monthly_filepaths,
         )
 
-        # TODO: better way to extract start/end date? This same code is used above
-        # in `get_monthly_aggregate_ds`.
         start_date = pd.Timestamp(ds.time.min().values).date()
         end_date = pd.Timestamp(ds.time.max().values).date()
 
