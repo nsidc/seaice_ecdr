@@ -8,6 +8,6 @@ _default_log_level = "DEBUG" if env == "dev" else "INFO"
 
 logger.configure(
     handlers=[
-        dict(sink=sys.stdout, level=_default_log_level),
+        dict(sink=sys.stderr, level=_default_log_level),
     ]
 )
