@@ -316,27 +316,31 @@ def nrt_ecdr_for_day(
         return
 
     if not cde_filepath.is_file() or overwrite:
-        tiecdr_ds = read_or_create_and_read_nrt_tiecdr_ds(
-            hemisphere=hemisphere,
-            date=date,
-            ecdr_data_dir=ecdr_data_dir,
-            overwrite=overwrite,
-        )
+        try:
+            tiecdr_ds = read_or_create_and_read_nrt_tiecdr_ds(
+                hemisphere=hemisphere,
+                date=date,
+                ecdr_data_dir=ecdr_data_dir,
+                overwrite=overwrite,
+            )
 
-        cde_ds = complete_daily_ecdr_ds(
-            tie_ds=tiecdr_ds,
-            date=date,
-            hemisphere=hemisphere,
-            resolution=LANCE_RESOLUTION,
-            ecdr_data_dir=ecdr_data_dir,
-        )
+            cde_ds = complete_daily_ecdr_ds(
+                tie_ds=tiecdr_ds,
+                date=date,
+                hemisphere=hemisphere,
+                resolution=LANCE_RESOLUTION,
+                ecdr_data_dir=ecdr_data_dir,
+            )
 
-        written_cde_ncfile = write_cde_netcdf(
-            cde_ds=cde_ds,
-            output_filepath=cde_filepath,
-            ecdr_data_dir=ecdr_data_dir,
-        )
-        logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
+            written_cde_ncfile = write_cde_netcdf(
+                cde_ds=cde_ds,
+                output_filepath=cde_filepath,
+                ecdr_data_dir=ecdr_data_dir,
+            )
+            logger.success(f"Wrote complete daily ncfile: {written_cde_ncfile}")
+        except Exception as e:
+            logger.exception(f"Failed to create NRT ECDR for {date=} {hemisphere=}")
+            raise e
 
 
 @click.group(name="nrt")

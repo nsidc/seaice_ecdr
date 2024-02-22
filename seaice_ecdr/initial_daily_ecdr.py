@@ -6,8 +6,6 @@ Notes:
 """
 
 import datetime as dt
-import sys
-import traceback
 from functools import cache
 from pathlib import Path
 from typing import Iterable, TypedDict, cast, get_args
@@ -49,7 +47,7 @@ from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
 from seaice_ecdr.tb_data import EXPECTED_ECDR_TB_NAMES, EcdrTbData, get_ecdr_tb_data
-from seaice_ecdr.util import date_range, standard_daily_filename
+from seaice_ecdr.util import standard_daily_filename
 
 
 def cdr_bootstrap(
@@ -395,7 +393,7 @@ def compute_initial_daily_ecdr_dataset(
             "zlib": True,
         },
     )
-    logger.info("Initialized spatial_interpolation_flag with TB fill locations")
+    logger.debug("Initialized spatial_interpolation_flag with TB fill locations")
 
     platform = get_platform_by_date(date)
     if platform == "am2":
@@ -679,7 +677,7 @@ def compute_initial_daily_ecdr_dataset(
     #  4: NT (not yet added)
     spillover_applied = np.zeros((ydim, xdim), dtype=np.uint8)
     cdr_conc_pre_spillover = cdr_conc.copy()
-    logger.info("Applying NT2 land spillover technique...")
+    logger.debug("Applying NT2 land spillover technique...")
     l90c = get_land90_conc_field(
         hemisphere=hemisphere,
         resolution=tb_data.resolution,
@@ -714,7 +712,7 @@ def compute_initial_daily_ecdr_dataset(
             conc=cdr_conc,
             near_pole_hole_mask=near_pole_hole_mask.data,
         )
-        logger.info("Filled pole hole")
+        logger.debug("Filled pole hole")
         is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
         if "spatial_interpolation_bitmask" in ecdr_ide_ds.variables.keys():
             ecdr_ide_ds["spatial_interpolation_flag"] = ecdr_ide_ds[
@@ -723,7 +721,7 @@ def compute_initial_daily_ecdr_dataset(
                 ~is_pole_filled,
                 other=TB_SPATINT_BITMASK_MAP["pole_filled"],
             )
-            logger.info("Updated spatial_interpolation with pole hole value")
+            logger.debug("Updated spatial_interpolation with pole hole value")
 
     # Mask out non-ocean pixels and clamp conc to between 10-100%.
     # TODO: These values should be in a configuration file/structure
@@ -903,7 +901,7 @@ def initial_daily_ecdr_dataset(
             tb_resolution=tb_data.resolution,
             resolution=resolution,
         )
-        logger.info(f"Reprojected ide_ds to {resolution}km")
+        logger.debug(f"Reprojected ide_ds to {resolution}km")
 
     return initial_ecdr_ds
 
@@ -1037,7 +1035,6 @@ def create_idecdr_for_date(
     overwrite_ide: bool = False,
     verbose_intermed_ncfile: bool = False,
 ) -> None:
-    platform = get_platform_by_date(date)
     excluded_fields = []
     if not verbose_intermed_ncfile:
         excluded_fields = [
@@ -1068,48 +1065,11 @@ def create_idecdr_for_date(
             overwrite_ide=overwrite_ide,
         )
 
-    # TODO: either catch and re-throw this exception or throw an error after
-    # attempting to make the netcdf for each date. The exit code should be
-    # non-zero in such a case.
-    except Exception:
-        logger.error(
+    except Exception as e:
+        logger.exception(
             "Failed to create NetCDF for " f"{hemisphere=}, {date=}, {resolution=}."
         )
-        # TODO: These error logs should be written to e.g.,
-        # `/share/apps/logs/seaice_ecdr`. The `logger` module should be able
-        # to handle automatically logging error details to such a file.
-        err_filepath = get_idecdr_filepath(
-            date=date,
-            platform=platform,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-        )
-        err_filename = err_filepath.name + ".error"
-        logger.info(f"Writing error info to {err_filename}")
-        with open(err_filepath.parent / err_filename, "w") as f:
-            traceback.print_exc(file=f)
-            traceback.print_exc(file=sys.stdout)
-
-
-def create_idecdr_for_date_range(
-    *,
-    hemisphere: Hemisphere,
-    start_date: dt.date,
-    end_date: dt.date,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
-    verbose_intermed_ncfile: bool = False,
-) -> None:
-    """Generate the initial daily ecdr files for a range of dates."""
-    for date in date_range(start_date=start_date, end_date=end_date):
-        create_idecdr_for_date(
-            hemisphere=hemisphere,
-            date=date,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-            verbose_intermed_ncfile=verbose_intermed_ncfile,
-        )
+        raise e
 
 
 @click.command(name="idecdr")
@@ -1183,10 +1143,9 @@ def cli(
     methodology for getting those TBs onto the grid)
     """
 
-    create_idecdr_for_date_range(
+    create_idecdr_for_date(
         hemisphere=hemisphere,
-        start_date=date,
-        end_date=date,
+        date=date,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
         verbose_intermed_ncfile=verbose_intermed_ncfile,

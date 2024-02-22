@@ -2,6 +2,7 @@ import datetime as dt
 from typing import Final
 
 import numpy as np
+import pytest
 import xarray as xr
 from pm_tb_data._types import NORTH, SOUTH
 
@@ -11,6 +12,7 @@ from seaice_ecdr.multiprocess_daily import get_dates_by_year
 from seaice_ecdr.util import (
     date_range,
     get_num_missing_pixels,
+    raise_error_for_dates,
     sat_from_filename,
     standard_daily_aggregate_filename,
     standard_daily_filename,
@@ -198,3 +200,12 @@ def test_get_num_missing_pixels(monkeypatch):
     )
 
     assert detected_missing == 1
+
+
+def test_raise_error_for_dates():
+    # If no dates are passed, no error should be raised.
+    raise_error_for_dates(error_dates=[])
+
+    # If one or more dates are passed, an error should be raised.
+    with pytest.raises(RuntimeError):
+        raise_error_for_dates(error_dates=[dt.date(2011, 1, 1)])

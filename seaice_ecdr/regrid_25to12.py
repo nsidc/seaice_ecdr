@@ -315,7 +315,7 @@ def reproject_ideds_25to12(
                 )
                 reprojected_tbs[key] = tbda_12
 
-    logger.info(f"Regridded TB fields: {reprojected_tbs.keys()}")
+    logger.debug(f"Regridded TB fields: {reprojected_tbs.keys()}")
 
     reprojected_tbs_ds = xr.Dataset(reprojected_tbs)
 

@@ -85,7 +85,7 @@ def make_archive_for_noaa(
         output_fp = shutil.make_archive(
             base_name=base_name_with_dir, format="zip", root_dir=tempdir
         )
-        logger.info(f"Wrote {output_fp}")
+        logger.success(f"Wrote {output_fp}")
 
 
 @click.command(

@@ -168,10 +168,6 @@ def get_daily_ds_for_month(
 
     ds.attrs["sat"] = sat
 
-    logger.info(
-        f"Created daily ds for {year=} {month=} from {len(ds.time)} complete daily files."
-    )
-
     return ds
 
 
@@ -638,13 +634,6 @@ def make_monthly_nc(
 
     sat = daily_ds_for_month.sat
 
-    monthly_ds = make_monthly_ds(
-        daily_ds_for_month=daily_ds_for_month,
-        sat=sat,
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-
     output_path = get_monthly_filepath(
         hemisphere=hemisphere,
         resolution=resolution,
@@ -652,6 +641,13 @@ def make_monthly_nc(
         year=year,
         month=month,
         ecdr_data_dir=ecdr_data_dir,
+    )
+
+    monthly_ds = make_monthly_ds(
+        daily_ds_for_month=daily_ds_for_month,
+        sat=sat,
+        hemisphere=hemisphere,
+        resolution=resolution,
     )
 
     # Set `x` and `y` `_FillValue` to `None`. Although unset initially, `xarray`
@@ -665,7 +661,9 @@ def make_monthly_nc(
             "time",
         ],
     )
-    logger.info(f"Wrote monthly file for {year=} and {month=} to {output_path}")
+    logger.success(
+        f"Wrote monthly file for {year=} and {month=} using {len(daily_ds_for_month.time)} daily files to {output_path}"
+    )
 
     # Write checksum file for the monthly output.
     write_checksum_file(
@@ -750,15 +748,31 @@ def cli(
     if end_month is None:
         end_month = month
 
+    error_periods = []
     for period in pd.period_range(
         start=pd.Period(year=year, month=month, freq="M"),
         end=pd.Period(year=end_year, month=end_month, freq="M"),
         freq="M",
     ):
-        make_monthly_nc(
-            year=period.year,
-            month=period.month,
-            ecdr_data_dir=ecdr_data_dir,
-            hemisphere=hemisphere,
-            resolution=resolution,
+        try:
+            make_monthly_nc(
+                year=period.year,
+                month=period.month,
+                ecdr_data_dir=ecdr_data_dir,
+                hemisphere=hemisphere,
+                resolution=resolution,
+            )
+        except Exception:
+            error_periods.append(period)
+            logger.exception(
+                f"Failed to create monthly data for year={period.year} month={period.month}"
+            )
+
+    if error_periods:
+        str_formatted_dates = "\n".join(
+            period.strftime("%Y-%m") for period in error_periods
+        )
+        raise RuntimeError(
+            f"Encountered {len(error_periods)} failures."
+            f" Data for the following months were not created:\n{str_formatted_dates}"
         )
