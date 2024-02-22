@@ -1065,22 +1065,10 @@ def create_idecdr_for_date(
             overwrite_ide=overwrite_ide,
         )
 
-    # TODO: either catch and re-throw this exception or throw an error after
-    # attempting to make the netcdf for each date. The exit code should be
-    # non-zero in such a case.
     except Exception as e:
         logger.exception(
             "Failed to create NetCDF for " f"{hemisphere=}, {date=}, {resolution=}."
         )
-        # TODO: err logfile for intiial daily data?
-        # platform = get_platform_by_date(date)
-        # err_filepath = get_idecdr_filepath(
-        #     date=date,
-        #     platform=platform,
-        #     hemisphere=hemisphere,
-        #     resolution=resolution,
-        #     ecdr_data_dir=ecdr_data_dir,
-        # )
         raise e
 
 
