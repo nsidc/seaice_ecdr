@@ -42,6 +42,7 @@ from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.util import (
+    create_err_logfile,
     get_num_missing_pixels,
     sat_from_filename,
     standard_monthly_filename,
@@ -624,31 +625,31 @@ def make_monthly_nc(
     ecdr_data_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> Path:
+    daily_ds_for_month = get_daily_ds_for_month(
+        year=year,
+        month=month,
+        ecdr_data_dir=ecdr_data_dir,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    sat = daily_ds_for_month.sat
+
+    output_path = get_monthly_filepath(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        sat=sat,
+        year=year,
+        month=month,
+        ecdr_data_dir=ecdr_data_dir,
+    )
+
     try:
-        daily_ds_for_month = get_daily_ds_for_month(
-            year=year,
-            month=month,
-            ecdr_data_dir=ecdr_data_dir,
-            hemisphere=hemisphere,
-            resolution=resolution,
-        )
-
-        sat = daily_ds_for_month.sat
-
         monthly_ds = make_monthly_ds(
             daily_ds_for_month=daily_ds_for_month,
             sat=sat,
             hemisphere=hemisphere,
             resolution=resolution,
-        )
-
-        output_path = get_monthly_filepath(
-            hemisphere=hemisphere,
-            resolution=resolution,
-            sat=sat,
-            year=year,
-            month=month,
-            ecdr_data_dir=ecdr_data_dir,
         )
 
         # Set `x` and `y` `_FillValue` to `None`. Although unset initially, `xarray`
@@ -674,6 +675,11 @@ def make_monthly_nc(
         )
     except Exception as e:
         logger.exception(f"Failed to create monthly data for {year=} {month=}")
+        create_err_logfile(
+            filename=output_path.name,
+            ecdr_data_dir=ecdr_data_dir,
+            product_type="monthly",
+        )
         raise e
 
     return output_path
