@@ -3,11 +3,28 @@ import sys
 
 from loguru import logger
 
-env = os.environ.get("ENVIRONMENT")
-_default_log_level = "DEBUG" if env == "dev" else "INFO"
+from seaice_ecdr.constants import LOGS_DIR
 
+DEFAULT_LOG_LEVEL = "INFO"
+
+# If we're in dev, DEBUG level logs are appropriate, otherwise use INFO.
+env = os.environ.get("ENVIRONMENT")
+_default_log_level = "DEBUG" if env == "dev" else DEFAULT_LOG_LEVEL
+
+# Configure the default logger, which prints to stderr.
 logger.configure(
     handlers=[
         dict(sink=sys.stderr, level=_default_log_level),
-    ]
+    ],
 )
+
+# Optionally (by default) log to a file named after the current date.
+# TODO: consider logging all messages (TRACE level)? We could retain all context for
+# regular ops runs up to a certain date, which might help w/ debugging
+# issues...Larger reprocessing efforts could disable file logging (or change the
+# level?) for speed and space consideration issues.
+do_not_log = os.environ.get("DISABLE_FILE_LOGGING")
+if not do_not_log:
+    file_sink_fp = LOGS_DIR / "{time:%Y-%m-%d}.log"
+    # Retain logs for up to a month.
+    logger.add(file_sink_fp, level=DEFAULT_LOG_LEVEL, retention=31)
