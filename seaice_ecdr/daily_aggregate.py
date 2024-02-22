@@ -21,7 +21,6 @@ from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
 from seaice_ecdr.platforms import get_first_platform_start_date
 from seaice_ecdr.util import (
-    create_err_logfile,
     sat_from_filename,
     standard_daily_aggregate_filename,
 )
@@ -248,16 +247,6 @@ def cli(
             )
         except Exception:
             failed_years.append(year_to_process)
-            create_err_logfile(
-                filename=standard_daily_aggregate_filename(
-                    hemisphere=hemisphere,
-                    resolution=resolution,
-                    start_date=dt.date(year, 1, 1),
-                    end_date=dt.date(year, 12, 31),
-                ),
-                ecdr_data_dir=ecdr_data_dir,
-                product_type="aggregate",
-            )
 
     if failed_years:
         str_formatted_years = "\n".join(str(year) for year in failed_years)

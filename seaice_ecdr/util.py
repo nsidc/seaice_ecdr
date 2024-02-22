@@ -1,13 +1,10 @@
 import datetime as dt
 import re
-import traceback
-from pathlib import Path
 from typing import Iterator, cast, get_args
 
 import numpy as np
 import pandas as pd
 import xarray as xr
-from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
@@ -155,46 +152,6 @@ def get_num_missing_pixels(
     num_missing_pixels = int((seaice_conc_var.isnull() & ocean_mask).astype(int).sum())
 
     return num_missing_pixels
-
-
-def get_err_logfile_dir(
-    *,
-    ecdr_data_dir: Path,
-    product_type: str,
-):
-    errors_dir = ecdr_data_dir / "errors"
-    errors_dir.mkdir(exist_ok=True)
-    err_logfile_dir = errors_dir / product_type
-    err_logfile_dir.mkdir(exist_ok=True)
-
-    return err_logfile_dir
-
-
-def create_err_logfile(
-    *,
-    filename: str,
-    ecdr_data_dir: Path,
-    product_type: str,
-) -> None:
-    """Write the most recent exception to an error file.
-
-    Intended for logging errors around the creation of ECDR output files for
-    publication. If an exception is raised durign the production of a e.g.,
-    complete daily file, this function can be called by the complete daily
-    exception handling code to generate a file w/ the most recent
-    exception. This file has the same name as the provided `filename`, with
-    `.error` appended to the end.
-
-    Error files appear in a directory like:
-        `ecdr_data_dir / "errors" / product_type / "f{filename}.err`
-    """
-    err_logfile_dir = get_err_logfile_dir(
-        ecdr_data_dir=ecdr_data_dir, product_type=product_type
-    )
-    err_filepath = err_logfile_dir / (filename + ".error")
-    with open(err_filepath, "w") as f:
-        traceback.print_exc(file=f)
-    logger.warning(f"Wrote error info to {err_filepath}")
 
 
 def raise_error_for_dates(*, error_dates: list[dt.date]) -> None:
