@@ -49,7 +49,7 @@ from seaice_ecdr.temporal_composite_daily import (
     temporal_interpolation,
     write_tie_netcdf,
 )
-from seaice_ecdr.util import create_err_logfile, date_range
+from seaice_ecdr.util import date_range
 
 LANCE_RESOLUTION: Final = "12.5"
 
@@ -340,11 +340,6 @@ def nrt_ecdr_for_day(
             logger.info(f"Wrote complete daily ncfile: {written_cde_ncfile}")
         except Exception as e:
             logger.exception(f"Failed to create NRT ECDR for {date=} {hemisphere=}")
-            create_err_logfile(
-                filename=cde_filepath.name,
-                ecdr_data_dir=ecdr_data_dir,
-                product_type="complete_daily",
-            )
             raise e
 
 

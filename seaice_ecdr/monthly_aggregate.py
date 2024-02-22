@@ -19,7 +19,6 @@ from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
 from seaice_ecdr.util import (
-    create_err_logfile,
     sat_from_filename,
     standard_monthly_aggregate_filename,
 )
@@ -218,10 +217,5 @@ def cli(
     except Exception as e:
         logger.exception(
             f"Failed to create monthly aggregate for {hemisphere=} {resolution=}"
-        )
-        create_err_logfile(
-            filename=f"monthly_aggregate_{hemisphere}_{resolution}",
-            ecdr_data_dir=ecdr_data_dir,
-            product_type="aggregate",
         )
         raise e

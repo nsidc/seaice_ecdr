@@ -42,7 +42,6 @@ from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.util import (
-    create_err_logfile,
     get_num_missing_pixels,
     sat_from_filename,
     standard_monthly_filename,
@@ -767,17 +766,6 @@ def cli(
             error_periods.append(period)
             logger.exception(
                 f"Failed to create monthly data for year={period.year} month={period.month}"
-            )
-            create_err_logfile(
-                filename=standard_monthly_filename(
-                    hemisphere=hemisphere,
-                    resolution=resolution,
-                    sat="error",  # type: ignore[arg-type]
-                    year=period.year,
-                    month=period.month,
-                ),
-                ecdr_data_dir=ecdr_data_dir,
-                product_type="monthly",
             )
 
     if error_periods:

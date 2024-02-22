@@ -36,7 +36,6 @@ from seaice_ecdr.platforms import (
 from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
 from seaice_ecdr.util import (
-    create_err_logfile,
     date_range,
     get_ecdr_grid_shape,
     raise_error_for_dates,
@@ -663,17 +662,7 @@ def create_standard_ecdr_for_dates(
             )
         except Exception:
             error_dates.append(date)
-            ecdr_filepath = get_ecdr_filepath(
-                date=date,
-                hemisphere=hemisphere,
-                resolution=resolution,
-                ecdr_data_dir=ecdr_data_dir,
-            )
-            create_err_logfile(
-                filename=ecdr_filepath.name,
-                ecdr_data_dir=ecdr_data_dir,
-                product_type="complete_daily",
-            )
+
     return error_dates
 
 
