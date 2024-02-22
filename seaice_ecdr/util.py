@@ -1,6 +1,5 @@
 import datetime as dt
 import re
-from pathlib import Path
 from typing import Iterator, cast, get_args
 
 import numpy as np
@@ -153,19 +152,6 @@ def get_num_missing_pixels(
     num_missing_pixels = int((seaice_conc_var.isnull() & ocean_mask).astype(int).sum())
 
     return num_missing_pixels
-
-
-def get_err_logfile_dir(
-    *,
-    ecdr_data_dir: Path,
-    product_type: str,
-):
-    errors_dir = ecdr_data_dir / "errors"
-    errors_dir.mkdir(exist_ok=True)
-    err_logfile_dir = errors_dir / product_type
-    err_logfile_dir.mkdir(exist_ok=True)
-
-    return err_logfile_dir
 
 
 def raise_error_for_dates(*, error_dates: list[dt.date]) -> None:
