@@ -23,13 +23,21 @@ logger.configure(
 # regular ops runs up to a certain date, which might help w/ debugging
 # issues...Larger reprocessing efforts could disable file logging (or change the
 # level?) for speed and space consideration issues.
-do_not_log = os.environ.get("DISABLE_FILE_LOGGING")
+disable_file_logging = os.environ.get("DISABLE_FILE_LOGGING")
+do_not_log = disable_file_logging is not None and disable_file_logging.upper() in (
+    "TRUE",
+    "YES",
+)
+
 if not do_not_log:
     # One file per day.
     file_sink_fp = LOGS_DIR / "{time:%Y-%m-%d}.log"
+    logger.debug(f"Logging to {file_sink_fp}")
     logger.add(
         file_sink_fp,
         level=DEFAULT_LOG_LEVEL,
         # Retain logs for up to a month.
         retention=31,
     )
+else:
+    logger.debug(f"Not logging to file (DISABLE_FILE_LOGGING={disable_file_logging}).")
