@@ -25,6 +25,11 @@ logger.configure(
 # level?) for speed and space consideration issues.
 do_not_log = os.environ.get("DISABLE_FILE_LOGGING")
 if not do_not_log:
+    # One file per day.
     file_sink_fp = LOGS_DIR / "{time:%Y-%m-%d}.log"
-    # Retain logs for up to a month.
-    logger.add(file_sink_fp, level=DEFAULT_LOG_LEVEL, retention=31)
+    logger.add(
+        file_sink_fp,
+        level=DEFAULT_LOG_LEVEL,
+        # Retain logs for up to a month.
+        retention=31,
+    )
