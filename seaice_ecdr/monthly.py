@@ -765,7 +765,9 @@ def cli(
             )
         except Exception:
             error_periods.append(period)
-            logger.exception(f"Failed to create monthly data for {year=} {month=}")
+            logger.exception(
+                f"Failed to create monthly data for year={period.year} month={period.month}"
+            )
             create_err_logfile(
                 filename=standard_monthly_filename(
                     hemisphere=hemisphere,
