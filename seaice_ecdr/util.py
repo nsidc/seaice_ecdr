@@ -176,6 +176,18 @@ def create_err_logfile(
     ecdr_data_dir: Path,
     product_type: str,
 ) -> None:
+    """Write the most recent exception to an error file.
+
+    Intended for logging errors around the creation of ECDR output files for
+    publication. If an exception is raised durign the production of a e.g.,
+    complete daily file, this function can be called by the complete daily
+    exception handling code to generate a file w/ the most recent
+    exception. This file has the same name as the provided `filename`, with
+    `.error` appended to the end.
+
+    Error files appear in a directory like:
+        `ecdr_data_dir / "errors" / product_type / "f{filename}.err`
+    """
     err_logfile_dir = get_err_logfile_dir(
         ecdr_data_dir=ecdr_data_dir, product_type=product_type
     )
