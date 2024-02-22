@@ -31,6 +31,7 @@ do_not_log = disable_file_logging is not None and disable_file_logging.upper() i
 
 if not do_not_log:
     # One file per day.
+    LOGS_DIR.mkdir(exist_ok=True)
     file_sink_fp = LOGS_DIR / "{time:%Y-%m-%d}.log"
     logger.debug(f"Logging to {file_sink_fp}")
     logger.add(
