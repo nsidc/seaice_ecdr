@@ -46,7 +46,7 @@ from seaice_ecdr.util import (
 @cache
 def get_ecdr_dir(*, ecdr_data_dir: Path, year: int) -> Path:
     """Daily complete output dir for ECDR processing"""
-    complete_daily_dir = ecdr_data_dir / "complete_daily"
+    complete_daily_dir = ecdr_data_dir / "daily"
     complete_daily_dir.mkdir(exist_ok=True)
     ecdr_dir = complete_daily_dir / str(year)
     ecdr_dir.mkdir(exist_ok=True)
