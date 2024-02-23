@@ -20,6 +20,7 @@ def test_no_melt_onset_for_southern_hemisphere(tmpdir):
                 hemisphere=SOUTH,
                 resolution="12.5",
                 ecdr_data_dir=Path(tmpdir),
+                is_nrt=False,
             )
 
 
@@ -33,5 +34,6 @@ def test_melt_onset_field_outside_melt_season(tmpdir):
             hemisphere=hemisphere,
             resolution="12.5",
             ecdr_data_dir=Path(tmpdir),
+            is_nrt=False,
         )
         assert np.all(melt_onset_field == MELT_ONSET_FILL_VALUE)

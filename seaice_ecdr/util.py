@@ -1,5 +1,6 @@
 import datetime as dt
 import re
+from pathlib import Path
 from typing import Iterator, cast, get_args
 
 import numpy as np
@@ -32,6 +33,28 @@ def standard_daily_filename(
     fn = f"sic_{grid_id}_{date:%Y%m%d}_{sat}_{ECDR_PRODUCT_VERSION}.nc"
 
     return fn
+
+
+def nrt_daily_filename(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    sat: SUPPORTED_SAT,
+    date: dt.date,
+) -> str:
+    standard_fn = standard_daily_filename(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        sat=sat,
+        date=date,
+    )
+    standard_fn_path = Path(standard_fn)
+
+    fn_base = standard_fn_path.stem
+    ext = standard_fn_path.suffix
+    nrt_fn = fn_base + "_P" + ext
+
+    return nrt_fn
 
 
 def standard_daily_aggregate_filename(

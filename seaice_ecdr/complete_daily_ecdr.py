@@ -38,6 +38,7 @@ from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_n
 from seaice_ecdr.util import (
     date_range,
     get_ecdr_grid_shape,
+    nrt_daily_filename,
     raise_error_for_dates,
     standard_daily_filename,
 )
@@ -57,15 +58,24 @@ def get_ecdr_filepath(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    is_nrt: bool,
 ) -> Path:
     """Return the complete daily eCDR file path."""
     platform = get_platform_by_date(date)
-    ecdr_filename = standard_daily_filename(
-        hemisphere=hemisphere,
-        date=date,
-        sat=platform,
-        resolution=resolution,
-    )
+    if is_nrt:
+        ecdr_filename = nrt_daily_filename(
+            hemisphere=hemisphere,
+            date=date,
+            sat=platform,
+            resolution=resolution,
+        )
+    else:
+        ecdr_filename = standard_daily_filename(
+            hemisphere=hemisphere,
+            date=date,
+            sat=platform,
+            resolution=resolution,
+        )
 
     ecdr_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir, year=date.year)
 
@@ -152,12 +162,14 @@ def read_melt_onset_field_from_complete_daily(
     hemisphere,
     resolution,
     ecdr_data_dir: Path,
+    is_nrt: bool,
 ) -> npt.NDArray:
     cde_ds = read_cdecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        is_nrt=is_nrt,
     )
 
     # TODO: Perhaps these field names should be in a dictionary somewhere?
@@ -227,6 +239,7 @@ def create_melt_onset_field(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    is_nrt: bool,
 ) -> npt.NDArray[np.uint8]:
     """Return a uint8 melt onset field.
 
@@ -255,7 +268,9 @@ def create_melt_onset_field(
     # Determine if the given day of year is within the melt season. If it's not,
     # return an empty melt onset field.
     if not date_in_nh_melt_season(date=date):
-        logger.debug(f"returning empty melt_onset_field for {day_of_year}")
+        logger.debug(
+            f"returning empty melt_onset_field for {date:%Y-%m-%d} ({day_of_year=})"
+        )
         return _empty_melt_onset_field(
             hemisphere=hemisphere,
             resolution=resolution,
@@ -280,6 +295,7 @@ def create_melt_onset_field(
                 hemisphere=hemisphere,
                 resolution=resolution,
                 ecdr_data_dir=ecdr_data_dir,
+                is_nrt=is_nrt,
             )
             logger.debug(f"using read melt_onset_field for prior for {day_of_year}")
         except FileNotFoundError:
@@ -323,6 +339,7 @@ def _add_melt_onset_for_nh(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    is_nrt: bool,
 ) -> xr.Dataset:
     """Add the melt onset field to the complete daily dataset for the given date."""
     cde_ds_with_melt_onset = cde_ds.copy()
@@ -332,6 +349,7 @@ def _add_melt_onset_for_nh(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        is_nrt=is_nrt,
     )
 
     # Update cde_ds with melt onset info
@@ -423,6 +441,7 @@ def complete_daily_ecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    is_nrt: bool,
 ) -> xr.Dataset:
     """Create xr dataset containing the complete daily enhanced CDR.
 
@@ -452,6 +471,7 @@ def complete_daily_ecdr_ds(
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
+            is_nrt=is_nrt,
         )
 
     cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere, resolution)
@@ -535,6 +555,7 @@ def make_standard_cdecdr_netcdf(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        is_nrt=False,
     )
 
     if cde_filepath.is_file() and not overwrite_cde:
@@ -576,6 +597,7 @@ def make_standard_cdecdr_netcdf(
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
+            is_nrt=False,
         )
 
         written_cde_ncfile = write_cde_netcdf(
@@ -600,12 +622,14 @@ def read_cdecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
+    is_nrt: bool,
 ) -> xr.Dataset:
     cde_filepath = get_ecdr_filepath(
         date,
         hemisphere,
         resolution,
         ecdr_data_dir=ecdr_data_dir,
+        is_nrt=is_nrt,
     )
     logger.debug(f"Reading cdeCDR file from: {cde_filepath}")
     cde_ds = xr.load_dataset(cde_filepath)
@@ -641,6 +665,7 @@ def read_or_create_and_read_standard_cdecdr_ds(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        is_nrt=False,
     )
 
     return cde_ds

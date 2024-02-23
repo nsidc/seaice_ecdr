@@ -43,6 +43,7 @@ def _get_daily_complete_filepaths_for_year(
             hemisphere=hemisphere,
             resolution=resolution,
             ecdr_data_dir=ecdr_data_dir,
+            is_nrt=False,
         )
         if expected_fp.is_file():
             data_list.append(expected_fp)

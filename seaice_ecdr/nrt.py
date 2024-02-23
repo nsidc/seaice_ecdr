@@ -15,6 +15,7 @@ TODO:
   NRT maybe?
 """
 
+import copy
 import datetime as dt
 from pathlib import Path
 from typing import Final, get_args
@@ -217,6 +218,59 @@ def read_or_create_and_read_nrt_tiecdr_ds(
     return tie_ds
 
 
+def nrt_ecdr_for_day(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    ecdr_data_dir: Path,
+    overwrite: bool,
+):
+    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
+    # The data should be organized by hemisphere.
+    ecdr_data_dir = ecdr_data_dir / hemisphere
+    ecdr_data_dir.mkdir(exist_ok=True)
+
+    cde_filepath = get_ecdr_filepath(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=LANCE_RESOLUTION,
+        ecdr_data_dir=ecdr_data_dir,
+        is_nrt=True,
+    )
+
+    if cde_filepath.is_file() and not overwrite:
+        logger.info(f"File for {date=} already exists ({cde_filepath}).")
+        return
+
+    if not cde_filepath.is_file() or overwrite:
+        try:
+            tiecdr_ds = read_or_create_and_read_nrt_tiecdr_ds(
+                hemisphere=hemisphere,
+                date=date,
+                ecdr_data_dir=ecdr_data_dir,
+                overwrite=overwrite,
+            )
+
+            cde_ds = complete_daily_ecdr_ds(
+                tie_ds=tiecdr_ds,
+                date=date,
+                hemisphere=hemisphere,
+                resolution=LANCE_RESOLUTION,
+                ecdr_data_dir=ecdr_data_dir,
+                is_nrt=True,
+            )
+
+            written_cde_ncfile = write_cde_netcdf(
+                cde_ds=cde_ds,
+                output_filepath=cde_filepath,
+                ecdr_data_dir=ecdr_data_dir,
+            )
+            logger.success(f"Wrote complete daily ncfile: {written_cde_ncfile}")
+        except Exception as e:
+            logger.exception(f"Failed to create NRT ECDR for {date=} {hemisphere=}")
+            raise e
+
+
 @click.command(name="download-latest-nrt-data")
 @click.option(
     "-o",
@@ -252,13 +306,28 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     download_latest_lance_files(output_dir=output_dir, overwrite=overwrite)
 
 
-@click.command(name="nrt-ecdr-for-day")
+@click.command(name="daily")
 @click.option(
     "-d",
     "--date",
     required=True,
     type=click.DateTime(formats=("%Y-%m-%d", "%Y%m%d", "%Y.%m.%d")),
     callback=datetime_to_date,
+)
+@click.option(
+    "--end-date",
+    required=False,
+    type=click.DateTime(
+        formats=(
+            "%Y-%m-%d",
+            "%Y%m%d",
+            "%Y.%m.%d",
+        )
+    ),
+    # Like `datetime_to_date` but allows `None`.
+    callback=lambda _ctx, _param, value: value if value is None else value.date(),
+    default=None,
+    help="If given, run temporal composite for `--date` through this end date.",
 )
 @click.option(
     "-h",
@@ -296,55 +365,24 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
         " have significant data gaps. Use this primarily in a development environment."
     ),
 )
-def nrt_ecdr_for_day(
+def nrt_ecdr_for_dates(
     *,
     date: dt.date,
+    end_date: dt.date | None,
     hemisphere: Hemisphere,
     ecdr_data_dir: Path,
     overwrite: bool,
 ):
-    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
-    # The data should be organized by hemisphere.
-    ecdr_data_dir = ecdr_data_dir / hemisphere
-    ecdr_data_dir.mkdir(exist_ok=True)
+    if end_date is None:
+        end_date = copy.copy(date)
 
-    cde_filepath = get_ecdr_filepath(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=LANCE_RESOLUTION,
-        ecdr_data_dir=ecdr_data_dir,
-    )
-
-    if cde_filepath.is_file() and not overwrite:
-        logger.info(f"File for {date=} already exists ({cde_filepath}).")
-        return
-
-    if not cde_filepath.is_file() or overwrite:
-        try:
-            tiecdr_ds = read_or_create_and_read_nrt_tiecdr_ds(
-                hemisphere=hemisphere,
-                date=date,
-                ecdr_data_dir=ecdr_data_dir,
-                overwrite=overwrite,
-            )
-
-            cde_ds = complete_daily_ecdr_ds(
-                tie_ds=tiecdr_ds,
-                date=date,
-                hemisphere=hemisphere,
-                resolution=LANCE_RESOLUTION,
-                ecdr_data_dir=ecdr_data_dir,
-            )
-
-            written_cde_ncfile = write_cde_netcdf(
-                cde_ds=cde_ds,
-                output_filepath=cde_filepath,
-                ecdr_data_dir=ecdr_data_dir,
-            )
-            logger.success(f"Wrote complete daily ncfile: {written_cde_ncfile}")
-        except Exception as e:
-            logger.exception(f"Failed to create NRT ECDR for {date=} {hemisphere=}")
-            raise e
+    for date in date_range(start_date=date, end_date=end_date):
+        nrt_ecdr_for_day(
+            date=date,
+            hemisphere=hemisphere,
+            ecdr_data_dir=ecdr_data_dir,
+            overwrite=overwrite,
+        )
 
 
 @click.group(name="nrt")
@@ -354,4 +392,4 @@ def nrt_cli():
 
 
 nrt_cli.add_command(download_latest_nrt_data)
-nrt_cli.add_command(nrt_ecdr_for_day)
+nrt_cli.add_command(nrt_ecdr_for_dates)

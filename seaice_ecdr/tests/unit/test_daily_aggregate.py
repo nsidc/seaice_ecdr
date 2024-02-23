@@ -22,6 +22,7 @@ def test_get_daily_complete_filepaths_for_year(fs):
             hemisphere="north",
             resolution="12.5",
             ecdr_data_dir=ecdr_data_dir,
+            is_nrt=False,
         )
 
         fs.create_file(fp)
@@ -36,6 +37,7 @@ def test_get_daily_complete_filepaths_for_year(fs):
             hemisphere="north",
             resolution="12.5",
             ecdr_data_dir=ecdr_data_dir,
+            is_nrt=False,
         )
 
         fs.create_file(fp)

@@ -390,6 +390,7 @@ def validate_outputs(
                     hemisphere=hemisphere,
                     resolution=VALIDATION_RESOLUTION,
                     ecdr_data_dir=ecdr_data_dir,
+                    is_nrt=False,
                 )
 
                 if not data_fp.is_file():
