@@ -44,9 +44,11 @@ from seaice_ecdr.util import (
 
 
 @cache
-def get_ecdr_dir(*, ecdr_data_dir: Path) -> Path:
+def get_ecdr_dir(*, ecdr_data_dir: Path, year: int) -> Path:
     """Daily complete output dir for ECDR processing"""
-    ecdr_dir = ecdr_data_dir / "complete_daily"
+    complete_daily_dir = ecdr_data_dir / "complete_daily"
+    complete_daily_dir.mkdir(exist_ok=True)
+    ecdr_dir = complete_daily_dir / str(year)
     ecdr_dir.mkdir(exist_ok=True)
 
     return ecdr_dir
@@ -66,7 +68,7 @@ def get_ecdr_filepath(
         sat=platform,
         resolution=resolution,
     )
-    ecdr_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir)
+    ecdr_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir, year=date.year)
 
     ecdr_filepath = ecdr_dir / ecdr_filename
 
@@ -672,6 +674,7 @@ def create_standard_ecdr_for_dates(
                 overwrite_cde=overwrite_cde,
             )
         except Exception:
+            logger.exception(f"Failed to create standard ECDR for {date=}")
             error_dates.append(date)
 
     return error_dates
