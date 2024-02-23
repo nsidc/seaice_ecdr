@@ -8,7 +8,9 @@ GRID_ID = Literal["psn12.5", "pss12.5", "psn25", "pss25"]
 
 
 def get_grid_id(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> GRID_ID:
     grid_id = f"ps{hemisphere[0]}{resolution}"
     if grid_id not in get_args(GRID_ID):
