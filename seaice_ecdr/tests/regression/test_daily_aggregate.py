@@ -56,7 +56,6 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
     checksum_filepath = get_checksum_filepath(
         input_filepath=aggregate_filepath,
         ecdr_data_dir=tmpdir_path,
-        product_type="aggregate",
     )
     assert checksum_filepath.is_file()
 

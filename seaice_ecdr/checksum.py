@@ -6,7 +6,6 @@ existing standard (not NRT) output files.
 
 import hashlib
 from pathlib import Path
-from typing import Literal
 
 from loguru import logger
 
@@ -20,15 +19,12 @@ def get_checksum_filepath(
     *,
     input_filepath: Path,
     ecdr_data_dir: Path,
-    product_type: Literal["daily", "monthly", "aggregate"],
 ) -> Path:
-    checksum_dir = get_checksum_dir(ecdr_data_dir=ecdr_data_dir)
-    checksum_product_dir = checksum_dir / product_type
-    checksum_product_dir.mkdir(exist_ok=True)
-
     checksum_filename = input_filepath.name + ".mnf"
-    checksum_dir = get_checksum_dir(ecdr_data_dir=ecdr_data_dir)
-    checksum_filepath = checksum_dir / product_type / checksum_filename
+    input_filepath_subdir = input_filepath.relative_to(ecdr_data_dir).parent
+    checksum_dir = ecdr_data_dir / "checksums" / input_filepath_subdir
+    checksum_dir.mkdir(parents=True, exist_ok=True)
+    checksum_filepath = checksum_dir / checksum_filename
 
     return checksum_filepath
 
@@ -37,7 +33,6 @@ def write_checksum_file(
     *,
     input_filepath: Path,
     ecdr_data_dir: Path,
-    product_type: Literal["daily", "monthly", "aggregate"],
 ) -> Path:
     checksum = _get_checksum(input_filepath)
 
@@ -45,7 +40,6 @@ def write_checksum_file(
     output_filepath = get_checksum_filepath(
         input_filepath=input_filepath,
         ecdr_data_dir=ecdr_data_dir,
-        product_type=product_type,
     )
 
     with open(output_filepath, "w") as checksum_file:
@@ -54,10 +48,3 @@ def write_checksum_file(
     logger.success(f"Wrote checksum file {output_filepath}")
 
     return output_filepath
-
-
-def get_checksum_dir(*, ecdr_data_dir: Path):
-    checksum_dir = ecdr_data_dir / "checksums"
-    checksum_dir.mkdir(exist_ok=True)
-
-    return checksum_dir

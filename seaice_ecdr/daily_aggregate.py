@@ -173,7 +173,6 @@ def make_daily_aggregate_netcdf_for_year(
         write_checksum_file(
             input_filepath=output_path,
             ecdr_data_dir=ecdr_data_dir,
-            product_type="aggregate",
         )
     except Exception as e:
         logger.exception(f"Failed to create daily aggregate for {year=} {hemisphere=}")

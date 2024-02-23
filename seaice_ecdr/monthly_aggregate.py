@@ -207,7 +207,6 @@ def cli(
         write_checksum_file(
             input_filepath=output_filepath,
             ecdr_data_dir=ecdr_data_dir,
-            product_type="aggregate",
         )
 
         # Cleanup previously existing monthly aggregates.

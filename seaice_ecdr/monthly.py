@@ -669,7 +669,6 @@ def make_monthly_nc(
     write_checksum_file(
         input_filepath=output_path,
         ecdr_data_dir=ecdr_data_dir,
-        product_type="monthly",
     )
 
     return output_path

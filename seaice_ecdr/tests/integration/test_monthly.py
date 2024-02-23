@@ -35,6 +35,5 @@ def test_make_monthly_nc(ecdr_data_dir_test_path, monkeypatch):  # noqa
     checksum_filepath = get_checksum_filepath(
         input_filepath=output_path,
         ecdr_data_dir=ecdr_data_dir_test_path,
-        product_type="monthly",
     )
     assert checksum_filepath.is_file()
