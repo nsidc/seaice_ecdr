@@ -82,6 +82,10 @@ def cli(
     ecdr_data_dir: Path,
     overwrite: bool,
 ):
+    # The data should be organized by hemisphere.
+    ecdr_data_dir = ecdr_data_dir / hemisphere
+    ecdr_data_dir.mkdir(exist_ok=True)
+
     dates = list(date_range(start_date=start_date, end_date=end_date))
     dates_by_year = get_dates_by_year(dates)
 

@@ -236,6 +236,10 @@ def cli(
     if end_year is None:
         end_year = year
 
+    # The data should be organized by hemisphere.
+    ecdr_data_dir = ecdr_data_dir / hemisphere
+    ecdr_data_dir.mkdir(exist_ok=True)
+
     failed_years = []
     for year_to_process in range(year, end_year + 1):
         try:

@@ -304,6 +304,10 @@ def nrt_ecdr_for_day(
     overwrite: bool,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
+    # The data should be organized by hemisphere.
+    ecdr_data_dir = ecdr_data_dir / hemisphere
+    ecdr_data_dir.mkdir(exist_ok=True)
+
     cde_filepath = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,

@@ -28,36 +28,31 @@ from seaice_ecdr.monthly import (
 def test__get_daily_complete_filepaths_for_month(fs):
     ecdr_data_dir = Path("/path/to/data/dir")
     fs.create_dir(ecdr_data_dir)
-    nh_complete_dir = get_ecdr_dir(
-        ecdr_data_dir=ecdr_data_dir, hemisphere="north", year=2022
-    )
-    sh_complete_dir = get_ecdr_dir(
-        ecdr_data_dir=ecdr_data_dir, hemisphere="south", year=2022
-    )
+    complete_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir, year=2022)
     year = 2022
     month = 3
     _fake_files_for_test_year_month_and_hemisphere = [
-        nh_complete_dir / "sic_psn12.5_20220301_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220302_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220303_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220301_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220302_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220303_am2_v05r01.nc",
     ]
     _fake_files = [
-        nh_complete_dir / "sic_psn12.5_20220201_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220201_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220202_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220202_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220203_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220203_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220301_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220302_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220303_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220201_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220201_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220202_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220202_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220203_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220203_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220301_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220302_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220303_am2_v05r01.nc",
         *_fake_files_for_test_year_month_and_hemisphere,
-        nh_complete_dir / "sic_psn12.5_20220401_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220401_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220402_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220402_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220403_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220403_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220401_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220401_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220402_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220402_am2_v05r01.nc",
+        complete_dir / "sic_psn12.5_20220403_am2_v05r01.nc",
+        complete_dir / "sic_pss12.5_20220403_am2_v05r01.nc",
     ]
     for _file in _fake_files:
         fs.create_file(_file)

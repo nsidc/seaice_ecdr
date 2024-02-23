@@ -44,9 +44,9 @@ from seaice_ecdr.util import (
 
 
 @cache
-def get_ecdr_dir(*, ecdr_data_dir: Path, hemisphere: Hemisphere, year: int) -> Path:
+def get_ecdr_dir(*, ecdr_data_dir: Path, year: int) -> Path:
     """Daily complete output dir for ECDR processing"""
-    ecdr_dir = ecdr_data_dir / hemisphere / "daily" / str(year)
+    ecdr_dir = ecdr_data_dir / "daily" / str(year)
     ecdr_dir.mkdir(parents=True)
 
     return ecdr_dir
@@ -67,9 +67,7 @@ def get_ecdr_filepath(
         resolution=resolution,
     )
 
-    ecdr_dir = get_ecdr_dir(
-        ecdr_data_dir=ecdr_data_dir, hemisphere=hemisphere, year=date.year
-    )
+    ecdr_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir, year=date.year)
 
     ecdr_filepath = ecdr_dir / ecdr_filename
 
@@ -512,7 +510,7 @@ def write_cde_netcdf(
     write_checksum_file(
         input_filepath=output_filepath,
         ecdr_data_dir=ecdr_data_dir,
-        product_type="complete_daily",
+        product_type="daily",
     )
 
     return output_filepath
@@ -765,6 +763,10 @@ def cli(
     """
     if end_date is None:
         end_date = copy.copy(date)
+
+    # The data should be organized by hemisphere.
+    ecdr_data_dir = ecdr_data_dir / hemisphere
+    ecdr_data_dir.mkdir(exist_ok=True)
 
     error_dates = create_standard_ecdr_for_dates(
         dates=date_range(start_date=date, end_date=end_date),

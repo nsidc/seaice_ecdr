@@ -10,8 +10,6 @@ from typing import Literal
 
 from loguru import logger
 
-from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
-
 
 def _get_checksum(filepath):
     with filepath.open("rb") as file:
@@ -22,7 +20,7 @@ def get_checksum_filepath(
     *,
     input_filepath: Path,
     ecdr_data_dir: Path,
-    product_type: Literal["complete_daily", "monthly", "aggregate"],
+    product_type: Literal["daily", "monthly", "aggregate"],
 ) -> Path:
     checksum_dir = get_checksum_dir(ecdr_data_dir=ecdr_data_dir)
     checksum_product_dir = checksum_dir / product_type
@@ -39,7 +37,7 @@ def write_checksum_file(
     *,
     input_filepath: Path,
     ecdr_data_dir: Path,
-    product_type: Literal["complete_daily", "monthly", "aggregate"],
+    product_type: Literal["daily", "monthly", "aggregate"],
 ) -> Path:
     checksum = _get_checksum(input_filepath)
 
@@ -63,15 +61,3 @@ def get_checksum_dir(*, ecdr_data_dir: Path):
     checksum_dir.mkdir(exist_ok=True)
 
     return checksum_dir
-
-
-if __name__ == "__main__":
-    ecdr_data_dir = STANDARD_BASE_OUTPUT_DIR
-    for product in ("complete_daily", "monthly", "aggregate"):
-        input_dir = ecdr_data_dir / product
-        for nc_filepath in input_dir.glob("*.nc"):
-            write_checksum_file(
-                input_filepath=nc_filepath,
-                ecdr_data_dir=ecdr_data_dir,
-                product_type=product,  # type: ignore[arg-type]
-            )

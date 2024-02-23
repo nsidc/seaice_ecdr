@@ -959,6 +959,10 @@ def cli(
     if end_date is None:
         end_date = copy.copy(date)
 
+    # The data should be organized by hemisphere.
+    ecdr_data_dir = ecdr_data_dir / hemisphere
+    ecdr_data_dir.mkdir(exist_ok=True)
+
     create_tiecdr_for_date_range(
         hemisphere=hemisphere,
         start_date=date,

@@ -15,7 +15,7 @@ def test_write_checksum_file(tmp_path):
     checksum_file = write_checksum_file(
         input_filepath=example_file,
         ecdr_data_dir=tmp_path,
-        product_type="complete_daily",
+        product_type="daily",
     )
 
     # Assert that it was written.

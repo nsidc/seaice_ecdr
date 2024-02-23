@@ -1143,6 +1143,10 @@ def cli(
     methodology for getting those TBs onto the grid)
     """
 
+    # The data should be organized by hemisphere.
+    ecdr_data_dir = ecdr_data_dir / hemisphere
+    ecdr_data_dir.mkdir(exist_ok=True)
+
     create_idecdr_for_date(
         hemisphere=hemisphere,
         date=date,

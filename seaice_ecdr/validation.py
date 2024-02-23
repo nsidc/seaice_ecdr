@@ -539,6 +539,10 @@ def cli(
     start_date: dt.date,
     end_date: dt.date,
 ):
+    # The data should be organized by hemisphere.
+    ecdr_data_dir = ecdr_data_dir / hemisphere
+    ecdr_data_dir.mkdir(exist_ok=True)
+
     daily = False
     if product_type == "daily" or product_type == "both":
         daily = True

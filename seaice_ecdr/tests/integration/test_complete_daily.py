@@ -22,6 +22,6 @@ def test_make_standard_cdecdr_netcdf(ecdr_data_dir_test_path):  # noqa
         checksum_filepath = get_checksum_filepath(
             input_filepath=output_path,
             ecdr_data_dir=ecdr_data_dir_test_path,
-            product_type="complete_daily",
+            product_type="daily",
         )
         assert checksum_filepath.is_file()
