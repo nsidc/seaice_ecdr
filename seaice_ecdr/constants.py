@@ -6,6 +6,9 @@ ECDR_PRODUCT_VERSION = "v05r01"
 # NSIDC infrastructure-specific paths:
 NSIDC_NFS_SHARE_DIR = Path("/share/apps/G02202_V5")
 
+# Logs from running the ECDR code are saved here.
+LOGS_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_logs"
+
 # TODO: dev-specific directories for the outputs!
 
 # Outputs from the `seaice_ecdr` go to these locations.

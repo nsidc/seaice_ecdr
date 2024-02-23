@@ -59,6 +59,20 @@ Commands:
   nrt     Run NRT Sea Ice ECDR.
 ```
 
+### Logging
+
+By default, logs are written to disk at
+`/share/apps/G02202_V5/{ECDR_PRODUCT_VERSION}/{YYYY-MM-DD}.log`. Up to 31 of
+these logs can exist at once (older log files get removed).
+
+During large re-processing efforts, it may be desirable to temporarily disable
+logging to improve processing speed and reduce disk usage. To do so, set the
+`DISABLE_FILE_LOGGING` envvar to `TRUE`.
+
+```
+export DISABLE_FILE_LOGGING=TRUE
+```
+
 ## Development/contributing
 
 See [doc/development.md](doc/development.md) for more information.
