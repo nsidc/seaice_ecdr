@@ -11,7 +11,8 @@ LOGS_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_logs"
 
 # TODO: dev-specific directories for the outputs!
 
-# Outputs from the `seaice_ecdr` go to these locations.
+# Outputs from the `seaice_ecdr` go to these locations by default. The CLI
+# provides the option to change this.
 DEFAULT_BASE_OUTPUT_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_outputs"
 
 # Location of LANCE AMSR2 NRT data files:
