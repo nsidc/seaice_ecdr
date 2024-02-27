@@ -22,7 +22,7 @@ from seaice_ecdr.ancillary import (
 )
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import BASE_OUTPUT_DIR
+from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.melt import (
     MELT_ONSET_FILL_VALUE,
     MELT_SEASON_FIRST_DOY,
@@ -749,7 +749,7 @@ def create_standard_ecdr_for_dates(
         resolve_path=True,
         path_type=Path,
     ),
-    default=BASE_OUTPUT_DIR,
+    default=DEFAULT_BASE_OUTPUT_DIR,
     help=(
         "Base output directory for standard ECDR outputs."
         " Subdirectories are created for outputs of"

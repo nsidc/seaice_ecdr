@@ -42,7 +42,7 @@ from seaice_ecdr.ancillary import (
     nh_polehole_mask,
 )
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import BASE_OUTPUT_DIR
+from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
@@ -1103,7 +1103,7 @@ def create_idecdr_for_date(
         resolve_path=True,
         path_type=Path,
     ),
-    default=BASE_OUTPUT_DIR,
+    default=DEFAULT_BASE_OUTPUT_DIR,
     help=(
         "Base output directory for standard ECDR outputs."
         " Subdirectories are created for outputs of"
