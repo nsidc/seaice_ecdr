@@ -19,7 +19,7 @@ from pm_tb_data._types import NORTH, Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.ancillary import get_non_ocean_mask, nh_polehole_mask
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
     create_idecdr_for_date,
     get_idecdr_filepath,
@@ -920,7 +920,7 @@ def create_tiecdr_for_date_range(
         resolve_path=True,
         path_type=Path,
     ),
-    default=STANDARD_BASE_OUTPUT_DIR,
+    default=BASE_OUTPUT_DIR,
     help=(
         "Base output directory for standard ECDR outputs."
         " Subdirectories are created for outputs of"

@@ -10,7 +10,7 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.complete_daily_ecdr import create_standard_ecdr_for_dates
-from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import create_idecdr_for_date
 from seaice_ecdr.platforms import get_first_platform_start_date
 from seaice_ecdr.temporal_composite_daily import make_tiecdr_netcdf
@@ -63,7 +63,7 @@ from seaice_ecdr.util import date_range, get_dates_by_year, raise_error_for_date
         resolve_path=True,
         path_type=Path,
     ),
-    default=STANDARD_BASE_OUTPUT_DIR,
+    default=BASE_OUTPUT_DIR,
     help=(
         "Base output directory for standard ECDR outputs."
         " Subdirectories are created for outputs of"

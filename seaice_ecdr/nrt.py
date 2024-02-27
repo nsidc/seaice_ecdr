@@ -35,7 +35,7 @@ from seaice_ecdr.complete_daily_ecdr import (
     get_ecdr_filepath,
     write_cde_netcdf,
 )
-from seaice_ecdr.constants import LANCE_NRT_DATA_DIR, NRT_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import BASE_OUTPUT_DIR, LANCE_NRT_DATA_DIR
 from seaice_ecdr.initial_daily_ecdr import (
     compute_initial_daily_ecdr_dataset,
     get_idecdr_filepath,
@@ -346,7 +346,7 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
         resolve_path=True,
         path_type=Path,
     ),
-    default=NRT_BASE_OUTPUT_DIR,
+    default=BASE_OUTPUT_DIR,
     help=(
         "Base output directory for NRT ECDR outputs."
         " Subdirectories are created for outputs of"
