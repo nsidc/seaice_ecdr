@@ -79,12 +79,12 @@ def cli(
     start_date: dt.date,
     end_date: dt.date,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     overwrite: bool,
 ):
     # The data should be organized by hemisphere.
-    ecdr_data_dir = ecdr_data_dir / hemisphere
-    ecdr_data_dir.mkdir(exist_ok=True)
+    base_output_dir = base_output_dir / hemisphere
+    base_output_dir.mkdir(exist_ok=True)
 
     dates = list(date_range(start_date=start_date, end_date=end_date))
     dates_by_year = get_dates_by_year(dates)
@@ -105,7 +105,7 @@ def cli(
         create_idecdr_for_date,
         hemisphere=hemisphere,
         resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
         overwrite_ide=overwrite,
     )
 
@@ -113,7 +113,7 @@ def cli(
         make_tiecdr_netcdf,
         hemisphere=hemisphere,
         resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
         overwrite_tie=overwrite,
     )
 
@@ -121,7 +121,7 @@ def cli(
         create_standard_ecdr_for_dates,
         hemisphere=hemisphere,
         resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
         overwrite_cde=overwrite,
     )
 

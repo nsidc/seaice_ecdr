@@ -26,9 +26,9 @@ from seaice_ecdr.monthly import (
 
 
 def test__get_daily_complete_filepaths_for_month(fs):
-    ecdr_data_dir = Path("/path/to/data/dir")
-    fs.create_dir(ecdr_data_dir)
-    complete_dir = get_ecdr_dir(ecdr_data_dir=ecdr_data_dir, year=2022)
+    base_output_dir = Path("/path/to/data/dir")
+    fs.create_dir(base_output_dir)
+    complete_dir = get_ecdr_dir(base_output_dir=base_output_dir, year=2022)
     year = 2022
     month = 3
     _fake_files_for_test_year_month_and_hemisphere = [
@@ -60,7 +60,7 @@ def test__get_daily_complete_filepaths_for_month(fs):
     actual = _get_daily_complete_filepaths_for_month(
         year=year,
         month=month,
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
         resolution="12.5",
         hemisphere=NORTH,
     )

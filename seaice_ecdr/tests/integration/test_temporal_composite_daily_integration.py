@@ -30,14 +30,14 @@ def test_read_or_create_and_read_idecdr_ds(tmpdir):
         platform=platform,
         hemisphere=hemisphere,
         resolution=resolution,
-        ecdr_data_dir=Path(tmpdir),
+        base_output_dir=Path(tmpdir),
     )
 
     test_ide_ds_with_creation = read_or_create_and_read_idecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        ecdr_data_dir=Path(tmpdir),
+        base_output_dir=Path(tmpdir),
     )
 
     assert sample_ide_filepath.exists()
@@ -45,7 +45,7 @@ def test_read_or_create_and_read_idecdr_ds(tmpdir):
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        ecdr_data_dir=Path(tmpdir),
+        base_output_dir=Path(tmpdir),
     )
 
     assert test_ide_ds_with_creation == test_ide_ds_with_reading
@@ -67,6 +67,6 @@ def test_create_tiecdr_file(tmpdir):
         date=test_date,
         hemisphere=hemisphere,
         resolution=resolution,
-        ecdr_data_dir=Path(tmpdir),
+        base_output_dir=Path(tmpdir),
         interp_range=2,
     )

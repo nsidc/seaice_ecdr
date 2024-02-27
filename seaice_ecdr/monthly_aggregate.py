@@ -28,10 +28,10 @@ def _get_monthly_complete_filepaths(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
 ) -> list[Path]:
     monthly_dir = get_monthly_dir(
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
     )
 
     # TODO: the monthly filenames are encoded in the
@@ -54,9 +54,9 @@ def get_monthly_aggregate_filepath(
     start_month: int,
     end_year: int,
     end_month: int,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
 ) -> Path:
-    output_dir = ecdr_data_dir / "aggregate"
+    output_dir = base_output_dir / "aggregate"
     output_dir.mkdir(exist_ok=True)
 
     output_fn = standard_monthly_aggregate_filename(
@@ -143,24 +143,24 @@ def _update_ncrcat_monthly_ds(
 def cli(
     *,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> None:
 
     # The data should be organized by hemisphere.
-    ecdr_data_dir = ecdr_data_dir / hemisphere
-    ecdr_data_dir.mkdir(exist_ok=True)
+    base_output_dir = base_output_dir / hemisphere
+    base_output_dir.mkdir(exist_ok=True)
 
     try:
         monthly_filepaths = _get_monthly_complete_filepaths(
             hemisphere=hemisphere,
-            ecdr_data_dir=ecdr_data_dir,
+            base_output_dir=base_output_dir,
             resolution=resolution,
         )
 
         if not monthly_filepaths:
             raise RuntimeError(
-                f"Found no monthly files to aggregate for {hemisphere=} {resolution=} {ecdr_data_dir=}."
+                f"Found no monthly files to aggregate for {hemisphere=} {resolution=} {base_output_dir=}."
             )
 
         # Create a temporary dir to store a WIP netcdf file. We do this because
@@ -192,7 +192,7 @@ def cli(
                 start_month=start_date.month,
                 end_year=end_date.year,
                 end_month=end_date.month,
-                ecdr_data_dir=ecdr_data_dir,
+                base_output_dir=base_output_dir,
             )
             ds.to_netcdf(
                 output_filepath,
@@ -206,13 +206,13 @@ def cli(
         # Write checksum file for the aggregate monthly output.
         write_checksum_file(
             input_filepath=output_filepath,
-            ecdr_data_dir=ecdr_data_dir,
+            base_output_dir=base_output_dir,
         )
 
         # Cleanup previously existing monthly aggregates.
         existing_fn_pattern = f"sic_ps{hemisphere[0]}{resolution}_??????-??????_*.nc"
         existing_filepaths = list(
-            (ecdr_data_dir / "aggregate").glob(existing_fn_pattern)
+            (base_output_dir / "aggregate").glob(existing_fn_pattern)
         )
         for existing_filepath in existing_filepaths:
             if existing_filepath != output_filepath:

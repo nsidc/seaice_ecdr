@@ -75,8 +75,8 @@ ERROR_FILE_BITMASK = dict(
 )
 
 
-def get_validation_dir(*, ecdr_data_dir: Path) -> Path:
-    validation_dir = ecdr_data_dir / "validation"
+def get_validation_dir(*, base_output_dir: Path) -> Path:
+    validation_dir = base_output_dir / "validation"
     validation_dir.mkdir(exist_ok=True)
 
     return validation_dir
@@ -349,7 +349,7 @@ def make_validation_dict(
 def validate_outputs(
     *,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     start_date: dt.date,
     end_date: dt.date,
     product: Product,
@@ -364,7 +364,7 @@ def validate_outputs(
     * error_seaice_{n|s}_daily_{start_year}_{end_year}.csv. Contains the
       following fields: [year, month, day, error_code]
     """
-    validation_dir = get_validation_dir(ecdr_data_dir=ecdr_data_dir)
+    validation_dir = get_validation_dir(base_output_dir=base_output_dir)
     log_filepath = (
         validation_dir
         / f"log_seaice_{hemisphere[0]}_{product}_{start_date.year}_{end_date.year}.csv"
@@ -389,7 +389,7 @@ def validate_outputs(
                     date=date,
                     hemisphere=hemisphere,
                     resolution=VALIDATION_RESOLUTION,
-                    ecdr_data_dir=ecdr_data_dir,
+                    base_output_dir=base_output_dir,
                     is_nrt=False,
                 )
 
@@ -428,7 +428,7 @@ def validate_outputs(
             years = range(start_date.year, end_date.year + 1)
             months = range(start_date.month, end_date.month + 1)
             for year, month in itertools.product(years, months):
-                monthly_dir = get_monthly_dir(ecdr_data_dir=ecdr_data_dir)
+                monthly_dir = get_monthly_dir(base_output_dir=base_output_dir)
 
                 # monthly filepaths should have the form
                 # "sic_ps{n|s}12.5_{YYYYMM}_{sat}_v05r00.nc"
@@ -534,15 +534,15 @@ def validate_outputs(
     callback=datetime_to_date,
 )
 def cli(
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     hemisphere: Hemisphere | Literal["both"],
     product_type: Literal["daily", "monthly", "both"],
     start_date: dt.date,
     end_date: dt.date,
 ):
     # The data should be organized by hemisphere.
-    ecdr_data_dir = ecdr_data_dir / hemisphere
-    ecdr_data_dir.mkdir(exist_ok=True)
+    base_output_dir = base_output_dir / hemisphere
+    base_output_dir.mkdir(exist_ok=True)
 
     daily = False
     if product_type == "daily" or product_type == "both":
@@ -559,7 +559,7 @@ def cli(
         if daily:
             validate_outputs(
                 hemisphere=hemisphere,
-                ecdr_data_dir=ecdr_data_dir,
+                base_output_dir=base_output_dir,
                 start_date=start_date,
                 end_date=end_date,
                 product="daily",
@@ -567,7 +567,7 @@ def cli(
         if monthly:
             validate_outputs(
                 hemisphere=hemisphere,
-                ecdr_data_dir=ecdr_data_dir,
+                base_output_dir=base_output_dir,
                 start_date=start_date,
                 end_date=end_date,
                 product="monthly",

@@ -959,9 +959,9 @@ def write_ide_netcdf(
 
 
 @cache
-def get_idecdr_dir(*, ecdr_data_dir: Path) -> Path:
+def get_idecdr_dir(*, base_output_dir: Path) -> Path:
     """Daily initial output dir for ECDR processing."""
-    idecdr_dir = ecdr_data_dir / "initial_daily"
+    idecdr_dir = base_output_dir / "initial_daily"
     idecdr_dir.mkdir(exist_ok=True)
 
     return idecdr_dir
@@ -973,7 +973,7 @@ def get_idecdr_filepath(
     platform,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
 ) -> Path:
     """Yields the filepath of the pass1 -- idecdr -- intermediate file."""
 
@@ -984,7 +984,7 @@ def get_idecdr_filepath(
         resolution=resolution,
     )
     idecdr_fn = "idecdr_" + standard_fn
-    idecdr_dir = get_idecdr_dir(ecdr_data_dir=ecdr_data_dir)
+    idecdr_dir = get_idecdr_dir(base_output_dir=base_output_dir)
     idecdr_path = idecdr_dir / idecdr_fn
 
     return idecdr_path
@@ -995,7 +995,7 @@ def make_idecdr_netcdf(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     excluded_fields: Iterable[str],
     overwrite_ide: bool = False,
 ) -> None:
@@ -1004,7 +1004,7 @@ def make_idecdr_netcdf(
         date=date,
         platform=platform,
         hemisphere=hemisphere,
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
         resolution=resolution,
     )
 
@@ -1031,7 +1031,7 @@ def create_idecdr_for_date(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     overwrite_ide: bool = False,
     verbose_intermed_ncfile: bool = False,
 ) -> None:
@@ -1060,7 +1060,7 @@ def create_idecdr_for_date(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
+            base_output_dir=base_output_dir,
             excluded_fields=excluded_fields,
             overwrite_ide=overwrite_ide,
         )
@@ -1132,7 +1132,7 @@ def cli(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     verbose_intermed_ncfile: bool,
 ) -> None:
@@ -1144,13 +1144,13 @@ def cli(
     """
 
     # The data should be organized by hemisphere.
-    ecdr_data_dir = ecdr_data_dir / hemisphere
-    ecdr_data_dir.mkdir(exist_ok=True)
+    base_output_dir = base_output_dir / hemisphere
+    base_output_dir.mkdir(exist_ok=True)
 
     create_idecdr_for_date(
         hemisphere=hemisphere,
         date=date,
         resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
         verbose_intermed_ncfile=verbose_intermed_ncfile,
     )

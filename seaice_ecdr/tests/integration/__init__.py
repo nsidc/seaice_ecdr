@@ -13,7 +13,7 @@ def _get_cached_tmpdir():
 
 
 @pytest.fixture(scope="session")
-def ecdr_data_dir_test_path():
+def base_output_dir_test_path():
     """Session-scoped fixture providing temporary dir representing ECDR data dir."""
     tmpdir = _get_cached_tmpdir()
     tmppath = Path(tmpdir.name)

@@ -27,7 +27,7 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
             date=dt.date(year, 3, day),
             hemisphere=hemisphere,
             resolution=resolution,
-            ecdr_data_dir=tmpdir_path,
+            base_output_dir=tmpdir_path,
         )
         datasets.append(ds)
 
@@ -36,14 +36,14 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
         year=year,
         hemisphere=hemisphere,
         resolution=resolution,
-        ecdr_data_dir=tmpdir_path,
+        base_output_dir=tmpdir_path,
     )
 
     # Read back in the data.
     aggregate_filepath = get_daily_aggregate_filepath(
         hemisphere=hemisphere,
         resolution=resolution,
-        ecdr_data_dir=tmpdir_path,
+        base_output_dir=tmpdir_path,
         start_date=dt.date(year, 3, 1),
         end_date=dt.date(year, 3, 3),
     )
@@ -55,7 +55,7 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
     # Assert that the checksums exist where we expect them to be.
     checksum_filepath = get_checksum_filepath(
         input_filepath=aggregate_filepath,
-        ecdr_data_dir=tmpdir_path,
+        base_output_dir=tmpdir_path,
     )
     assert checksum_filepath.is_file()
 

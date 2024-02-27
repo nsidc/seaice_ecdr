@@ -31,7 +31,7 @@ from seaice_ecdr.util import (
 def _get_daily_complete_filepaths_for_year(
     *,
     year: int,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
@@ -42,7 +42,7 @@ def _get_daily_complete_filepaths_for_year(
             date=period.to_timestamp().date(),
             hemisphere=hemisphere,
             resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
+            base_output_dir=base_output_dir,
             is_nrt=False,
         )
         if expected_fp.is_file():
@@ -60,11 +60,11 @@ def get_daily_aggregate_filepath(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     start_date: dt.date,
     end_date: dt.date,
 ) -> Path:
-    output_dir = ecdr_data_dir / "aggregate"
+    output_dir = base_output_dir / "aggregate"
     output_dir.mkdir(exist_ok=True)
 
     output_fn = standard_daily_aggregate_filename(
@@ -124,12 +124,12 @@ def make_daily_aggregate_netcdf_for_year(
     year: int,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
 ) -> None:
     try:
         daily_filepaths = _get_daily_complete_filepaths_for_year(
             year=year,
-            ecdr_data_dir=ecdr_data_dir,
+            base_output_dir=base_output_dir,
             hemisphere=hemisphere,
             resolution=resolution,
         )
@@ -158,7 +158,7 @@ def make_daily_aggregate_netcdf_for_year(
                 resolution=resolution,
                 start_date=pd.Timestamp(daily_ds.time.min().item()).date(),
                 end_date=pd.Timestamp(daily_ds.time.max().item()).date(),
-                ecdr_data_dir=ecdr_data_dir,
+                base_output_dir=base_output_dir,
             )
 
             daily_ds.to_netcdf(
@@ -173,7 +173,7 @@ def make_daily_aggregate_netcdf_for_year(
         # Write checksum file for the aggregate daily output.
         write_checksum_file(
             input_filepath=output_path,
-            ecdr_data_dir=ecdr_data_dir,
+            base_output_dir=base_output_dir,
         )
     except Exception as e:
         logger.exception(f"Failed to create daily aggregate for {year=} {hemisphere=}")
@@ -229,7 +229,7 @@ def cli(
     *,
     year: int,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     end_year: int | None,
 ) -> None:
@@ -237,8 +237,8 @@ def cli(
         end_year = year
 
     # The data should be organized by hemisphere.
-    ecdr_data_dir = ecdr_data_dir / hemisphere
-    ecdr_data_dir.mkdir(exist_ok=True)
+    base_output_dir = base_output_dir / hemisphere
+    base_output_dir.mkdir(exist_ok=True)
 
     failed_years = []
     for year_to_process in range(year, end_year + 1):
@@ -247,7 +247,7 @@ def cli(
                 year=year_to_process,
                 hemisphere=hemisphere,
                 resolution=resolution,
-                ecdr_data_dir=ecdr_data_dir,
+                base_output_dir=base_output_dir,
             )
         except Exception:
             failed_years.append(year_to_process)

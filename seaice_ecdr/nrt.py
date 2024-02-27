@@ -9,7 +9,7 @@ TODO:
   trade-off for now.
 * Figure out how to leverage the temporal composite and finalization
   code. Currently most of our code relies on hard-coded expectations about the
-  platform (based on date) and where the data live (ecdr_data_dir). The data dir
+  platform (based on date) and where the data live (base_output_dir). The data dir
   is easy enough to change, but we may need to override the platform for NRT
   processing. Some way to tell the code on a global level that it's dealing w/
   NRT maybe?
@@ -106,7 +106,7 @@ def read_or_create_and_read_nrt_idecdr_ds(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     overwrite: bool,
 ):
     platform = get_platform_by_date(date)
@@ -114,7 +114,7 @@ def read_or_create_and_read_nrt_idecdr_ds(
         hemisphere=hemisphere,
         date=date,
         platform=platform,
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
         resolution="12.5",
     )
 
@@ -155,7 +155,7 @@ def temporally_interpolated_nrt_ecdr_dataset(
     *,
     hemisphere: Hemisphere,
     date: dt.date,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     overwrite: bool,
     days_to_look_previously: int = 5,
 ) -> xr.Dataset:
@@ -167,7 +167,7 @@ def temporally_interpolated_nrt_ecdr_dataset(
             date=date,
             hemisphere=hemisphere,
             overwrite=overwrite,
-            ecdr_data_dir=ecdr_data_dir,
+            base_output_dir=base_output_dir,
         )
         init_datasets.append(init_dataset)
 
@@ -189,7 +189,7 @@ def read_or_create_and_read_nrt_tiecdr_ds(
     *,
     hemisphere: Hemisphere,
     date: dt.date,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     overwrite: bool,
     days_to_look_previously: int = 4,
 ) -> xr.Dataset:
@@ -197,14 +197,14 @@ def read_or_create_and_read_nrt_tiecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=LANCE_RESOLUTION,
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
     )
 
     if overwrite or not tie_filepath.is_file():
         nrt_temporally_interpolated = temporally_interpolated_nrt_ecdr_dataset(
             hemisphere=hemisphere,
             date=date,
-            ecdr_data_dir=ecdr_data_dir,
+            base_output_dir=base_output_dir,
             overwrite=overwrite,
             days_to_look_previously=days_to_look_previously,
         )
@@ -222,19 +222,19 @@ def nrt_ecdr_for_day(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     overwrite: bool,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
     # The data should be organized by hemisphere.
-    ecdr_data_dir = ecdr_data_dir / hemisphere
-    ecdr_data_dir.mkdir(exist_ok=True)
+    base_output_dir = base_output_dir / hemisphere
+    base_output_dir.mkdir(exist_ok=True)
 
     cde_filepath = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
         resolution=LANCE_RESOLUTION,
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
         is_nrt=True,
     )
 
@@ -247,7 +247,7 @@ def nrt_ecdr_for_day(
             tiecdr_ds = read_or_create_and_read_nrt_tiecdr_ds(
                 hemisphere=hemisphere,
                 date=date,
-                ecdr_data_dir=ecdr_data_dir,
+                base_output_dir=base_output_dir,
                 overwrite=overwrite,
             )
 
@@ -256,14 +256,14 @@ def nrt_ecdr_for_day(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=LANCE_RESOLUTION,
-                ecdr_data_dir=ecdr_data_dir,
+                base_output_dir=base_output_dir,
                 is_nrt=True,
             )
 
             written_cde_ncfile = write_cde_netcdf(
                 cde_ds=cde_ds,
                 output_filepath=cde_filepath,
-                ecdr_data_dir=ecdr_data_dir,
+                base_output_dir=base_output_dir,
             )
             logger.success(f"Wrote complete daily ncfile: {written_cde_ncfile}")
         except Exception as e:
@@ -370,7 +370,7 @@ def nrt_ecdr_for_dates(
     date: dt.date,
     end_date: dt.date | None,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     overwrite: bool,
 ):
     if end_date is None:
@@ -380,7 +380,7 @@ def nrt_ecdr_for_dates(
         nrt_ecdr_for_day(
             date=date,
             hemisphere=hemisphere,
-            ecdr_data_dir=ecdr_data_dir,
+            base_output_dir=base_output_dir,
             overwrite=overwrite,
         )
 

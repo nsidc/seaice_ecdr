@@ -134,7 +134,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
-        ecdr_data_dir=tmpdir_path,
+        base_output_dir=tmpdir_path,
         excluded_fields=[],
     )
     output_path = get_idecdr_filepath(
@@ -142,7 +142,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
         date=test_date,
         platform=test_platform,
         resolution=test_resolution,
-        ecdr_data_dir=tmpdir_path,
+        base_output_dir=tmpdir_path,
     )
 
     assert output_path.is_file()
@@ -166,7 +166,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
-        ecdr_data_dir=tmpdir_path,
+        base_output_dir=tmpdir_path,
         excluded_fields=(cdr_conc_fieldname,),
     )
     output_path = get_idecdr_filepath(
@@ -174,7 +174,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
         date=test_date,
         platform=test_platform,
         resolution=test_resolution,
-        ecdr_data_dir=tmpdir_path,
+        base_output_dir=tmpdir_path,
     )
 
     assert output_path.is_file()

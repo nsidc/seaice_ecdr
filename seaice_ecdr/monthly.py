@@ -72,7 +72,7 @@ def _get_daily_complete_filepaths_for_month(
     *,
     year: int,
     month: int,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
@@ -88,7 +88,7 @@ def _get_daily_complete_filepaths_for_month(
             date=period.to_timestamp().date(),
             hemisphere=hemisphere,
             resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
+            base_output_dir=base_output_dir,
             is_nrt=False,
         )
         if expected_fp.is_file():
@@ -124,7 +124,7 @@ def get_daily_ds_for_month(
     *,
     year: int,
     month: int,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
@@ -137,7 +137,7 @@ def get_daily_ds_for_month(
     data_list = _get_daily_complete_filepaths_for_month(
         year=year,
         month=month,
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
         hemisphere=hemisphere,
         resolution=resolution,
     )
@@ -586,8 +586,8 @@ def make_monthly_ds(
     return monthly_ds.compute()
 
 
-def get_monthly_dir(*, ecdr_data_dir: Path) -> Path:
-    monthly_dir = ecdr_data_dir / "monthly"
+def get_monthly_dir(*, base_output_dir: Path) -> Path:
+    monthly_dir = base_output_dir / "monthly"
     monthly_dir.mkdir(exist_ok=True)
 
     return monthly_dir
@@ -600,9 +600,9 @@ def get_monthly_filepath(
     sat: SUPPORTED_SAT,
     year: int,
     month: int,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
 ) -> Path:
-    output_dir = get_monthly_dir(ecdr_data_dir=ecdr_data_dir)
+    output_dir = get_monthly_dir(base_output_dir=base_output_dir)
 
     output_fn = standard_monthly_filename(
         hemisphere=hemisphere,
@@ -622,13 +622,13 @@ def make_monthly_nc(
     year: int,
     month: int,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> Path:
     daily_ds_for_month = get_daily_ds_for_month(
         year=year,
         month=month,
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
         hemisphere=hemisphere,
         resolution=resolution,
     )
@@ -641,7 +641,7 @@ def make_monthly_nc(
         sat=sat,
         year=year,
         month=month,
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
     )
 
     monthly_ds = make_monthly_ds(
@@ -669,7 +669,7 @@ def make_monthly_nc(
     # Write checksum file for the monthly output.
     write_checksum_file(
         input_filepath=output_path,
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
     )
 
     return output_path
@@ -740,12 +740,12 @@ def cli(
     end_year: int | None,
     end_month: int | None,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ):
     # The data should be organized by hemisphere.
-    ecdr_data_dir = ecdr_data_dir / hemisphere
-    ecdr_data_dir.mkdir(exist_ok=True)
+    base_output_dir = base_output_dir / hemisphere
+    base_output_dir.mkdir(exist_ok=True)
 
     if end_year is None:
         end_year = year
@@ -762,7 +762,7 @@ def cli(
             make_monthly_nc(
                 year=period.year,
                 month=period.month,
-                ecdr_data_dir=ecdr_data_dir,
+                base_output_dir=base_output_dir,
                 hemisphere=hemisphere,
                 resolution=resolution,
             )
