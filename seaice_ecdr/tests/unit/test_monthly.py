@@ -29,15 +29,13 @@ def test__get_daily_complete_filepaths_for_month(fs):
     complete_output_dir = Path("/path/to/data/dir/complete")
     fs.create_dir(complete_output_dir)
     nh_complete_dir = get_ecdr_dir(
-        complete_output_dir=complete_output_dir,
+        complete_output_dir=complete_output_dir / "north",
         year=2022,
-        hemisphere="north",
         is_nrt=False,
     )
     sh_complete_dir = get_ecdr_dir(
-        complete_output_dir=complete_output_dir,
+        complete_output_dir=complete_output_dir / "south",
         year=2022,
-        hemisphere="south",
         is_nrt=False,
     )
     year = 2022
@@ -71,7 +69,7 @@ def test__get_daily_complete_filepaths_for_month(fs):
     actual = _get_daily_complete_filepaths_for_month(
         year=year,
         month=month,
-        complete_output_dir=complete_output_dir,
+        complete_output_dir=complete_output_dir / NORTH,
         resolution="12.5",
         hemisphere=NORTH,
     )

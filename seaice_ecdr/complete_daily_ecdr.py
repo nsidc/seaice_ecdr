@@ -51,21 +51,16 @@ def get_ecdr_dir(
     *,
     complete_output_dir: Path,
     year: int,
-    hemisphere: Hemisphere,
     # TODO: extract nrt handling and make responsiblity for defining the output
     # dir a higher-level concern.
     is_nrt: bool,
 ) -> Path:
     """Daily complete output dir for ECDR processing"""
-    complete_hemi_dir = complete_output_dir / hemisphere
     if is_nrt:
-        # Daily NRT data is placed into an "nrt" dir. There's no need for a
-        # "daily" subdir bc nrt is only daily data.
-        ecdr_dir = complete_hemi_dir / "nrt"
+        # NRT daily data just lives under the complete output dir.
+        ecdr_dir = complete_output_dir
     else:
-        # Standard daily data is placed into a "daily" specific dir (alongside
-        # e.g., "monthly/") and is organized by year.
-        ecdr_dir = complete_hemi_dir / "daily" / str(year)
+        ecdr_dir = complete_output_dir / "daily" / str(year)
     ecdr_dir.mkdir(parents=True, exist_ok=True)
 
     return ecdr_dir
@@ -98,7 +93,6 @@ def get_ecdr_filepath(
     ecdr_dir = get_ecdr_dir(
         complete_output_dir=complete_output_dir,
         year=date.year,
-        hemisphere=hemisphere,
         is_nrt=is_nrt,
     )
 
@@ -556,11 +550,10 @@ def write_cde_netcdf(
     )
 
     # Write checksum file for the complete daily output.
-    hemi_output_dir = complete_output_dir / hemisphere
-    checksums_subdir = output_filepath.relative_to(hemi_output_dir).parent
+    checksums_subdir = output_filepath.relative_to(complete_output_dir).parent
     write_checksum_file(
         input_filepath=output_filepath,
-        output_dir=hemi_output_dir / "checksums" / checksums_subdir,
+        output_dir=complete_output_dir / "checksums" / checksums_subdir,
     )
 
     return output_filepath
@@ -583,6 +576,8 @@ def make_standard_cdecdr_netcdf(
     """
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        is_nrt=False,
     )
     cde_filepath = get_ecdr_filepath(
         date=date,
@@ -603,6 +598,7 @@ def make_standard_cdecdr_netcdf(
 
         intermediate_output_dir = get_intermediate_output_dir(
             base_output_dir=base_output_dir,
+            hemisphere=hemisphere,
             is_nrt=False,
         )
         tie_ds = read_or_create_and_read_standard_tiecdr_ds(

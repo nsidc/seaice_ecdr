@@ -1,7 +1,7 @@
 import datetime as dt
 import re
 from pathlib import Path
-from typing import Iterator, cast, get_args
+from typing import Iterator, Literal, cast, get_args
 
 import numpy as np
 import pandas as pd
@@ -209,19 +209,49 @@ def raise_error_for_dates(*, error_dates: list[dt.date]) -> None:
         )
 
 
-def get_intermediate_output_dir(*, base_output_dir: Path, is_nrt: bool) -> Path:
-    intermediate_dir = base_output_dir / "intermediate"
+def _get_output_dir(
+    *,
+    base_output_dir: Path,
+    hemisphere: Hemisphere,
+    is_nrt: bool,
+    data_type: Literal["intermediate", "complete"],
+) -> Path:
+    out_dir = base_output_dir / data_type / hemisphere
     if is_nrt:
-        intermediate_dir = intermediate_dir / "nrt"
+        out_dir = out_dir / "nrt"
 
-    intermediate_dir.mkdir(exist_ok=True, parents=True)
+    out_dir.mkdir(exist_ok=True, parents=True)
+
+    return out_dir
+
+
+def get_intermediate_output_dir(
+    *,
+    base_output_dir: Path,
+    hemisphere: Hemisphere,
+    is_nrt: bool,
+) -> Path:
+    intermediate_dir = _get_output_dir(
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        is_nrt=is_nrt,
+        data_type="intermediate",
+    )
 
     return intermediate_dir
 
 
-def get_complete_output_dir(*, base_output_dir: Path) -> Path:
-    complete_dir = base_output_dir / "complete"
-
-    complete_dir.mkdir(exist_ok=True)
+def get_complete_output_dir(
+    *,
+    base_output_dir: Path,
+    hemisphere: Hemisphere,
+    is_nrt: bool,
+) -> Path:
+    complete_dir = _get_output_dir(
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        is_nrt=is_nrt,
+        data_type="complete",
+    )
 
     return complete_dir

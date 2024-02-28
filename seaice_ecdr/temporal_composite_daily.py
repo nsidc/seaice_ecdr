@@ -116,7 +116,7 @@ def temporally_interpolate_dataarray_using_flags(
 @cache
 def get_tie_dir(*, intermediate_output_dir: Path, hemisphere: Hemisphere) -> Path:
     """Daily complete output dir for TIE processing"""
-    tie_dir = intermediate_output_dir / hemisphere / "temporal_interp"
+    tie_dir = intermediate_output_dir / "temporal_interp"
     tie_dir.mkdir(parents=True, exist_ok=True)
 
     return tie_dir
@@ -969,6 +969,7 @@ def cli(
 
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
         is_nrt=False,
     )
 

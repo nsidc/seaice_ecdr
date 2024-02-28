@@ -959,9 +959,9 @@ def write_ide_netcdf(
 
 
 @cache
-def get_idecdr_dir(*, intermediate_output_dir: Path, hemisphere: Hemisphere) -> Path:
+def get_idecdr_dir(*, intermediate_output_dir: Path) -> Path:
     """Daily initial output dir for ECDR processing."""
-    idecdr_dir = intermediate_output_dir / hemisphere / "initial_daily"
+    idecdr_dir = intermediate_output_dir / "initial_daily"
     idecdr_dir.mkdir(parents=True, exist_ok=True)
 
     return idecdr_dir
@@ -986,7 +986,6 @@ def get_idecdr_filepath(
     idecdr_fn = "idecdr_" + standard_fn
     idecdr_dir = get_idecdr_dir(
         intermediate_output_dir=intermediate_output_dir,
-        hemisphere=hemisphere,
     )
     idecdr_path = idecdr_dir / idecdr_fn
 
@@ -1147,6 +1146,7 @@ def cli(
     """
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
         is_nrt=False,
     )
     create_idecdr_for_date(

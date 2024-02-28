@@ -102,6 +102,7 @@ def cli(
 
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
         is_nrt=False,
     )
 

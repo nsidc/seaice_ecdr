@@ -16,9 +16,12 @@ def test_no_melt_onset_for_southern_hemisphere(tmpdir):
     """Verify that attempting to create a melt onset field for the SH raises an error"""
     complete_output_dir = get_complete_output_dir(
         base_output_dir=Path(tmpdir),
+        hemisphere=SOUTH,
+        is_nrt=False,
     )
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=Path(tmpdir),
+        hemisphere=SOUTH,
         is_nrt=False,
     )
     for date in (dt.date(2020, 2, 1), dt.date(2021, 6, 2), dt.date(2020, 10, 3)):
@@ -39,9 +42,12 @@ def test_melt_onset_field_outside_melt_season(tmpdir):
 
     complete_output_dir = get_complete_output_dir(
         base_output_dir=Path(tmpdir),
+        hemisphere=hemisphere,
+        is_nrt=False,
     )
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=Path(tmpdir),
+        hemisphere=hemisphere,
         is_nrt=False,
     )
     for date in (dt.date(2020, 2, 1), dt.date(2020, 10, 3)):

@@ -33,7 +33,6 @@ def _get_monthly_complete_filepaths(
 ) -> list[Path]:
     monthly_dir = get_monthly_dir(
         complete_output_dir=complete_output_dir,
-        hemisphere=hemisphere,
     )
 
     # TODO: the monthly filenames are encoded in the
@@ -56,9 +55,9 @@ def get_monthly_aggregate_filepath(
     start_month: int,
     end_year: int,
     end_month: int,
-    base_output_dir: Path,
+    complete_output_dir: Path,
 ) -> Path:
-    output_dir = base_output_dir / "complete" / hemisphere / "aggregate"
+    output_dir = complete_output_dir / "aggregate"
     output_dir.mkdir(exist_ok=True)
 
     output_fn = standard_monthly_aggregate_filename(
@@ -151,6 +150,8 @@ def cli(
     try:
         complete_output_dir = get_complete_output_dir(
             base_output_dir=base_output_dir,
+            hemisphere=hemisphere,
+            is_nrt=False,
         )
         monthly_filepaths = _get_monthly_complete_filepaths(
             hemisphere=hemisphere,
@@ -192,7 +193,7 @@ def cli(
                 start_month=start_date.month,
                 end_year=end_date.year,
                 end_month=end_date.month,
-                base_output_dir=base_output_dir,
+                complete_output_dir=complete_output_dir,
             )
             ds.to_netcdf(
                 output_filepath,

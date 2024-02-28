@@ -215,7 +215,11 @@ def nrt_ecdr_for_day(
     overwrite: bool,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
-    complete_output_dir = get_complete_output_dir(base_output_dir=base_output_dir)
+    complete_output_dir = get_complete_output_dir(
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        is_nrt=True,
+    )
     cde_filepath = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
@@ -231,6 +235,7 @@ def nrt_ecdr_for_day(
     if not cde_filepath.is_file() or overwrite:
         intermediate_output_dir = get_intermediate_output_dir(
             base_output_dir=base_output_dir,
+            hemisphere=hemisphere,
             is_nrt=True,
         )
         try:

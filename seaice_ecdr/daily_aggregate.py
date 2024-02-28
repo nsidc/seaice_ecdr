@@ -65,7 +65,7 @@ def get_daily_aggregate_filepath(
     start_date: dt.date,
     end_date: dt.date,
 ) -> Path:
-    output_dir = complete_output_dir / hemisphere / "aggregate"
+    output_dir = complete_output_dir / "aggregate"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     output_fn = standard_daily_aggregate_filename(
@@ -172,9 +172,7 @@ def make_daily_aggregate_netcdf_for_year(
         logger.success(f"Wrote daily aggregate file for year={year} to {output_path}")
 
         # Write checksum file for the aggregate daily output.
-        checksum_output_dir = (
-            complete_output_dir / hemisphere / "checksums" / "aggregate"
-        )
+        checksum_output_dir = complete_output_dir / "checksums" / "aggregate"
         write_checksum_file(
             input_filepath=output_path,
             output_dir=checksum_output_dir,
@@ -242,6 +240,8 @@ def cli(
 
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        is_nrt=False,
     )
     failed_years = []
     for year_to_process in range(year, end_year + 1):

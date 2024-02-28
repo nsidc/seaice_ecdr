@@ -15,13 +15,15 @@ from seaice_ecdr.util import get_complete_output_dir
 
 def test_daily_aggreagate_matches_daily_data(tmpdir):
     base_output_dir = Path(tmpdir)
+    hemisphere: Final = NORTH
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        is_nrt=False,
     )
 
     year = 2022
     resolution: Final = "12.5"
-    hemisphere: Final = NORTH
 
     # First, ensure some daily data is created.
     datasets = []
@@ -66,7 +68,6 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
 
     checksum_filepath = (
         complete_output_dir
-        / hemisphere
         / "checksums"
         / "aggregate"
         / (aggregate_filepath.name + ".mnf")

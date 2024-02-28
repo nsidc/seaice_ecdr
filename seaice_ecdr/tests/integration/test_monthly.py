@@ -18,6 +18,8 @@ def test_make_monthly_nc(base_output_dir_test_path, monkeypatch):  # noqa
 
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir_test_path,
+        hemisphere=NORTH,
+        is_nrt=False,
     )
 
     output_path = monthly.make_monthly_nc(

@@ -587,8 +587,8 @@ def make_monthly_ds(
     return monthly_ds.compute()
 
 
-def get_monthly_dir(*, complete_output_dir: Path, hemisphere: Hemisphere) -> Path:
-    monthly_dir = complete_output_dir / hemisphere / "monthly"
+def get_monthly_dir(*, complete_output_dir: Path) -> Path:
+    monthly_dir = complete_output_dir / "monthly"
     monthly_dir.mkdir(parents=True, exist_ok=True)
 
     return monthly_dir
@@ -605,7 +605,6 @@ def get_monthly_filepath(
 ) -> Path:
     output_dir = get_monthly_dir(
         complete_output_dir=complete_output_dir,
-        hemisphere=hemisphere,
     )
 
     output_fn = standard_monthly_filename(
@@ -673,7 +672,7 @@ def make_monthly_nc(
     # Write checksum file for the monthly output.
     write_checksum_file(
         input_filepath=output_path,
-        output_dir=complete_output_dir / hemisphere / "checksums" / "monthly",
+        output_dir=complete_output_dir / "checksums" / "monthly",
     )
 
     return output_path
@@ -754,6 +753,8 @@ def cli(
 
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        is_nrt=False,
     )
     error_periods = []
     for period in pd.period_range(

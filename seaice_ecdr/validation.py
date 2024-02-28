@@ -366,6 +366,8 @@ def validate_outputs(
     """
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        is_nrt=False,
     )
     validation_dir = get_validation_dir(base_output_dir=base_output_dir)
     log_filepath = (
@@ -433,7 +435,6 @@ def validate_outputs(
             for year, month in itertools.product(years, months):
                 monthly_dir = get_monthly_dir(
                     complete_output_dir=complete_output_dir,
-                    hemisphere=hemisphere,
                 )
 
                 # monthly filepaths should have the form
