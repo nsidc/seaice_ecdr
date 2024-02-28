@@ -226,10 +226,6 @@ def nrt_ecdr_for_day(
     overwrite: bool,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
-    # The data should be organized by hemisphere.
-    base_output_dir = base_output_dir / hemisphere
-    base_output_dir.mkdir(exist_ok=True)
-
     cde_filepath = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
@@ -260,10 +256,13 @@ def nrt_ecdr_for_day(
                 is_nrt=True,
             )
 
+            # TODO: write_cde_netcdf needs updated to allow nrt checksums
+            # structure.
             written_cde_ncfile = write_cde_netcdf(
                 cde_ds=cde_ds,
                 output_filepath=cde_filepath,
                 base_output_dir=base_output_dir,
+                hemisphere=hemisphere,
             )
             logger.success(f"Wrote complete daily ncfile: {written_cde_ncfile}")
         except Exception as e:
@@ -336,7 +335,7 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--ecdr-data-dir",
+    "--base-output-dir",
     required=True,
     type=click.Path(
         exists=True,

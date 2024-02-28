@@ -428,7 +428,10 @@ def validate_outputs(
             years = range(start_date.year, end_date.year + 1)
             months = range(start_date.month, end_date.month + 1)
             for year, month in itertools.product(years, months):
-                monthly_dir = get_monthly_dir(base_output_dir=base_output_dir)
+                monthly_dir = get_monthly_dir(
+                    base_output_dir=base_output_dir,
+                    hemisphere=hemisphere,
+                )
 
                 # monthly filepaths should have the form
                 # "sic_ps{n|s}12.5_{YYYYMM}_{sat}_v05r00.nc"
@@ -476,7 +479,7 @@ def validate_outputs(
     help="Create CSV files used to validate ECDR outputs.",
 )
 @click.option(
-    "--ecdr-data-dir",
+    "--base-output-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -540,10 +543,6 @@ def cli(
     start_date: dt.date,
     end_date: dt.date,
 ):
-    # The data should be organized by hemisphere.
-    base_output_dir = base_output_dir / hemisphere
-    base_output_dir.mkdir(exist_ok=True)
-
     daily = False
     if product_type == "daily" or product_type == "both":
         daily = True

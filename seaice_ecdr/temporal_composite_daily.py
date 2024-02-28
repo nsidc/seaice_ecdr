@@ -110,10 +110,10 @@ def temporally_interpolate_dataarray_using_flags(
 
 
 @cache
-def get_tie_dir(*, base_output_dir: Path) -> Path:
+def get_tie_dir(*, base_output_dir: Path, hemisphere: Hemisphere) -> Path:
     """Daily complete output dir for TIE processing"""
-    tie_dir = base_output_dir / "temporal_interp"
-    tie_dir.mkdir(exist_ok=True)
+    tie_dir = base_output_dir / "intermediate" / hemisphere / "temporal_interp"
+    tie_dir.mkdir(parents=True, exist_ok=True)
 
     return tie_dir
 
@@ -139,7 +139,7 @@ def get_tie_filepath(
     # Add `tiecdr` to the beginning of the standard name to distinguish it as a
     # WIP.
     tie_filename = "tiecdr_" + standard_fn
-    tie_dir = get_tie_dir(base_output_dir=base_output_dir)
+    tie_dir = get_tie_dir(base_output_dir=base_output_dir, hemisphere=hemisphere)
 
     tie_filepath = tie_dir / tie_filename
 
@@ -910,7 +910,7 @@ def create_tiecdr_for_date_range(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--ecdr-data-dir",
+    "--base-output-dir",
     required=True,
     type=click.Path(
         exists=True,

@@ -53,7 +53,7 @@ from seaice_ecdr.util import date_range, get_dates_by_year, raise_error_for_date
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--ecdr-data-dir",
+    "--base-output-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -82,10 +82,6 @@ def cli(
     base_output_dir: Path,
     overwrite: bool,
 ):
-    # The data should be organized by hemisphere.
-    base_output_dir = base_output_dir / hemisphere
-    base_output_dir.mkdir(exist_ok=True)
-
     dates = list(date_range(start_date=start_date, end_date=end_date))
     dates_by_year = get_dates_by_year(dates)
 

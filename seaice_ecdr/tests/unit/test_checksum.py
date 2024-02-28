@@ -14,7 +14,7 @@ def test_write_checksum_file(tmp_path):
     # Use the function being tested to create a checksum file.
     checksum_file = write_checksum_file(
         input_filepath=example_file,
-        base_output_dir=tmp_path,
+        output_dir=tmp_path,
     )
 
     # Assert that it was written.

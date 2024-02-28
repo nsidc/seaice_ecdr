@@ -3,7 +3,6 @@ import xarray as xr
 from pm_tb_data._types import NORTH
 
 from seaice_ecdr import monthly
-from seaice_ecdr.checksum import get_checksum_filepath
 from seaice_ecdr.tests.integration import base_output_dir_test_path  # noqa
 
 
@@ -32,8 +31,12 @@ def test_make_monthly_nc(base_output_dir_test_path, monkeypatch):  # noqa
     assert ds is not None
 
     # Assert that the checksums exist where we expect them to be.
-    checksum_filepath = get_checksum_filepath(
-        input_filepath=output_path,
-        base_output_dir=base_output_dir_test_path,
+    checksum_filepath = (
+        base_output_dir_test_path
+        / "complete"
+        / NORTH
+        / "checksums"
+        / "monthly"
+        / (output_path.name + ".mnf")
     )
     assert checksum_filepath.is_file()

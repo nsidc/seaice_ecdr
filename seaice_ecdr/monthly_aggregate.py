@@ -32,6 +32,7 @@ def _get_monthly_complete_filepaths(
 ) -> list[Path]:
     monthly_dir = get_monthly_dir(
         base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
     )
 
     # TODO: the monthly filenames are encoded in the
@@ -56,7 +57,7 @@ def get_monthly_aggregate_filepath(
     end_month: int,
     base_output_dir: Path,
 ) -> Path:
-    output_dir = base_output_dir / "aggregate"
+    output_dir = base_output_dir / "complete" / hemisphere / "aggregate"
     output_dir.mkdir(exist_ok=True)
 
     output_fn = standard_monthly_aggregate_filename(
@@ -116,7 +117,7 @@ def _update_ncrcat_monthly_ds(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--ecdr-data-dir",
+    "--base-output-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -146,11 +147,6 @@ def cli(
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> None:
-
-    # The data should be organized by hemisphere.
-    base_output_dir = base_output_dir / hemisphere
-    base_output_dir.mkdir(exist_ok=True)
-
     try:
         monthly_filepaths = _get_monthly_complete_filepaths(
             hemisphere=hemisphere,
@@ -206,7 +202,11 @@ def cli(
         # Write checksum file for the aggregate monthly output.
         write_checksum_file(
             input_filepath=output_filepath,
-            base_output_dir=base_output_dir,
+            output_dir=base_output_dir
+            / "complete"
+            / hemisphere
+            / "checksums"
+            / "aggregate",
         )
 
         # Cleanup previously existing monthly aggregates.

@@ -92,7 +92,7 @@ def test_access_to_standard_output_filename(tmpdir):
         base_output_dir=base_output_dir,
     )
     expected_filepath = (
-        get_idecdr_dir(base_output_dir=base_output_dir)
+        get_idecdr_dir(base_output_dir=base_output_dir, hemisphere=NORTH)
         / f"idecdr_sic_psn12.5_20210219_am2_{ECDR_PRODUCT_VERSION}.nc"
     )
 

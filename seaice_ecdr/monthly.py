@@ -586,9 +586,9 @@ def make_monthly_ds(
     return monthly_ds.compute()
 
 
-def get_monthly_dir(*, base_output_dir: Path) -> Path:
-    monthly_dir = base_output_dir / "monthly"
-    monthly_dir.mkdir(exist_ok=True)
+def get_monthly_dir(*, base_output_dir: Path, hemisphere: Hemisphere) -> Path:
+    monthly_dir = base_output_dir / "complete" / hemisphere / "monthly"
+    monthly_dir.mkdir(parents=True, exist_ok=True)
 
     return monthly_dir
 
@@ -602,7 +602,7 @@ def get_monthly_filepath(
     month: int,
     base_output_dir: Path,
 ) -> Path:
-    output_dir = get_monthly_dir(base_output_dir=base_output_dir)
+    output_dir = get_monthly_dir(base_output_dir=base_output_dir, hemisphere=hemisphere)
 
     output_fn = standard_monthly_filename(
         hemisphere=hemisphere,
@@ -669,7 +669,7 @@ def make_monthly_nc(
     # Write checksum file for the monthly output.
     write_checksum_file(
         input_filepath=output_path,
-        base_output_dir=base_output_dir,
+        output_dir=base_output_dir / "complete" / hemisphere / "checksums" / "monthly",
     )
 
     return output_path
@@ -709,7 +709,7 @@ def make_monthly_nc(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--ecdr-data-dir",
+    "--base-output-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -743,10 +743,6 @@ def cli(
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ):
-    # The data should be organized by hemisphere.
-    base_output_dir = base_output_dir / hemisphere
-    base_output_dir.mkdir(exist_ok=True)
-
     if end_year is None:
         end_year = year
     if end_month is None:

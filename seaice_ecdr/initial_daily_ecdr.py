@@ -959,10 +959,10 @@ def write_ide_netcdf(
 
 
 @cache
-def get_idecdr_dir(*, base_output_dir: Path) -> Path:
+def get_idecdr_dir(*, base_output_dir: Path, hemisphere: Hemisphere) -> Path:
     """Daily initial output dir for ECDR processing."""
-    idecdr_dir = base_output_dir / "initial_daily"
-    idecdr_dir.mkdir(exist_ok=True)
+    idecdr_dir = base_output_dir / "intermediate" / hemisphere / "initial_daily"
+    idecdr_dir.mkdir(parents=True, exist_ok=True)
 
     return idecdr_dir
 
@@ -984,7 +984,7 @@ def get_idecdr_filepath(
         resolution=resolution,
     )
     idecdr_fn = "idecdr_" + standard_fn
-    idecdr_dir = get_idecdr_dir(base_output_dir=base_output_dir)
+    idecdr_dir = get_idecdr_dir(base_output_dir=base_output_dir, hemisphere=hemisphere)
     idecdr_path = idecdr_dir / idecdr_fn
 
     return idecdr_path
@@ -1093,7 +1093,7 @@ def create_idecdr_for_date(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--ecdr-data-dir",
+    "--base-output-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -1142,11 +1142,6 @@ def cli(
     projection, resolution, and bounds), and TBtype (TB type includes source and
     methodology for getting those TBs onto the grid)
     """
-
-    # The data should be organized by hemisphere.
-    base_output_dir = base_output_dir / hemisphere
-    base_output_dir.mkdir(exist_ok=True)
-
     create_idecdr_for_date(
         hemisphere=hemisphere,
         date=date,

@@ -45,9 +45,23 @@ from seaice_ecdr.util import (
 
 
 @cache
-def get_ecdr_dir(*, base_output_dir: Path, year: int) -> Path:
+def get_ecdr_dir(
+    *,
+    base_output_dir: Path,
+    year: int,
+    hemisphere: Hemisphere,
+    is_nrt: bool,
+) -> Path:
     """Daily complete output dir for ECDR processing"""
-    ecdr_dir = base_output_dir / "daily" / str(year)
+    complete_hemi_dir = base_output_dir / "complete" / hemisphere
+    if is_nrt:
+        # Daily NRT data is placed into an "nrt" dir. There's no need for a
+        # "daily" subdir bc nrt is only daily data.
+        ecdr_dir = complete_hemi_dir / "nrt"
+    else:
+        # Standard daily data is placed into a "daily" specific dir (alongside
+        # e.g., "monthly/") and is organized by year.
+        ecdr_dir = complete_hemi_dir / "daily" / str(year)
     ecdr_dir.mkdir(parents=True, exist_ok=True)
 
     return ecdr_dir
@@ -77,7 +91,12 @@ def get_ecdr_filepath(
             resolution=resolution,
         )
 
-    ecdr_dir = get_ecdr_dir(base_output_dir=base_output_dir, year=date.year)
+    ecdr_dir = get_ecdr_dir(
+        base_output_dir=base_output_dir,
+        year=date.year,
+        hemisphere=hemisphere,
+        is_nrt=is_nrt,
+    )
 
     ecdr_filepath = ecdr_dir / ecdr_filename
 
@@ -487,6 +506,7 @@ def write_cde_netcdf(
     cde_ds: xr.Dataset,
     output_filepath: Path,
     base_output_dir: Path,
+    hemisphere: Hemisphere,
     uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
     excluded_fields: Iterable[str] = [],
     conc_fields: Iterable[str] = [
@@ -527,9 +547,11 @@ def write_cde_netcdf(
     )
 
     # Write checksum file for the complete daily output.
+    hemi_output_dir = base_output_dir / "complete" / hemisphere
+    checksums_subdir = output_filepath.relative_to(hemi_output_dir).parent
     write_checksum_file(
         input_filepath=output_filepath,
-        base_output_dir=base_output_dir,
+        output_dir=hemi_output_dir / "checksums" / checksums_subdir,
     )
 
     return output_filepath
@@ -604,6 +626,7 @@ def make_standard_cdecdr_netcdf(
             cde_ds=cde_ds,
             output_filepath=cde_filepath,
             base_output_dir=base_output_dir,
+            hemisphere=hemisphere,
         )
         logger.success(f"Wrote complete daily ncfile: {written_cde_ncfile}")
     except Exception as e:
@@ -739,7 +762,7 @@ def create_standard_ecdr_for_dates(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--ecdr-data-dir",
+    "--base-output-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -787,10 +810,6 @@ def cli(
     """
     if end_date is None:
         end_date = copy.copy(date)
-
-    # The data should be organized by hemisphere.
-    base_output_dir = base_output_dir / hemisphere
-    base_output_dir.mkdir(exist_ok=True)
 
     error_dates = create_standard_ecdr_for_dates(
         dates=date_range(start_date=date, end_date=end_date),

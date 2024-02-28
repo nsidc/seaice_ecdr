@@ -64,8 +64,8 @@ def get_daily_aggregate_filepath(
     start_date: dt.date,
     end_date: dt.date,
 ) -> Path:
-    output_dir = base_output_dir / "aggregate"
-    output_dir.mkdir(exist_ok=True)
+    output_dir = base_output_dir / "complete" / hemisphere / "aggregate"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     output_fn = standard_daily_aggregate_filename(
         hemisphere=hemisphere,
@@ -173,7 +173,11 @@ def make_daily_aggregate_netcdf_for_year(
         # Write checksum file for the aggregate daily output.
         write_checksum_file(
             input_filepath=output_path,
-            base_output_dir=base_output_dir,
+            output_dir=base_output_dir
+            / "complete"
+            / hemisphere
+            / "checksums"
+            / "aggregate",
         )
     except Exception as e:
         logger.exception(f"Failed to create daily aggregate for {year=} {hemisphere=}")
@@ -194,7 +198,7 @@ def make_daily_aggregate_netcdf_for_year(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--ecdr-data-dir",
+    "--base-output-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -235,10 +239,6 @@ def cli(
 ) -> None:
     if end_year is None:
         end_year = year
-
-    # The data should be organized by hemisphere.
-    base_output_dir = base_output_dir / hemisphere
-    base_output_dir.mkdir(exist_ok=True)
 
     failed_years = []
     for year_to_process in range(year, end_year + 1):
