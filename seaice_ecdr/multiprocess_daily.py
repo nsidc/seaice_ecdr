@@ -1,5 +1,6 @@
 import datetime as dt
 from functools import partial
+from itertools import chain
 from multiprocessing import Pool
 from pathlib import Path
 from typing import Final, get_args
@@ -8,30 +9,12 @@ import click
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.complete_daily_ecdr import create_standard_cdecdr_for_date
+from seaice_ecdr.complete_daily_ecdr import create_standard_ecdr_for_dates
 from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import create_idecdr_for_date
 from seaice_ecdr.platforms import get_first_platform_start_date
-from seaice_ecdr.temporal_composite_daily import create_tiecdr_for_date
-from seaice_ecdr.util import date_range, get_dates_by_year
-
-
-def create_standard_cdecdr_for_dates(
-    dates: list[dt.date],
-    *,
-    hemisphere: Hemisphere,
-    resolution,
-    ecdr_data_dir: Path,
-    overwrite_cde: bool = False,
-):
-    for date in dates:
-        create_standard_cdecdr_for_date(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
-            overwrite_cde=overwrite_cde,
-        )
+from seaice_ecdr.temporal_composite_daily import make_tiecdr_netcdf
+from seaice_ecdr.util import date_range, get_dates_by_year, raise_error_for_dates
 
 
 @click.command(name="multiprocess-daily")
@@ -119,17 +102,19 @@ def cli(
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        overwrite_ide=overwrite,
     )
 
     _create_tiecdr_wrapper = partial(
-        create_tiecdr_for_date,
+        make_tiecdr_netcdf,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
+        overwrite_tie=overwrite,
     )
 
     _complete_daily_wrapper = partial(
-        create_standard_cdecdr_for_dates,
+        create_standard_ecdr_for_dates,
         hemisphere=hemisphere,
         resolution=resolution,
         ecdr_data_dir=ecdr_data_dir,
@@ -147,4 +132,10 @@ def cli(
         # previous days' worth of complete daily data. Since the melt season is
         # DOY 50-244, we don't need to worry about the beginning of the year
         # requesting data for previous years of melt data.
-        multi_pool.map(_complete_daily_wrapper, dates_by_year)
+        error_dates_lists: list[list[dt.date]] = multi_pool.map(
+            _complete_daily_wrapper, dates_by_year
+        )
+
+    # Flatten the list-of-lists.
+    error_dates: list[dt.date] = list(chain.from_iterable(error_dates_lists))
+    raise_error_for_dates(error_dates=error_dates)

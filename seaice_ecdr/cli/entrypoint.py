@@ -1,7 +1,14 @@
 """entrypoint.py  Contains click commands fo seaice_ecdr."""
+
 import click
 
 from seaice_ecdr.complete_daily_ecdr import cli as complete_daily_cli
+
+# TODO: The daily-aggregate processing is very parallelizable because
+#       each year is indendent of every other year.  It could be
+#       implemented with multi-processing to speed up production
+#       on a multi-core machine.  Perhaps as a cmdline arg to this
+#       CLI API?
 from seaice_ecdr.daily_aggregate import cli as daily_aggregate_cli
 from seaice_ecdr.initial_daily_ecdr import cli as ecdr_cli
 from seaice_ecdr.monthly import cli as monthly_cli

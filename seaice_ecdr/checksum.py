@@ -3,6 +3,7 @@
 This module can be run as a script to (re-)generate checksum files for all
 existing standard (not NRT) output files.
 """
+
 import hashlib
 from pathlib import Path
 from typing import Literal
@@ -52,7 +53,7 @@ def write_checksum_file(
     with open(output_filepath, "w") as checksum_file:
         checksum_file.write(f"{input_filepath.name},{checksum},{size_in_bytes}")
 
-    logger.info(f"Wrote checksum file {output_filepath}")
+    logger.success(f"Wrote checksum file {output_filepath}")
 
     return output_filepath
 

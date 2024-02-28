@@ -152,3 +152,15 @@ def get_num_missing_pixels(
     num_missing_pixels = int((seaice_conc_var.isnull() & ocean_mask).astype(int).sum())
 
     return num_missing_pixels
+
+
+def raise_error_for_dates(*, error_dates: list[dt.date]) -> None:
+    """If `error_dates` is non-empty, raise an error indicating those dates had a processing failure."""
+    if error_dates:
+        str_formatted_dates = "\n".join(
+            date.strftime("%Y-%m-%d") for date in error_dates
+        )
+        raise RuntimeError(
+            f"Encountered {len(error_dates)} failures."
+            f" Data for the following dates were not created:\n{str_formatted_dates}"
+        )

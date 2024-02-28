@@ -6,6 +6,7 @@ release, to archive alongside the output data.
 This script creates a .zip file containing a copy of the `seaice_ecdr` git
 repository and the seaice_ecdr.constants.CDR_ANCILLARY_DIR ancillary dir.
 """
+
 import datetime as dt
 import shutil
 import subprocess
@@ -84,7 +85,7 @@ def make_archive_for_noaa(
         output_fp = shutil.make_archive(
             base_name=base_name_with_dir, format="zip", root_dir=tempdir
         )
-        logger.info(f"Wrote {output_fp}")
+        logger.success(f"Wrote {output_fp}")
 
 
 @click.command(

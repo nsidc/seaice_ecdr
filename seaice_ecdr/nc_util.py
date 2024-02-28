@@ -1,5 +1,6 @@
 """Code related to interacting with NetCDF files.
 """
+
 import subprocess
 from pathlib import Path
 
@@ -16,6 +17,9 @@ def concatenate_nc_files(
     `ds.to_netcdf()`. E.g., in simple tests of the two methods for a year's
     worth of data - xarray takes ~20 mintues vs `ncrcat`'s ~20 seconds.
     """
+    if not input_filepaths:
+        raise RuntimeError("No input files given to concatenate.")
+
     result = subprocess.run(
         [
             "ncrcat",

@@ -1,5 +1,6 @@
 """Code to produce daily aggregate files from daily complete data.
 """
+
 import datetime as dt
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -19,7 +20,10 @@ from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
 from seaice_ecdr.platforms import get_first_platform_start_date
-from seaice_ecdr.util import sat_from_filename, standard_daily_aggregate_filename
+from seaice_ecdr.util import (
+    sat_from_filename,
+    standard_daily_aggregate_filename,
+)
 
 
 # TODO: very similar to `monthly._get_daily_complete_filepaths_for_month`. DRY
@@ -121,55 +125,59 @@ def make_daily_aggregate_netcdf_for_year(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ecdr_data_dir: Path,
 ) -> None:
-    daily_filepaths = _get_daily_complete_filepaths_for_year(
-        year=year,
-        ecdr_data_dir=ecdr_data_dir,
-        hemisphere=hemisphere,
-        resolution=resolution,
-    )
-
-    # Create a temporary dir to store a WIP netcdf file. We do this because
-    # using the `ncrcat` CLI tool (included with `nco` dep) is much faster than
-    # xarray at concatenating the data. Then we do some modifications (e.g.,
-    # adding `latitude` and `longitude`, global attrs, etc.) before saving the
-    # data in it's final location.
-    with TemporaryDirectory() as tmpdir:
-        tmp_output_fp = Path(tmpdir) / "temp.nc"
-        concatenate_nc_files(
-            input_filepaths=daily_filepaths,
-            output_filepath=tmp_output_fp,
-        )
-        daily_ds = xr.open_dataset(tmp_output_fp, chunks=dict(time=1))
-        daily_ds = _update_ncrcat_daily_ds(
-            ds=daily_ds,
-            daily_filepaths=daily_filepaths,
-            hemisphere=hemisphere,
-            resolution=resolution,
-        )
-
-        output_path = get_daily_aggregate_filepath(
-            hemisphere=hemisphere,
-            resolution=resolution,
-            start_date=pd.Timestamp(daily_ds.time.min().item()).date(),
-            end_date=pd.Timestamp(daily_ds.time.max().item()).date(),
+    try:
+        daily_filepaths = _get_daily_complete_filepaths_for_year(
+            year=year,
             ecdr_data_dir=ecdr_data_dir,
+            hemisphere=hemisphere,
+            resolution=resolution,
         )
 
-        daily_ds.to_netcdf(
-            output_path,
-            unlimited_dims=[
-                "time",
-            ],
+        # Create a temporary dir to store a WIP netcdf file. We do this because
+        # using the `ncrcat` CLI tool (included with `nco` dep) is much faster than
+        # xarray at concatenating the data. Then we do some modifications (e.g.,
+        # adding `latitude` and `longitude`, global attrs, etc.) before saving the
+        # data in it's final location.
+        with TemporaryDirectory() as tmpdir:
+            tmp_output_fp = Path(tmpdir) / "temp.nc"
+            concatenate_nc_files(
+                input_filepaths=daily_filepaths,
+                output_filepath=tmp_output_fp,
+            )
+            daily_ds = xr.open_dataset(tmp_output_fp, chunks=dict(time=1))
+            daily_ds = _update_ncrcat_daily_ds(
+                ds=daily_ds,
+                daily_filepaths=daily_filepaths,
+                hemisphere=hemisphere,
+                resolution=resolution,
+            )
+
+            output_path = get_daily_aggregate_filepath(
+                hemisphere=hemisphere,
+                resolution=resolution,
+                start_date=pd.Timestamp(daily_ds.time.min().item()).date(),
+                end_date=pd.Timestamp(daily_ds.time.max().item()).date(),
+                ecdr_data_dir=ecdr_data_dir,
+            )
+
+            daily_ds.to_netcdf(
+                output_path,
+                unlimited_dims=[
+                    "time",
+                ],
+            )
+
+        logger.success(f"Wrote daily aggregate file for year={year} to {output_path}")
+
+        # Write checksum file for the aggregate daily output.
+        write_checksum_file(
+            input_filepath=output_path,
+            ecdr_data_dir=ecdr_data_dir,
+            product_type="aggregate",
         )
-
-    logger.info(f"Wrote daily aggregate file for year={year} to {output_path}")
-
-    # Write checksum file for the aggregate daily output.
-    write_checksum_file(
-        input_filepath=output_path,
-        ecdr_data_dir=ecdr_data_dir,
-        product_type="aggregate",
-    )
+    except Exception as e:
+        logger.exception(f"Failed to create daily aggregate for {year=} {hemisphere=}")
+        raise e
 
 
 @click.command(name="daily-aggregate")
@@ -228,10 +236,21 @@ def cli(
     if end_year is None:
         end_year = year
 
+    failed_years = []
     for year_to_process in range(year, end_year + 1):
-        make_daily_aggregate_netcdf_for_year(
-            year=year_to_process,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
+        try:
+            make_daily_aggregate_netcdf_for_year(
+                year=year_to_process,
+                hemisphere=hemisphere,
+                resolution=resolution,
+                ecdr_data_dir=ecdr_data_dir,
+            )
+        except Exception:
+            failed_years.append(year_to_process)
+
+    if failed_years:
+        str_formatted_years = "\n".join(str(year) for year in failed_years)
+        raise RuntimeError(
+            f"Encountered {len(failed_years)} failures."
+            f" Daily aggregates for the following years were not created:\n{str_formatted_years}"
         )
