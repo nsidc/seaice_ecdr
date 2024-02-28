@@ -1,19 +1,4 @@
-"""Code to run NRT ECDR processing.
-
-TODO:
-
-* Think about a missing value. The nrt data will potentially contain missing
-  data since it can only look to the past for filling missing data. A user could
-  probably look at the QA field to find out that spatial/temporal interp hasn't
-  happened for a `np.nan` cell, but this would be extra work. Maybe a fine
-  trade-off for now.
-* Figure out how to leverage the temporal composite and finalization
-  code. Currently most of our code relies on hard-coded expectations about the
-  platform (based on date) and where the data live (base_output_dir). The data dir
-  is easy enough to change, but we may need to override the platform for NRT
-  processing. Some way to tell the code on a global level that it's dealing w/
-  NRT maybe?
-"""
+"""Code to run NRT ECDR processing."""
 
 import copy
 import datetime as dt
@@ -266,8 +251,6 @@ def nrt_ecdr_for_day(
                 is_nrt=True,
             )
 
-            # TODO: write_cde_netcdf needs updated to allow nrt checksums
-            # structure.
             written_cde_ncfile = write_cde_netcdf(
                 cde_ds=cde_ds,
                 output_filepath=cde_filepath,
