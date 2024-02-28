@@ -50,7 +50,11 @@ from seaice_ecdr.temporal_composite_daily import (
     temporal_interpolation,
     write_tie_netcdf,
 )
-from seaice_ecdr.util import date_range
+from seaice_ecdr.util import (
+    date_range,
+    get_complete_output_dir,
+    get_intermediate_output_dir,
+)
 
 LANCE_RESOLUTION: Final = "12.5"
 
@@ -106,7 +110,7 @@ def read_or_create_and_read_nrt_idecdr_ds(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    base_output_dir: Path,
+    intermediate_output_dir: Path,
     overwrite: bool,
 ):
     platform = get_platform_by_date(date)
@@ -114,7 +118,7 @@ def read_or_create_and_read_nrt_idecdr_ds(
         hemisphere=hemisphere,
         date=date,
         platform=platform,
-        base_output_dir=base_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
         resolution="12.5",
     )
 
@@ -155,7 +159,7 @@ def temporally_interpolated_nrt_ecdr_dataset(
     *,
     hemisphere: Hemisphere,
     date: dt.date,
-    base_output_dir: Path,
+    intermediate_output_dir: Path,
     overwrite: bool,
     days_to_look_previously: int = 5,
 ) -> xr.Dataset:
@@ -167,7 +171,7 @@ def temporally_interpolated_nrt_ecdr_dataset(
             date=date,
             hemisphere=hemisphere,
             overwrite=overwrite,
-            base_output_dir=base_output_dir,
+            intermediate_output_dir=intermediate_output_dir,
         )
         init_datasets.append(init_dataset)
 
@@ -189,7 +193,7 @@ def read_or_create_and_read_nrt_tiecdr_ds(
     *,
     hemisphere: Hemisphere,
     date: dt.date,
-    base_output_dir: Path,
+    intermediate_output_dir: Path,
     overwrite: bool,
     days_to_look_previously: int = 4,
 ) -> xr.Dataset:
@@ -197,14 +201,14 @@ def read_or_create_and_read_nrt_tiecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=LANCE_RESOLUTION,
-        base_output_dir=base_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
     )
 
     if overwrite or not tie_filepath.is_file():
         nrt_temporally_interpolated = temporally_interpolated_nrt_ecdr_dataset(
             hemisphere=hemisphere,
             date=date,
-            base_output_dir=base_output_dir,
+            intermediate_output_dir=intermediate_output_dir,
             overwrite=overwrite,
             days_to_look_previously=days_to_look_previously,
         )
@@ -226,11 +230,12 @@ def nrt_ecdr_for_day(
     overwrite: bool,
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
+    complete_output_dir = get_complete_output_dir(base_output_dir=base_output_dir)
     cde_filepath = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
         resolution=LANCE_RESOLUTION,
-        base_output_dir=base_output_dir,
+        complete_output_dir=complete_output_dir,
         is_nrt=True,
     )
 
@@ -239,11 +244,15 @@ def nrt_ecdr_for_day(
         return
 
     if not cde_filepath.is_file() or overwrite:
+        intermediate_output_dir = get_intermediate_output_dir(
+            base_output_dir=base_output_dir,
+            is_nrt=True,
+        )
         try:
             tiecdr_ds = read_or_create_and_read_nrt_tiecdr_ds(
                 hemisphere=hemisphere,
                 date=date,
-                base_output_dir=base_output_dir,
+                intermediate_output_dir=intermediate_output_dir,
                 overwrite=overwrite,
             )
 
@@ -252,7 +261,8 @@ def nrt_ecdr_for_day(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=LANCE_RESOLUTION,
-                base_output_dir=base_output_dir,
+                complete_output_dir=complete_output_dir,
+                intermediate_output_dir=intermediate_output_dir,
                 is_nrt=True,
             )
 
@@ -261,7 +271,7 @@ def nrt_ecdr_for_day(
             written_cde_ncfile = write_cde_netcdf(
                 cde_ds=cde_ds,
                 output_filepath=cde_filepath,
-                base_output_dir=base_output_dir,
+                complete_output_dir=complete_output_dir,
                 hemisphere=hemisphere,
             )
             logger.success(f"Wrote complete daily ncfile: {written_cde_ncfile}")

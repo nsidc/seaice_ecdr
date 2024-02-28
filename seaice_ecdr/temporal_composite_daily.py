@@ -28,7 +28,11 @@ from seaice_ecdr.platforms import (
     get_first_platform_start_date,
     get_platform_by_date,
 )
-from seaice_ecdr.util import date_range, standard_daily_filename
+from seaice_ecdr.util import (
+    date_range,
+    get_intermediate_output_dir,
+    standard_daily_filename,
+)
 
 
 def yield_dates_from_temporal_interpolation_flags(
@@ -110,9 +114,9 @@ def temporally_interpolate_dataarray_using_flags(
 
 
 @cache
-def get_tie_dir(*, base_output_dir: Path, hemisphere: Hemisphere) -> Path:
+def get_tie_dir(*, intermediate_output_dir: Path, hemisphere: Hemisphere) -> Path:
     """Daily complete output dir for TIE processing"""
-    tie_dir = base_output_dir / "intermediate" / hemisphere / "temporal_interp"
+    tie_dir = intermediate_output_dir / hemisphere / "temporal_interp"
     tie_dir.mkdir(parents=True, exist_ok=True)
 
     return tie_dir
@@ -120,10 +124,10 @@ def get_tie_dir(*, base_output_dir: Path, hemisphere: Hemisphere) -> Path:
 
 def get_tie_filepath(
     *,
-    date,
-    hemisphere,
-    resolution,
-    base_output_dir: Path,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    intermediate_output_dir: Path,
 ) -> Path:
     """Return the complete daily tie file path."""
 
@@ -139,7 +143,9 @@ def get_tie_filepath(
     # Add `tiecdr` to the beginning of the standard name to distinguish it as a
     # WIP.
     tie_filename = "tiecdr_" + standard_fn
-    tie_dir = get_tie_dir(base_output_dir=base_output_dir, hemisphere=hemisphere)
+    tie_dir = get_tie_dir(
+        intermediate_output_dir=intermediate_output_dir, hemisphere=hemisphere
+    )
 
     tie_filepath = tie_dir / tie_filename
 
@@ -336,7 +342,7 @@ def read_or_create_and_read_idecdr_ds(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    base_output_dir: Path,
+    intermediate_output_dir: Path,
     overwrite_ide: bool = False,
 ) -> xr.Dataset:
     """Read an idecdr netCDF file, creating it if it doesn't exist."""
@@ -349,14 +355,14 @@ def read_or_create_and_read_idecdr_ds(
         platform=platform,
         hemisphere=hemisphere,
         resolution=resolution,
-        base_output_dir=base_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
     )
     if overwrite_ide or not ide_filepath.is_file():
         create_idecdr_for_date(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
-            base_output_dir=base_output_dir,
+            intermediate_output_dir=intermediate_output_dir,
         )
     logger.debug(f"Reading ideCDR file from: {ide_filepath}")
     ide_ds = xr.load_dataset(ide_filepath)
@@ -723,7 +729,7 @@ def temporally_interpolated_ecdr_dataset(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     interp_range: int = 5,
-    base_output_dir: Path,
+    intermediate_output_dir: Path,
     fill_the_pole_hole: bool = True,
 ) -> xr.Dataset:
     """Create xr dataset containing the second pass of daily enhanced CDR.
@@ -740,7 +746,7 @@ def temporally_interpolated_ecdr_dataset(
             date=iter_date,
             hemisphere=hemisphere,
             resolution=resolution,
-            base_output_dir=base_output_dir,
+            intermediate_output_dir=intermediate_output_dir,
         )
         init_datasets.append(init_dataset)
 
@@ -816,16 +822,16 @@ def make_tiecdr_netcdf(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    base_output_dir: Path,
+    intermediate_output_dir: Path,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
     overwrite_tie: bool = False,
-) -> None:
+):
     output_path = get_tie_filepath(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        base_output_dir=base_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
     )
 
     if overwrite_tie or not output_path.is_file():
@@ -836,7 +842,7 @@ def make_tiecdr_netcdf(
                 hemisphere=hemisphere,
                 resolution=resolution,
                 interp_range=interp_range,
-                base_output_dir=base_output_dir,
+                intermediate_output_dir=intermediate_output_dir,
                 fill_the_pole_hole=fill_the_pole_hole,
             )
 
@@ -853,6 +859,8 @@ def make_tiecdr_netcdf(
             )
             raise e
 
+    return output_path
+
 
 def create_tiecdr_for_date_range(
     *,
@@ -860,7 +868,7 @@ def create_tiecdr_for_date_range(
     start_date: dt.date,
     end_date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    base_output_dir: Path,
+    intermediate_output_dir: Path,
     overwrite_tie: bool,
 ) -> None:
     """Generate the temporally composited daily ecdr files for a range of dates."""
@@ -869,7 +877,7 @@ def create_tiecdr_for_date_range(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
-            base_output_dir=base_output_dir,
+            intermediate_output_dir=intermediate_output_dir,
             overwrite_tie=overwrite_tie,
         )
 
@@ -959,15 +967,16 @@ def cli(
     if end_date is None:
         end_date = copy.copy(date)
 
-    # The data should be organized by hemisphere.
-    base_output_dir = base_output_dir / hemisphere
-    base_output_dir.mkdir(exist_ok=True)
+    intermediate_output_dir = get_intermediate_output_dir(
+        base_output_dir=base_output_dir,
+        is_nrt=False,
+    )
 
     create_tiecdr_for_date_range(
         hemisphere=hemisphere,
         start_date=date,
         end_date=end_date,
         resolution=resolution,
-        base_output_dir=base_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
         overwrite_tie=overwrite,
     )

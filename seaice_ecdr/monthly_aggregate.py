@@ -19,6 +19,7 @@ from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
 from seaice_ecdr.util import (
+    get_complete_output_dir,
     sat_from_filename,
     standard_monthly_aggregate_filename,
 )
@@ -28,10 +29,10 @@ def _get_monthly_complete_filepaths(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    base_output_dir: Path,
+    complete_output_dir: Path,
 ) -> list[Path]:
     monthly_dir = get_monthly_dir(
-        base_output_dir=base_output_dir,
+        complete_output_dir=complete_output_dir,
         hemisphere=hemisphere,
     )
 
@@ -148,9 +149,12 @@ def cli(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> None:
     try:
+        complete_output_dir = get_complete_output_dir(
+            base_output_dir=base_output_dir,
+        )
         monthly_filepaths = _get_monthly_complete_filepaths(
             hemisphere=hemisphere,
-            base_output_dir=base_output_dir,
+            complete_output_dir=complete_output_dir,
             resolution=resolution,
         )
 

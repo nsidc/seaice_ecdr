@@ -4,6 +4,7 @@ from pm_tb_data._types import NORTH
 
 from seaice_ecdr import monthly
 from seaice_ecdr.tests.integration import base_output_dir_test_path  # noqa
+from seaice_ecdr.util import get_complete_output_dir
 
 
 @pytest.mark.order(after="test_complete_daily.py::test_make_cdecdr_netcdf")
@@ -15,12 +16,16 @@ def test_make_monthly_nc(base_output_dir_test_path, monkeypatch):  # noqa
         monthly, "check_min_days_for_valid_month", lambda *_args, **_kwargs: True
     )
 
+    complete_output_dir = get_complete_output_dir(
+        base_output_dir=base_output_dir_test_path,
+    )
+
     output_path = monthly.make_monthly_nc(
         year=2022,
         month=3,
         hemisphere=NORTH,
         resolution="12.5",
-        base_output_dir=base_output_dir_test_path,
+        complete_output_dir=complete_output_dir,
     )
 
     assert output_path.is_file()

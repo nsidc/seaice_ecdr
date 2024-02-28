@@ -42,6 +42,7 @@ from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.util import (
+    get_complete_output_dir,
     get_num_missing_pixels,
     sat_from_filename,
     standard_monthly_filename,
@@ -72,7 +73,7 @@ def _get_daily_complete_filepaths_for_month(
     *,
     year: int,
     month: int,
-    base_output_dir: Path,
+    complete_output_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
@@ -88,7 +89,7 @@ def _get_daily_complete_filepaths_for_month(
             date=period.to_timestamp().date(),
             hemisphere=hemisphere,
             resolution=resolution,
-            base_output_dir=base_output_dir,
+            complete_output_dir=complete_output_dir,
             is_nrt=False,
         )
         if expected_fp.is_file():
@@ -124,7 +125,7 @@ def get_daily_ds_for_month(
     *,
     year: int,
     month: int,
-    base_output_dir: Path,
+    complete_output_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
@@ -137,7 +138,7 @@ def get_daily_ds_for_month(
     data_list = _get_daily_complete_filepaths_for_month(
         year=year,
         month=month,
-        base_output_dir=base_output_dir,
+        complete_output_dir=complete_output_dir,
         hemisphere=hemisphere,
         resolution=resolution,
     )
@@ -586,8 +587,8 @@ def make_monthly_ds(
     return monthly_ds.compute()
 
 
-def get_monthly_dir(*, base_output_dir: Path, hemisphere: Hemisphere) -> Path:
-    monthly_dir = base_output_dir / "complete" / hemisphere / "monthly"
+def get_monthly_dir(*, complete_output_dir: Path, hemisphere: Hemisphere) -> Path:
+    monthly_dir = complete_output_dir / hemisphere / "monthly"
     monthly_dir.mkdir(parents=True, exist_ok=True)
 
     return monthly_dir
@@ -600,9 +601,12 @@ def get_monthly_filepath(
     sat: SUPPORTED_SAT,
     year: int,
     month: int,
-    base_output_dir: Path,
+    complete_output_dir: Path,
 ) -> Path:
-    output_dir = get_monthly_dir(base_output_dir=base_output_dir, hemisphere=hemisphere)
+    output_dir = get_monthly_dir(
+        complete_output_dir=complete_output_dir,
+        hemisphere=hemisphere,
+    )
 
     output_fn = standard_monthly_filename(
         hemisphere=hemisphere,
@@ -622,13 +626,13 @@ def make_monthly_nc(
     year: int,
     month: int,
     hemisphere: Hemisphere,
-    base_output_dir: Path,
+    complete_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> Path:
     daily_ds_for_month = get_daily_ds_for_month(
         year=year,
         month=month,
-        base_output_dir=base_output_dir,
+        complete_output_dir=complete_output_dir,
         hemisphere=hemisphere,
         resolution=resolution,
     )
@@ -641,7 +645,7 @@ def make_monthly_nc(
         sat=sat,
         year=year,
         month=month,
-        base_output_dir=base_output_dir,
+        complete_output_dir=complete_output_dir,
     )
 
     monthly_ds = make_monthly_ds(
@@ -669,7 +673,7 @@ def make_monthly_nc(
     # Write checksum file for the monthly output.
     write_checksum_file(
         input_filepath=output_path,
-        output_dir=base_output_dir / "complete" / hemisphere / "checksums" / "monthly",
+        output_dir=complete_output_dir / hemisphere / "checksums" / "monthly",
     )
 
     return output_path
@@ -748,6 +752,9 @@ def cli(
     if end_month is None:
         end_month = month
 
+    complete_output_dir = get_complete_output_dir(
+        base_output_dir=base_output_dir,
+    )
     error_periods = []
     for period in pd.period_range(
         start=pd.Period(year=year, month=month, freq="M"),
@@ -758,7 +765,7 @@ def cli(
             make_monthly_nc(
                 year=period.year,
                 month=period.month,
-                base_output_dir=base_output_dir,
+                complete_output_dir=complete_output_dir,
                 hemisphere=hemisphere,
                 resolution=resolution,
             )

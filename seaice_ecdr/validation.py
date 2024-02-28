@@ -60,7 +60,7 @@ from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR, ECDR_PRODUCT_VERSION
 from seaice_ecdr.monthly import get_monthly_dir
-from seaice_ecdr.util import date_range, get_num_missing_pixels
+from seaice_ecdr.util import date_range, get_complete_output_dir, get_num_missing_pixels
 
 VALIDATION_RESOLUTION: Final = "12.5"
 
@@ -364,6 +364,9 @@ def validate_outputs(
     * error_seaice_{n|s}_daily_{start_year}_{end_year}.csv. Contains the
       following fields: [year, month, day, error_code]
     """
+    complete_output_dir = get_complete_output_dir(
+        base_output_dir=base_output_dir,
+    )
     validation_dir = get_validation_dir(base_output_dir=base_output_dir)
     log_filepath = (
         validation_dir
@@ -389,7 +392,7 @@ def validate_outputs(
                     date=date,
                     hemisphere=hemisphere,
                     resolution=VALIDATION_RESOLUTION,
-                    base_output_dir=base_output_dir,
+                    complete_output_dir=complete_output_dir,
                     is_nrt=False,
                 )
 
@@ -429,7 +432,7 @@ def validate_outputs(
             months = range(start_date.month, end_date.month + 1)
             for year, month in itertools.product(years, months):
                 monthly_dir = get_monthly_dir(
-                    base_output_dir=base_output_dir,
+                    complete_output_dir=complete_output_dir,
                     hemisphere=hemisphere,
                 )
 

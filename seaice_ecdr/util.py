@@ -207,3 +207,21 @@ def raise_error_for_dates(*, error_dates: list[dt.date]) -> None:
             f"Encountered {len(error_dates)} failures."
             f" Data for the following dates were not created:\n{str_formatted_dates}"
         )
+
+
+def get_intermediate_output_dir(*, base_output_dir: Path, is_nrt: bool) -> Path:
+    intermediate_dir = base_output_dir / "intermediate"
+    if is_nrt:
+        intermediate_dir = intermediate_dir / "nrt"
+
+    intermediate_dir.mkdir(exist_ok=True, parents=True)
+
+    return intermediate_dir
+
+
+def get_complete_output_dir(*, base_output_dir: Path) -> Path:
+    complete_dir = base_output_dir / "complete"
+
+    complete_dir.mkdir(exist_ok=True)
+
+    return complete_dir

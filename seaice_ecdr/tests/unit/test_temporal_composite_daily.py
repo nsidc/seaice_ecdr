@@ -83,16 +83,19 @@ def test_access_to_standard_output_filename(tmpdir):
     resolution: Final = "12.5"
     sat = "am2"
 
-    base_output_dir = Path(tmpdir)
+    intermediate_output_dir = Path(tmpdir)
     sample_ide_filepath = get_idecdr_filepath(
         date=date,
         platform=sat,
         hemisphere=NORTH,
         resolution=resolution,
-        base_output_dir=base_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
     )
     expected_filepath = (
-        get_idecdr_dir(base_output_dir=base_output_dir, hemisphere=NORTH)
+        get_idecdr_dir(
+            intermediate_output_dir=intermediate_output_dir,
+            hemisphere=NORTH,
+        )
         / f"idecdr_sic_psn12.5_20210219_am2_{ECDR_PRODUCT_VERSION}.nc"
     )
 

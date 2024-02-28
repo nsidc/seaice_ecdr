@@ -14,7 +14,12 @@ from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import create_idecdr_for_date
 from seaice_ecdr.platforms import get_first_platform_start_date
 from seaice_ecdr.temporal_composite_daily import make_tiecdr_netcdf
-from seaice_ecdr.util import date_range, get_dates_by_year, raise_error_for_dates
+from seaice_ecdr.util import (
+    date_range,
+    get_dates_by_year,
+    get_intermediate_output_dir,
+    raise_error_for_dates,
+)
 
 
 @click.command(name="multiprocess-daily")
@@ -95,13 +100,18 @@ def cli(
         date_range(start_date=initial_start_date, end_date=initial_end_date)
     )
 
+    intermediate_output_dir = get_intermediate_output_dir(
+        base_output_dir=base_output_dir,
+        is_nrt=False,
+    )
+
     resolution: Final = "12.5"
 
     _create_idecdr_wrapper = partial(
         create_idecdr_for_date,
         hemisphere=hemisphere,
         resolution=resolution,
-        base_output_dir=base_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
         overwrite_ide=overwrite,
     )
 
@@ -109,7 +119,7 @@ def cli(
         make_tiecdr_netcdf,
         hemisphere=hemisphere,
         resolution=resolution,
-        base_output_dir=base_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
         overwrite_tie=overwrite,
     )
 
