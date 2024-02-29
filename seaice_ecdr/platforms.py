@@ -107,6 +107,23 @@ def get_platform_start_dates() -> OrderedDict[dt.date, SUPPORTED_SAT]:
     if override_file := os.environ.get("PLATFORM_START_DATES_CFG_OVERRIDE_FILE"):
         _platform_start_dates = read_platform_start_dates_cfg_override(override_file)
         logger.info(f"Read platform start dates from {override_file}")
+    # TODO: it's clear that we should refactor to support passing in custom
+    # platform start dates programatically. This is essentially global state and
+    # it makes it very difficult to test out different combinations as a result.
+    elif forced_platform := os.environ.get("FORCE_PLATFORM"):
+        if forced_platform not in get_args(SUPPORTED_SAT):
+            raise RuntimeError(
+                f"The forced platform ({forced_platform}) is not a supported platform."
+            )
+
+        first_date_of_forced_platform = PLATFORM_AVAILABILITY[forced_platform][
+            "first_date"
+        ]
+        _platform_start_dates = OrderedDict(
+            {
+                first_date_of_forced_platform: forced_platform,
+            }
+        )
 
     else:
         _platform_start_dates = OrderedDict(
