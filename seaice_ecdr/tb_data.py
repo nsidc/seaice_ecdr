@@ -107,14 +107,22 @@ def map_tbs_to_ecdr_channels(
     return ecdr_tbs
 
 
-def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
-    tb_resolution: Final = "12.5"
-    data_source: Final = "AU_SI12"
+def _get_am2_tbs(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> EcdrTbData:
+    data_source: Final = f"AU_SI{resolution}"
+    am2_resolution_str = {
+        "12.5": "12",
+        "25": "25",
+    }[resolution]
     try:
         xr_tbs = get_au_si_tbs(
             date=date,
             hemisphere=hemisphere,
-            resolution="12",
+            resolution=am2_resolution_str,  # type: ignore[arg-type]
         )
         ecdr_tbs = map_tbs_to_ecdr_channels(
             mapping=dict(
@@ -126,21 +134,21 @@ def _get_am2_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
             ),
             xr_tbs=xr_tbs,
             hemisphere=hemisphere,
-            resolution=tb_resolution,
+            resolution=resolution,
             date=date,
             data_source=data_source,
         )
     except FileNotFoundError:
-        ecdr_tbs = get_null_ecdr_tbs(hemisphere=hemisphere, resolution=tb_resolution)
+        ecdr_tbs = get_null_ecdr_tbs(hemisphere=hemisphere, resolution=resolution)
         logger.warning(
             f"Used all-null TBS for date={date},"
             f" hemisphere={hemisphere},"
-            f" resolution={tb_resolution}"
+            f" resolution={resolution}"
         )
 
     ecdr_tb_data = EcdrTbData(
         tbs=ecdr_tbs,
-        resolution=tb_resolution,
+        resolution=resolution,
         data_source=data_source,
         platform="am2",
     )
@@ -292,14 +300,46 @@ def _get_nsidc_0007_tbs(*, hemisphere: Hemisphere, date: dt.date) -> EcdrTbData:
     return ecdr_tb_data
 
 
+# TODO: dedupe this function with `get_ecdr_tb_data`
+def get_25km_ecdr_tb_data(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+) -> EcdrTbData:
+    """Get 25km ECDR Tb data for the given date and hemisphere."""
+    platform = get_platform_by_date(date)
+    if platform == "am2":
+        return _get_am2_tbs(date=date, hemisphere=hemisphere, resolution="25")
+    elif platform == "ame":
+        raise NotImplementedError("AME is not yet supported at 25km resolution")
+    elif platform in get_args(NSIDC_0001_SATS):
+        return _get_nsidc_0001_tbs(
+            platform=platform,  # type: ignore[arg-type]
+            date=date,
+            hemisphere=hemisphere,
+        )
+    elif platform == "n07":
+        # SMMR
+        return _get_nsidc_0007_tbs(date=date, hemisphere=hemisphere)
+    else:
+        raise RuntimeError(f"Platform not supported: {platform}")
+
+
 def get_ecdr_tb_data(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
 ) -> EcdrTbData:
+    """Get ECDR TBs that are expected for a 12.5km ECDR.
+
+    The datasets that have a 12.5km native resolution will be returned as 12.5km
+    data. The datasets w/ a 25km native resolution will be returned as 25km
+    data. It's up to the caller to decide how they want to handle resolution
+    differences between platforms.
+    """
     platform = get_platform_by_date(date)
     if platform == "am2":
-        return _get_am2_tbs(date=date, hemisphere=hemisphere)
+        return _get_am2_tbs(date=date, hemisphere=hemisphere, resolution="12.5")
     elif platform == "ame":
         return _get_ame_tbs(date=date, hemisphere=hemisphere)
     elif platform in get_args(NSIDC_0001_SATS):

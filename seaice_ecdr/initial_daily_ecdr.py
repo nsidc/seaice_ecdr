@@ -46,7 +46,12 @@ from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
-from seaice_ecdr.tb_data import EXPECTED_ECDR_TB_NAMES, EcdrTbData, get_ecdr_tb_data
+from seaice_ecdr.tb_data import (
+    EXPECTED_ECDR_TB_NAMES,
+    EcdrTbData,
+    get_25km_ecdr_tb_data,
+    get_ecdr_tb_data,
+)
 from seaice_ecdr.util import get_intermediate_output_dir, standard_daily_filename
 
 
@@ -700,6 +705,8 @@ def compute_initial_daily_ecdr_dataset(
     # TODO: Should check for NH and have grid-dependent filling scheme
     # NOTE: Usually, the pole hole will be filled in pass 3 ("complete_daily"),
     #       along with melt onset calc.
+    # TODO: this pole-hole filling method isn't currently used. Instead, we fill
+    # the pole hole in the temporal composite daily code.
     if fill_the_pole_hole and hemisphere == NORTH:
         cdr_conc_pre_polefill = cdr_conc.copy()
         platform = get_platform_by_date(date)
@@ -878,10 +885,22 @@ def initial_daily_ecdr_dataset(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
     """Create xr dataset containing the first pass of daily enhanced CDR."""
-    tb_data = get_ecdr_tb_data(
-        date=date,
-        hemisphere=hemisphere,
-    )
+    # TODO: if/else should be temporary. It's just a way to clearly divide how a
+    # requestion for 12.5km or 25km ECDR is handled.
+    if resolution == "12.5":
+        # In the 12.5km case, we try to get 12.5km Tbs, but sometimes we get
+        # 25km (older, non-AMSR platforms)
+        tb_data = get_ecdr_tb_data(
+            date=date,
+            hemisphere=hemisphere,
+        )
+    else:
+        # In the 25km case, we always expect 25km Tbs
+        tb_data = get_25km_ecdr_tb_data(
+            date=date,
+            hemisphere=hemisphere,
+        )
+
     initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
