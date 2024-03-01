@@ -11,7 +11,6 @@ We want to be able to:
 * 
 """
 
-import datetime as dt
 from pathlib import Path
 from typing import Literal
 
@@ -48,11 +47,12 @@ def get_25km_daily_cdr(
     if not matching_files:
         raise RuntimeError(f"No files found matching {glob_pattern} in {base_dir}")
 
-    xr_ds = xr.open_mfdataset(matching_files, engine="rasterio")
+    xr_ds = xr.open_mfdataset(matching_files)
+    # xr_ds = xr.open_mfdataset(matching_files, engine="raterio")
     # Convert `DatetimeGregorian` to native date. Not sure why this happens when engine is rasterio.
-    xr_ds["time"] = [
-        dt.date(thing.year, thing.month, thing.day) for thing in xr_ds.time.values
-    ]
+    # xr_ds["time"] = [
+    #     dt.date(thing.year, thing.month, thing.day) for thing in xr_ds.time.values
+    # ]
 
     return xr_ds
 

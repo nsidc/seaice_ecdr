@@ -23,6 +23,8 @@ dependencies:
   - pm_icecon ~=0.3.1
   - leafmap
   - rioxarray
+  - hvplot
+  - jupyter_bokeh
 
   #############################
   # Non-imported dependencies #
