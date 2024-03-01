@@ -8,7 +8,7 @@ Notes:
 import datetime as dt
 from functools import cache
 from pathlib import Path
-from typing import Iterable, TypedDict, cast, get_args
+from typing import Iterable, Literal, TypedDict, cast, get_args
 
 import click
 import numpy as np
@@ -24,7 +24,6 @@ from pm_icecon.bt.params.nsidc0007 import get_smmr_params
 from pm_icecon.bt.xfer_tbs import xfer_rss_tbs
 from pm_icecon.errors import UnexpectedSatelliteError
 from pm_icecon.interpolation import spatial_interp_tbs
-from pm_icecon.land_spillover import apply_nt2_land_spillover
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.params.params import get_cdr_nt_params
 from pm_icecon.nt.tiepoints import NasateamTiePoints
@@ -33,10 +32,8 @@ from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.ancillary import (
-    get_adj123_field,
     get_empty_ds_with_time,
     get_invalid_ice_mask,
-    get_land90_conc_field,
     get_non_ocean_mask,
     nh_polehole_mask,
 )
@@ -45,6 +42,7 @@ from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
+from seaice_ecdr.spillover import land_spillover
 from seaice_ecdr.tb_data import (
     EXPECTED_ECDR_TB_NAMES,
     EcdrTbData,
@@ -296,38 +294,12 @@ def get_nasateam_weather_mask(
     return weather_mask
 
 
-def land_spillover(
-    *,
-    cdr_conc: npt.NDArray,
-    hemisphere: Hemisphere,
-    tb_data: EcdrTbData,
-) -> npt.NDArray:
-    """Apply the land spillover technique to the CDR concentration field."""
-    logger.debug("Applying NT2 land spillover technique...")
-    l90c = get_land90_conc_field(
-        hemisphere=hemisphere,
-        resolution=tb_data.resolution,
-    )
-    adj123 = get_adj123_field(
-        hemisphere=hemisphere,
-        resolution=tb_data.resolution,
-    )
-    spillover_applied = apply_nt2_land_spillover(
-        conc=cdr_conc,
-        adj123=adj123.data,
-        l90c=l90c.data,
-        anchoring_siconc=50.0,
-        affect_dist3=True,
-    )
-
-    return spillover_applied
-
-
 def compute_initial_daily_ecdr_dataset(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
     tb_data: EcdrTbData,
+    land_spillover_alg: Literal["NT2", "NT"] = "NT2",
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -702,7 +674,12 @@ def compute_initial_daily_ecdr_dataset(
     cdr_conc[set_to_zero_sic] = 0
 
     cdr_conc_pre_spillover = cdr_conc.copy()
-    cdr_conc = land_spillover(cdr_conc=cdr_conc, hemisphere=hemisphere, tb_data=tb_data)
+    cdr_conc = land_spillover(
+        cdr_conc=cdr_conc,
+        hemisphere=hemisphere,
+        tb_data=tb_data,
+        algorithm=land_spillover_alg,
+    )
     spillover_applied = np.full((ydim, xdim), False, dtype=bool)
     spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = True
 
