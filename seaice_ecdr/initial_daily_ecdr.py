@@ -297,6 +297,33 @@ def get_nasateam_weather_mask(
     return weather_mask
 
 
+def land_spillover(
+    *,
+    cdr_conc: npt.NDArray,
+    hemisphere: Hemisphere,
+    tb_data: EcdrTbData,
+) -> npt.NDArray:
+    """Apply the land spillover technique to the CDR concentration field."""
+    logger.debug("Applying NT2 land spillover technique...")
+    l90c = get_land90_conc_field(
+        hemisphere=hemisphere,
+        resolution=tb_data.resolution,
+    )
+    adj123 = get_adj123_field(
+        hemisphere=hemisphere,
+        resolution=tb_data.resolution,
+    )
+    spillover_applied = apply_nt2_land_spillover(
+        conc=cdr_conc,
+        adj123=adj123.data,
+        l90c=l90c.data,
+        anchoring_siconc=50.0,
+        affect_dist3=True,
+    )
+
+    return spillover_applied
+
+
 def compute_initial_daily_ecdr_dataset(
     *,
     date: dt.date,
@@ -676,30 +703,10 @@ def compute_initial_daily_ecdr_dataset(
     cdr_conc = cdr_conc_raw.copy()
     cdr_conc[set_to_zero_sic] = 0
 
-    # Will use spillover_applied with values:
-    #  1: NT2
-    #  2: BT (not yet added)
-    #  4: NT (not yet added)
-    spillover_applied = np.zeros((ydim, xdim), dtype=np.uint8)
     cdr_conc_pre_spillover = cdr_conc.copy()
-    logger.debug("Applying NT2 land spillover technique...")
-    l90c = get_land90_conc_field(
-        hemisphere=hemisphere,
-        resolution=tb_data.resolution,
-    )
-    adj123 = get_adj123_field(
-        hemisphere=hemisphere,
-        resolution=tb_data.resolution,
-    )
-    cdr_conc = apply_nt2_land_spillover(
-        conc=cdr_conc,
-        adj123=adj123.data,
-        l90c=l90c.data,
-        anchoring_siconc=50.0,
-        affect_dist3=True,
-    )
-
-    spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = 1
+    cdr_conc = land_spillover(cdr_conc=cdr_conc, hemisphere=hemisphere, tb_data=tb_data)
+    spillover_applied = np.full((ydim, xdim), False, dtype=bool)
+    spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = True
 
     # Fill the NH pole hole
     # TODO: Should check for NH and have grid-dependent filling scheme
@@ -818,7 +825,7 @@ def compute_initial_daily_ecdr_dataset(
     # Add the QA bitmask field to the initial daily xarray dataset
     #   1: BT weather
     #   2: NT weather
-    #   4: NT2 spillover (or in general...any/all spillover corrections)
+    #   4: Land spillover applied (e.g,. NT2 land spillover)
     #   8: Missing TBs (exclusive of valid_ice mask)
     #  16: Invalid ice mask
     #  32: Spatial interpolation applied
@@ -829,7 +836,7 @@ def compute_initial_daily_ecdr_dataset(
     qa_bitmask = np.zeros((ydim, xdim), dtype=np.uint8)
     qa_bitmask[ecdr_ide_ds["bt_weather_mask"].data[0, :, :]] += 1
     qa_bitmask[ecdr_ide_ds["nt_weather_mask"].data[0, :, :]] += 2
-    qa_bitmask[spillover_applied == 1] += 4
+    qa_bitmask[spillover_applied] += 4
     qa_bitmask[invalid_tb_mask & ~ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 8
     qa_bitmask[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 16
     qa_bitmask[ecdr_ide_ds["spatial_interpolation_flag"].data[0, :, :] != 0] += 32
