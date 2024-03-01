@@ -3,6 +3,7 @@ from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
+from pm_icecon.bt.compute_bt_ic import coastal_fix
 from pm_icecon.land_spillover import apply_nt2_land_spillover
 from pm_icecon.nt.compute_nt_ic import apply_nt_spillover
 from pm_tb_data._types import Hemisphere
@@ -50,7 +51,8 @@ def land_spillover(
     cdr_conc: npt.NDArray,
     hemisphere: Hemisphere,
     tb_data: EcdrTbData,
-    algorithm: Literal["NT2", "NT"],
+    algorithm: Literal["NT2", "BT_NT"],
+    land_mask: npt.NDArray,
 ) -> npt.NDArray:
     """Apply the land spillover technique to the CDR concentration field."""
     if algorithm == "NT2":
@@ -69,11 +71,20 @@ def land_spillover(
             anchoring_siconc=50.0,
             affect_dist3=True,
         )
-    elif algorithm == "NT":
+    elif algorithm == "BT_NT":
+        # Bootstrap alg
+        spillover_applied = coastal_fix(
+            conc=cdr_conc,
+            missing_flag_value=np.nan,
+            land_mask=land_mask,
+            minic=10,
+        )
+
+        # NT alg
         shoremap = _get_25km_shoremap(hemisphere=hemisphere)
         minic = _get_25km_minic(hemisphere=hemisphere)
         spillover_applied = apply_nt_spillover(
-            conc=cdr_conc,
+            conc=spillover_applied,
             shoremap=shoremap,
             minic=minic,
         )

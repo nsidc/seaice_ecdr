@@ -299,7 +299,7 @@ def compute_initial_daily_ecdr_dataset(
     date: dt.date,
     hemisphere: Hemisphere,
     tb_data: EcdrTbData,
-    land_spillover_alg: Literal["NT2", "NT"],
+    land_spillover_alg: Literal["NT2", "NT_BT"],
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -679,6 +679,7 @@ def compute_initial_daily_ecdr_dataset(
         hemisphere=hemisphere,
         tb_data=tb_data,
         algorithm=land_spillover_alg,
+        land_mask=non_ocean_mask.data,
     )
     spillover_applied = np.full((ydim, xdim), False, dtype=bool)
     spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = True
@@ -836,7 +837,7 @@ def initial_daily_ecdr_dataset(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    land_spillover_alg: Literal["NT2", "NT"],
+    land_spillover_alg: Literal["NT2", "NT_BT"],
 ) -> xr.Dataset:
     """Create xr dataset containing the first pass of daily enhanced CDR."""
     # TODO: if/else should be temporary. It's just a way to clearly divide how a
@@ -973,7 +974,7 @@ def make_idecdr_netcdf(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
     excluded_fields: Iterable[str],
-    land_spillover_alg: Literal["NT2", "NT"],
+    land_spillover_alg: Literal["NT2", "NT_BT"],
     overwrite_ide: bool = False,
 ) -> None:
     platform = get_platform_by_date(date)
@@ -1012,7 +1013,7 @@ def create_idecdr_for_date(
     intermediate_output_dir: Path,
     overwrite_ide: bool = False,
     verbose_intermed_ncfile: bool = False,
-    land_spillover_alg: Literal["NT2", "NT"] = "NT",
+    land_spillover_alg: Literal["NT2", "NT_BT"] = "NT_BT",
 ) -> None:
     excluded_fields = []
     if not verbose_intermed_ncfile:

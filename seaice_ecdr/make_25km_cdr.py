@@ -23,12 +23,12 @@ from seaice_ecdr.util import get_complete_output_dir
 
 def get_25km_daily_cdr(
     *,
-    alg: Literal["NT", "NT2"],
+    alg: Literal["BT_NT", "NT2"],
     hemisphere: Hemisphere,
     platform: Literal["am2", "F17"],
 ) -> xr.Dataset:
     """Return the 25km CDR for the given algorithm."""
-    if alg == "NT":
+    if alg == "BT_NT":
         base_dir = Path("/share/apps/G02202_V5/25km/NT")
     elif alg == "NT2":
         base_dir = Path("/share/apps/G02202_V5/25km/NT2")
@@ -51,5 +51,5 @@ def get_25km_daily_cdr(
 
 
 if __name__ == "__main__":
-    f17_nt = get_25km_daily_cdr(alg="NT", hemisphere="north", platform="F17")
+    f17_nt = get_25km_daily_cdr(alg="BT_NT", hemisphere="north", platform="F17")
     breakpoint()

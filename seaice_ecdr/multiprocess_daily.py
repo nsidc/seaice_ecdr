@@ -84,8 +84,8 @@ from seaice_ecdr.util import (
 @click.option(
     "--land-spillover-alg",
     required=False,
-    type=click.Choice(["NT", "NT2"]),
-    default="NT",
+    type=click.Choice(["BT_NT", "NT2"]),
+    default="BT_NT",
 )
 @click.option(
     "--resolution",
@@ -98,7 +98,7 @@ def cli(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     overwrite: bool,
-    land_spillover_alg: Literal["NT", "NT2"],
+    land_spillover_alg: Literal["BT_NT", "NT2"],
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ):
     dates = list(date_range(start_date=start_date, end_date=end_date))
