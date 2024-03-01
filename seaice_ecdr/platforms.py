@@ -116,6 +116,8 @@ def get_platform_start_dates() -> OrderedDict[dt.date, SUPPORTED_SAT]:
                 f"The forced platform ({forced_platform}) is not a supported platform."
             )
 
+        forced_platform = cast(SUPPORTED_SAT, forced_platform)
+
         first_date_of_forced_platform = PLATFORM_AVAILABILITY[forced_platform][
             "first_date"
         ]
