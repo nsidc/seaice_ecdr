@@ -7,8 +7,8 @@ mkdir -p $BT_NT_BASE_DIR
 NT2_BASE_DIR="/share/apps/G02202_V5/25km/NT2"
 mkdir -p $NT2_BASE_DIR
 
-START_DATE="2023-02-15"
-END_DATE="2023-02-20"
+START_DATE="2020-01-01"
+END_DATE="2021-01-01"
 HEMISPHERE="north"
 
 # NT method first
