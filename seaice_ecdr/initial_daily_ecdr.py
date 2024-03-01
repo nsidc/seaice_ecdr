@@ -23,7 +23,6 @@ from loguru import logger
 from pm_icecon.bt.params.nsidc0007 import get_smmr_params
 from pm_icecon.bt.xfer_tbs import xfer_rss_tbs
 from pm_icecon.errors import UnexpectedSatelliteError
-from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
 from pm_icecon.land_spillover import apply_nt2_land_spillover
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
@@ -329,7 +328,6 @@ def compute_initial_daily_ecdr_dataset(
     date: dt.date,
     hemisphere: Hemisphere,
     tb_data: EcdrTbData,
-    fill_the_pole_hole: bool = False,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -707,35 +705,6 @@ def compute_initial_daily_ecdr_dataset(
     cdr_conc = land_spillover(cdr_conc=cdr_conc, hemisphere=hemisphere, tb_data=tb_data)
     spillover_applied = np.full((ydim, xdim), False, dtype=bool)
     spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = True
-
-    # Fill the NH pole hole
-    # TODO: Should check for NH and have grid-dependent filling scheme
-    # NOTE: Usually, the pole hole will be filled in pass 3 ("complete_daily"),
-    #       along with melt onset calc.
-    # TODO: this pole-hole filling method isn't currently used. Instead, we fill
-    # the pole hole in the temporal composite daily code.
-    if fill_the_pole_hole and hemisphere == NORTH:
-        cdr_conc_pre_polefill = cdr_conc.copy()
-        platform = get_platform_by_date(date)
-        near_pole_hole_mask = nh_polehole_mask(
-            date=date,
-            resolution=tb_data.resolution,
-            sat=platform,
-        )
-        cdr_conc = fill_pole_hole(
-            conc=cdr_conc,
-            near_pole_hole_mask=near_pole_hole_mask.data,
-        )
-        logger.debug("Filled pole hole")
-        is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
-        if "spatial_interpolation_bitmask" in ecdr_ide_ds.variables.keys():
-            ecdr_ide_ds["spatial_interpolation_flag"] = ecdr_ide_ds[
-                "spatial_interpolation_flag"
-            ].where(
-                ~is_pole_filled,
-                other=TB_SPATINT_BITMASK_MAP["pole_filled"],
-            )
-            logger.debug("Updated spatial_interpolation with pole hole value")
 
     # Mask out non-ocean pixels and clamp conc to between 10-100%.
     # TODO: These values should be in a configuration file/structure
