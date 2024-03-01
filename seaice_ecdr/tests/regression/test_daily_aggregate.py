@@ -5,29 +5,43 @@ from typing import Final
 import xarray as xr
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr.checksum import get_checksum_filepath
-from seaice_ecdr.complete_daily_ecdr import read_or_create_and_read_standard_cdecdr_ds
+from seaice_ecdr.complete_daily_ecdr import make_standard_cdecdr_netcdf, read_cdecdr_ds
 from seaice_ecdr.daily_aggregate import (
     get_daily_aggregate_filepath,
     make_daily_aggregate_netcdf_for_year,
 )
+from seaice_ecdr.util import get_complete_output_dir
 
 
 def test_daily_aggreagate_matches_daily_data(tmpdir):
-    tmpdir_path = Path(tmpdir)
+    base_output_dir = Path(tmpdir)
+    hemisphere: Final = NORTH
+    complete_output_dir = get_complete_output_dir(
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        is_nrt=False,
+    )
 
     year = 2022
     resolution: Final = "12.5"
-    hemisphere: Final = NORTH
 
     # First, ensure some daily data is created.
     datasets = []
     for day in range(1, 3 + 1):
-        ds = read_or_create_and_read_standard_cdecdr_ds(
-            date=dt.date(year, 3, day),
+        date = dt.date(year, 3, day)
+        make_standard_cdecdr_netcdf(
+            date=date,
             hemisphere=hemisphere,
             resolution=resolution,
-            ecdr_data_dir=tmpdir_path,
+            base_output_dir=base_output_dir,
+        )
+
+        ds = read_cdecdr_ds(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            complete_output_dir=complete_output_dir,
+            is_nrt=False,
         )
         datasets.append(ds)
 
@@ -36,14 +50,14 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
         year=year,
         hemisphere=hemisphere,
         resolution=resolution,
-        ecdr_data_dir=tmpdir_path,
+        complete_output_dir=complete_output_dir,
     )
 
     # Read back in the data.
     aggregate_filepath = get_daily_aggregate_filepath(
         hemisphere=hemisphere,
         resolution=resolution,
-        ecdr_data_dir=tmpdir_path,
+        complete_output_dir=complete_output_dir,
         start_date=dt.date(year, 3, 1),
         end_date=dt.date(year, 3, 3),
     )
@@ -52,11 +66,11 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
     # they match the daily final datasets.
     agg_ds = xr.open_dataset(aggregate_filepath)
 
-    # Assert that the checksums exist where we expect them to be.
-    checksum_filepath = get_checksum_filepath(
-        input_filepath=aggregate_filepath,
-        ecdr_data_dir=tmpdir_path,
-        product_type="aggregate",
+    checksum_filepath = (
+        complete_output_dir
+        / "checksums"
+        / "aggregate"
+        / (aggregate_filepath.name + ".mnf")
     )
     assert checksum_filepath.is_file()
 

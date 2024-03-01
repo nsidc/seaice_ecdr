@@ -11,16 +11,9 @@ LOGS_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_logs"
 
 # TODO: dev-specific directories for the outputs!
 
-# Outputs from the `seaice_ecdr` go to these locations.
-BASE_OUTPUT_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_outputs"
-
-# Daily initial/intermiedate output for 'standard' (not NRT) ECDR processing
-# (e.g, using input data from AU_SI12)
-STANDARD_BASE_OUTPUT_DIR = BASE_OUTPUT_DIR / "standard"
-
-# Daily initial/intermiedate output for 'Near Real Time' (NRT) ECDR processing
-# (using data from AU_SI12_NRT_R04)
-NRT_BASE_OUTPUT_DIR = BASE_OUTPUT_DIR / "nrt"
+# Outputs from the `seaice_ecdr` go to these locations by default. The CLI
+# provides the option to change this.
+DEFAULT_BASE_OUTPUT_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_outputs"
 
 # Location of LANCE AMSR2 NRT data files:
 # TODO: nest the subdir under an `ecdr_inputs` or similar?

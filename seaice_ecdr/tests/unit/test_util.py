@@ -12,6 +12,7 @@ from seaice_ecdr.multiprocess_daily import get_dates_by_year
 from seaice_ecdr.util import (
     date_range,
     get_num_missing_pixels,
+    nrt_daily_filename,
     raise_error_for_dates,
     sat_from_filename,
     standard_daily_aggregate_filename,
@@ -36,6 +37,16 @@ def test_daily_filename_south():
 
     actual = standard_daily_filename(
         hemisphere=SOUTH, resolution="12.5", sat="am2", date=dt.date(2021, 1, 1)
+    )
+
+    assert actual == expected
+
+
+def test_nrt_daily_filename():
+    expected = f"sic_psn12.5_20210101_am2_{ECDR_PRODUCT_VERSION}_P.nc"
+
+    actual = nrt_daily_filename(
+        hemisphere=NORTH, resolution="12.5", sat="am2", date=dt.date(2021, 1, 1)
     )
 
     assert actual == expected

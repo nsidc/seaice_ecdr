@@ -5,12 +5,12 @@ import itertools
 import pytest
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr.tests.integration import ecdr_data_dir_test_path  # noqa
+from seaice_ecdr.tests.integration import base_output_dir_test_path  # noqa
 from seaice_ecdr.validation import validate_outputs
 
 
 @pytest.mark.order(after="test_monthly.py::test_make_monthly_nc")
-def test_validate_outputs(ecdr_data_dir_test_path):  # noqa
+def test_validate_outputs(base_output_dir_test_path):  # noqa
     for product_type, hemisphere in itertools.product(
         # TODO: currently just iterate over NORTH, because that's what data is
         # created for in the depdendent tests. We may consider creating monthly
@@ -23,7 +23,7 @@ def test_validate_outputs(ecdr_data_dir_test_path):  # noqa
             start_date=dt.date(2022, 3, 1),
             end_date=dt.date(2022, 3, 4),
             product=product_type,  # type: ignore[arg-type]
-            ecdr_data_dir=ecdr_data_dir_test_path,
+            base_output_dir=base_output_dir_test_path,
         )
 
         assert outputs["error_filepath"].is_file()

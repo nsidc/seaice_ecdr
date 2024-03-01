@@ -14,11 +14,12 @@ from pm_tb_data._types import Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import get_ancillary_ds
 from seaice_ecdr.checksum import write_checksum_file
-from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
 from seaice_ecdr.util import (
+    get_complete_output_dir,
     sat_from_filename,
     standard_monthly_aggregate_filename,
 )
@@ -28,10 +29,10 @@ def _get_monthly_complete_filepaths(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
+    complete_output_dir: Path,
 ) -> list[Path]:
     monthly_dir = get_monthly_dir(
-        ecdr_data_dir=ecdr_data_dir,
+        complete_output_dir=complete_output_dir,
     )
 
     # TODO: the monthly filenames are encoded in the
@@ -54,9 +55,9 @@ def get_monthly_aggregate_filepath(
     start_month: int,
     end_year: int,
     end_month: int,
-    ecdr_data_dir: Path,
+    complete_output_dir: Path,
 ) -> Path:
-    output_dir = ecdr_data_dir / "aggregate"
+    output_dir = complete_output_dir / "aggregate"
     output_dir.mkdir(exist_ok=True)
 
     output_fn = standard_monthly_aggregate_filename(
@@ -116,7 +117,7 @@ def _update_ncrcat_monthly_ds(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--ecdr-data-dir",
+    "--base-output-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -126,7 +127,7 @@ def _update_ncrcat_monthly_ds(
         resolve_path=True,
         path_type=Path,
     ),
-    default=STANDARD_BASE_OUTPUT_DIR,
+    default=DEFAULT_BASE_OUTPUT_DIR,
     help=(
         "Base output directory for standard ECDR outputs."
         " Subdirectories are created for outputs of"
@@ -143,19 +144,24 @@ def _update_ncrcat_monthly_ds(
 def cli(
     *,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> None:
     try:
+        complete_output_dir = get_complete_output_dir(
+            base_output_dir=base_output_dir,
+            hemisphere=hemisphere,
+            is_nrt=False,
+        )
         monthly_filepaths = _get_monthly_complete_filepaths(
             hemisphere=hemisphere,
-            ecdr_data_dir=ecdr_data_dir,
+            complete_output_dir=complete_output_dir,
             resolution=resolution,
         )
 
         if not monthly_filepaths:
             raise RuntimeError(
-                f"Found no monthly files to aggregate for {hemisphere=} {resolution=} {ecdr_data_dir=}."
+                f"Found no monthly files to aggregate for {hemisphere=} {resolution=} {base_output_dir=}."
             )
 
         # Create a temporary dir to store a WIP netcdf file. We do this because
@@ -187,7 +193,7 @@ def cli(
                 start_month=start_date.month,
                 end_year=end_date.year,
                 end_month=end_date.month,
-                ecdr_data_dir=ecdr_data_dir,
+                complete_output_dir=complete_output_dir,
             )
             ds.to_netcdf(
                 output_filepath,
@@ -201,14 +207,17 @@ def cli(
         # Write checksum file for the aggregate monthly output.
         write_checksum_file(
             input_filepath=output_filepath,
-            ecdr_data_dir=ecdr_data_dir,
-            product_type="aggregate",
+            output_dir=base_output_dir
+            / "complete"
+            / hemisphere
+            / "checksums"
+            / "aggregate",
         )
 
         # Cleanup previously existing monthly aggregates.
         existing_fn_pattern = f"sic_ps{hemisphere[0]}{resolution}_??????-??????_*.nc"
         existing_filepaths = list(
-            (ecdr_data_dir / "aggregate").glob(existing_fn_pattern)
+            (base_output_dir / "aggregate").glob(existing_fn_pattern)
         )
         for existing_filepath in existing_filepaths:
             if existing_filepath != output_filepath:

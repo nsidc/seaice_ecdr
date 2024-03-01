@@ -10,11 +10,16 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.complete_daily_ecdr import create_standard_ecdr_for_dates
-from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import create_idecdr_for_date
 from seaice_ecdr.platforms import get_first_platform_start_date
 from seaice_ecdr.temporal_composite_daily import make_tiecdr_netcdf
-from seaice_ecdr.util import date_range, get_dates_by_year, raise_error_for_dates
+from seaice_ecdr.util import (
+    date_range,
+    get_dates_by_year,
+    get_intermediate_output_dir,
+    raise_error_for_dates,
+)
 
 
 @click.command(name="multiprocess-daily")
@@ -53,7 +58,7 @@ from seaice_ecdr.util import date_range, get_dates_by_year, raise_error_for_date
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--ecdr-data-dir",
+    "--base-output-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -63,7 +68,7 @@ from seaice_ecdr.util import date_range, get_dates_by_year, raise_error_for_date
         resolve_path=True,
         path_type=Path,
     ),
-    default=STANDARD_BASE_OUTPUT_DIR,
+    default=DEFAULT_BASE_OUTPUT_DIR,
     help=(
         "Base output directory for standard ECDR outputs."
         " Subdirectories are created for outputs of"
@@ -79,7 +84,7 @@ def cli(
     start_date: dt.date,
     end_date: dt.date,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     overwrite: bool,
 ):
     dates = list(date_range(start_date=start_date, end_date=end_date))
@@ -95,13 +100,19 @@ def cli(
         date_range(start_date=initial_start_date, end_date=initial_end_date)
     )
 
+    intermediate_output_dir = get_intermediate_output_dir(
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        is_nrt=False,
+    )
+
     resolution: Final = "12.5"
 
     _create_idecdr_wrapper = partial(
         create_idecdr_for_date,
         hemisphere=hemisphere,
         resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
+        intermediate_output_dir=intermediate_output_dir,
         overwrite_ide=overwrite,
     )
 
@@ -109,7 +120,7 @@ def cli(
         make_tiecdr_netcdf,
         hemisphere=hemisphere,
         resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
+        intermediate_output_dir=intermediate_output_dir,
         overwrite_tie=overwrite,
     )
 
@@ -117,7 +128,7 @@ def cli(
         create_standard_ecdr_for_dates,
         hemisphere=hemisphere,
         resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
+        base_output_dir=base_output_dir,
         overwrite_cde=overwrite,
     )
 

@@ -42,12 +42,12 @@ from seaice_ecdr.ancillary import (
     nh_polehole_mask,
 )
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
 from seaice_ecdr.tb_data import EXPECTED_ECDR_TB_NAMES, EcdrTbData, get_ecdr_tb_data
-from seaice_ecdr.util import standard_daily_filename
+from seaice_ecdr.util import get_intermediate_output_dir, standard_daily_filename
 
 
 def cdr_bootstrap(
@@ -959,10 +959,10 @@ def write_ide_netcdf(
 
 
 @cache
-def get_idecdr_dir(*, ecdr_data_dir: Path) -> Path:
+def get_idecdr_dir(*, intermediate_output_dir: Path) -> Path:
     """Daily initial output dir for ECDR processing."""
-    idecdr_dir = ecdr_data_dir / "initial_daily"
-    idecdr_dir.mkdir(exist_ok=True)
+    idecdr_dir = intermediate_output_dir / "initial_daily"
+    idecdr_dir.mkdir(parents=True, exist_ok=True)
 
     return idecdr_dir
 
@@ -973,7 +973,7 @@ def get_idecdr_filepath(
     platform,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
+    intermediate_output_dir: Path,
 ) -> Path:
     """Yields the filepath of the pass1 -- idecdr -- intermediate file."""
 
@@ -984,7 +984,9 @@ def get_idecdr_filepath(
         resolution=resolution,
     )
     idecdr_fn = "idecdr_" + standard_fn
-    idecdr_dir = get_idecdr_dir(ecdr_data_dir=ecdr_data_dir)
+    idecdr_dir = get_idecdr_dir(
+        intermediate_output_dir=intermediate_output_dir,
+    )
     idecdr_path = idecdr_dir / idecdr_fn
 
     return idecdr_path
@@ -995,7 +997,7 @@ def make_idecdr_netcdf(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
+    intermediate_output_dir: Path,
     excluded_fields: Iterable[str],
     overwrite_ide: bool = False,
 ) -> None:
@@ -1004,7 +1006,7 @@ def make_idecdr_netcdf(
         date=date,
         platform=platform,
         hemisphere=hemisphere,
-        ecdr_data_dir=ecdr_data_dir,
+        intermediate_output_dir=intermediate_output_dir,
         resolution=resolution,
     )
 
@@ -1031,7 +1033,7 @@ def create_idecdr_for_date(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
+    intermediate_output_dir: Path,
     overwrite_ide: bool = False,
     verbose_intermed_ncfile: bool = False,
 ) -> None:
@@ -1060,7 +1062,7 @@ def create_idecdr_for_date(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
+            intermediate_output_dir=intermediate_output_dir,
             excluded_fields=excluded_fields,
             overwrite_ide=overwrite_ide,
         )
@@ -1093,7 +1095,7 @@ def create_idecdr_for_date(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--ecdr-data-dir",
+    "--base-output-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -1103,7 +1105,7 @@ def create_idecdr_for_date(
         resolve_path=True,
         path_type=Path,
     ),
-    default=STANDARD_BASE_OUTPUT_DIR,
+    default=DEFAULT_BASE_OUTPUT_DIR,
     help=(
         "Base output directory for standard ECDR outputs."
         " Subdirectories are created for outputs of"
@@ -1132,7 +1134,7 @@ def cli(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     verbose_intermed_ncfile: bool,
 ) -> None:
@@ -1142,11 +1144,15 @@ def cli(
     projection, resolution, and bounds), and TBtype (TB type includes source and
     methodology for getting those TBs onto the grid)
     """
-
+    intermediate_output_dir = get_intermediate_output_dir(
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        is_nrt=False,
+    )
     create_idecdr_for_date(
         hemisphere=hemisphere,
         date=date,
         resolution=resolution,
-        ecdr_data_dir=ecdr_data_dir,
+        intermediate_output_dir=intermediate_output_dir,
         verbose_intermed_ncfile=verbose_intermed_ncfile,
     )

@@ -16,11 +16,12 @@ from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import get_ancillary_ds
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
-from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
 from seaice_ecdr.platforms import get_first_platform_start_date
 from seaice_ecdr.util import (
+    get_complete_output_dir,
     sat_from_filename,
     standard_daily_aggregate_filename,
 )
@@ -31,7 +32,7 @@ from seaice_ecdr.util import (
 def _get_daily_complete_filepaths_for_year(
     *,
     year: int,
-    ecdr_data_dir: Path,
+    complete_output_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
@@ -42,7 +43,8 @@ def _get_daily_complete_filepaths_for_year(
             date=period.to_timestamp().date(),
             hemisphere=hemisphere,
             resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
+            complete_output_dir=complete_output_dir,
+            is_nrt=False,
         )
         if expected_fp.is_file():
             data_list.append(expected_fp)
@@ -59,12 +61,12 @@ def get_daily_aggregate_filepath(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
+    complete_output_dir: Path,
     start_date: dt.date,
     end_date: dt.date,
 ) -> Path:
-    output_dir = ecdr_data_dir / "aggregate"
-    output_dir.mkdir(exist_ok=True)
+    output_dir = complete_output_dir / "aggregate"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     output_fn = standard_daily_aggregate_filename(
         hemisphere=hemisphere,
@@ -123,12 +125,12 @@ def make_daily_aggregate_netcdf_for_year(
     year: int,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ecdr_data_dir: Path,
+    complete_output_dir: Path,
 ) -> None:
     try:
         daily_filepaths = _get_daily_complete_filepaths_for_year(
             year=year,
-            ecdr_data_dir=ecdr_data_dir,
+            complete_output_dir=complete_output_dir,
             hemisphere=hemisphere,
             resolution=resolution,
         )
@@ -157,7 +159,7 @@ def make_daily_aggregate_netcdf_for_year(
                 resolution=resolution,
                 start_date=pd.Timestamp(daily_ds.time.min().item()).date(),
                 end_date=pd.Timestamp(daily_ds.time.max().item()).date(),
-                ecdr_data_dir=ecdr_data_dir,
+                complete_output_dir=complete_output_dir,
             )
 
             daily_ds.to_netcdf(
@@ -170,10 +172,10 @@ def make_daily_aggregate_netcdf_for_year(
         logger.success(f"Wrote daily aggregate file for year={year} to {output_path}")
 
         # Write checksum file for the aggregate daily output.
+        checksum_output_dir = complete_output_dir / "checksums" / "aggregate"
         write_checksum_file(
             input_filepath=output_path,
-            ecdr_data_dir=ecdr_data_dir,
-            product_type="aggregate",
+            output_dir=checksum_output_dir,
         )
     except Exception as e:
         logger.exception(f"Failed to create daily aggregate for {year=} {hemisphere=}")
@@ -194,7 +196,7 @@ def make_daily_aggregate_netcdf_for_year(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--ecdr-data-dir",
+    "--base-output-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -204,7 +206,7 @@ def make_daily_aggregate_netcdf_for_year(
         resolve_path=True,
         path_type=Path,
     ),
-    default=STANDARD_BASE_OUTPUT_DIR,
+    default=DEFAULT_BASE_OUTPUT_DIR,
     help=(
         "Base output directory for standard ECDR outputs."
         " Subdirectories are created for outputs of"
@@ -229,13 +231,18 @@ def cli(
     *,
     year: int,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     end_year: int | None,
 ) -> None:
     if end_year is None:
         end_year = year
 
+    complete_output_dir = get_complete_output_dir(
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        is_nrt=False,
+    )
     failed_years = []
     for year_to_process in range(year, end_year + 1):
         try:
@@ -243,7 +250,7 @@ def cli(
                 year=year_to_process,
                 hemisphere=hemisphere,
                 resolution=resolution,
-                ecdr_data_dir=ecdr_data_dir,
+                complete_output_dir=complete_output_dir,
             )
         except Exception:
             failed_years.append(year_to_process)

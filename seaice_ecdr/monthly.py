@@ -39,9 +39,10 @@ from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.ancillary import flag_value_for_meaning
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
-from seaice_ecdr.constants import STANDARD_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.util import (
+    get_complete_output_dir,
     get_num_missing_pixels,
     sat_from_filename,
     standard_monthly_filename,
@@ -72,7 +73,7 @@ def _get_daily_complete_filepaths_for_month(
     *,
     year: int,
     month: int,
-    ecdr_data_dir: Path,
+    complete_output_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
@@ -88,7 +89,8 @@ def _get_daily_complete_filepaths_for_month(
             date=period.to_timestamp().date(),
             hemisphere=hemisphere,
             resolution=resolution,
-            ecdr_data_dir=ecdr_data_dir,
+            complete_output_dir=complete_output_dir,
+            is_nrt=False,
         )
         if expected_fp.is_file():
             data_list.append(expected_fp)
@@ -123,7 +125,7 @@ def get_daily_ds_for_month(
     *,
     year: int,
     month: int,
-    ecdr_data_dir: Path,
+    complete_output_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
@@ -136,7 +138,7 @@ def get_daily_ds_for_month(
     data_list = _get_daily_complete_filepaths_for_month(
         year=year,
         month=month,
-        ecdr_data_dir=ecdr_data_dir,
+        complete_output_dir=complete_output_dir,
         hemisphere=hemisphere,
         resolution=resolution,
     )
@@ -585,9 +587,9 @@ def make_monthly_ds(
     return monthly_ds.compute()
 
 
-def get_monthly_dir(*, ecdr_data_dir: Path) -> Path:
-    monthly_dir = ecdr_data_dir / "monthly"
-    monthly_dir.mkdir(exist_ok=True)
+def get_monthly_dir(*, complete_output_dir: Path) -> Path:
+    monthly_dir = complete_output_dir / "monthly"
+    monthly_dir.mkdir(parents=True, exist_ok=True)
 
     return monthly_dir
 
@@ -599,9 +601,11 @@ def get_monthly_filepath(
     sat: SUPPORTED_SAT,
     year: int,
     month: int,
-    ecdr_data_dir: Path,
+    complete_output_dir: Path,
 ) -> Path:
-    output_dir = get_monthly_dir(ecdr_data_dir=ecdr_data_dir)
+    output_dir = get_monthly_dir(
+        complete_output_dir=complete_output_dir,
+    )
 
     output_fn = standard_monthly_filename(
         hemisphere=hemisphere,
@@ -621,13 +625,13 @@ def make_monthly_nc(
     year: int,
     month: int,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    complete_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> Path:
     daily_ds_for_month = get_daily_ds_for_month(
         year=year,
         month=month,
-        ecdr_data_dir=ecdr_data_dir,
+        complete_output_dir=complete_output_dir,
         hemisphere=hemisphere,
         resolution=resolution,
     )
@@ -640,7 +644,7 @@ def make_monthly_nc(
         sat=sat,
         year=year,
         month=month,
-        ecdr_data_dir=ecdr_data_dir,
+        complete_output_dir=complete_output_dir,
     )
 
     monthly_ds = make_monthly_ds(
@@ -668,8 +672,7 @@ def make_monthly_nc(
     # Write checksum file for the monthly output.
     write_checksum_file(
         input_filepath=output_path,
-        ecdr_data_dir=ecdr_data_dir,
-        product_type="monthly",
+        output_dir=complete_output_dir / "checksums" / "monthly",
     )
 
     return output_path
@@ -709,7 +712,7 @@ def make_monthly_nc(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
-    "--ecdr-data-dir",
+    "--base-output-dir",
     required=True,
     type=click.Path(
         exists=True,
@@ -719,7 +722,7 @@ def make_monthly_nc(
         resolve_path=True,
         path_type=Path,
     ),
-    default=STANDARD_BASE_OUTPUT_DIR,
+    default=DEFAULT_BASE_OUTPUT_DIR,
     help=(
         "Base output directory for standard ECDR outputs."
         " Subdirectories are created for outputs of"
@@ -740,7 +743,7 @@ def cli(
     end_year: int | None,
     end_month: int | None,
     hemisphere: Hemisphere,
-    ecdr_data_dir: Path,
+    base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ):
     if end_year is None:
@@ -748,6 +751,11 @@ def cli(
     if end_month is None:
         end_month = month
 
+    complete_output_dir = get_complete_output_dir(
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        is_nrt=False,
+    )
     error_periods = []
     for period in pd.period_range(
         start=pd.Period(year=year, month=month, freq="M"),
@@ -758,7 +766,7 @@ def cli(
             make_monthly_nc(
                 year=period.year,
                 month=period.month,
-                ecdr_data_dir=ecdr_data_dir,
+                complete_output_dir=complete_output_dir,
                 hemisphere=hemisphere,
                 resolution=resolution,
             )
