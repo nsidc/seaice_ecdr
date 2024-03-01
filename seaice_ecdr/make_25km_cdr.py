@@ -11,6 +11,7 @@ We want to be able to:
 * 
 """
 
+import datetime as dt
 from pathlib import Path
 from typing import Literal
 
@@ -29,9 +30,11 @@ def get_25km_daily_cdr(
 ) -> xr.Dataset:
     """Return the 25km CDR for the given algorithm."""
     if alg == "BT_NT":
-        base_dir = Path("/share/apps/G02202_V5/25km/NT")
+        base_dir = Path("/share/apps/G02202_V5/25km/BT_NT")
     elif alg == "NT2":
         base_dir = Path("/share/apps/G02202_V5/25km/NT2")
+    else:
+        raise RuntimeError(f"Unrecognized alg {alg}")
 
     complete_dir = get_complete_output_dir(
         base_output_dir=base_dir, hemisphere=hemisphere, is_nrt=False
@@ -46,6 +49,10 @@ def get_25km_daily_cdr(
         raise RuntimeError(f"No files found matching {glob_pattern} in {base_dir}")
 
     xr_ds = xr.open_mfdataset(matching_files, engine="rasterio")
+    # Convert `DatetimeGregorian` to native date. Not sure why this happens when engine is rasterio.
+    xr_ds["time"] = [
+        dt.date(thing.year, thing.month, thing.day) for thing in xr_ds.time.values
+    ]
 
     return xr_ds
 
