@@ -2,6 +2,21 @@
 name = "seaice_ecdr"
 version = "0.1.0"
 
+[tool.bumpversion]
+current_version = "0.1.0"
+commit = false
+tag = false
+
+[[tool.bumpversion.files]]
+filename = "seaice_ecdr/__init__.py"
+search   = '__version__ = "v{current_version}"'
+replace  = '__version__ = "v{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
 [tool.black]
 target-version = ["py310"]
 

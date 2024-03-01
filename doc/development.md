@@ -115,7 +115,43 @@ To create the surface/geo mask netcdf files (containing e.g., `surface_type` and
 [scripts/surface_geo_masks/README.md](scripts/surface_geo_masks/README.md)
 
 
-## Making a data release
+## Making a release and updating versions
+
+### Making a code release
+
+Note that, depending on the changes made, a new version of G02202 may also be
+appropriate. Please review the secion on "Making a data release" if a new data
+release is also needed.
+
+#### Versioning the code
+
+First, appropriately version the code with `bumpversion` (see
+[bump-my-version](https://github.com/callowayproject/bump-my-version)).
+
+To bump the specified part of the version:
+
+```
+$ bumpversion bump {major|minor|patch}
+```
+
+`bumpversion` configuration can be found in the `pyproject.toml`.
+
+#### Updating the CHANGELOG
+
+Each PR should update the CHANGELOG to reflect the version of the ECDR that's
+being released/prepared.
+
+#### Releasing a new version
+
+To release a new version of the software, create a tag for the version you wish
+to release and push that tag to the GitHub repo.
+
+TODO: on tags, build and push a tagged Docker image and/or conda library. This
+code is still in development and a formal release artifact is not currently
+being created.
+
+
+### Making a data release
 
 When making a new release of G02202 based on this code:
 
