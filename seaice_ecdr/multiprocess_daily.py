@@ -3,11 +3,12 @@ from functools import partial
 from itertools import chain
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Final, get_args
+from typing import Literal, get_args
 
 import click
 from pm_tb_data._types import Hemisphere
 
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.complete_daily_ecdr import create_standard_ecdr_for_dates
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
@@ -80,12 +81,25 @@ from seaice_ecdr.util import (
     "--overwrite",
     is_flag=True,
 )
+@click.option(
+    "--land-spillover-alg",
+    required=False,
+    type=click.Choice(["NT", "NT2"]),
+    default="NT",
+)
+@click.option(
+    "--resolution",
+    required=True,
+    type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
+)
 def cli(
     start_date: dt.date,
     end_date: dt.date,
     hemisphere: Hemisphere,
     base_output_dir: Path,
     overwrite: bool,
+    land_spillover_alg: Literal["NT", "NT2"],
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ):
     dates = list(date_range(start_date=start_date, end_date=end_date))
     dates_by_year = get_dates_by_year(dates)
@@ -106,14 +120,13 @@ def cli(
         is_nrt=False,
     )
 
-    resolution: Final = "12.5"
-
     _create_idecdr_wrapper = partial(
         create_idecdr_for_date,
         hemisphere=hemisphere,
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
         overwrite_ide=overwrite,
+        land_spillover_alg=land_spillover_alg,
     )
 
     _create_tiecdr_wrapper = partial(

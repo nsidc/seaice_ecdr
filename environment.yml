@@ -21,6 +21,8 @@ dependencies:
   - opencv ~=4.8.0
   - pm_tb_data ~=0.4.0
   - pm_icecon ~=0.3.1
+  - leafmap
+  - rioxarray
 
   #############################
   # Non-imported dependencies #
@@ -33,6 +35,8 @@ dependencies:
   - mypy ==1.7.0
   - pyfakefs ~=5.2.4
   - pytest-order ~=1.0.1
+  # required by leafmap
+  - localtileserver
 
   # other utilities
   - bump-my-version ~=0.10.0

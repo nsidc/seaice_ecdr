@@ -299,7 +299,7 @@ def compute_initial_daily_ecdr_dataset(
     date: dt.date,
     hemisphere: Hemisphere,
     tb_data: EcdrTbData,
-    land_spillover_alg: Literal["NT2", "NT"] = "NT2",
+    land_spillover_alg: Literal["NT2", "NT"],
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -836,6 +836,7 @@ def initial_daily_ecdr_dataset(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    land_spillover_alg: Literal["NT2", "NT"],
 ) -> xr.Dataset:
     """Create xr dataset containing the first pass of daily enhanced CDR."""
     # TODO: if/else should be temporary. It's just a way to clearly divide how a
@@ -858,6 +859,7 @@ def initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         tb_data=tb_data,
+        land_spillover_alg=land_spillover_alg,
     )
 
     # If the computed ide_ds is not on the desired grid (ie resolution),
@@ -971,6 +973,7 @@ def make_idecdr_netcdf(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
     excluded_fields: Iterable[str],
+    land_spillover_alg: Literal["NT2", "NT"],
     overwrite_ide: bool = False,
 ) -> None:
     platform = get_platform_by_date(date)
@@ -988,6 +991,7 @@ def make_idecdr_netcdf(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
+            land_spillover_alg=land_spillover_alg,
         )
 
         written_ide_ncfile = write_ide_netcdf(
@@ -1008,6 +1012,7 @@ def create_idecdr_for_date(
     intermediate_output_dir: Path,
     overwrite_ide: bool = False,
     verbose_intermed_ncfile: bool = False,
+    land_spillover_alg: Literal["NT2", "NT"] = "NT",
 ) -> None:
     excluded_fields = []
     if not verbose_intermed_ncfile:
@@ -1037,6 +1042,7 @@ def create_idecdr_for_date(
             intermediate_output_dir=intermediate_output_dir,
             excluded_fields=excluded_fields,
             overwrite_ide=overwrite_ide,
+            land_spillover_alg=land_spillover_alg,
         )
 
     except Exception as e:
