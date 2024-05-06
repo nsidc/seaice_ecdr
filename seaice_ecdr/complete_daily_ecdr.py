@@ -614,11 +614,18 @@ def make_standard_cdecdr_netcdf(
         # generates the necessary intermediate files for the target date, and
         # then this code would be solely responsible for reading the previous
         # day's complete field.
-        if hemisphere == NORTH and date_in_nh_melt_season(
-            date=date - dt.timedelta(days=1)
+
+        # Temporary code to skip creation of final data before 20120703 for
+        # milestone 0 runs.
+        day_before = date - dt.timedelta(days=1)
+        day_before_20120703 = day_before < dt.date(2012, 7, 3)
+        if (
+            hemisphere == NORTH
+            and not day_before_20120703
+            and date_in_nh_melt_season(date=day_before)
         ):
             make_standard_cdecdr_netcdf(
-                date=date - dt.timedelta(days=1),
+                date=day_before,
                 hemisphere=hemisphere,
                 resolution=resolution,
                 base_output_dir=base_output_dir,
