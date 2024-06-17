@@ -6,7 +6,7 @@ import copy
 import datetime as dt
 from functools import cache
 from pathlib import Path
-from typing import Iterable, cast, get_args
+from typing import Iterable, Literal, cast, get_args
 
 import click
 import numpy as np
@@ -127,6 +127,7 @@ def read_or_create_and_read_standard_tiecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
+    land_spillover_alg: Literal["BT_NT", "NT2"],
     overwrite_tie: bool = False,
 ) -> xr.Dataset:
     """Read an tiecdr netCDF file, creating it if it doesn't exist.
@@ -139,6 +140,7 @@ def read_or_create_and_read_standard_tiecdr_ds(
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
         overwrite_tie=overwrite_tie,
+        land_spillover_alg=land_spillover_alg,
     )
 
     tie_ds = read_tiecdr_ds(
@@ -565,6 +567,7 @@ def make_standard_cdecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     base_output_dir: Path,
+    land_spillover_alg: Literal["BT_NT", "NT2"],
     overwrite_cde: bool = False,
 ) -> Path:
     """Create a 'standard', complete (ready for prod) daily CDR NetCDF file.
@@ -606,6 +609,7 @@ def make_standard_cdecdr_netcdf(
             hemisphere=hemisphere,
             resolution=resolution,
             intermediate_output_dir=intermediate_output_dir,
+            land_spillover_alg=land_spillover_alg,
         )
 
         # Ensure the previous day's complete daily field exists for the melt
@@ -623,6 +627,7 @@ def make_standard_cdecdr_netcdf(
                 resolution=resolution,
                 base_output_dir=base_output_dir,
                 overwrite_cde=overwrite_cde,
+                land_spillover_alg=land_spillover_alg,
             )
 
         cde_ds = complete_daily_ecdr_ds(

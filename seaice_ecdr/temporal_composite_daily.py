@@ -6,7 +6,7 @@ import copy
 import datetime as dt
 from functools import cache
 from pathlib import Path
-from typing import Iterable, cast, get_args
+from typing import Iterable, Literal, cast, get_args
 
 import click
 import numpy as np
@@ -343,6 +343,7 @@ def read_or_create_and_read_idecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
+    land_spillover_alg: Literal["BT_NT", "NT2"],
     overwrite_ide: bool = False,
 ) -> xr.Dataset:
     """Read an idecdr netCDF file, creating it if it doesn't exist."""
@@ -363,6 +364,7 @@ def read_or_create_and_read_idecdr_ds(
             hemisphere=hemisphere,
             resolution=resolution,
             intermediate_output_dir=intermediate_output_dir,
+            land_spillover_alg=land_spillover_alg,
         )
     logger.debug(f"Reading ideCDR file from: {ide_filepath}")
     ide_ds = xr.load_dataset(ide_filepath)
@@ -728,8 +730,9 @@ def temporally_interpolated_ecdr_dataset(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    interp_range: int = 5,
     intermediate_output_dir: Path,
+    land_spillover_alg: Literal["BT_NT", "NT2"],
+    interp_range: int = 5,
     fill_the_pole_hole: bool = True,
 ) -> xr.Dataset:
     """Create xr dataset containing the second pass of daily enhanced CDR.
@@ -747,6 +750,7 @@ def temporally_interpolated_ecdr_dataset(
             hemisphere=hemisphere,
             resolution=resolution,
             intermediate_output_dir=intermediate_output_dir,
+            land_spillover_alg=land_spillover_alg,
         )
         init_datasets.append(init_dataset)
 
@@ -823,6 +827,7 @@ def make_tiecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
+    land_spillover_alg: Literal["BT_NT", "NT2"],
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
     overwrite_tie: bool = False,
@@ -844,6 +849,7 @@ def make_tiecdr_netcdf(
                 interp_range=interp_range,
                 intermediate_output_dir=intermediate_output_dir,
                 fill_the_pole_hole=fill_the_pole_hole,
+                land_spillover_alg=land_spillover_alg,
             )
 
             written_tie_ncfile = write_tie_netcdf(

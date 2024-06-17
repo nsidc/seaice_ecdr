@@ -1013,7 +1013,9 @@ def create_idecdr_for_date(
     intermediate_output_dir: Path,
     overwrite_ide: bool = False,
     verbose_intermed_ncfile: bool = False,
-    land_spillover_alg: Literal["NT2", "BT_NT"] = "BT_NT",
+    # I don't think this should have a default
+    # land_spillover_alg: Literal["NT2", "BT_NT"] = "BT_NT",
+    land_spillover_alg: Literal["NT2", "BT_NT"],
 ) -> None:
     excluded_fields = []
     if not verbose_intermed_ncfile:
