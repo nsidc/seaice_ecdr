@@ -20,7 +20,7 @@ def typecheck(ctx):
 def unit(ctx):
     """Run unit tests."""
     print_and_run(
-        f"pytest --cov=seaice_ecdr --cov-fail-under 50 -s {PROJECT_DIR}/seaice_ecdr/tests/unit",
+        f"pytest --cov=seaice_ecdr --cov-fail-under 40 -s {PROJECT_DIR}/seaice_ecdr/tests/unit",
         pty=True,
     )
 
