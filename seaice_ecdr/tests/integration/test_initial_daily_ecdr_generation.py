@@ -32,6 +32,7 @@ def sample_idecdr_dataset_nh():
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
+        land_spillover_alg="NT2",
     )
     return ide_conc_ds
 
@@ -49,6 +50,7 @@ def sample_idecdr_dataset_sh():
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
+        land_spillover_alg="NT2",
     )
     return ide_conc_ds
 
@@ -136,6 +138,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
         resolution=test_resolution,
         intermediate_output_dir=tmpdir_path,
         excluded_fields=[],
+        land_spillover_alg="NT2",
     )
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,
@@ -168,6 +171,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
         resolution=test_resolution,
         intermediate_output_dir=tmpdir_path,
         excluded_fields=(cdr_conc_fieldname,),
+        land_spillover_alg="NT2",
     )
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,

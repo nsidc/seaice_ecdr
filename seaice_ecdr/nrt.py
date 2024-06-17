@@ -86,6 +86,7 @@ def compute_nrt_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         tb_data=tb_data,
+        land_spillover_alg="NT2",
     )
 
     return nrt_initial_ecdr_ds
