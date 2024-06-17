@@ -684,6 +684,7 @@ def create_standard_ecdr_for_dates(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     base_output_dir: Path,
+    land_spillover_alg: Literal["BT_NT", "NT2"],
     overwrite_cde: bool = False,
 ) -> list[dt.date]:
     """Create "standard" (non-NRT) daily ECDR NC files for the provided dates.
@@ -702,6 +703,7 @@ def create_standard_ecdr_for_dates(
                 resolution=resolution,
                 base_output_dir=base_output_dir,
                 overwrite_cde=overwrite_cde,
+                land_spillover_alg=land_spillover_alg,
             )
         except Exception:
             logger.exception(f"Failed to create standard ECDR for {date=}")
@@ -781,6 +783,7 @@ def cli(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    land_spillover_alg: Literal["BT_NT", "NT2"],
     overwrite: bool,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.
@@ -801,5 +804,6 @@ def cli(
         resolution=resolution,
         base_output_dir=base_output_dir,
         overwrite_cde=overwrite,
+        land_spillover_alg=land_spillover_alg,
     )
     raise_error_for_dates(error_dates=error_dates)

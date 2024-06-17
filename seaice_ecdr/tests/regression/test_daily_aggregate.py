@@ -24,6 +24,7 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
 
     year = 2022
     resolution: Final = "12.5"
+    land_spillover_alg: Final = "NT2"
 
     # First, ensure some daily data is created.
     datasets = []
@@ -34,6 +35,7 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
             hemisphere=hemisphere,
             resolution=resolution,
             base_output_dir=base_output_dir,
+            land_spillover_alg=land_spillover_alg,
         )
 
         ds = read_cdecdr_ds(

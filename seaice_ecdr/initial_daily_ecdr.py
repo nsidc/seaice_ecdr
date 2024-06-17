@@ -20,6 +20,7 @@ import pm_icecon.bt.params.nsidc0001 as pmi_bt_params_0001
 import pm_icecon.nt.compute_nt_ic as nt
 import xarray as xr
 from loguru import logger
+from pm_icecon._types import LandSpilloverMethods
 from pm_icecon.bt.params.nsidc0007 import get_smmr_params
 from pm_icecon.bt.xfer_tbs import xfer_rss_tbs
 from pm_icecon.errors import UnexpectedSatelliteError
@@ -1076,6 +1077,11 @@ def create_idecdr_for_date(
     type=click.Choice(get_args(Hemisphere)),
 )
 @click.option(
+    "--land-spillover-alg",
+    required=True,
+    type=click.Choice(get_args(LandSpilloverMethods)),
+)
+@click.option(
     "--base-output-dir",
     required=True,
     type=click.Path(
@@ -1117,6 +1123,7 @@ def cli(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    land_spillover_alg: Literal["BT_NT", "NT2"],
     verbose_intermed_ncfile: bool,
 ) -> None:
     """Run the initial daily ECDR algorithm with AMSR2 data.
@@ -1136,4 +1143,5 @@ def cli(
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
         verbose_intermed_ncfile=verbose_intermed_ncfile,
+        land_spillover_alg=land_spillover_alg,
     )
