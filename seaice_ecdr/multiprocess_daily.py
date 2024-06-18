@@ -135,6 +135,7 @@ def cli(
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
         overwrite_tie=overwrite,
+        land_spillover_alg=land_spillover_alg,
     )
 
     _complete_daily_wrapper = partial(
@@ -143,6 +144,7 @@ def cli(
         resolution=resolution,
         base_output_dir=base_output_dir,
         overwrite_cde=overwrite,
+        land_spillover_alg=land_spillover_alg,
     )
 
     # Use 6 cores. This seems to perform well. Using the max number available
