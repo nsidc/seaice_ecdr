@@ -8,6 +8,7 @@ from pm_icecon.land_spillover import apply_nt2_land_spillover
 from pm_icecon.nt.compute_nt_ic import apply_nt_spillover
 from pm_tb_data._types import Hemisphere
 
+from seaice_ecdr._types import SUPPORTED_SAT
 from seaice_ecdr.ancillary import (
     get_adj123_field,
     get_land90_conc_field,
@@ -53,8 +54,11 @@ def land_spillover(
     tb_data: EcdrTbData,
     algorithm: Literal["NT2", "BT_NT"],
     land_mask: npt.NDArray,
+    platform: SUPPORTED_SAT,
 ) -> npt.NDArray:
     """Apply the land spillover technique to the CDR concentration field."""
+
+    # SS: Writing out the spillover anc fields...
     if algorithm == "NT2":
         l90c = get_land90_conc_field(
             hemisphere=hemisphere,
@@ -64,16 +68,17 @@ def land_spillover(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
         )
-        spillover_applied = apply_nt2_land_spillover(
+        spillover_applied_nt2 = apply_nt2_land_spillover(
             conc=cdr_conc,
             adj123=adj123.data,
             l90c=l90c.data,
             anchoring_siconc=50.0,
             affect_dist3=True,
         )
+        spillover_applied = spillover_applied_nt2
     elif algorithm == "BT_NT":
         # Bootstrap alg
-        spillover_applied = coastal_fix(
+        spillover_applied_bt = coastal_fix(
             conc=cdr_conc,
             missing_flag_value=np.nan,
             land_mask=land_mask,
@@ -83,11 +88,12 @@ def land_spillover(
         # NT alg
         shoremap = _get_25km_shoremap(hemisphere=hemisphere)
         minic = _get_25km_minic(hemisphere=hemisphere)
-        spillover_applied = apply_nt_spillover(
-            conc=spillover_applied,
+        spillover_applied_btnt = apply_nt_spillover(
+            conc=spillover_applied_bt,
             shoremap=shoremap,
             minic=minic,
         )
+        spillover_applied = spillover_applied_btnt
     else:
         raise RuntimeError(
             f"The requested land spillover algorithm ({algorithm=}) is not implemented."

@@ -33,6 +33,7 @@ from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
 from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
     get_empty_ds_with_time,
     get_invalid_ice_mask,
     get_non_ocean_mask,
@@ -301,6 +302,7 @@ def compute_initial_daily_ecdr_dataset(
     hemisphere: Hemisphere,
     tb_data: EcdrTbData,
     land_spillover_alg: Literal["NT2", "BT_NT"],
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -366,6 +368,7 @@ def compute_initial_daily_ecdr_dataset(
         non_ocean_mask = get_non_ocean_mask(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
+            ancillary_source=ancillary_source,
         )
         spatint_bitmask_arr[non_ocean_mask.data] = 0
 
@@ -438,6 +441,7 @@ def compute_initial_daily_ecdr_dataset(
     non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=tb_data.resolution,
+        ancillary_source=ancillary_source,
     )
 
     ecdr_ide_ds["invalid_ice_mask"] = invalid_ice_mask.expand_dims(dim="time")
@@ -681,6 +685,7 @@ def compute_initial_daily_ecdr_dataset(
         tb_data=tb_data,
         algorithm=land_spillover_alg,
         land_mask=non_ocean_mask.data,
+        platform=platform,
     )
     spillover_applied = np.full((ydim, xdim), False, dtype=bool)
     spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = True

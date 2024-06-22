@@ -8,7 +8,7 @@ alongside the ECDR.
 import datetime as dt
 from functools import cache
 from pathlib import Path
-from typing import get_args
+from typing import Literal, get_args
 
 import numpy as np
 import pandas as pd
@@ -16,27 +16,44 @@ import xarray as xr
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.constants import CDR_ANCILLARY_DIR
+from seaice_ecdr.constants import CDR_ANCILLARY_DIR, CDRv4_ANCILLARY_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import SUPPORTED_SAT, get_platform_by_date
 
+ANCILLARY_SOURCES = Literal["CDRv4", "CDRv5"]
+
 
 def get_ancillary_filepath(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> Path:
     grid_id = get_grid_id(
         hemisphere=hemisphere,
         resolution=resolution,
     )
 
-    filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}.nc"
+    if ancillary_source == "CDRv4":
+        filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}.nc"
+    elif ancillary_source == "CDRv4":
+        # TODO: These could be copied/renamed/symlinked to better templates
+        if hemisphere == "north":
+            filepath = CDRv4_ANCILLARY_DIR / "G02202-cdr-ancillary-nh.nc"
+        elif hemisphere == "south":
+            filepath = CDRv4_ANCILLARY_DIR / "G02202-cdr-ancillary-sh.nc"
+    else:
+        raise ValueError(f"Unknown ancillary source: {ancillary_source}")
 
     return filepath
 
 
 @cache
 def get_ancillary_ds(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Return xr Dataset of ancillary data for this hemisphere/resolution."""
     # TODO: This list could be determined from an examination of
@@ -46,7 +63,11 @@ def get_ancillary_ds(
             "ECDR currently only supports {get_args(ECDR_SUPPORTED_RESOLUTIONS)} resolutions."
         )
 
-    filepath = get_ancillary_filepath(hemisphere=hemisphere, resolution=resolution)
+    filepath = get_ancillary_filepath(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
     ds = xr.load_dataset(filepath)
 
     return ds
@@ -297,6 +318,7 @@ def get_non_ocean_mask(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     """Return a binary mask where True values represent non-ocean pixels.
 
@@ -305,6 +327,7 @@ def get_non_ocean_mask(
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     surface_type = ancillary_ds.surface_type
@@ -341,11 +364,15 @@ def get_non_ocean_mask(
 
 
 def get_land90_conc_field(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     land90_da = ancillary_ds.l90c
@@ -354,11 +381,15 @@ def get_land90_conc_field(
 
 
 def get_adj123_field(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     adj123_da = ancillary_ds.adj123
@@ -367,12 +398,17 @@ def get_adj123_field(
 
 
 def get_empty_ds_with_time(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS, date: dt.date
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    date: dt.date,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Return an "empty" xarray dataset with x, y, crs, and time set."""
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     time_as_int = (date - dt.date(1970, 1, 1)).days
