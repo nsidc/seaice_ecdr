@@ -16,7 +16,7 @@ import xarray as xr
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.constants import CDR_ANCILLARY_DIR, CDRv4_ANCILLARY_DIR
+from seaice_ecdr.constants import CDR_ANCILLARY_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import SUPPORTED_SAT, get_platform_by_date
 
@@ -37,11 +37,14 @@ def get_ancillary_filepath(
     if ancillary_source == "CDRv4":
         filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}.nc"
     elif ancillary_source == "CDRv4":
+        filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}-v04r00.nc"
+        """
         # TODO: These could be copied/renamed/symlinked to better templates
         if hemisphere == "north":
             filepath = CDRv4_ANCILLARY_DIR / "G02202-cdr-ancillary-nh.nc"
         elif hemisphere == "south":
             filepath = CDRv4_ANCILLARY_DIR / "G02202-cdr-ancillary-sh.nc"
+        """
     else:
         raise ValueError(f"Unknown ancillary source: {ancillary_source}")
 
@@ -98,12 +101,14 @@ def get_surfacetype_da(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
     platform: SUPPORTED_SAT,
 ) -> xr.DataArray:
     """Return a dataarray with surface type information for this date."""
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     xvar = ancillary_ds.variables["x"]
@@ -176,11 +181,13 @@ def nh_polehole_mask(
     date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     sat=None,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     """Return the northern hemisphere pole hole mask for the given date and resolution."""
     ancillary_ds = get_ancillary_ds(
         hemisphere=NORTH,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     polehole_bitmask = ancillary_ds.polehole_bitmask
@@ -251,6 +258,7 @@ def get_invalid_ice_mask(
     date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     platform: SUPPORTED_SAT,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     """Return an invalid ice mask for the given date.
 
@@ -265,6 +273,7 @@ def get_invalid_ice_mask(
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     invalid_ice_mask = ancillary_ds.invalid_ice_mask.sel(month=date.month)
@@ -281,7 +290,10 @@ def get_invalid_ice_mask(
 
 
 def get_ocean_mask(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     """Return a binary mask where True values represent `ocean`.
 
@@ -290,6 +302,7 @@ def get_ocean_mask(
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     surface_type = ancillary_ds.surface_type

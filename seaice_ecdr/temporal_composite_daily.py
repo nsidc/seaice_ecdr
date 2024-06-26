@@ -17,7 +17,11 @@ from pm_icecon.fill_polehole import fill_pole_hole
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
-from seaice_ecdr.ancillary import get_non_ocean_mask, nh_polehole_mask
+from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
+    get_non_ocean_mask,
+    nh_polehole_mask,
+)
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
@@ -344,6 +348,7 @@ def read_or_create_and_read_idecdr_ds(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
     land_spillover_alg: Literal["BT_NT", "NT2"],
+    ancillary_source: ANCILLARY_SOURCES,
     overwrite_ide: bool = False,
 ) -> xr.Dataset:
     """Read an idecdr netCDF file, creating it if it doesn't exist."""
@@ -365,6 +370,7 @@ def read_or_create_and_read_idecdr_ds(
             resolution=resolution,
             intermediate_output_dir=intermediate_output_dir,
             land_spillover_alg=land_spillover_alg,
+            ancillary_source=ancillary_source,
         )
     logger.debug(f"Reading ideCDR file from: {ide_filepath}")
     ide_ds = xr.load_dataset(ide_filepath)
@@ -474,6 +480,7 @@ def temporal_interpolation(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     data_stack: xr.Dataset,
+    ancillary_source: ANCILLARY_SOURCES,
     fill_the_pole_hole: bool = True,
     interp_range: int = 5,
     one_sided_limit: int = 3,
@@ -493,6 +500,7 @@ def temporal_interpolation(
     non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
     ti_var, ti_flags = temporally_composite_dataarray(
         target_date=date,
@@ -550,7 +558,10 @@ def temporal_interpolation(
         cdr_conc_pre_polefill = cdr_conc.copy()
         platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
-            date=date, resolution=resolution, sat=platform
+            date=date,
+            resolution=resolution,
+            sat=platform,
+            ancillary_source=ancillary_source,
         )
         cdr_conc_pole_filled = fill_pole_hole(
             conc=cdr_conc,
@@ -620,7 +631,10 @@ def temporal_interpolation(
         bt_conc_pre_polefill = bt_conc_2d.copy()
         platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
-            date=date, resolution=resolution, sat=platform
+            date=date,
+            resolution=resolution,
+            sat=platform,
+            ancillary_source=ancillary_source,
         )
         bt_conc_pole_filled = fill_pole_hole(
             conc=bt_conc_2d,
@@ -732,6 +746,7 @@ def temporally_interpolated_ecdr_dataset(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
     land_spillover_alg: Literal["BT_NT", "NT2"],
+    ancillary_source: ANCILLARY_SOURCES,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
 ) -> xr.Dataset:
@@ -751,6 +766,7 @@ def temporally_interpolated_ecdr_dataset(
             resolution=resolution,
             intermediate_output_dir=intermediate_output_dir,
             land_spillover_alg=land_spillover_alg,
+            ancillary_source=ancillary_source,
         )
         init_datasets.append(init_dataset)
 
@@ -762,6 +778,7 @@ def temporally_interpolated_ecdr_dataset(
         date=date,
         data_stack=data_stack,
         fill_the_pole_hole=fill_the_pole_hole,
+        ancillary_source=ancillary_source,
     )
 
     return tie_ds
@@ -828,6 +845,7 @@ def make_tiecdr_netcdf(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
     land_spillover_alg: Literal["BT_NT", "NT2"],
+    ancillary_source: ANCILLARY_SOURCES,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
     overwrite_tie: bool = False,
@@ -850,6 +868,7 @@ def make_tiecdr_netcdf(
                 intermediate_output_dir=intermediate_output_dir,
                 fill_the_pole_hole=fill_the_pole_hole,
                 land_spillover_alg=land_spillover_alg,
+                ancillary_source=ancillary_source,
             )
 
             written_tie_ncfile = write_tie_netcdf(
@@ -876,6 +895,7 @@ def create_tiecdr_for_date_range(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
     land_spillover_alg: Literal["BT_NT", "NT2"],
+    ancillary_source: ANCILLARY_SOURCES,
     overwrite_tie: bool,
 ) -> None:
     """Generate the temporally composited daily ecdr files for a range of dates."""

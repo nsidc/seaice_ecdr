@@ -10,6 +10,7 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import SUPPORTED_SAT
 from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
     get_adj123_field,
     get_land90_conc_field,
 )
@@ -55,6 +56,7 @@ def land_spillover(
     algorithm: Literal["NT2", "BT_NT"],
     land_mask: npt.NDArray,
     platform: SUPPORTED_SAT,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> npt.NDArray:
     """Apply the land spillover technique to the CDR concentration field."""
 
@@ -63,10 +65,12 @@ def land_spillover(
         l90c = get_land90_conc_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
+            ancillary_source=ancillary_source,
         )
         adj123 = get_adj123_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
+            ancillary_source=ancillary_source,
         )
         spillover_applied_nt2 = apply_nt2_land_spillover(
             conc=cdr_conc,

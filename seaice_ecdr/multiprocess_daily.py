@@ -9,6 +9,7 @@ import click
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.complete_daily_ecdr import create_standard_ecdr_for_dates
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
@@ -21,6 +22,10 @@ from seaice_ecdr.util import (
     get_intermediate_output_dir,
     raise_error_for_dates,
 )
+
+# TODO:
+#  ancillary sources are given in seaice_ecdr.ancillary.ANCILLARY_SOURCES
+#    but are manually spelled out in the click options here
 
 
 @click.command(name="multiprocess-daily")
@@ -88,6 +93,12 @@ from seaice_ecdr.util import (
     default="BT_NT",
 )
 @click.option(
+    "--ancillary-source",
+    required=True,
+    type=click.Choice(["CDRv4", "CDRv5"]),
+    default="CDRv5",
+)
+@click.option(
     "--resolution",
     required=True,
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
@@ -100,6 +111,7 @@ def cli(
     overwrite: bool,
     land_spillover_alg: Literal["BT_NT", "NT2"],
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ):
     dates = list(date_range(start_date=start_date, end_date=end_date))
     dates_by_year = get_dates_by_year(dates)
@@ -127,6 +139,7 @@ def cli(
         intermediate_output_dir=intermediate_output_dir,
         overwrite_ide=overwrite,
         land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
 
     _create_tiecdr_wrapper = partial(
@@ -136,6 +149,7 @@ def cli(
         intermediate_output_dir=intermediate_output_dir,
         overwrite_tie=overwrite,
         land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
 
     _complete_daily_wrapper = partial(
@@ -145,6 +159,7 @@ def cli(
         base_output_dir=base_output_dir,
         overwrite_cde=overwrite,
         land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
 
     # Use 6 cores. This seems to perform well. Using the max number available

@@ -197,6 +197,7 @@ def _setup_ecdr_ds(
     date: dt.date,
     tb_data: EcdrTbData,
     hemisphere: Hemisphere,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     # Initialize geo-referenced xarray Dataset
     grid_id = get_grid_id(
@@ -205,7 +206,10 @@ def _setup_ecdr_ds(
     )
 
     ecdr_ide_ds = get_empty_ds_with_time(
-        hemisphere=hemisphere, resolution=tb_data.resolution, date=date
+        hemisphere=hemisphere,
+        resolution=tb_data.resolution,
+        date=date,
+        ancillary_source=ancillary_source,
     )
 
     # Set initial global attributes
@@ -317,6 +321,7 @@ def compute_initial_daily_ecdr_dataset(
         date=date,
         tb_data=tb_data,
         hemisphere=hemisphere,
+        ancillary_source=ancillary_source,
     )
 
     # Spatially interpolate the brightness temperatures
@@ -436,6 +441,7 @@ def compute_initial_daily_ecdr_dataset(
         date=date,
         resolution=tb_data.resolution,
         platform=platform,
+        ancillary_source=ancillary_source,
     )
 
     non_ocean_mask = get_non_ocean_mask(
@@ -458,6 +464,7 @@ def compute_initial_daily_ecdr_dataset(
             date=date,
             resolution=tb_data.resolution,
             sat=platform,
+            ancillary_source=ancillary_source,
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
 
@@ -686,6 +693,7 @@ def compute_initial_daily_ecdr_dataset(
         algorithm=land_spillover_alg,
         land_mask=non_ocean_mask.data,
         platform=platform,
+        ancillary_source=ancillary_source,
     )
     spillover_applied = np.full((ydim, xdim), False, dtype=bool)
     spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = True
@@ -844,6 +852,7 @@ def initial_daily_ecdr_dataset(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     land_spillover_alg: Literal["NT2", "BT_NT"],
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Create xr dataset containing the first pass of daily enhanced CDR."""
     # TODO: if/else should be temporary. It's just a way to clearly divide how a
@@ -867,6 +876,7 @@ def initial_daily_ecdr_dataset(
         hemisphere=hemisphere,
         tb_data=tb_data,
         land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
 
     # If the computed ide_ds is not on the desired grid (ie resolution),
@@ -981,6 +991,7 @@ def make_idecdr_netcdf(
     intermediate_output_dir: Path,
     excluded_fields: Iterable[str],
     land_spillover_alg: Literal["NT2", "BT_NT"],
+    ancillary_source: ANCILLARY_SOURCES,
     overwrite_ide: bool = False,
 ) -> None:
     platform = get_platform_by_date(date)
@@ -999,6 +1010,7 @@ def make_idecdr_netcdf(
             hemisphere=hemisphere,
             resolution=resolution,
             land_spillover_alg=land_spillover_alg,
+            ancillary_source=ancillary_source,
         )
 
         written_ide_ncfile = write_ide_netcdf(
@@ -1022,6 +1034,7 @@ def create_idecdr_for_date(
     # I don't think this should have a default
     # land_spillover_alg: Literal["NT2", "BT_NT"] = "BT_NT",
     land_spillover_alg: Literal["NT2", "BT_NT"],
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
     excluded_fields = []
     if not verbose_intermed_ncfile:
@@ -1052,6 +1065,7 @@ def create_idecdr_for_date(
             excluded_fields=excluded_fields,
             overwrite_ide=overwrite_ide,
             land_spillover_alg=land_spillover_alg,
+            ancillary_source=ancillary_source,
         )
 
     except Exception as e:

@@ -36,7 +36,7 @@ from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
-from seaice_ecdr.ancillary import flag_value_for_meaning
+from seaice_ecdr.ancillary import ANCILLARY_SOURCES, flag_value_for_meaning
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
@@ -342,6 +342,7 @@ def calc_cdr_seaice_conc_monthly(
     daily_ds_for_month: xr.Dataset,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     """Create the `cdr_seaice_conc_monthly` variable."""
     daily_conc_for_month = daily_ds_for_month.cdr_seaice_conc
@@ -351,6 +352,7 @@ def calc_cdr_seaice_conc_monthly(
         seaice_conc_var=conc_monthly,
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     conc_monthly.name = "cdr_seaice_conc_monthly"
