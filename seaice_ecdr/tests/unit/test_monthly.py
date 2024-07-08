@@ -386,6 +386,7 @@ def test__calc_conc_monthly(monkeypatch):
         daily_ds_for_month=mock_daily_ds,
         hemisphere="north",
         resolution="12.5",
+        ancillary_source="CDRv5",
     )
 
     npt.assert_array_equal(
@@ -516,6 +517,7 @@ def test_monthly_ds(monkeypatch, tmpdir):
         sat="am2",
         hemisphere=NORTH,
         resolution="12.5",
+        ancillary_source="CDRv5",
     )
 
     # Test that the dataset only contains the variables we expect.
