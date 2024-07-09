@@ -507,6 +507,7 @@ def make_monthly_ds(
     sat: SUPPORTED_SAT,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Create a monthly dataset from daily data.
 
@@ -525,6 +526,7 @@ def make_monthly_ds(
         daily_ds_for_month=daily_ds_for_month,
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     # Create `stdev_of_cdr_seaice_conc_monthly`, the standard deviation of the
@@ -629,6 +631,7 @@ def make_monthly_nc(
     hemisphere: Hemisphere,
     complete_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> Path:
     daily_ds_for_month = get_daily_ds_for_month(
         year=year,
@@ -654,6 +657,7 @@ def make_monthly_nc(
         sat=sat,
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     # Set `x` and `y` `_FillValue` to `None`. Although unset initially, `xarray`
