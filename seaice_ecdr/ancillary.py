@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Literal, get_args
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 from pm_tb_data._types import NORTH, Hemisphere
@@ -34,17 +35,10 @@ def get_ancillary_filepath(
         resolution=resolution,
     )
 
-    if ancillary_source == "CDRv4":
+    if ancillary_source == "CDRv5":
         filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}.nc"
     elif ancillary_source == "CDRv4":
         filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}-v04r00.nc"
-        """
-        # TODO: These could be copied/renamed/symlinked to better templates
-        if hemisphere == "north":
-            filepath = CDRv4_ANCILLARY_DIR / "G02202-cdr-ancillary-nh.nc"
-        elif hemisphere == "south":
-            filepath = CDRv4_ANCILLARY_DIR / "G02202-cdr-ancillary-sh.nc"
-        """
     else:
         raise ValueError(f"Unknown ancillary source: {ancillary_source}")
 
@@ -408,6 +402,87 @@ def get_adj123_field(
     adj123_da = ancillary_ds.adj123
 
     return adj123_da
+
+
+def get_nt_landmask(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+) -> npt.NDArray:
+    """Returns a numpy array equivalent to that used in the original
+    NT code, particularly for the NT land spillover algorithm."""
+
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
+    if "cdrv4_landmask" in ancillary_ds.variables.keys():
+        return np.array(ancillary_ds.variables["cdrv4_nt_landmask"])
+
+    # If a landmask field like that used in CDRv4 is not available in
+    # the ancillary field, create it
+    raise RuntimeError("gen_cdrv4_nt_landmask() not yet implemented.")
+    # cdrv4_nt_landmask = gen_cdrv4_nt_landmask(
+    #     ancillary_ds=ancillary_ds,
+    # )
+
+    # return cdrv4_nt_landmask
+
+
+def get_nt_shoremap(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+) -> npt.NDArray:
+    """Returns a numpy array equivalent to that used in the original
+    NT code, particularly for the NT land spillover algorithm."""
+
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
+    if "cdrv4_nt_shoremap" in ancillary_ds.variables.keys():
+        return np.array(ancillary_ds.variables["cdrv4_nt_shoremap"])
+
+    # If a shoremap field like that used in CDRv4 is not available in
+    # the ancillary field, create it
+    raise RuntimeError("gen_cdrv4_nt_shoremap() not yet implemented.")
+    # cdrv4_nt_shoremap = gen_cdrv4_nt_shoremap(
+    #     ancillary_ds=ancillary_ds,
+    # )
+
+    # return cdrv4_nt_shoremap
+
+
+def get_nt_minic(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+) -> npt.NDArray:
+    """Returns a numpy array equivalent to that used in the original
+    NT code, particularly for the NT land spillover algorithm."""
+
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
+    if "cdrv4_nt_minic" in ancillary_ds.variables.keys():
+        return np.array(ancillary_ds.variables["cdrv4_nt_minic"])
+
+    # If a minic field like that used in CDRv4 is not available in
+    # the ancillary field, create it
+    raise RuntimeError("gen_cdrv4_nt_minic() not yet implemented.")
+    # cdrv4_nt_minic = gen_cdrv4_nt_minic(
+    #     ancillary_ds=ancillary_ds,
+    # )
+
+    # return cdrv4_nt_minic
 
 
 def get_empty_ds_with_time(
