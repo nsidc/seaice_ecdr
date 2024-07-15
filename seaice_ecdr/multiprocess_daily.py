@@ -3,7 +3,7 @@ from functools import partial
 from itertools import chain
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Literal, get_args
+from typing import get_args
 
 import click
 from pm_tb_data._types import Hemisphere
@@ -15,6 +15,7 @@ from seaice_ecdr.complete_daily_ecdr import create_standard_ecdr_for_dates
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import create_idecdr_for_date
 from seaice_ecdr.platforms import get_first_platform_start_date
+from seaice_ecdr.spillover import LAND_SPILL_ALGS
 from seaice_ecdr.temporal_composite_daily import make_tiecdr_netcdf
 from seaice_ecdr.util import (
     date_range,
@@ -109,7 +110,7 @@ def cli(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     overwrite: bool,
-    land_spillover_alg: Literal["BT_NT", "NT2"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ancillary_source: ANCILLARY_SOURCES,
 ):

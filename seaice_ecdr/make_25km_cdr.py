@@ -18,12 +18,13 @@ import xarray as xr
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.grid_id import get_grid_id
+from seaice_ecdr.spillover import LAND_SPILL_ALGS
 from seaice_ecdr.util import get_complete_output_dir
 
 
 def get_25km_daily_cdr(
     *,
-    alg: Literal["BT_NT", "NT2"],
+    alg: LAND_SPILL_ALGS,
     hemisphere: Hemisphere,
     platform: Literal["am2", "F17"],
 ) -> xr.Dataset:

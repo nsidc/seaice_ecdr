@@ -6,7 +6,7 @@ import copy
 import datetime as dt
 from functools import cache
 from pathlib import Path
-from typing import Iterable, Literal, cast, get_args
+from typing import Iterable, cast, get_args
 
 import click
 import numpy as np
@@ -32,6 +32,7 @@ from seaice_ecdr.platforms import (
     get_first_platform_start_date,
     get_platform_by_date,
 )
+from seaice_ecdr.spillover import LAND_SPILL_ALGS
 from seaice_ecdr.util import (
     date_range,
     get_intermediate_output_dir,
@@ -347,7 +348,7 @@ def read_or_create_and_read_idecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
-    land_spillover_alg: Literal["BT_NT", "NT2"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
     overwrite_ide: bool = False,
 ) -> xr.Dataset:
@@ -745,7 +746,7 @@ def temporally_interpolated_ecdr_dataset(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
-    land_spillover_alg: Literal["BT_NT", "NT2"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
@@ -844,7 +845,7 @@ def make_tiecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
-    land_spillover_alg: Literal["BT_NT", "NT2"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
@@ -894,7 +895,7 @@ def create_tiecdr_for_date_range(
     end_date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
-    land_spillover_alg: Literal["BT_NT", "NT2"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
     overwrite_tie: bool,
 ) -> None:
@@ -983,7 +984,7 @@ def cli(
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     overwrite: bool,
-    land_spillover_alg: Literal["BT_NT", "NT2"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.

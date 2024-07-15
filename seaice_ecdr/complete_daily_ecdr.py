@@ -6,7 +6,7 @@ import copy
 import datetime as dt
 from functools import cache
 from pathlib import Path
-from typing import Iterable, Literal, cast, get_args
+from typing import Iterable, cast, get_args
 
 import click
 import numpy as np
@@ -35,6 +35,7 @@ from seaice_ecdr.platforms import (
     get_platform_by_date,
 )
 from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
+from seaice_ecdr.spillover import LAND_SPILL_ALGS
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
 from seaice_ecdr.util import (
     date_range,
@@ -128,7 +129,7 @@ def read_or_create_and_read_standard_tiecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
-    land_spillover_alg: Literal["BT_NT", "NT2"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
     overwrite_tie: bool = False,
 ) -> xr.Dataset:
@@ -581,7 +582,7 @@ def make_standard_cdecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     base_output_dir: Path,
-    land_spillover_alg: Literal["BT_NT", "NT2"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
     overwrite_cde: bool = False,
 ) -> Path:
@@ -702,7 +703,7 @@ def create_standard_ecdr_for_dates(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     base_output_dir: Path,
-    land_spillover_alg: Literal["BT_NT", "NT2"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
     overwrite_cde: bool = False,
 ) -> list[dt.date]:
@@ -813,7 +814,7 @@ def cli(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    land_spillover_alg: Literal["BT_NT", "NT2"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
     overwrite: bool,
 ) -> None:

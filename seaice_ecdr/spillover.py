@@ -24,6 +24,7 @@ from seaice_ecdr.tb_data import (
 from seaice_ecdr.util import get_ecdr_grid_shape
 
 NT_MAPS_DIR = Path("/share/apps/G02202_V5/cdr_testdata/nt_datafiles/data36/maps")
+LAND_SPILL_ALGS = Literal["BT_NT", "NT2"]
 
 
 def convert_nonocean_to_shoremap(*, is_nonocean: npt.NDArray):
@@ -104,7 +105,7 @@ def land_spillover(
     cdr_conc: npt.NDArray,
     hemisphere: Hemisphere,
     tb_data: EcdrTbData,
-    algorithm: Literal["NT2", "BT_NT"],
+    algorithm: LAND_SPILL_ALGS,
     land_mask: npt.NDArray,
     platform: SUPPORTED_SAT,
     ancillary_source: ANCILLARY_SOURCES,

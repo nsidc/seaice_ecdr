@@ -8,7 +8,7 @@ Notes:
 import datetime as dt
 from functools import cache
 from pathlib import Path
-from typing import Iterable, Literal, TypedDict, cast, get_args
+from typing import Iterable, TypedDict, cast, get_args
 
 import click
 import numpy as np
@@ -44,7 +44,7 @@ from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
-from seaice_ecdr.spillover import land_spillover
+from seaice_ecdr.spillover import LAND_SPILL_ALGS, land_spillover
 from seaice_ecdr.tb_data import (
     EXPECTED_ECDR_TB_NAMES,
     EcdrTbData,
@@ -305,7 +305,7 @@ def compute_initial_daily_ecdr_dataset(
     date: dt.date,
     hemisphere: Hemisphere,
     tb_data: EcdrTbData,
-    land_spillover_alg: Literal["NT2", "BT_NT"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
@@ -884,7 +884,7 @@ def initial_daily_ecdr_dataset(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    land_spillover_alg: Literal["NT2", "BT_NT"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Create xr dataset containing the first pass of daily enhanced CDR."""
@@ -1023,7 +1023,7 @@ def make_idecdr_netcdf(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
     excluded_fields: Iterable[str],
-    land_spillover_alg: Literal["NT2", "BT_NT"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
     overwrite_ide: bool = False,
 ) -> None:
@@ -1066,7 +1066,7 @@ def create_idecdr_for_date(
     verbose_intermed_ncfile: bool = False,
     # I don't think this should have a default
     # land_spillover_alg: Literal["NT2", "BT_NT"] = "BT_NT",
-    land_spillover_alg: Literal["NT2", "BT_NT"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
     excluded_fields = []
@@ -1180,7 +1180,7 @@ def cli(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    land_spillover_alg: Literal["BT_NT", "NT2"],
+    land_spillover_alg: LAND_SPILL_ALGS,
     verbose_intermed_ncfile: bool,
     ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
