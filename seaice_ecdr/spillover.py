@@ -100,6 +100,52 @@ def _get_25km_minic(*, hemisphere: Hemisphere):
     return minic
 
 
+def improved_land_spillover(
+    *,
+    ils_arr: npt.NDArray,
+    conc: npt.NDArray,
+    # sie_min: float = 0.15,
+) -> npt.NDArray:
+    """Improved land spillover algorithm dilates "anchor"ing siconc far
+    far-from-coast to coast and sets siconc values to zero if the dilated
+    siconc is less than a threshold [sie_min]
+
+    Note: Because the algorithm removes near-coast siconc with nearby
+          low siconc, grid cells which could be used to disanchor siconc
+          but whose siconc is unknown are treated as "100% siconc" for
+          purposes of this calculation.
+
+
+    The ils_arr is encoded as:
+        0: missing information: siconc cannot be used to anchor/disanchore
+        1: non-ocean (ie land or other grid cells without siconc (~lake))
+        2: ocean that may be removed by land spillover, if dilated sie low
+        3: ocean whose concentration may anchor/disanchor coastal siconc
+        4: ocean whose concentration is ignored for the ILS calcs
+
+    The input conc and output conc arrays are expected to have:
+        min value of 0.0
+        sie_min between 0.0 and 1.0
+        max_considered siconc of 1.0
+    """
+    # Sanity check: ils_arr only contains the expected values
+    ils_set = {val for val in np.unique(ils_arr)}
+    assert ils_set.issubset(
+        set(
+            (
+                0,
+                1,
+                2,
+                3,
+                4,
+            )
+        )
+    )
+
+    corrected_conc = conc.copy()
+    return corrected_conc
+
+
 def land_spillover(
     *,
     cdr_conc: npt.NDArray,
