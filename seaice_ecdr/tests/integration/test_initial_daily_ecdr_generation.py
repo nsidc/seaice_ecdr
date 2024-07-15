@@ -27,12 +27,14 @@ def sample_idecdr_dataset_nh():
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
     test_resolution: Final = "12.5"
+    ancillary_source: Final = "CDRv5"
 
     ide_conc_ds = initial_daily_ecdr_dataset(
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
         land_spillover_alg="NT2",
+        ancillary_source=ancillary_source,
     )
     return ide_conc_ds
 
@@ -45,12 +47,14 @@ def sample_idecdr_dataset_sh():
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
     test_resolution: Final = "12.5"
+    ancillary_source: Final = "CDRv5"
 
     ide_conc_ds = initial_daily_ecdr_dataset(
         date=test_date,
         hemisphere=test_hemisphere,
         resolution=test_resolution,
         land_spillover_alg="NT2",
+        ancillary_source=ancillary_source,
     )
     return ide_conc_ds
 
@@ -131,6 +135,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
     test_hemisphere = NORTH
     test_resolution: Final = "12.5"
     test_platform = "am2"
+    ancillary_source: Final = "CDRv5"
 
     make_idecdr_netcdf(
         date=test_date,
@@ -139,6 +144,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
         intermediate_output_dir=tmpdir_path,
         excluded_fields=[],
         land_spillover_alg="NT2",
+        ancillary_source=ancillary_source,
     )
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,
@@ -164,6 +170,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
     test_hemisphere = NORTH
     test_resolution: Final = "12.5"
     test_platform = "am2"
+    ancillary_source: Final = "CDRv5"
 
     make_idecdr_netcdf(
         date=test_date,
@@ -172,6 +179,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
         intermediate_output_dir=tmpdir_path,
         excluded_fields=(cdr_conc_fieldname,),
         land_spillover_alg="NT2",
+        ancillary_source=ancillary_source,
     )
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,
