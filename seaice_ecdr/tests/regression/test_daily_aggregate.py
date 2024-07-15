@@ -13,7 +13,7 @@ from seaice_ecdr.daily_aggregate import (
 from seaice_ecdr.util import get_complete_output_dir
 
 
-def test_daily_aggreagate_matches_daily_data(tmpdir):
+def test_daily_aggregate_matches_daily_data(tmpdir):
     base_output_dir = Path(tmpdir)
     hemisphere: Final = NORTH
     complete_output_dir = get_complete_output_dir(
@@ -25,6 +25,7 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
     year = 2022
     resolution: Final = "12.5"
     land_spillover_alg: Final = "NT2"
+    ancillary_source: Final = "CDRv5"
 
     # First, ensure some daily data is created.
     datasets = []
@@ -36,6 +37,7 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
             resolution=resolution,
             base_output_dir=base_output_dir,
             land_spillover_alg=land_spillover_alg,
+            ancillary_source=ancillary_source,
         )
 
         ds = read_cdecdr_ds(
@@ -53,6 +55,7 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
         hemisphere=hemisphere,
         resolution=resolution,
         complete_output_dir=complete_output_dir,
+        ancillary_source=ancillary_source,
     )
 
     # Read back in the data.

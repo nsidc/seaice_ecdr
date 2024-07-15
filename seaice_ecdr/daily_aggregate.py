@@ -13,7 +13,7 @@ from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import get_ancillary_ds
+from seaice_ecdr.ancillary import ANCILLARY_SOURCES, get_ancillary_ds
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
@@ -86,6 +86,7 @@ def _update_ncrcat_daily_ds(
     daily_filepaths: list[Path],
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ):
     """Update the aggregate dataset created by `ncrcat`.
 
@@ -94,6 +95,7 @@ def _update_ncrcat_daily_ds(
     surf_geo_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
     ds["latitude"] = surf_geo_ds.latitude
     ds["longitude"] = surf_geo_ds.longitude
@@ -126,6 +128,7 @@ def make_daily_aggregate_netcdf_for_year(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     complete_output_dir: Path,
+    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ) -> None:
     try:
         daily_filepaths = _get_daily_complete_filepaths_for_year(

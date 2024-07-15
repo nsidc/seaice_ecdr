@@ -742,6 +742,11 @@ def make_monthly_nc(
     required=True,
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
+@click.option(
+    "--ancillary-source",
+    required=True,
+    type=click.Choice(get_args(ANCILLARY_SOURCES)),
+)
 def cli(
     *,
     year: int,
@@ -751,6 +756,7 @@ def cli(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ):
     if end_year is None:
         end_year = year
@@ -775,6 +781,7 @@ def cli(
                 complete_output_dir=complete_output_dir,
                 hemisphere=hemisphere,
                 resolution=resolution,
+                ancillary_source=ancillary_source,
             )
         except Exception:
             error_periods.append(period)

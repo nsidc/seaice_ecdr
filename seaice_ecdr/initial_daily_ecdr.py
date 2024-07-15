@@ -1169,6 +1169,11 @@ def create_idecdr_for_date(
     default=False,
     type=bool,
 )
+@click.option(
+    "--ancillary-source",
+    required=True,
+    type=click.Choice(get_args(ANCILLARY_SOURCES)),
+)
 def cli(
     *,
     date: dt.date,
@@ -1177,6 +1182,7 @@ def cli(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     land_spillover_alg: Literal["BT_NT", "NT2"],
     verbose_intermed_ncfile: bool,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
     """Run the initial daily ECDR algorithm with AMSR2 data.
 
@@ -1196,4 +1202,5 @@ def cli(
         intermediate_output_dir=intermediate_output_dir,
         verbose_intermed_ncfile=verbose_intermed_ncfile,
         land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )

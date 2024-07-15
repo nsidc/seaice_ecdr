@@ -907,6 +907,7 @@ def create_tiecdr_for_date_range(
             intermediate_output_dir=intermediate_output_dir,
             overwrite_tie=overwrite_tie,
             land_spillover_alg=land_spillover_alg,
+            ancillary_source=ancillary_source,
         )
 
 
@@ -983,6 +984,7 @@ def cli(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     overwrite: bool,
     land_spillover_alg: Literal["BT_NT", "NT2"],
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.
 
@@ -1010,4 +1012,5 @@ def cli(
         intermediate_output_dir=intermediate_output_dir,
         overwrite_tie=overwrite,
         land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
