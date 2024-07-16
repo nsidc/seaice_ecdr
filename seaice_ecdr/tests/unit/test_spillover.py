@@ -71,5 +71,4 @@ def test_ils_algorithm_removes_unanchored_ice(tmpdir):
         init_conc=init_conc,
     )
 
-    breakpoint()
     nptesting.assert_array_equal(filtered_conc, expected_conc)

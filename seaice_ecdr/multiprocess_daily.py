@@ -90,13 +90,15 @@ from seaice_ecdr.util import (
 @click.option(
     "--land-spillover-alg",
     required=False,
-    type=click.Choice(["BT_NT", "NT2", "ILS"]),
+    # type=click.Choice(["BT_NT", "NT2", "ILS"]),
+    type=click.Choice(get_args(LAND_SPILL_ALGS)),
     default="BT_NT",
 )
 @click.option(
     "--ancillary-source",
     required=True,
-    type=click.Choice(["CDRv4", "CDRv5"]),
+    # type=click.Choice(["CDRv4", "CDRv5"]),
+    type=click.Choice(get_args(ANCILLARY_SOURCES)),
     default="CDRv5",
 )
 @click.option(
