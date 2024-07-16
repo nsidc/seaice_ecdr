@@ -31,7 +31,7 @@ def test_ils_algorithm_requires_valid_arrvalues(tmpdir):
     try:
         filtered_conc = spillover.improved_land_spillover(
             ils_arr=ils_array,
-            conc=init_conc,
+            init_conc=init_conc,
         )
     except AssertionError:
         # We expect an AssertionError
@@ -52,7 +52,24 @@ def test_ils_algorithm_keeps_anchored_ice(tmpdir):
 
     filtered_conc = spillover.improved_land_spillover(
         ils_arr=test_ils_array,
-        conc=init_conc,
+        init_conc=init_conc,
     )
 
+    nptesting.assert_array_equal(filtered_conc, expected_conc)
+
+
+def test_ils_algorithm_removes_unanchored_ice(tmpdir):
+    """ILS algorithm should not delete anything if all values are high conc."""
+    init_conc = test_ils_array.copy().astype(np.float32)
+    init_conc[test_ils_array > 1] = 1.0
+    init_conc[test_ils_array == 3] = 0.0
+    expected_conc = init_conc.copy()
+    expected_conc[test_ils_array == 2] = 0.0
+
+    filtered_conc = spillover.improved_land_spillover(
+        ils_arr=test_ils_array,
+        init_conc=init_conc,
+    )
+
+    breakpoint()
     nptesting.assert_array_equal(filtered_conc, expected_conc)

@@ -7,7 +7,7 @@ from pm_icecon.bt.compute_bt_ic import coastal_fix
 from pm_icecon.land_spillover import apply_nt2_land_spillover
 from pm_icecon.nt.compute_nt_ic import apply_nt_spillover
 from pm_tb_data._types import Hemisphere
-from scipy.ndimage import binary_dilation, generate_binary_structure
+from scipy.ndimage import binary_dilation, generate_binary_structure, shift
 
 from seaice_ecdr._types import SUPPORTED_SAT
 from seaice_ecdr.ancillary import (
@@ -103,18 +103,12 @@ def _get_25km_minic(*, hemisphere: Hemisphere):
 def improved_land_spillover(
     *,
     ils_arr: npt.NDArray,
-    conc: npt.NDArray,
-    # sie_min: float = 0.15,
+    init_conc: npt.NDArray,
+    sie_min: float = 0.15,
 ) -> npt.NDArray:
     """Improved land spillover algorithm dilates "anchor"ing siconc far
     far-from-coast to coast and sets siconc values to zero if the dilated
     siconc is less than a threshold [sie_min]
-
-    Note: Because the algorithm removes near-coast siconc with nearby
-          low siconc, grid cells which could be used to disanchor siconc
-          but whose siconc is unknown are treated as "100% siconc" for
-          purposes of this calculation.
-
 
     The ils_arr is encoded as:
         0: missing information: siconc cannot be used to anchor/disanchore
@@ -123,6 +117,12 @@ def improved_land_spillover(
         3: ocean whose concentration may anchor/disanchor coastal siconc
         4: ocean whose concentration is ignored for the ILS calcs
 
+    Note: Because the algorithm removes near-coast siconc with nearby
+          low siconc, grid cells which could be used to disanchor siconc
+          but whose siconc is unknown are treated as "100% siconc" for
+          purposes of this calculation.  In other words, missing (ils_arr==0)
+          values will be set to max siconc (1.0) before calculations are made
+
     The input conc and output conc arrays are expected to have:
         min value of 0.0
         sie_min between 0.0 and 1.0
@@ -130,20 +130,104 @@ def improved_land_spillover(
     """
     # Sanity check: ils_arr only contains the expected values
     ils_set = {val for val in np.unique(ils_arr)}
-    assert ils_set.issubset(
-        set(
-            (
-                0,
-                1,
-                2,
-                3,
-                4,
-            )
-        )
-    )
+    assert ils_set.issubset(set(np.arange(5, dtype=np.uint8)))
 
-    corrected_conc = conc.copy()
-    return corrected_conc
+    # Actual ILS algorithm begins here.
+    conc = init_conc.copy()
+    conc[ils_arr == 2] = -1.0  # potential ice removal grid cells to -1
+    conc[conc > 1.0] = 1.0  # Clamp siconc to 1.0 max
+
+    # Set any missing values to 100% siconc
+    conc[ils_arr == 0] = 1.0
+
+    # Remove vals from the fill_arr
+    fill_arr = conc.copy()
+    fill_arr[ils_arr == 1] = np.nan  # Init to nan where land
+    fill_arr[ils_arr == 2] = -1  # Init to -1 where we need to fill
+    # fill_arr at ils_arr will be conc value
+    fill_arr[ils_arr == 4] = np.nan  # Init to where won't use value
+
+    # Start by dilating the far-from coast ice into coastal areas
+    is_fillable = (ils_arr == 2) | (ils_arr == 3)
+
+    def _dilate_towards_shore(fill_arr, is_fillable):
+        sum_arr = np.zeros(fill_arr.shape, dtype=np.float32)
+        num_arr = np.zeros(fill_arr.shape, dtype=np.uint8)
+        ones_arr = np.ones(fill_arr.shape, dtype=np.uint8)
+
+        needs_filling = (ils_arr == 2) & (fill_arr == -1.0)
+        n_needs_filling = np.sum(np.where(needs_filling, 1, 0))
+        n_needs_filling_prior = n_needs_filling + 1  # Just needs to be different
+
+        n_missing_values = np.sum(np.where((ils_arr == 2) & (fill_arr == -1.0), 1, 0))
+
+        while (
+            (n_needs_filling != n_needs_filling_prior)
+            and (n_needs_filling > 0)
+            and (n_missing_values > 0)
+        ):
+            needs_val = is_fillable & (fill_arr < 0)
+
+            # Note: convolved2d can't handle the missing values,
+            # so we need a shift-based approach
+            left = shift(fill_arr, (0, -1), order=0, mode="constant", cval=np.nan)
+            right = shift(fill_arr, (0, 1), order=0, mode="constant", cval=np.nan)
+            upward = shift(fill_arr, (-1, 0), order=0, mode="constant", cval=np.nan)
+            downward = shift(fill_arr, (1, 0), order=0, mode="constant", cval=np.nan)
+
+            sum_arr[:] = 0.0
+            num_arr[:] = 0
+
+            addable = needs_val & (left >= 0)
+            sum_arr[addable] += left[addable]
+            num_arr[addable] += ones_arr[addable]
+
+            addable = needs_val & (right >= 0)
+            sum_arr[addable] += right[addable]
+            num_arr[addable] += ones_arr[addable]
+
+            addable = needs_val & (upward >= 0)
+            sum_arr[addable] += upward[addable]
+            num_arr[addable] += ones_arr[addable]
+
+            addable = needs_val & (downward >= 0)
+            sum_arr[addable] += downward[addable]
+            num_arr[addable] += ones_arr[addable]
+
+            has_new_values = num_arr > 0
+
+            num_arr[num_arr == 0] = 1  # Prevent div by zero
+            new_values = np.divide(sum_arr, num_arr).astype(np.float32)
+
+            fill_arr[has_new_values] = new_values[has_new_values]
+
+            n_needs_filling_prior = n_needs_filling
+
+            n_missing_values = np.sum(
+                np.where((ils_arr == 2) & (fill_arr == -1.0), 1, 0)
+            )
+            needs_filling = is_fillable & (fill_arr == -1.0)
+            n_needs_filling = np.sum(np.where(needs_filling, 1, 0))
+
+        return fill_arr
+
+    fill_arr = _dilate_towards_shore(fill_arr, is_fillable)
+
+    # If there are still spots that need filling, then the process is repeated,
+    # but this time we allow dilation of conc values over land.
+    needs_filling = (ils_arr == 2) & (fill_arr == -1.0)
+    n_needs_filling = np.sum(np.where(needs_filling, 1, 0))
+    if n_needs_filling > 0:
+        print("LOG: Grid has isolated pockets of seaice; dilating over land")
+        fill_arr[ils_arr == 1] = -1
+        is_fillable[ils_arr == 1] = True
+        fill_arr = _dilate_towards_shore(fill_arr, is_fillable)
+
+    # Remove siconc where fill_arr is lower than min_sie
+    filtered_conc = init_conc.copy()
+    filtered_conc[(ils_arr == 2) & (fill_arr < sie_min)] = 0
+
+    return filtered_conc
 
 
 def land_spillover(
