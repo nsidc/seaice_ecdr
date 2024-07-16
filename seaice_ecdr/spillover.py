@@ -24,7 +24,7 @@ from seaice_ecdr.tb_data import (
 from seaice_ecdr.util import get_ecdr_grid_shape
 
 NT_MAPS_DIR = Path("/share/apps/G02202_V5/cdr_testdata/nt_datafiles/data36/maps")
-LAND_SPILL_ALGS = Literal["BT_NT", "NT2"]
+LAND_SPILL_ALGS = Literal["BT_NT", "NT2", "ILS"]
 
 
 def convert_nonocean_to_shoremap(*, is_nonocean: npt.NDArray):
@@ -308,6 +308,34 @@ def land_spillover(
 
         spillover_applied = spillover_applied_bt
         spillover_applied[use_nt_spillover] = spillover_applied_nt[use_nt_spillover]
+
+    elif algorithm == "ILS":
+        # Prepare the ILS array
+        ils_arr = np.zeros(cdr_conc.shape, dtype=np.uint8)
+        adj123 = get_adj123_field(
+            hemisphere=hemisphere,
+            resolution=tb_data.resolution,
+            ancillary_source=ancillary_source,
+        )
+        ils_arr[adj123 == 0] = 1
+        ils_arr[adj123 == 1] = 2
+        ils_arr[adj123 == 2] = 2
+        ils_arr[adj123 == 3] = 3
+        ils_arr[adj123 > 3] = 4
+
+        ils_arr[np.isnan(cdr_conc)] = 0
+
+        ils_conc = cdr_conc / 100.0
+        ils_conc[ils_conc > 1.0] = 1.0
+
+        spillover_applied_ils = improved_land_spillover(
+            ils_arr=ils_arr,
+            init_conc=ils_conc,
+        )
+
+        is_different = spillover_applied_ils != ils_conc
+        spillover_applied = cdr_conc.copy()
+        spillover_applied[is_different & ((adj123 == 1) | (adj123 == 2))] = 0
 
     else:
         raise RuntimeError(

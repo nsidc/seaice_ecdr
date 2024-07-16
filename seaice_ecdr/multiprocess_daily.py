@@ -90,7 +90,7 @@ from seaice_ecdr.util import (
 @click.option(
     "--land-spillover-alg",
     required=False,
-    type=click.Choice(["BT_NT", "NT2"]),
+    type=click.Choice(["BT_NT", "NT2", "ILS"]),
     default="BT_NT",
 )
 @click.option(

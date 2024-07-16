@@ -1064,8 +1064,6 @@ def create_idecdr_for_date(
     intermediate_output_dir: Path,
     overwrite_ide: bool = False,
     verbose_intermed_ncfile: bool = False,
-    # I don't think this should have a default
-    # land_spillover_alg: Literal["NT2", "BT_NT"] = "BT_NT",
     land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
