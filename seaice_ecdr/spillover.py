@@ -24,7 +24,7 @@ from seaice_ecdr.tb_data import (
 from seaice_ecdr.util import get_ecdr_grid_shape
 
 NT_MAPS_DIR = Path("/share/apps/G02202_V5/cdr_testdata/nt_datafiles/data36/maps")
-LAND_SPILL_ALGS = Literal["BT_NT", "NT2", "ILS"]
+LAND_SPILL_ALGS = Literal["BT_NT", "NT2", "ILS", "ILSb"]
 
 
 def convert_nonocean_to_shoremap(*, is_nonocean: npt.NDArray):
@@ -227,6 +227,8 @@ def improved_land_spillover(
     filtered_conc = init_conc.copy()
     filtered_conc[(ils_arr == 2) & (fill_arr < sie_min)] = 0
 
+    # fill_arr.tofile('filt_conc.dat')
+
     return filtered_conc
 
 
@@ -260,8 +262,10 @@ def land_spillover(
             conc=cdr_conc,
             adj123=adj123.data,
             l90c=l90c.data,
-            anchoring_siconc=50.0,
-            affect_dist3=True,
+            # anchoring_siconc=50.0,
+            # affect_dist3=True,
+            anchoring_siconc=0.0,
+            affect_dist3=False,
         )
         spillover_applied = spillover_applied_nt2
     elif algorithm == "BT_NT":
@@ -310,21 +314,22 @@ def land_spillover(
         spillover_applied[use_nt_spillover] = spillover_applied_nt[use_nt_spillover]
 
     elif algorithm == "ILS":
-        # Prepare the ILS array
+        # Prepare the ILS array using the adj123 field to init ils_arr
         ils_arr = np.zeros(cdr_conc.shape, dtype=np.uint8)
         adj123 = get_adj123_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
             ancillary_source=ancillary_source,
         )
-        ils_arr[adj123 == 0] = 1
-        ils_arr[adj123 == 1] = 2
-        ils_arr[adj123 == 2] = 2
-        ils_arr[adj123 == 3] = 3
-        ils_arr[adj123 > 3] = 4
+        ils_arr[adj123 == 0] = 1  # land -> land
+        ils_arr[adj123 == 1] = 2  # dist1 -> removable
+        ils_arr[adj123 == 2] = 2  # dist2 -> removable
+        ils_arr[adj123 == 3] = 3  # dist3 -> anchoring
+        ils_arr[adj123 > 3] = 4  # >dist3 -> ignored
 
-        ils_arr[np.isnan(cdr_conc)] = 0
+        ils_arr[np.isnan(cdr_conc)] = 0  # NaN conc -> "missing
 
+        # Rescale conc from 0-100 to 0-1
         ils_conc = cdr_conc / 100.0
         ils_conc[ils_conc > 1.0] = 1.0
 
@@ -336,6 +341,53 @@ def land_spillover(
         is_different = spillover_applied_ils != ils_conc
         spillover_applied = cdr_conc.copy()
         spillover_applied[is_different & ((adj123 == 1) | (adj123 == 2))] = 0
+
+    elif algorithm == "ILSb":
+        # Prepare the ILS array using shoremap to prep ils_arr
+        ils_arr = np.zeros(cdr_conc.shape, dtype=np.uint8)
+        shoremap = get_nt_shoremap(
+            hemisphere=hemisphere,
+            resolution=tb_data.resolution,
+            ancillary_source=ancillary_source,
+        )
+
+        # Need to use adj123 to get rid of shoremap's lakes
+        adj123 = get_adj123_field(
+            hemisphere=hemisphere,
+            resolution=tb_data.resolution,
+            ancillary_source=ancillary_source,
+        )
+        shoremap[(shoremap == 2) & (adj123 == 0)] = 1  # lakeshore -> land
+        shoremap[(shoremap == 3) & (adj123 == 0)] = 1  # lake -> land
+        shoremap[(shoremap == 3) & (adj123 == 0)] = 1  # lake -> land
+        shoremap[(shoremap == 4) & (adj123 == 0)] = 1  # laked2 -> land
+        shoremap[(shoremap == 5) & (adj123 == 0)] = 1  # laked3 -> land
+        shoremap[(shoremap == 0) & (adj123 == 0)] = 1  # laked+ -> land
+
+        ils_arr[shoremap == 1] = 1  # land -> land
+        ils_arr[shoremap == 2] = 1  # coast -> land
+        ils_arr[shoremap == 3] = 2  # dist1 -> removable
+        ils_arr[shoremap == 4] = 2  # dist2 -> removable
+        ils_arr[shoremap == 5] = 3  # dist3 -> anchoring
+        ils_arr[shoremap == 0] = 4  # >dist3 -> ignored
+
+        ils_arr[np.isnan(cdr_conc)] = 0  # NaN conc -> "missing
+
+        # Rescale conc from 0-100 to 0-1
+        ils_conc = cdr_conc / 100.0
+        ils_conc[ils_conc > 1.0] = 1.0
+
+        spillover_applied_ils = improved_land_spillover(
+            ils_arr=ils_arr,
+            init_conc=ils_conc,
+        )
+
+        is_different = spillover_applied_ils != ils_conc
+        spillover_applied = cdr_conc.copy()
+        spillover_applied[is_different & ((shoremap == 3) | (shoremap == 4))] = 0
+
+        # spillover_applied.tofile('ilsb_conc.dat')
+        # breakpoint()
 
     else:
         raise RuntimeError(
