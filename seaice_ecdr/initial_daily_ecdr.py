@@ -343,6 +343,7 @@ def compute_initial_daily_ecdr_dataset(
                 ecdr_ide_ds[tb_day_name].data[0, :, :],
                 corner_weight=0,
                 min_weightsum=3,
+                image_shift_mode="grid-wrap",  # CDRv4 wraps tb field for interp
             )
 
         tb_si_longname = f"Spatially interpolated {ecdr_ide_ds[tb_day_name].long_name}"
@@ -360,6 +361,7 @@ def compute_initial_daily_ecdr_dataset(
                 platform=platform,
                 ancillary_source=ancillary_source,
             )
+
             tb_si_data[invalid_ice_mask] = 0
 
         ecdr_ide_ds[tb_si_varname] = (
@@ -518,6 +520,32 @@ def compute_initial_daily_ecdr_dataset(
         mintb=bt_coefs_init["mintb"],
         maxtb=bt_coefs_init["maxtb"],
         tb_data_mask_function=bt_coefs_init["bt_tb_data_mask_function"],
+    )
+
+    # Attempt to get exact duplicate of v4
+    # v4 uses np.round() to average the TB arrays as integers.
+    # this code uses floats (not integers) for the TB values.
+    # Because np.round() rounds to the nearest even value (not the nearest
+    #   value!), the results are not the same as adding 0.5 and then cropping
+    #     eg np.round(1834.5) -> 1834
+    #     eg np.round(1835.5) -> 1835
+    #  See: https://docs.scipy.org/doc//numpy-1.9.0/reference/generated/numpy.around.html#numpy.around
+    # In order to reproduce the v4 rounding values, need to first round to
+    # two decimal places, then round to 1
+    ecdr_ide_ds["v37_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["v37_day_si"].data, 2), 1
+    )
+    ecdr_ide_ds["h37_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["h37_day_si"].data, 2), 1
+    )
+    ecdr_ide_ds["v19_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["v19_day_si"].data, 2), 1
+    )
+    ecdr_ide_ds["h19_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["h19_day_si"].data, 2), 1
+    )
+    ecdr_ide_ds["v22_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["v22_day_si"].data, 2), 1
     )
 
     ecdr_ide_ds["invalid_tb_mask"] = (
@@ -942,6 +970,7 @@ def write_ide_netcdf(
         "raw_bt_seaice_conc",
     ),
     tb_fields: Iterable[str] = ("h19_day_si", "h37_day_si"),
+    # tb_fields: Iterable[str] = ("h19_day_si", "h37_day_si", "v19_day_si", "v22_day_si", "v37_day_si"),
 ) -> Path:
     """Write the initial_ecdr_ds to a netCDF file and return the path."""
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
@@ -1076,10 +1105,10 @@ def create_idecdr_for_date(
             "h37_day",
             "v37_day",
             # "h19_day_si",  # include this field for melt onset calculation
-            "v19_day_si",
-            "v22_day_si",
+            "v19_day_si",  # comment out this line to get all TB fields
+            "v22_day_si",  # comment out this line to get all TB fields
             # "h37_day_si",  # include this field for melt onset calculation
-            "v37_day_si",
+            "v37_day_si",  # comment out this line to get all TB fields
             "NT_icecon_min",
             "non_ocean_mask",
             "pole_mask",
