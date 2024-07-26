@@ -227,8 +227,6 @@ def improved_land_spillover(
     filtered_conc = init_conc.copy()
     filtered_conc[(ils_arr == 2) & (fill_arr < sie_min)] = 0
 
-    # fill_arr.tofile('filt_conc.dat')
-
     return filtered_conc
 
 
@@ -385,9 +383,6 @@ def land_spillover(
         is_different = spillover_applied_ils != ils_conc
         spillover_applied = cdr_conc.copy()
         spillover_applied[is_different & ((shoremap == 3) | (shoremap == 4))] = 0
-
-        # spillover_applied.tofile('ilsb_conc.dat')
-        # breakpoint()
 
     else:
         raise RuntimeError(
