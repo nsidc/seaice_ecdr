@@ -54,7 +54,7 @@ from seaice_ecdr.tb_data import (
 from seaice_ecdr.util import get_intermediate_output_dir, standard_daily_filename
 
 
-def cdr_bootstrap(
+def cdr_bootstrap_raw(
     *,
     tb_v37: npt.NDArray,
     tb_h37: npt.NDArray,
@@ -62,7 +62,10 @@ def cdr_bootstrap(
     bt_coefs,
     platform: SUPPORTED_SAT,
 ):
-    """Generate the raw bootstrap concentration field."""
+    """Generate the raw bootstrap concentration field.
+    Note: tb fields should already be transformed before
+          being passed to this function.
+    """
     wtp_37v = bt_coefs["bt_wtp_v37"]
     wtp_37h = bt_coefs["bt_wtp_h37"]
     wtp_19v = bt_coefs["bt_wtp_v19"]
@@ -70,24 +73,6 @@ def cdr_bootstrap(
     itp_37v = bt_coefs["bt_itp_v37"]
     itp_37h = bt_coefs["bt_itp_h37"]
     itp_19v = bt_coefs["bt_itp_v19"]
-
-    # Transform TBs for the bootstrap calculation
-    try:
-        transformed = xfer_rss_tbs(
-            tbs=dict(
-                v37=tb_v37,
-                h37=tb_h37,
-                v19=tb_v19,
-            ),
-            platform=platform.lower(),
-        )
-        tb_v37 = transformed["v37"]
-        tb_h37 = transformed["h37"]
-        tb_v19 = transformed["v19"]
-    except UnexpectedSatelliteError:
-        logger.warning(
-            f"No BT Tb transformation to F13 available for {platform=}. Using untransformed Tbs instead."
-        )
 
     bt_conc = bt.calc_bootstrap_conc(
         tb_v37=tb_v37,
@@ -99,19 +84,13 @@ def cdr_bootstrap(
         itp_37v=itp_37v,
         itp_37h=itp_37h,
         itp_19v=itp_19v,
-        line_37v37h=bt_coefs["vh37_lnline"],
-        line_37v19v=bt_coefs["v1937_lnline"],
+        line_37v37h=bt_coefs["vh37_iceline"],
+        line_37v19v=bt_coefs["v1937_iceline"],
         ad_line_offset=bt_coefs["ad_line_offset"],
         maxic_frac=bt_coefs["maxic"],
         # Note: the missing value of 255 ends up getting set to `nan` below.
         missing_flag_value=255,
     )
-
-    # Set any bootstrap concentrations below 10% to 0.
-    bt_conc[bt_conc < 10] = 0
-
-    # Remove bt_conc flags (e.g., missing)
-    bt_conc[bt_conc >= 250] = np.nan
 
     return bt_conc
 
@@ -307,6 +286,7 @@ def compute_initial_daily_ecdr_dataset(
     tb_data: EcdrTbData,
     land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
+    write_bt_iceout: bool = False,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -412,6 +392,32 @@ def compute_initial_daily_ecdr_dataset(
 
         # Drop the un-spatially interpolated TB field to save space and compute
         ecdr_ide_ds = ecdr_ide_ds.drop_vars(tb_varname)
+
+    # Attempt to get exact duplicate of v4
+    # v4 uses np.round() to average the TB arrays as integers.
+    # this code uses floats (not integers) for the TB values.
+    # Because np.round() rounds to the nearest even value (not the nearest
+    #   value!), the results are not the same as adding 0.5 and then cropping
+    #     eg np.round(1834.5) -> 1834
+    #     eg np.round(1835.5) -> 1835
+    #  See: https://docs.scipy.org/doc//numpy-1.9.0/reference/generated/numpy.around.html#numpy.around
+    # In order to reproduce the v4 rounding values, need to first round to
+    # two decimal places, then round to 1
+    ecdr_ide_ds["v37_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["v37_day_si"].data, 2), 1
+    )
+    ecdr_ide_ds["h37_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["h37_day_si"].data, 2), 1
+    )
+    ecdr_ide_ds["v19_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["v19_day_si"].data, 2), 1
+    )
+    ecdr_ide_ds["h19_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["h19_day_si"].data, 2), 1
+    )
+    ecdr_ide_ds["v22_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["v22_day_si"].data, 2), 1
+    )
 
     spat_int_flag_mask_values = np.array([1, 2, 4, 8, 16, 32], dtype=np.uint8)
     ecdr_ide_ds["spatial_interpolation_flag"] = (
@@ -522,32 +528,6 @@ def compute_initial_daily_ecdr_dataset(
         tb_data_mask_function=bt_coefs_init["bt_tb_data_mask_function"],
     )
 
-    # Attempt to get exact duplicate of v4
-    # v4 uses np.round() to average the TB arrays as integers.
-    # this code uses floats (not integers) for the TB values.
-    # Because np.round() rounds to the nearest even value (not the nearest
-    #   value!), the results are not the same as adding 0.5 and then cropping
-    #     eg np.round(1834.5) -> 1834
-    #     eg np.round(1835.5) -> 1835
-    #  See: https://docs.scipy.org/doc//numpy-1.9.0/reference/generated/numpy.around.html#numpy.around
-    # In order to reproduce the v4 rounding values, need to first round to
-    # two decimal places, then round to 1
-    ecdr_ide_ds["v37_day_si"].data = np.round(
-        np.round(ecdr_ide_ds["v37_day_si"].data, 2), 1
-    )
-    ecdr_ide_ds["h37_day_si"].data = np.round(
-        np.round(ecdr_ide_ds["h37_day_si"].data, 2), 1
-    )
-    ecdr_ide_ds["v19_day_si"].data = np.round(
-        np.round(ecdr_ide_ds["v19_day_si"].data, 2), 1
-    )
-    ecdr_ide_ds["h19_day_si"].data = np.round(
-        np.round(ecdr_ide_ds["h19_day_si"].data, 2), 1
-    )
-    ecdr_ide_ds["v22_day_si"].data = np.round(
-        np.round(ecdr_ide_ds["v22_day_si"].data, 2), 1
-    )
-
     ecdr_ide_ds["invalid_tb_mask"] = (
         ("time", "y", "x"),
         np.expand_dims(invalid_tb_mask, axis=0),
@@ -563,19 +543,22 @@ def compute_initial_daily_ecdr_dataset(
         },
     )
 
+    # NOTE: Strictly speaking, perhaps this should happen before computing
+    #       the TB mask?  But that does a very broad check (10 < TB < 350K)
+    #       and so does not end up mattering
     # TODO: this mapping is in preparation for using separately-transformed
     #       TBs in the Bootstrap algorithm.  The better approach would be to
     #       adjust the parameters for each platform so that this tranformation
     #       would not be needed.  That's...a fair bit of work though.
+    # NOTE: Notice that the bootstrap algorithms below will take these
+    #       transformed *local* bt_??? vars, not he ecdr_ide_es arrays
     bt_v37 = ecdr_ide_ds["v37_day_si"].data[0, :, :]
     bt_h37 = ecdr_ide_ds["h37_day_si"].data[0, :, :]
     bt_v22 = ecdr_ide_ds["v22_day_si"].data[0, :, :]
     bt_v19 = ecdr_ide_ds["v19_day_si"].data[0, :, :]
 
     # Transform TBs for the bootstrap calculation
-    # TODO: DRY out this code some...These transformations also occur for the
-    # bootstrap SIC conc. We only want to transform Tbs for the bootstrap SIC
-    # calc and the weather filtering.
+    # TODO: Are there separate NT algorithm TB transformations?
     try:
         transformed = xfer_rss_tbs(
             tbs=dict(
@@ -591,11 +574,11 @@ def compute_initial_daily_ecdr_dataset(
         bt_v19 = transformed["v19"]
         bt_v22 = transformed["v22"]
     except UnexpectedSatelliteError:
-        logger.warning(
-            f"No BT Tb transformation to F13 available for {platform=}. Using untransformed Tbs instead."
-        )
+        logger.info(f"Using un-transformed TBs for {platform=}.")
 
     # Compute the BT weather mask
+
+    # Note: the variable returned is water_arr in cdralgos
     bt_weather_mask = bt.get_weather_mask(
         v37=bt_v37,
         h37=bt_h37,
@@ -611,6 +594,14 @@ def compute_initial_daily_ecdr_dataset(
         wslope=bt_coefs_init["wslope"],
         wxlimt=bt_coefs_init["wxlimt"],
     )
+
+    # Note:
+    # Here, the "bt_weather_mask" is the almost "water_arr" variable in cdralgos
+    # However, it does not include the invalid_tb_mask (which here also
+    # includes the pole hole) nor does it include land, so:
+    # cdralgos_water_arr = bt_weather_mask | (ecdr_ide_ds["invalid_tb_mask"].data & ~ecdr_ide_ds["non_ocean_mask"].data)
+    # Note that this cdralgos_water_arr will differ because it will have
+    # zeros where there is no data because of the pole hole
 
     ecdr_ide_ds["bt_weather_mask"] = (
         ("time", "y", "x"),
@@ -644,62 +635,113 @@ def compute_initial_daily_ecdr_dataset(
     for coef in bt_coefs_to_update:
         bt_coefs.pop(coef, None)
 
-    bt_coefs["vh37_lnline"] = bt.get_linfit(
+    bt_coefs["vh37_iceline"] = bt.get_linfit(
         land_mask=ecdr_ide_ds["non_ocean_mask"].data,
         tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
-        tbx=ecdr_ide_ds["v37_day_si"].data[0, :, :],
-        tby=ecdr_ide_ds["h37_day_si"].data[0, :, :],
+        tbx=bt_v37,  # Note: <-- not the ecdr_ide_ds key/value
+        tby=bt_h37,  # Note: <-- not the ecdr_ide_ds key/value
         lnline=bt_coefs_init["vh37_lnline"],
         add=bt_coefs["add1"],
         weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
     )
 
-    bt_coefs["bt_wtp_v37"] = bt.calculate_water_tiepoint(
-        wtp_init=bt_coefs_init["bt_wtp_v37"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-        tb=ecdr_ide_ds["v37_day_si"].data[0, :, :],
-    )
+    if ancillary_source == "CDRv4":
+        logger.error("SKIPPING calculation of water tiepoint to match CDRv4")
+        bt_coefs["bt_wtp_v37"] = bt_coefs_init["bt_wtp_v37"]
+    else:
+        bt_coefs["bt_wtp_v37"] = bt.calculate_water_tiepoint(
+            wtp_init=bt_coefs_init["bt_wtp_v37"],
+            weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            # tb=ecdr_ide_ds["v37_day_si"].data[0, :, :],
+            tb=bt_v37,
+        )
 
-    bt_coefs["bt_wtp_h37"] = bt.calculate_water_tiepoint(
-        wtp_init=bt_coefs_init["bt_wtp_h37"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-        tb=ecdr_ide_ds["h37_day_si"].data[0, :, :],
-    )
+    if ancillary_source == "CDRv4":
+        logger.error("SKIPPING calculation of water tiepoint to match CDRv4")
+        bt_coefs["bt_wtp_h37"] = bt_coefs_init["bt_wtp_h37"]
+    else:
+        bt_coefs["bt_wtp_h37"] = bt.calculate_water_tiepoint(
+            wtp_init=bt_coefs_init["bt_wtp_h37"],
+            weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            # tb=ecdr_ide_ds["h37_day_si"].data[0, :, :],
+            tb=bt_h37,
+        )
 
-    bt_coefs["bt_wtp_v19"] = bt.calculate_water_tiepoint(
-        wtp_init=bt_coefs_init["bt_wtp_v19"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-        tb=ecdr_ide_ds["v19_day_si"].data[0, :, :],
-    )
+    if ancillary_source == "CDRv4":
+        logger.error("SKIPPING calculation of water tiepoint to match CDRv4")
+        bt_coefs["bt_wtp_v19"] = bt_coefs_init["bt_wtp_v19"]
+    else:
+        bt_coefs["bt_wtp_v19"] = bt.calculate_water_tiepoint(
+            wtp_init=bt_coefs_init["bt_wtp_v19"],
+            weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            # tb=ecdr_ide_ds["v19_day_si"].data[0, :, :],
+            tb=bt_v19,
+        )
 
     bt_coefs["ad_line_offset"] = bt.get_adj_ad_line_offset(
         wtp_x=bt_coefs["bt_wtp_v37"],
         wtp_y=bt_coefs["bt_wtp_h37"],
-        line_37v37h=bt_coefs["vh37_lnline"],
+        line_37v37h=bt_coefs["vh37_iceline"],
     )
 
-    bt_coefs["v1937_lnline"] = bt.get_linfit(
+    # TODO: note that we are using bt_<vars> not <_day_si> vars...
+
+    bt_coefs["v1937_iceline"] = bt.get_linfit(
         land_mask=ecdr_ide_ds["non_ocean_mask"].data,
         tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
-        tbx=ecdr_ide_ds["v37_day_si"].data[0, :, :],
-        tby=ecdr_ide_ds["v19_day_si"].data[0, :, :],
+        tbx=bt_v37,
+        tby=bt_v19,
         lnline=bt_coefs_init["v1937_lnline"],
         add=bt_coefs["add2"],
         weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-        tba=ecdr_ide_ds["h37_day_si"].data[0, :, :],
-        iceline=bt_coefs["vh37_lnline"],
+        tba=bt_h37,
+        iceline=bt_coefs["vh37_iceline"],
         ad_line_offset=bt_coefs["ad_line_offset"],
     )
 
     # finally, compute the CDR.
-    bt_conc = cdr_bootstrap(
-        tb_v37=ecdr_ide_ds["v37_day_si"].data[0, :, :],
-        tb_h37=ecdr_ide_ds["h37_day_si"].data[0, :, :],
-        tb_v19=ecdr_ide_ds["v19_day_si"].data[0, :, :],
+    bt_conc = cdr_bootstrap_raw(
+        tb_v37=bt_v37,
+        tb_h37=bt_h37,
+        tb_v19=bt_v19,
         bt_coefs=bt_coefs,
         platform=platform,
     )
 
+    # Create iceout equivalent (for debugging), if kwarg set
+    if write_bt_iceout:
+        bt_iceout = bt_conc.copy()
+        bt_iceout_filename = "bt_iceout_v5.dat"
+
+        # Cause invalid tb to be missing (as per code)
+        bt_iceout[ecdr_ide_ds["invalid_tb_mask"].data[0, :, :]] = 110
+
+        # Cause land to be 120 (this must be after invalid_tb_mask)
+        bt_iceout[non_ocean_mask.data] = 120
+
+        # Cause NaN to be missing
+        bt_iceout[np.isnan(bt_iceout)] = 110
+
+        # add the weather array values (to zero)
+        bt_iceout[ecdr_ide_ds["bt_weather_mask"].data[0, :, :]] = 0
+
+        bt_iceout.tofile(bt_iceout_filename)
+
+        # Note: differences here with cdralgos bt_iceout
+        #       are on the order of 1.5e-5
+
+        # Manually examine output?
+        # breakpoint()
+
+    # Set any bootstrap concentrations below 10% to 0.
+    # NOTE: This is probably necessary for land spillover algorithms
+    #       to properly work with "exactly 0% siconc" calculations
+    bt_conc[bt_conc < 10] = 0
+
+    # Remove bt_conc flags (e.g., missing) and set to NaN
+    bt_conc[bt_conc >= 250] = np.nan
+
+    # Note: Notice that NT does not use same (transformed) TBs as BT
     nt_conc = cdr_nasateam(
         tb_h19=ecdr_ide_ds["h19_day_si"].data[0, :, :],
         tb_v37=ecdr_ide_ds["v37_day_si"].data[0, :, :],
@@ -744,6 +786,9 @@ def compute_initial_daily_ecdr_dataset(
     cdr_conc = cdr_conc_raw.copy()
     cdr_conc[set_to_zero_sic] = 0
 
+    # TODO: Some minimum thresholding already occurs for bt_conc
+    #       for bt_conc (and nt_conc?).  I don't think the
+    #       land_spillover algorithm should have to rely on this.
     cdr_conc_pre_spillover = cdr_conc.copy()
     cdr_conc = land_spillover(
         cdr_conc=cdr_conc,
@@ -783,7 +828,7 @@ def compute_initial_daily_ecdr_dataset(
         },
     )
 
-    # Add the BT coefficients to the raw_bt_seaice_conc DataArray
+    # Add the BT coefficients to the raw_bt_seaice_conc DataArray as attrs
     for attr in sorted(bt_coefs.keys()):
         if type(bt_coefs[attr]) in (float, int):
             ecdr_ide_ds.variables["raw_bt_seaice_conc"].attrs[attr] = bt_coefs[attr]
