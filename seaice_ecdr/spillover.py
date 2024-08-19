@@ -241,6 +241,8 @@ def land_spillover(
     ancillary_source: ANCILLARY_SOURCES,
     bt_conc=None,  # only needed if the BT or NT spillover are used
     nt_conc=None,  # only needed if the BT or NT spillover are used
+    bt_wx=None,  # only needed if the BT or NT spillover are used
+    fix_goddard_bt_error: bool = False,  # By default, don't fix Goddard bug
 ) -> npt.NDArray:
     """Apply the land spillover technique to the CDR concentration field."""
 
@@ -274,42 +276,59 @@ def land_spillover(
         )
 
         # Bootstrap alg
+        bt_conc[bt_wx] = 0
         spillover_applied_bt = coastal_fix(
-            conc=cdr_conc,
+            conc=bt_conc,
             missing_flag_value=np.nan,
             land_mask=land_mask,
             minic=10,
+            fix_goddard_bt_error=fix_goddard_bt_error,
         )
-        is_bt_spillover = (spillover_applied_bt != cdr_conc) & (~non_ocean_mask)
 
         # NT alg
         # Apply the NT to the nt_conc field
         # Only apply that to the cdr_conc field if nt_spilled > bt_conc
-        # shoremap = _get_25km_shoremap(hemisphere=hemisphere)
         shoremap = get_nt_shoremap(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
             ancillary_source=ancillary_source,
         )
 
-        # minic = _get_25km_minic(hemisphere=hemisphere)
         minic = get_nt_minic(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
             ancillary_source=ancillary_source,
         )
+        nt_conc_for_ntspillover = nt_conc.copy()
+        is_negative_ntconc = nt_conc < 0
+        nt_conc_for_ntspillover[is_negative_ntconc] = np.nan
+
         spillover_applied_nt = apply_nt_spillover(
-            conc=nt_conc,
+            conc=nt_conc_for_ntspillover,
             shoremap=shoremap,
             minic=minic,
         )
-        is_nt_spillover = (spillover_applied_nt != nt_conc) & (~non_ocean_mask)
-        use_nt_spillover = (
-            is_nt_spillover & (spillover_applied_nt > bt_conc) & (~is_bt_spillover)
-        )
+        nt_asCDRv4 = (10.0 * spillover_applied_nt).astype(np.int16)
+        nt_asCDRv4[is_negative_ntconc] = -10
+        nt_asCDRv4[land_mask] = -100
 
-        spillover_applied = spillover_applied_bt
+        # Note: be careful of ndarray vs xarray here!
+        is_nt_spillover = (
+            (spillover_applied_nt != nt_conc) & (~non_ocean_mask.data) & (nt_conc > 0)
+        )
+        use_nt_spillover = (spillover_applied_nt > bt_conc) & (spillover_applied_bt > 0)
+
+        spillover_applied = spillover_applied_bt.copy()
         spillover_applied[use_nt_spillover] = spillover_applied_nt[use_nt_spillover]
+
+        # Here, we remove ice that the NT algorithm removed -- with conc
+        #   < 15% -- regardless of the BT conc value
+        is_ntspill_removed = (
+            is_nt_spillover
+            & (spillover_applied_nt >= 0)
+            & (spillover_applied_nt < 14.5)
+        )
+        spillover_applied[is_ntspill_removed.data] = 0
 
     elif algorithm == "ILS":
         # Prepare the ILS array using the adj123 field to init ils_arr

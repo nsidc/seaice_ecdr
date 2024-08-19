@@ -842,7 +842,6 @@ def compute_initial_daily_ecdr_dataset(
         bt_conc=bt_asCDRv4_conc,
         nt_conc=nt_asCDRv4_conc,
         bt_wx=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-        nt_wx=ecdr_ide_ds["nt_weather_mask"].data[0, :, :],
         fix_goddard_bt_error=True,
     )
 
