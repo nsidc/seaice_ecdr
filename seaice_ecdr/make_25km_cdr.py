@@ -60,4 +60,3 @@ def get_25km_daily_cdr(
 
 if __name__ == "__main__":
     f17_nt = get_25km_daily_cdr(alg="BT_NT", hemisphere="north", platform="F17")
-    breakpoint()

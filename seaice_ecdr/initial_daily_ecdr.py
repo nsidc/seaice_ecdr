@@ -281,8 +281,6 @@ def get_nasateam_weather_mask(
 
     weather_mask = nt_3719_weather_mask | nt_2219_weather_mask
 
-    breakpoint()
-    print("check weather_mask dtype")
     is_zero_tb = (
         (ecdr_ide_ds["v22_day_si"].data[0, :, :] == 0)
         | (ecdr_ide_ds["v19_day_si"].data[0, :, :] == 0)
