@@ -260,6 +260,8 @@ def get_nasateam_weather_mask(
         ecdr_ide_ds["v37_day_si"].data[0, :, :],
         ecdr_ide_ds["v19_day_si"].data[0, :, :],
     )
+    # Round off for better match with CDRv4 results
+    nt_gr_3719 = np.round(nt_gr_3719, 4)
 
     nt_3719_weather_mask = nt_gr_3719 > nt_coefs["nt_gradient_thresholds"]["3719"]
 
@@ -272,9 +274,21 @@ def get_nasateam_weather_mask(
         ecdr_ide_ds["v22_day_si"].data[0, :, :],
         ecdr_ide_ds["v19_day_si"].data[0, :, :],
     )
+    # Round off for better match with CDRv4 results
+    nt_gr_2219 = np.round(nt_gr_2219, 4)
+
     nt_2219_weather_mask = nt_gr_2219 > nt_coefs["nt_gradient_thresholds"]["2219"]
 
     weather_mask = nt_3719_weather_mask | nt_2219_weather_mask
+
+    breakpoint()
+    print("check weather_mask dtype")
+    is_zero_tb = (
+        (ecdr_ide_ds["v22_day_si"].data[0, :, :] == 0)
+        | (ecdr_ide_ds["v19_day_si"].data[0, :, :] == 0)
+        | (ecdr_ide_ds["v37_day_si"].data[0, :, :] == 0)
+    )
+    weather_mask[is_zero_tb] = 0
 
     return weather_mask
 
@@ -579,7 +593,11 @@ def compute_initial_daily_ecdr_dataset(
     # Compute the BT weather mask
 
     # Note: the variable returned is water_arr in cdralgos
-    bt_weather_mask = bt.get_weather_mask(
+    # Note: in cdrv4, only part of the water_arr is labeled "BT weather"
+    #       but I think that's because there are two parts to the
+    #       BT weather filter
+    # bt_weather_mask = bt.get_weather_mask(
+    bt_water_mask = bt.get_water_mask(
         v37=bt_v37,
         h37=bt_h37,
         v22=bt_v22,
@@ -588,7 +606,7 @@ def compute_initial_daily_ecdr_dataset(
         tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
         ln1=bt_coefs_init["vh37_lnline"],
         date=date,
-        # TODO: in the (distant?) future, we will want these to come
+        # TODO: in the future, we will want these to come
         #       from a bt_coefs structure, not bt_coefs_init
         wintrc=bt_coefs_init["wintrc"],
         wslope=bt_coefs_init["wslope"],
@@ -605,7 +623,8 @@ def compute_initial_daily_ecdr_dataset(
 
     ecdr_ide_ds["bt_weather_mask"] = (
         ("time", "y", "x"),
-        np.expand_dims(bt_weather_mask.data, axis=0),
+        # np.expand_dims(bt_weather_mask.data, axis=0),
+        np.expand_dims(bt_water_mask.data, axis=0),
         {
             "grid_mapping": "crs",
             "standard_name": "bt_weather_binary_mask",
@@ -642,7 +661,7 @@ def compute_initial_daily_ecdr_dataset(
         tby=bt_h37,  # Note: <-- not the ecdr_ide_ds key/value
         lnline=bt_coefs_init["vh37_lnline"],
         add=bt_coefs["add1"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+        water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],  # note: water
     )
 
     if ancillary_source == "CDRv4":
@@ -652,7 +671,6 @@ def compute_initial_daily_ecdr_dataset(
         bt_coefs["bt_wtp_v37"] = bt.calculate_water_tiepoint(
             wtp_init=bt_coefs_init["bt_wtp_v37"],
             weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-            # tb=ecdr_ide_ds["v37_day_si"].data[0, :, :],
             tb=bt_v37,
         )
 
@@ -663,7 +681,6 @@ def compute_initial_daily_ecdr_dataset(
         bt_coefs["bt_wtp_h37"] = bt.calculate_water_tiepoint(
             wtp_init=bt_coefs_init["bt_wtp_h37"],
             weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-            # tb=ecdr_ide_ds["h37_day_si"].data[0, :, :],
             tb=bt_h37,
         )
 
@@ -674,7 +691,6 @@ def compute_initial_daily_ecdr_dataset(
         bt_coefs["bt_wtp_v19"] = bt.calculate_water_tiepoint(
             wtp_init=bt_coefs_init["bt_wtp_v19"],
             weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-            # tb=ecdr_ide_ds["v19_day_si"].data[0, :, :],
             tb=bt_v19,
         )
 
@@ -693,7 +709,7 @@ def compute_initial_daily_ecdr_dataset(
         tby=bt_v19,
         lnline=bt_coefs_init["v1937_lnline"],
         add=bt_coefs["add2"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+        water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
         tba=bt_h37,
         iceline=bt_coefs["vh37_iceline"],
         ad_line_offset=bt_coefs["ad_line_offset"],
@@ -730,9 +746,6 @@ def compute_initial_daily_ecdr_dataset(
         # Note: differences here with cdralgos bt_iceout
         #       are on the order of 1.5e-5
 
-        # Manually examine output?
-        # breakpoint()
-
     # Set any bootstrap concentrations below 10% to 0.
     # NOTE: This is probably necessary for land spillover algorithms
     #       to properly work with "exactly 0% siconc" calculations
@@ -741,13 +754,15 @@ def compute_initial_daily_ecdr_dataset(
     # Remove bt_conc flags (e.g., missing) and set to NaN
     bt_conc[bt_conc >= 250] = np.nan
 
-    # Note: Notice that NT does not use same (transformed) TBs as BT
     nt_conc = cdr_nasateam(
         tb_h19=ecdr_ide_ds["h19_day_si"].data[0, :, :],
         tb_v37=ecdr_ide_ds["v37_day_si"].data[0, :, :],
         tb_v19=ecdr_ide_ds["v19_day_si"].data[0, :, :],
         nt_tiepoints=nt_coefs["nt_tiepoints"],
     )
+
+    # Need to set invalid ice to zero (note: this includes land)
+    nt_conc[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] = 0
 
     cdr_conc_raw = calculate_cdr_conc(
         bt_conc=bt_conc,
@@ -790,6 +805,32 @@ def compute_initial_daily_ecdr_dataset(
     #       for bt_conc (and nt_conc?).  I don't think the
     #       land_spillover algorithm should have to rely on this.
     cdr_conc_pre_spillover = cdr_conc.copy()
+
+    bt_asCDRv4_conc = bt_conc.copy()
+    bt_asCDRv4_conc[ecdr_ide_ds["bt_weather_mask"].data[0, :, :]] = 0
+    bt_asCDRv4_conc[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] = 0
+    bt_asCDRv4_conc[ecdr_ide_ds["non_ocean_mask"].data] = 120.0
+    bt_asCDRv4_conc[np.isnan(bt_asCDRv4_conc)] = 110.0
+    # Here, difference from v4 is ~3E-05 (ie 4-byte floating point roundoff)
+
+    nt_asCDRv4_conc = nt_conc.copy()
+    # Convert to 2-byte int
+    is_nt_nan = np.isnan(nt_asCDRv4_conc)
+    nt_asCDRv4_conc = (10 * nt_asCDRv4_conc).astype(np.int16)
+
+    # In CDRv4, NT weather is only where weather condition removes NT conc
+    is_ntwx_CDRv4 = (nt_conc > 0) & ecdr_ide_ds["nt_weather_mask"].data[0, :, :]
+    nt_asCDRv4_conc[is_ntwx_CDRv4] = 0
+
+    nt_asCDRv4_conc[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] = -10
+    nt_asCDRv4_conc[is_nt_nan] = -10
+
+    # Note: the NT array here is np.int16
+    nt_asCDRv4_conc = nt_asCDRv4_conc.copy()
+    is_negative_10 = nt_asCDRv4_conc == -10
+    nt_asCDRv4_conc = np.divide(nt_asCDRv4_conc, 10.0).astype(np.float32)
+    nt_asCDRv4_conc[is_negative_10] = -10
+
     cdr_conc = land_spillover(
         cdr_conc=cdr_conc,
         hemisphere=hemisphere,
@@ -798,9 +839,23 @@ def compute_initial_daily_ecdr_dataset(
         land_mask=non_ocean_mask.data,
         platform=platform,
         ancillary_source=ancillary_source,
-        bt_conc=bt_conc,
-        nt_conc=nt_conc,
+        bt_conc=bt_asCDRv4_conc,
+        nt_conc=nt_asCDRv4_conc,
+        bt_wx=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+        nt_wx=ecdr_ide_ds["nt_weather_mask"].data[0, :, :],
+        fix_goddard_bt_error=True,
     )
+
+    # In case we used the BT-NT land spillover, set cdr_conc to zero
+    # where weather filtered...except that it's only the nt wx that gets
+    # applied...and only where NT wx removed NT conc
+    if land_spillover_alg == "BT_NT":
+        set_to_zero_sic = (
+            ecdr_ide_ds["nt_weather_mask"].data[0, :, :]
+            | ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]
+        )
+        cdr_conc[is_ntwx_CDRv4] = 0
+
     spillover_applied = np.full((ydim, xdim), False, dtype=bool)
     spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = True
 
