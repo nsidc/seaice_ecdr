@@ -208,7 +208,7 @@ def _get_ame_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
 def _get_nsidc_0001_tbs(
     *, date: dt.date, hemisphere: Hemisphere, platform: NSIDC_0001_SATS
 ) -> EcdrTbData:
-    NSIDC0001_DATA_DIR = Path("/share/apps/G02202_V5/ecs/DP1/PM/NSIDC-0001.006/")
+    NSIDC0001_DATA_DIR = Path("/ecs/DP1/PM/NSIDC-0001.006/")
     # NSIDC-0001 TBs for siconc are all at 25km
     nsidc0001_resolution: Final = "25"
     tb_resolution: Final = nsidc0001_resolution
