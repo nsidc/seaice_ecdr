@@ -431,6 +431,24 @@ def compute_initial_daily_ecdr_dataset(
         np.round(ecdr_ide_ds["v22_day_si"].data, 2), 1
     )
 
+    # Set a missing data mask using 19V TB field
+    # Note: this will not include missing TBs in the day's invalid_ice field
+    ecdr_ide_ds["missing_tb_mask"] = (
+        ("time", "y", "x"),
+        np.isnan(ecdr_ide_ds["v19_day_si"].data),
+        {
+            "grid_mapping": "crs",
+            "standard_name": "missing_tb_binary_mask",
+            "long_name": "Map of Missing TBs",
+            "comment": "Mask indicating pixels with missing TBs",
+            "units": 1,
+        },
+        {
+            "zlib": True,
+        },
+    )
+    logger.debug("Initialized missing_tb_mask where TB was NaN")
+
     spat_int_flag_mask_values = np.array([1, 2, 4, 8, 16, 32], dtype=np.uint8)
     ecdr_ide_ds["spatial_interpolation_flag"] = (
         ("time", "y", "x"),
@@ -861,6 +879,11 @@ def compute_initial_daily_ecdr_dataset(
     cdr_conc[non_ocean_mask.data] = np.nan
     cdr_conc[cdr_conc < 10] = 0
     cdr_conc[cdr_conc > 100] = 100
+    # Set missing TBs to NaN
+    cdr_conc[ecdr_ide_ds["missing_tb_mask"].data[0, :, :]] = np.nan
+
+    bt_conc[ecdr_ide_ds["missing_tb_mask"].data[0, :, :]] = np.nan
+    nt_conc[ecdr_ide_ds["missing_tb_mask"].data[0, :, :]] = np.nan
 
     # Add the BT raw field to the dataset
     bt_conc = bt_conc / 100.0  # re-set range from 0 to 1
