@@ -518,13 +518,29 @@ def get_daily_climatology_mask(
         ancillary_source=ancillary_source,
     )
 
+    daily_ds = None
     if ancillary_source == "CDRv4":
-        daily_ds = Dataset(
-            "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-smmr-invalid-ice-v04r00.nc"
-        )
+        if hemisphere == "north":
+            daily_ds = Dataset(
+                "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-smmr-invalid-ice-v04r00.nc"
+            )
+        elif hemisphere == "south":
+            daily_ds = Dataset(
+                "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-pss25-smmr-invalid-ice-v04r00.nc"
+            )
     else:
-        daily_ds = Dataset(
-            "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-smmr-invalid-ice-v05r01.nc"
+        if hemisphere == "north":
+            daily_ds = Dataset(
+                "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-smmr-invalid-ice-v05r01.nc"
+            )
+        if hemisphere == "south":
+            daily_ds = Dataset(
+                "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-pss25-smmr-invalid-ice-v05r01.nc"
+            )
+
+    if daily_ds is None:
+        raise RuntimeError(
+            f"Could not load daily_climatology mask for {date=} {hemisphere=} {resolution=} {ancillary_source=}"
         )
 
     # day-of-year index is doy - 1
