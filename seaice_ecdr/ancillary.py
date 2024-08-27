@@ -210,7 +210,10 @@ def nh_polehole_mask(
     return polehole_mask
 
 
-def get_smmr_ancillary_filepath(*, hemisphere) -> Path:
+# def get_smmr_ancillary_filepath(*, hemisphere, ancillary_source: ANCILLARY_SOURCES) -> Path:
+def get_daily_ancillary_filepath(
+    *, hemisphere, ancillary_source: ANCILLARY_SOURCES
+) -> Path:
     """Return filepath to SMMR ancillary NetCDF.
 
     Contains a day-of-year climatology used for SMMR.
@@ -220,14 +223,27 @@ def get_smmr_ancillary_filepath(*, hemisphere) -> Path:
         # Hard-coded to 25km resolution, which is what we expect for SMMR.
         resolution="25",
     )
-    fn = f"ecdr-ancillary-{grid_id}-smmr-invalid-ice.nc"
-    filepath = CDR_ANCILLARY_DIR / fn
+
+    if ancillary_source == "CDRv5":
+        filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}-smmr-invalid-ice.nc"
+    elif ancillary_source == "CDRv4":
+        filepath = (
+            CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}-smmr-invalid-ice-v04r00.nc"
+        )
+    else:
+        raise ValueError(f"Unknown smmr ancillary source: {ancillary_source}")
 
     return filepath
 
 
-def get_smmr_invalid_ice_mask(*, date: dt.date, hemisphere: Hemisphere) -> xr.DataArray:
-    ancillary_file = get_smmr_ancillary_filepath(hemisphere=hemisphere)
+def get_smmr_invalid_ice_mask(
+    *, date: dt.date, hemisphere: Hemisphere, ancillary_source: ANCILLARY_SOURCES
+) -> xr.DataArray:
+    # TODO: Consider using daily instead of monthly icemask for SMMR?  Others?
+    # ancillary_file = get_daily_ancillary_filepath(hemisphere=hemisphere, ancillary_source=ancillary_source)
+    ancillary_file = get_ancillary_filepath(
+        hemisphere=hemisphere, ancillary_source=ancillary_source
+    )
 
     with xr.open_dataset(ancillary_file) as ds:
         invalid_ice_mask = ds.invalid_ice_mask.copy().astype(bool)
@@ -261,7 +277,11 @@ def get_invalid_ice_mask(
     """
     # SMMR / n07 case:
     if platform == "n07":
-        return get_smmr_invalid_ice_mask(hemisphere=hemisphere, date=date)
+        # TODO: Daily (SMMR) mask is used at end for cleanup,
+        #       but not for initial TB field generation
+        # Skip the smmr invalid ice mask for now...
+        print("WARNING: Using non-SMMR invalid ice masks")
+        # return get_smmr_invalid_ice_mask(hemisphere=hemisphere, date=date, ancillary_source=ancillary_source)
 
     # All other platforms:
     ancillary_ds = get_ancillary_ds(
