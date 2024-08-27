@@ -539,7 +539,9 @@ def write_cde_netcdf(
 
     This function also creates a checksum file for the complete daily netcdf.
     """
-    logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
+    logger.info(
+        f"Writing netCDF of complete, temporally interpolated eCDR file to: {output_filepath}"
+    )
     for excluded_field in excluded_fields:
         if excluded_field in cde_ds.variables.keys():
             cde_ds = cde_ds.drop_vars(excluded_field)
