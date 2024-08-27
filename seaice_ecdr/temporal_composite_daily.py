@@ -210,6 +210,7 @@ def temporally_composite_dataarray(
     one_sided_limit: int = 3,
     still_missing_flag: int = 255,
     non_ocean_mask: xr.DataArray,
+    daily_climatology_mask: None | npt.NDArray = None,
 ) -> tuple[xr.DataArray, npt.NDArray]:
     """Temporally composite a DataArray referenced to given reference date
     up to interp_range days.
@@ -247,6 +248,12 @@ def temporally_composite_dataarray(
     temp_comp_2d = np.squeeze(temp_comp_da.data)
     assert temp_comp_2d.shape == (ydim, xdim)
 
+    # TODO:  These lines are commented out in order to reproduce the
+    #        CDRv4 ERROR where the "home" smmr day does NOT have daily_clim
+    #        applied to it.
+    # if daily_climatology_mask is not None:
+    #    temp_comp_2d[daily_climatology_mask] = 0
+
     # Initialize arrays
     initial_missing_locs = np.isnan(temp_comp_2d.data)
 
@@ -262,7 +269,9 @@ def temporally_composite_dataarray(
     pconc[need_values] = 0
     pdist[need_values] = 0
     nconc[need_values] = 0
-    ndist[need_values] = 0
+    # TODO: Fix this for v5 release (implemented to match v04f00)
+    # ndist[need_values] = 0  # Correct
+    pdist[need_values] = 0  # Error as CDRv04r00 error
 
     for time_offset in range(1, interp_range + 1):
         if n_missing == 0:
@@ -273,6 +282,9 @@ def temporally_composite_dataarray(
 
         prior_field = np.squeeze(da.isel(time=da.time.dt.date == prior_date).to_numpy())
         next_field = np.squeeze(da.isel(time=da.time.dt.date == next_date).to_numpy())
+        if daily_climatology_mask is not None:
+            prior_field[daily_climatology_mask] = 0
+            next_field[daily_climatology_mask] = 0
 
         # update prior arrays
         n_prior = prior_field.size
@@ -328,10 +340,12 @@ def temporally_composite_dataarray(
     # Update the temporal interp flag value
     temporal_flags[have_only_prior] = 10 * pdist[have_only_prior]
 
-    temp_comp_2d[have_only_next] = nconc[have_only_next]
+    # temp_comp_2d[have_only_next] = nconc[have_only_next]  # Correct
+    temp_comp_2d[have_only_next] = pconc[have_only_next]  # Error as CDRv04r00
 
     # Update the temporal interp flag value
-    temporal_flags[have_only_next] = ndist[have_only_next]
+    # temporal_flags[have_only_next] = ndist[have_only_next]  # Correct
+    temporal_flags[have_only_next] = pdist[have_only_next]  # Error as CDRv04r00
 
     # Ensure flag values do not occur over land
     temporal_flags[non_ocean_mask.data] = 0
@@ -474,6 +488,55 @@ def filter_field_via_bitmask(
     return output_da
 
 
+def get_daily_climatology_mask(
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+) -> npt.NDArray:
+    """
+    Given the date and ancillary source, return a mask where True values
+    indicate that the sea ice conc values should be set to zero
+
+    NOTE: The date range for this is hard-coded to correspond to SMMR.
+          This should probably be an argument somehow?
+
+    Because the day-of-year climatology includes the land mask as part of
+    the invalid ice mask, we get the non_ocean_mask to dis-convolve that.
+    (We don't necessarily want to set the land to sea-ice-conc=0.)
+    """
+    from netCDF4 import Dataset
+
+    # This date comes from PLATFORM_AVAILABILITY in platforms.py
+    # TODO: This should be refactored to have less hard-coding!
+    if date > dt.date(1987, 7, 9):
+        return None
+
+    non_ocean_mask = get_non_ocean_mask(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
+
+    if ancillary_source == "CDRv4":
+        daily_ds = Dataset(
+            "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-smmr-invalid-ice-v04r00.nc"
+        )
+    else:
+        daily_ds = Dataset(
+            "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-smmr-invalid-ice-v05r01.nc"
+        )
+
+    # day-of-year index is doy - 1
+    doy_index = int(date.strftime("%j")) - 1
+    doy_mask_invalid = np.array(daily_ds.variables["invalid_ice_mask"])[doy_index, :, :]
+
+    # Return mask of invalid seaice, excluding land
+    mask = (doy_mask_invalid != 0) & (~non_ocean_mask.data)
+
+    return mask
+
+
 # TODO: better function name and docstring. This is first pass at refactor.
 def temporal_interpolation(
     *,
@@ -503,12 +566,23 @@ def temporal_interpolation(
         resolution=resolution,
         ancillary_source=ancillary_source,
     )
+    # daily_climatology_mask is True where historically no sea ice.
+    #   It can be None if no daily_climatology mask is to be used
+    daily_climatology_mask = get_daily_climatology_mask(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
+
+    # Actually compute the cdr_conc temporal composite
     ti_var, ti_flags = temporally_composite_dataarray(
         target_date=date,
         da=data_stack.conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
         one_sided_limit=one_sided_limit,
+        daily_climatology_mask=daily_climatology_mask,
     )
 
     tie_ds["cdr_conc_ti"] = ti_var
@@ -549,7 +623,7 @@ def temporal_interpolation(
 
     cdr_conc = np.squeeze(tie_ds["cdr_conc_ti"].data)
     # TODO: May want to rename this field.  Specifically, after this
-    #       operation, this will be both temporally interpoalted and
+    #       operation, this will be both temporally interpolated and
     #       polehole-filled (if appropriate).  For now, "cdr_conc" is okay
     tie_ds["cdr_conc"] = tie_ds["cdr_conc_ti"].copy()
 
@@ -606,6 +680,7 @@ def temporal_interpolation(
         #       distinguish it from the cdr_conc_ti field
         pass
 
+    # NOTE: the bt_conc array does not have daily_climatology applied
     bt_conc, _ = temporally_composite_dataarray(
         target_date=date,
         da=data_stack.raw_bt_seaice_conc,
@@ -614,9 +689,10 @@ def temporal_interpolation(
         one_sided_limit=one_sided_limit,
     )
 
+    # NOTE: the nt_conc array does not have daily_climatology applied
     nt_conc, _ = temporally_composite_dataarray(
         target_date=date,
-        da=data_stack.raw_bt_seaice_conc,
+        da=data_stack.raw_nt_seaice_conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
         one_sided_limit=one_sided_limit,
@@ -801,7 +877,9 @@ def write_tie_netcdf(
     ),
 ) -> Path:
     """Write the temporally interpolated ECDR to a netCDF file."""
-    logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
+    logger.info(
+        f"Writing netCDF of temporally_interpolated eCDR file to: {output_filepath}"
+    )
 
     for excluded_field in excluded_fields:
         if excluded_field in tie_ds.variables.keys():

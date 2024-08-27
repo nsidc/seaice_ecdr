@@ -54,6 +54,10 @@ from seaice_ecdr.tb_data import (
 from seaice_ecdr.util import get_intermediate_output_dir, standard_daily_filename
 
 
+def platform_is_smmr(platform):
+    return platform in ("n07", "s36")
+
+
 def cdr_bootstrap_raw(
     *,
     tb_v37: npt.NDArray,
@@ -267,7 +271,7 @@ def get_nasateam_weather_mask(
 
     # SMMR does not have a 22v channel that's suitable for the nt weather
     # filter. Instead, we just re-use the 3719 gradient ratios for 2219.
-    if ecdr_ide_ds.platform == "n07":
+    if platform_is_smmr(ecdr_ide_ds.platform):
         return nt_3719_weather_mask
 
     nt_gr_2219 = nt.compute_ratio(
@@ -278,7 +282,6 @@ def get_nasateam_weather_mask(
     nt_gr_2219 = np.round(nt_gr_2219, 4)
 
     nt_2219_weather_mask = nt_gr_2219 > nt_coefs["nt_gradient_thresholds"]["2219"]
-
     weather_mask = nt_3719_weather_mask | nt_2219_weather_mask
 
     is_zero_tb = (
@@ -298,7 +301,6 @@ def compute_initial_daily_ecdr_dataset(
     tb_data: EcdrTbData,
     land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
-    write_bt_iceout: bool = False,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -344,7 +346,7 @@ def compute_initial_daily_ecdr_dataset(
         if ancillary_source == "CDRv4":
             # The CDRv4 calculation causes TB to be zero/missing where
             # no sea ice can occur because of invalid region or land
-            logger.debug("Applying invalid ice mask to TB field: {tb_si_varname}")
+            logger.debug(f"Applying invalid ice mask to TB field: {tb_si_varname}")
             platform = get_platform_by_date(date)
             invalid_ice_mask = get_invalid_ice_mask(
                 hemisphere=hemisphere,
@@ -354,6 +356,7 @@ def compute_initial_daily_ecdr_dataset(
                 ancillary_source=ancillary_source,
             )
 
+            # Set the TB values to zero at (monthly?) invalid ice mask
             tb_si_data[invalid_ice_mask] = 0
 
         ecdr_ide_ds[tb_si_varname] = (
@@ -371,6 +374,29 @@ def compute_initial_daily_ecdr_dataset(
                 "zlib": True,
             },
         )
+
+    # Enforce missing TB value consistency across all channels
+    _, ydim, xdim = ecdr_ide_ds["v19_day_si"].data.shape
+    is_atleastone_zerotb = np.zeros((1, ydim, xdim), dtype="bool")
+    is_atleastone_nantb = np.zeros((1, ydim, xdim), dtype="bool")
+    tb_field_list = [
+        "h19_day_si",
+        "v19_day_si",
+        "v22_day_si",
+        "h37_day_si",
+        "v37_day_si",
+    ]
+    for key in tb_field_list:
+        if key in ecdr_ide_ds.variables.keys():
+            is_zero_tb = ecdr_ide_ds[key].data == 0
+            is_atleastone_zerotb[is_zero_tb] = True
+
+            is_NaN_tb = np.isnan(ecdr_ide_ds[key].data)
+            is_atleastone_nantb[is_NaN_tb] = True
+    for key in tb_field_list:
+        if key in ecdr_ide_ds.variables.keys():
+            ecdr_ide_ds[key].data[is_atleastone_zerotb] = 0
+            ecdr_ide_ds[key].data[is_atleastone_nantb] = np.nan
 
     # Set up the spatial interpolation bitmask field where the various
     # TB fields were interpolated
@@ -411,7 +437,7 @@ def compute_initial_daily_ecdr_dataset(
     # Because np.round() rounds to the nearest even value (not the nearest
     #   value!), the results are not the same as adding 0.5 and then cropping
     #     eg np.round(1834.5) -> 1834
-    #     eg np.round(1835.5) -> 1835
+    #     eg np.round(1835.5) -> 1836
     #  See: https://docs.scipy.org/doc//numpy-1.9.0/reference/generated/numpy.around.html#numpy.around
     # In order to reproduce the v4 rounding values, need to first round to
     # two decimal places, then round to 1
@@ -494,7 +520,7 @@ def compute_initial_daily_ecdr_dataset(
             satellite=platform,
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform == "n07":
+    elif platform_is_smmr(platform):
         bt_coefs_init = get_smmr_params(hemisphere=hemisphere, date=date)
     else:
         raise RuntimeError(f"platform bootstrap params not implemented: {platform}")
@@ -627,6 +653,7 @@ def compute_initial_daily_ecdr_dataset(
         wintrc=bt_coefs_init["wintrc"],
         wslope=bt_coefs_init["wslope"],
         wxlimt=bt_coefs_init["wxlimt"],
+        is_smmr=platform_is_smmr(platform),
     )
 
     # Note:
@@ -637,10 +664,10 @@ def compute_initial_daily_ecdr_dataset(
     # Note that this cdralgos_water_arr will differ because it will have
     # zeros where there is no data because of the pole hole
 
-    ecdr_ide_ds["bt_weather_mask"] = (
+    ecdr_ide_ds["bt_weather_mask"] = (  # note <-- name is weather_mask
         ("time", "y", "x"),
         # np.expand_dims(bt_weather_mask.data, axis=0),
-        np.expand_dims(bt_water_mask.data, axis=0),
+        np.expand_dims(bt_water_mask.data, axis=0),  # note <-- var water_mask
         {
             "grid_mapping": "crs",
             "standard_name": "bt_weather_binary_mask",
@@ -670,6 +697,12 @@ def compute_initial_daily_ecdr_dataset(
     for coef in bt_coefs_to_update:
         bt_coefs.pop(coef, None)
 
+    """
+    This is the fortran function:
+        call ret_linfit1(
+     >    nc, nr, land, gdata, v37, h37, ln, lnchk, add1, water_arr,
+     >    vh37)
+    """
     bt_coefs["vh37_iceline"] = bt.get_linfit(
         land_mask=ecdr_ide_ds["non_ocean_mask"].data,
         tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
@@ -731,7 +764,6 @@ def compute_initial_daily_ecdr_dataset(
         ad_line_offset=bt_coefs["ad_line_offset"],
     )
 
-    # finally, compute the CDR.
     bt_conc = cdr_bootstrap_raw(
         tb_v37=bt_v37,
         tb_h37=bt_h37,
@@ -740,36 +772,16 @@ def compute_initial_daily_ecdr_dataset(
         platform=platform,
     )
 
-    # Create iceout equivalent (for debugging), if kwarg set
-    if write_bt_iceout:
-        bt_iceout = bt_conc.copy()
-        bt_iceout_filename = "bt_iceout_v5.dat"
-
-        # Cause invalid tb to be missing (as per code)
-        bt_iceout[ecdr_ide_ds["invalid_tb_mask"].data[0, :, :]] = 110
-
-        # Cause land to be 120 (this must be after invalid_tb_mask)
-        bt_iceout[non_ocean_mask.data] = 120
-
-        # Cause NaN to be missing
-        bt_iceout[np.isnan(bt_iceout)] = 110
-
-        # add the weather array values (to zero)
-        bt_iceout[ecdr_ide_ds["bt_weather_mask"].data[0, :, :]] = 0
-
-        bt_iceout.tofile(bt_iceout_filename)
-
-        # Note: differences here with cdralgos bt_iceout
-        #       are on the order of 1.5e-5
-
     # Set any bootstrap concentrations below 10% to 0.
     # NOTE: This is probably necessary for land spillover algorithms
     #       to properly work with "exactly 0% siconc" calculations
+    # TODO: This 10% cutoff should be a configuration value
     bt_conc[bt_conc < 10] = 0
 
     # Remove bt_conc flags (e.g., missing) and set to NaN
     bt_conc[bt_conc >= 250] = np.nan
 
+    # Now, compute CDR version of NT estimate
     nt_conc = cdr_nasateam(
         tb_h19=ecdr_ide_ds["h19_day_si"].data[0, :, :],
         tb_v37=ecdr_ide_ds["v37_day_si"].data[0, :, :],
@@ -844,6 +856,7 @@ def compute_initial_daily_ecdr_dataset(
     # Note: the NT array here is np.int16
     nt_asCDRv4_conc = nt_asCDRv4_conc.copy()
     is_negative_10 = nt_asCDRv4_conc == -10
+
     nt_asCDRv4_conc = np.divide(nt_asCDRv4_conc, 10.0).astype(np.float32)
     nt_asCDRv4_conc[is_negative_10] = -10
 
@@ -879,11 +892,19 @@ def compute_initial_daily_ecdr_dataset(
     cdr_conc[non_ocean_mask.data] = np.nan
     cdr_conc[cdr_conc < 10] = 0
     cdr_conc[cdr_conc > 100] = 100
+
     # Set missing TBs to NaN
     cdr_conc[ecdr_ide_ds["missing_tb_mask"].data[0, :, :]] = np.nan
-
     bt_conc[ecdr_ide_ds["missing_tb_mask"].data[0, :, :]] = np.nan
     nt_conc[ecdr_ide_ds["missing_tb_mask"].data[0, :, :]] = np.nan
+
+    # TODO: Remove these CDRv4 flags?
+    # Apply the CDRv4 flags to the conc field for more direct comparison
+    flagmask = np.fromfile("./flagmask/cdrv4_flagmask.dat", dtype=np.uint8).reshape(
+        448, 304
+    )
+    cdr_conc[flagmask > 250] = flagmask[flagmask > 250]
+    cdr_conc[np.isnan(cdr_conc)] = 255
 
     # Add the BT raw field to the dataset
     bt_conc = bt_conc / 100.0  # re-set range from 0 to 1
