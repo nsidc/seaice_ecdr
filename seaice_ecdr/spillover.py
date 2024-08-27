@@ -277,6 +277,7 @@ def land_spillover(
 
         # Bootstrap alg
         bt_conc[bt_wx] = 0
+        bt_conc[bt_conc == 110] = np.nan
         spillover_applied_bt = coastal_fix(
             conc=bt_conc,
             missing_flag_value=np.nan,
@@ -311,6 +312,12 @@ def land_spillover(
         nt_asCDRv4 = (10.0 * spillover_applied_nt).astype(np.int16)
         nt_asCDRv4[is_negative_ntconc] = -10
         nt_asCDRv4[land_mask] = -100
+
+        # This section is for debugging; outputs bt and bt after spillover
+        # bt_asCDRv4 = spillover_applied_bt.copy()
+        # bt_asCDRv4[np.isnan(bt_asCDRv4)] = 110
+        # bt_asCDRv4.tofile('bt_afterspill_v5.dat')
+        # nt_asCDRv4.tofile('nt_afterspill_v5.dat')
 
         # Note: be careful of ndarray vs xarray here!
         is_nt_spillover = (
