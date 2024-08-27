@@ -294,6 +294,46 @@ def get_nasateam_weather_mask(
     return weather_mask
 
 
+def get_flagmask(
+    hemisphere: Hemisphere,
+    ancillary_source: ANCILLARY_SOURCES,
+) -> None | npt.NDArray:
+    """
+    Return a set of flags (uint8s of value 251-255)
+    that correspond to non-ocean features of this grid/landmask
+    """
+
+    # NOTE: This could be better organized and name-conventioned?
+
+    # TODO: Put these flagmasks in the ancillary files
+    #       (or at least a better location!)
+
+    flagmask = None
+    if ancillary_source == "CDRv4":
+        if hemisphere == "north":
+            flagmask = np.fromfile(
+                "./flagmasks/flagmask_psn25_v04r00.dat", dtype=np.uint8
+            ).reshape(448, 304)
+        elif hemisphere == "south":
+            flagmask = np.fromfile(
+                "./flagmasks/flagmask_pss25_v04r00.dat", dtype=np.uint8
+            ).reshape(332, 316)
+    elif ancillary_source == "CDRv5":
+        if hemisphere == "north":
+            flagmask = np.fromfile(
+                "./flagmasks/flagmask_psn25_v05r01.dat", dtype=np.uint8
+            ).reshape(448, 304)
+        elif hemisphere == "south":
+            flagmask = np.fromfile(
+                "./flagmasks/flagmask_pss25_v05r01.dat", dtype=np.uint8
+            ).reshape(332, 316)
+
+    if flagmask is None:
+        logger.warning(f"No flagmask found for {hemisphere=} {ancillary_source=}")
+
+    return flagmask
+
+
 def compute_initial_daily_ecdr_dataset(
     *,
     date: dt.date,
@@ -900,9 +940,11 @@ def compute_initial_daily_ecdr_dataset(
 
     # TODO: Remove these CDRv4 flags?
     # Apply the CDRv4 flags to the conc field for more direct comparison
-    flagmask = np.fromfile("./flagmask/cdrv4_flagmask.dat", dtype=np.uint8).reshape(
-        448, 304
+    flagmask = get_flagmask(
+        hemisphere=hemisphere,
+        ancillary_source=ancillary_source,
     )
+
     cdr_conc[flagmask > 250] = flagmask[flagmask > 250]
     cdr_conc[np.isnan(cdr_conc)] = 255
 
