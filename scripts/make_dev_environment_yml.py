@@ -7,7 +7,6 @@ parallel to the `seaice_ecdr` repo.
 from pathlib import Path
 
 import yaml
-from loguru import logger
 
 if __name__ == "__main__":
     deps = dict()
@@ -57,4 +56,6 @@ if __name__ == "__main__":
     with open(dev_env_fp, "w") as dev_env_file:
         yaml.safe_dump(env_struct, dev_env_file)
 
-    logger.info(f"wrote {dev_env_fp}")
+    # Note: purposefully not using `logger` here because this script gets run in
+    # a bare-bones env
+    print(f"wrote {dev_env_fp}")
