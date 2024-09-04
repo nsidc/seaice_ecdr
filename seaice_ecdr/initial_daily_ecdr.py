@@ -328,8 +328,10 @@ def get_flagmask(
                 "./flagmasks/flagmask_pss25_v05r01.dat", dtype=np.uint8
             ).reshape(332, 316)
 
-    if flagmask is None:
-        logger.warning(f"No flagmask found for {hemisphere=} {ancillary_source=}")
+    # With ancillary_source constrained to CDRv4 and CDRv5, this is unreachable
+    # so these lines are commented out for mypy reasons
+    # if flagmask is None:
+    #     logger.warning(f"No flagmask found for {hemisphere=} {ancillary_source=}")
 
     return flagmask
 
@@ -753,13 +755,17 @@ def compute_initial_daily_ecdr_dataset(
         water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],  # note: water
     )
 
+    # TODO: Keeping commented-out weather_mask kwarg calls to highlight
+    #       the transition from weather_mask to water_mask in these function
+    #       calls
     if ancillary_source == "CDRv4":
         logger.error("SKIPPING calculation of water tiepoint to match CDRv4")
         bt_coefs["bt_wtp_v37"] = bt_coefs_init["bt_wtp_v37"]
     else:
         bt_coefs["bt_wtp_v37"] = bt.calculate_water_tiepoint(
             wtp_init=bt_coefs_init["bt_wtp_v37"],
-            weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            # weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
             tb=bt_v37,
         )
 
@@ -769,7 +775,8 @@ def compute_initial_daily_ecdr_dataset(
     else:
         bt_coefs["bt_wtp_h37"] = bt.calculate_water_tiepoint(
             wtp_init=bt_coefs_init["bt_wtp_h37"],
-            weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            # weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
             tb=bt_h37,
         )
 
@@ -779,7 +786,8 @@ def compute_initial_daily_ecdr_dataset(
     else:
         bt_coefs["bt_wtp_v19"] = bt.calculate_water_tiepoint(
             wtp_init=bt_coefs_init["bt_wtp_v19"],
-            weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            # weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
             tb=bt_v19,
         )
 
@@ -945,8 +953,9 @@ def compute_initial_daily_ecdr_dataset(
         ancillary_source=ancillary_source,
     )
 
-    cdr_conc[flagmask > 250] = flagmask[flagmask > 250]
-    cdr_conc[np.isnan(cdr_conc)] = 255
+    if flagmask is not None:
+        cdr_conc[flagmask > 250] = flagmask[flagmask > 250]
+        cdr_conc[np.isnan(cdr_conc)] = 255
 
     # Add the BT raw field to the dataset
     bt_conc = bt_conc / 100.0  # re-set range from 0 to 1

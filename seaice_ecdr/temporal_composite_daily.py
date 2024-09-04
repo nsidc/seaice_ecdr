@@ -493,7 +493,7 @@ def get_daily_climatology_mask(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ancillary_source: ANCILLARY_SOURCES,
-) -> npt.NDArray:
+) -> None | npt.NDArray:
     """
     Given the date and ancillary source, return a mask where True values
     indicate that the sea ice conc values should be set to zero

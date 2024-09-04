@@ -237,12 +237,18 @@ def get_daily_ancillary_filepath(
 
 
 def get_smmr_invalid_ice_mask(
-    *, date: dt.date, hemisphere: Hemisphere, ancillary_source: ANCILLARY_SOURCES
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     # TODO: Consider using daily instead of monthly icemask for SMMR?  Others?
     # ancillary_file = get_daily_ancillary_filepath(hemisphere=hemisphere, ancillary_source=ancillary_source)
     ancillary_file = get_ancillary_filepath(
-        hemisphere=hemisphere, ancillary_source=ancillary_source
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     with xr.open_dataset(ancillary_file) as ds:
@@ -281,7 +287,7 @@ def get_invalid_ice_mask(
         #       but not for initial TB field generation
         # Skip the smmr invalid ice mask for now...
         print("WARNING: Using non-SMMR invalid ice masks")
-        # return get_smmr_invalid_ice_mask(hemisphere=hemisphere, date=date, ancillary_source=ancillary_source)
+        # return get_smmr_invalid_ice_mask(hemisphere=hemisphere, date=date, resolution=resolution, ancillary_source=ancillary_source)
 
     # All other platforms:
     ancillary_ds = get_ancillary_ds(
