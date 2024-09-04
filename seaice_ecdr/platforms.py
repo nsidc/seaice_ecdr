@@ -15,61 +15,138 @@ TODO: There are a couple of date ranges for which we do not want
 import datetime as dt
 import os
 from collections import OrderedDict
-from functools import cache
 from typing import cast, get_args
 
 import yaml
 from loguru import logger
+from pydantic import BaseModel
 
 from seaice_ecdr._types import SUPPORTED_SAT
 
-# TODO: De-dup with nc_attrs.py
-# Here’s what the GCMD platform long name should be based on sensor/platform short name:
-PLATFORMS_FOR_SATS: dict[SUPPORTED_SAT, str] = dict(
-    am2="GCOM-W1 > Global Change Observation Mission 1st-Water",
-    ame="Aqua > Earth Observing System, Aqua",
-    F17="DMSP 5D-3/F17 > Defense Meteorological Satellite Program-F17",
-    F13="DMSP 5D-2/F13 > Defense Meteorological Satellite Program-F13",
-    F11="DMSP 5D-2/F11 > Defense Meteorological Satellite Program-F11",
-    F08="DMSP 5D-2/F8 > Defense Meteorological Satellite Program-F8",
-    n07="Nimbus-7",
+
+class DateRange(BaseModel):
+    first_date: dt.date
+    last_date: dt.date | None
+
+
+class Platform(BaseModel):
+    # E.g., "DMSP 5D-3/F17 > Defense Meteorological Satellite Program-F17"
+    name: str
+    # GCMD sensor name. E.g., SSMIS > Special Sensor Microwave Imager/Sounder
+    sensor: str
+    # E.g., "F17"
+    short_name: SUPPORTED_SAT
+    date_range: DateRange
+
+
+AM2_PLATFORM = Platform(
+    name="GCOM-W1 > Global Change Observation Mission 1st-Water",
+    sensor="AMSR2 > Advanced Microwave Scanning Radiometer 2",
+    short_name="am2",
+    date_range=DateRange(
+        first_date=dt.date(2012, 7, 2),
+        last_date=None,
+    ),
+)
+
+AME_PLATFORM = Platform(
+    name="Aqua > Earth Observing System, Aqua",
+    sensor="AMSR-E > Advanced Microwave Scanning Radiometer-EOS",
+    short_name="ame",
+    date_range=DateRange(
+        first_date=dt.date(2002, 6, 1),
+        last_date=dt.date(2011, 10, 3),
+    ),
+)
+
+F17_PLATFORM = Platform(
+    name="DMSP 5D-3/F17 > Defense Meteorological Satellite Program-F17",
+    sensor="SSMIS > Special Sensor Microwave Imager/Sounder",
+    short_name="F17",
+    date_range=DateRange(
+        first_date=dt.date(2008, 1, 1),
+        last_date=None,
+    ),
+)
+
+F13_PLATFORM = Platform(
+    name="DMSP 5D-2/F13 > Defense Meteorological Satellite Program-F13",
+    sensor="SSM/I > Special Sensor Microwave/Imager",
+    short_name="F13",
+    date_range=DateRange(
+        first_date=dt.date(1995, 10, 1),
+        last_date=dt.date(2007, 12, 31),
+    ),
+)
+F11_PLATFORM = Platform(
+    name="DMSP 5D-2/F11 > Defense Meteorological Satellite Program-F11",
+    sensor="SSM/I > Special Sensor Microwave/Imager",
+    short_name="F11",
+    date_range=DateRange(
+        first_date=dt.date(1991, 12, 3),
+        last_date=dt.date(1995, 9, 30),
+    ),
+)
+F08_PLATFORM = Platform(
+    name="DMSP 5D-2/F8 > Defense Meteorological Satellite Program-F8",
+    sensor="SSM/I > Special Sensor Microwave/Imager",
+    short_name="F08",
+    date_range=DateRange(
+        first_date=dt.date(1987, 7, 10),
+        last_date=dt.date(1991, 12, 2),
+    ),
+)
+
+N07_PLATFORM = Platform(
+    name="Nimbus-7",
+    sensor="SMMR > Scanning Multichannel Microwave Radiometer",
+    short_name="n07",
+    date_range=DateRange(
+        first_date=dt.date(1978, 10, 25),
+        last_date=dt.date(1987, 7, 9),
+    ),
+)
+
+DEFAULT_PLATFORMS = [
+    AM2_PLATFORM,
+    AME_PLATFORM,
+    F17_PLATFORM,
+    F13_PLATFORM,
+    F11_PLATFORM,
+    F08_PLATFORM,
+    N07_PLATFORM,
+]
+
+
+DEFAULT_PLATFORM_START_DATES: OrderedDict[dt.date, Platform] = OrderedDict(
+    {
+        dt.date(1978, 10, 25): N07_PLATFORM,
+        dt.date(1987, 7, 10): F08_PLATFORM,
+        dt.date(1991, 12, 3): F11_PLATFORM,
+        dt.date(1995, 10, 1): F13_PLATFORM,
+        dt.date(2002, 6, 1): AME_PLATFORM,  # AMSR-E is first AMSR sat
+        # F17 starts while AMSR-E is up, on 2008-01-01. We don't use
+        # F17 until 2011-10-04.
+        dt.date(2011, 10, 4): F17_PLATFORM,
+        dt.date(2012, 7, 3): AM2_PLATFORM,  # AMSR2
+    }
 )
 
 
-# TODO: De-dup with nc_attrs.py
-# Here’s what the GCMD sensor name should be based on sensor short name:
-SENSORS_FOR_SATS: dict[SUPPORTED_SAT, str] = dict(
-    am2="AMSR2 > Advanced Microwave Scanning Radiometer 2",
-    ame="AMSR-E > Advanced Microwave Scanning Radiometer-EOS",
-    F17="SSMIS > Special Sensor Microwave Imager/Sounder",
-    # TODO: de-dup SSM/I text?
-    F13="SSM/I > Special Sensor Microwave/Imager",
-    F11="SSM/I > Special Sensor Microwave/Imager",
-    F08="SSM/I > Special Sensor Microwave/Imager",
-    n07="SMMR > Scanning Multichannel Microwave Radiometer",
-)
+def platform_for_short_name(short_name: SUPPORTED_SAT) -> Platform:
+    for platform in DEFAULT_PLATFORMS:
+        if platform.short_name == short_name:
+            return platform
 
-
-# These first and last dates were adapted from the cdrv4 file
-#   https://bitbucket.org/nsidc/seaice_cdr/src/master/source/config/cdr.yml
-# of commit:
-#   https://bitbucket.org/nsidc/seaice_cdr/commits/c9c632e73530554d8acfac9090baeb1e35755897
-PLATFORM_AVAILABILITY: OrderedDict[SUPPORTED_SAT, dict] = OrderedDict(
-    n07={"first_date": dt.date(1978, 10, 25), "last_date": dt.date(1987, 7, 9)},
-    F08={"first_date": dt.date(1987, 7, 10), "last_date": dt.date(1991, 12, 2)},
-    F11={"first_date": dt.date(1991, 12, 3), "last_date": dt.date(1995, 9, 30)},
-    F13={"first_date": dt.date(1995, 10, 1), "last_date": dt.date(2007, 12, 31)},
-    F17={"first_date": dt.date(2008, 1, 1), "last_date": None},
-    ame={"first_date": dt.date(2002, 6, 1), "last_date": dt.date(2011, 10, 3)},
-    am2={"first_date": dt.date(2012, 7, 2), "last_date": None},
-)
+    err_msg = f"Failed to find platform for {short_name=}"
+    raise RuntimeError(err_msg)
 
 
 def read_platform_start_dates_cfg_override(
     start_dates_cfg_filename,
-) -> OrderedDict[dt.date, SUPPORTED_SAT]:
+) -> OrderedDict[dt.date, Platform]:
     """The "platform_start_dates" dictionary is an OrderedDict
-    of keys (dates) with corresponding platforms/sats (values)
+    of keys (dates) with corresponding platform short names (values)
 
     Note: It seems like yaml can't safe_load() an OrderedDict.
     """
@@ -93,115 +170,58 @@ def read_platform_start_dates_cfg_override(
         ]
     )
 
-    return platform_start_dates
+    platform_start_dates_with_platform = {
+        date: platform_for_short_name(short_name)
+        for date, short_name in platform_start_dates.items()
+    }
 
-
-@cache
-def get_platform_start_dates() -> OrderedDict[dt.date, SUPPORTED_SAT]:
-    """Return dict of start dates for differnt platforms.
-
-    Platform start dates can be overridden via a YAML override file specified by
-    the `PLATFORM_START_DATES_CFG_OVERRIDE_FILE` envvar.
-    """
-
-    if override_file := os.environ.get("PLATFORM_START_DATES_CFG_OVERRIDE_FILE"):
-        _platform_start_dates = read_platform_start_dates_cfg_override(override_file)
-        logger.info(f"Read platform start dates from {override_file}")
-    # TODO: it's clear that we should refactor to support passing in custom
-    # platform start dates programatically. This is essentially global state and
-    # it makes it very difficult to test out different combinations as a result.
-    elif forced_platform := os.environ.get("FORCE_PLATFORM"):
-        if forced_platform not in get_args(SUPPORTED_SAT):
-            raise RuntimeError(
-                f"The forced platform ({forced_platform}) is not a supported platform."
-            )
-
-        forced_platform = cast(SUPPORTED_SAT, forced_platform)
-
-        first_date_of_forced_platform = PLATFORM_AVAILABILITY[forced_platform][
-            "first_date"
-        ]
-        _platform_start_dates = OrderedDict(
-            {
-                first_date_of_forced_platform: forced_platform,
-            }
-        )
-
-    else:
-        _platform_start_dates = OrderedDict(
-            {
-                dt.date(1978, 10, 25): "n07",
-                dt.date(1987, 7, 10): "F08",
-                dt.date(1991, 12, 3): "F11",
-                dt.date(1995, 10, 1): "F13",
-                dt.date(2002, 6, 1): "ame",  # AMSR-E is first AMSR sat
-                # F17 starts while AMSR-E is up, on 2008-01-01. We don't use
-                # F17 until 2011-10-04.
-                dt.date(2011, 10, 4): "F17",
-                dt.date(2012, 7, 3): "am2",  # AMSR2
-            }
-        )
-
-    _platform_start_dates = cast(
-        OrderedDict[dt.date, SUPPORTED_SAT], _platform_start_dates
+    platform_start_dates_with_platform = cast(
+        OrderedDict[dt.date, Platform], platform_start_dates_with_platform
     )
 
-    assert _platform_start_dates_are_consistent(
-        platform_start_dates=_platform_start_dates
-    )
-
-    return _platform_start_dates
+    return platform_start_dates_with_platform
 
 
 def _platform_available_for_date(
     *,
     date: dt.date,
-    platform: SUPPORTED_SAT,
-    platform_availability: OrderedDict = PLATFORM_AVAILABILITY,
+    platform: Platform,
 ) -> bool:
     """Determine if platform is available on this date."""
     # First, verify the values of the first listed platform
-    first_available_date = platform_availability[platform]["first_date"]
+    first_available_date = platform.date_range.first_date
     if date < first_available_date:
         print(
             f"""
-            Satellite {platform} is not available on date {date}
+            Satellite {platform.short_name} is not available on date {date}.
             {date} is before first_available_date {first_available_date}
-            Date info: {platform_availability[platform]}
+            Date info: {platform.date_range}
             """
         )
         return False
 
-    try:
-        last_available_date = platform_availability[platform]["last_date"]
-        try:
-            if date > last_available_date:
-                print(
-                    f"""
-                    Satellite {platform} is not available on date {date}
-                    {date} is after last_available_date {last_available_date}
-                    Date info: {platform_availability[platform]}
-                    """
-                )
-                return False
-        except TypeError as e:
-            if last_available_date is None:
-                pass
-            else:
-                raise e
-    except IndexError as e:
-        # last_date is set to None if platform is still providing new data
-        if last_available_date is None:
-            pass
-        else:
-            raise e
+    last_available_date = platform.date_range.last_date
+    # If the last available date is `None`, then there is no end date and we
+    # should treat the date as if the platform is available.
+    if last_available_date is None:
+        return True
+
+    if date > last_available_date:
+        print(
+            f"""
+            Satellite {platform} is not available on date {date}.
+            {date} is after last_available_date {last_available_date}
+            Date info: {platform.date_range}
+            """
+        )
+        return False
 
     return True
 
 
 def _platform_start_dates_are_consistent(
     *,
-    platform_start_dates: OrderedDict[dt.date, SUPPORTED_SAT],
+    platform_start_dates: OrderedDict[dt.date, Platform],
 ) -> bool:
     """Return whether the provided start date structure is valid."""
     date_list = list(platform_start_dates.keys())
@@ -212,7 +232,6 @@ def _platform_start_dates_are_consistent(
         assert _platform_available_for_date(
             date=date,
             platform=platform,
-            platform_availability=PLATFORM_AVAILABILITY,
         )
 
         for idx in range(1, len(date_list)):
@@ -225,35 +244,75 @@ def _platform_start_dates_are_consistent(
             assert _platform_available_for_date(
                 date=prior_date,
                 platform=prior_platform,
-                platform_availability=PLATFORM_AVAILABILITY,
             )
 
             # Check this platform's first available date
             assert _platform_available_for_date(
                 date=date,
                 platform=platform,
-                platform_availability=PLATFORM_AVAILABILITY,
             )
     except AssertionError:
         raise RuntimeError(
             f"""
         platform start dates are not consistent
         platform_start_dates: {platform_start_dates}
-        platform_availability: {PLATFORM_AVAILABILITY}
+        platforms: {DEFAULT_PLATFORMS}
         """
         )
 
     return True
 
 
+def _get_platform_start_dates() -> OrderedDict[dt.date, Platform]:
+    """Return dict of start dates for differnt platforms.
+
+    Platform start dates can be overridden via a YAML override file specified by
+    the `PLATFORM_START_DATES_CFG_OVERRIDE_FILE` envvar.
+    """
+
+    if override_file := os.environ.get("PLATFORM_START_DATES_CFG_OVERRIDE_FILE"):
+        _platform_start_dates = read_platform_start_dates_cfg_override(override_file)
+        logger.info(f"Read platform start dates from {override_file}")
+    # TODO: it's clear that we should refactor to support passing in custom
+    # platform start dates programatically. This is essentially global state and
+    # it makes it very difficult to test out different combinations as a result.
+    elif forced_platform_short_name := os.environ.get("FORCE_PLATFORM"):
+        if forced_platform_short_name not in get_args(SUPPORTED_SAT):
+            raise RuntimeError(
+                f"The forced platform ({forced_platform_short_name}) is not a supported platform."
+            )
+
+        forced_platform_short_name = cast(SUPPORTED_SAT, forced_platform_short_name)
+
+        forced_platform = platform_for_short_name(forced_platform_short_name)
+        first_date_of_forced_platform = forced_platform.date_range.first_date
+        _platform_start_dates = OrderedDict(
+            {
+                first_date_of_forced_platform: forced_platform,
+            }
+        )
+
+    else:
+        _platform_start_dates = DEFAULT_PLATFORM_START_DATES
+
+    _platform_start_dates = cast(OrderedDict[dt.date, Platform], _platform_start_dates)
+
+    assert _platform_start_dates_are_consistent(
+        platform_start_dates=_platform_start_dates
+    )
+
+    return _platform_start_dates
+
+
+PLATFORM_START_DATES = _get_platform_start_dates()
+
+
 def get_platform_by_date(
     date: dt.date,
-) -> SUPPORTED_SAT:
+) -> Platform:
     """Return the platform for this date."""
-    platform_start_dates = get_platform_start_dates()
-
-    start_date_list = list(platform_start_dates.keys())
-    platform_list = list(platform_start_dates.values())
+    start_date_list = list(PLATFORM_START_DATES.keys())
+    platform_list = list(PLATFORM_START_DATES.values())
 
     if date < start_date_list[0]:
         raise RuntimeError(
@@ -263,25 +322,22 @@ def get_platform_by_date(
            """
         )
 
-    return_platform = None
     if date >= start_date_list[-1]:
-        return_platform = platform_list[-1]
+        return platform_list[-1]
 
-    if return_platform is None:
-        return_platform = platform_list[0]
-        for start_date, latest_platform in zip(start_date_list[1:], platform_list[1:]):
-            if date >= start_date:
-                return_platform = latest_platform
-                continue
-            else:
-                break
+    return_platform = platform_list[0]
+    for start_date, latest_platform in zip(start_date_list[1:], platform_list[1:]):
+        if date >= start_date:
+            return_platform = latest_platform
+            continue
+        else:
+            break
 
     return return_platform
 
 
 def get_first_platform_start_date() -> dt.date:
     """Return the start date of the first platform."""
-    platform_start_dates = get_platform_start_dates()
-    earliest_date = min(platform_start_dates.keys())
+    earliest_date = min(PLATFORM_START_DATES.keys())
 
     return earliest_date

@@ -308,17 +308,17 @@ def get_25km_ecdr_tb_data(
 ) -> EcdrTbData:
     """Get 25km ECDR Tb data for the given date and hemisphere."""
     platform = get_platform_by_date(date)
-    if platform == "am2":
+    if platform.short_name == "am2":
         return _get_am2_tbs(date=date, hemisphere=hemisphere, resolution="25")
-    elif platform == "ame":
+    elif platform.short_name == "ame":
         raise NotImplementedError("AME is not yet supported at 25km resolution")
-    elif platform in get_args(NSIDC_0001_SATS):
+    elif platform.short_name in get_args(NSIDC_0001_SATS):
         return _get_nsidc_0001_tbs(
             platform=platform,  # type: ignore[arg-type]
             date=date,
             hemisphere=hemisphere,
         )
-    elif platform == "n07":
+    elif platform.short_name == "n07":
         # SMMR
         return _get_nsidc_0007_tbs(date=date, hemisphere=hemisphere)
     else:
@@ -338,17 +338,17 @@ def get_ecdr_tb_data(
     differences between platforms.
     """
     platform = get_platform_by_date(date)
-    if platform == "am2":
+    if platform.short_name == "am2":
         return _get_am2_tbs(date=date, hemisphere=hemisphere, resolution="12.5")
-    elif platform == "ame":
+    elif platform.short_name == "ame":
         return _get_ame_tbs(date=date, hemisphere=hemisphere)
-    elif platform in get_args(NSIDC_0001_SATS):
+    elif platform.short_name in get_args(NSIDC_0001_SATS):
         return _get_nsidc_0001_tbs(
-            platform=platform,  # type: ignore[arg-type]
+            platform=platform.short_name,  # type: ignore[arg-type]
             date=date,
             hemisphere=hemisphere,
         )
-    elif platform == "n07":
+    elif platform.short_name == "n07":
         # SMMR
         return _get_nsidc_0007_tbs(date=date, hemisphere=hemisphere)
     else:

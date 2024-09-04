@@ -352,7 +352,7 @@ def read_or_create_and_read_idecdr_ds(
 
     ide_filepath = get_idecdr_filepath(
         date=date,
-        platform=platform,
+        platform=platform.short_name,
         hemisphere=hemisphere,
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,

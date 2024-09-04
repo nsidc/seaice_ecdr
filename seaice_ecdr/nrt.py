@@ -102,7 +102,7 @@ def read_or_create_and_read_nrt_idecdr_ds(
     idecdr_filepath = get_idecdr_filepath(
         hemisphere=hemisphere,
         date=date,
-        platform=platform,
+        platform=platform.short_name,
         intermediate_output_dir=intermediate_output_dir,
         resolution="12.5",
     )
