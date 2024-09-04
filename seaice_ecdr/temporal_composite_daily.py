@@ -373,7 +373,7 @@ def read_or_create_and_read_idecdr_ds(
 
     ide_filepath = get_idecdr_filepath(
         date=date,
-        platform=platform,
+        platform=platform.short_name,
         hemisphere=hemisphere,
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
@@ -509,6 +509,7 @@ def get_daily_climatology_mask(
 
     # This date comes from PLATFORM_AVAILABILITY in platforms.py
     # TODO: This should be refactored to have less hard-coding!
+    # TODO^
     if date > dt.date(1987, 7, 9):
         return None
 

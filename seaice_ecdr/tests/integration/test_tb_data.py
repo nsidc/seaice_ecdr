@@ -3,15 +3,14 @@ import datetime as dt
 import numpy as np
 from pm_tb_data._types import NORTH, SOUTH
 
-from seaice_ecdr.platforms import get_platform_start_dates
+from seaice_ecdr.platforms import PLATFORM_START_DATES
 from seaice_ecdr.tb_data import get_ecdr_tb_data
 
 
 def test_get_ecdr_tb_data():
-    platform_start_dates = get_platform_start_dates()
-    for date, platform in platform_start_dates.items():
+    for date, platform in PLATFORM_START_DATES.items():
         ecdr_tb_data = get_ecdr_tb_data(date=date, hemisphere=NORTH)
-        assert ecdr_tb_data.platform == platform
+        assert ecdr_tb_data.platform == platform.short_name
 
         assert not np.all(np.isnan(ecdr_tb_data.tbs.v19))
         assert not np.all(np.isnan(ecdr_tb_data.tbs.h19))

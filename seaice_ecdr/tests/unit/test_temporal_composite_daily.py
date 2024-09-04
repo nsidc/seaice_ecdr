@@ -10,6 +10,7 @@ import pytest
 import xarray as xr
 from pm_tb_data._types import NORTH
 
+from seaice_ecdr._types import SUPPORTED_SAT
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.initial_daily_ecdr import get_idecdr_dir, get_idecdr_filepath
 from seaice_ecdr.temporal_composite_daily import (
@@ -81,7 +82,7 @@ def test_access_to_standard_output_filename(tmpdir):
     """Verify that standard output file names can be generated."""
     date = dt.date(2021, 2, 19)
     resolution: Final = "12.5"
-    sat = "am2"
+    sat: SUPPORTED_SAT = "am2"
 
     intermediate_output_dir = Path(tmpdir)
     sample_ide_filepath = get_idecdr_filepath(

@@ -81,14 +81,14 @@ def get_ecdr_filepath(
         ecdr_filename = nrt_daily_filename(
             hemisphere=hemisphere,
             date=date,
-            sat=platform,
+            sat=platform.short_name,
             resolution=resolution,
         )
     else:
         ecdr_filename = standard_daily_filename(
             hemisphere=hemisphere,
             date=date,
-            sat=platform,
+            sat=platform.short_name,
             resolution=resolution,
         )
 
@@ -448,7 +448,7 @@ def _add_surfacetype_da(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        platform=platform,
+        platform=platform.short_name,
         ancillary_source=ancillary_source,
     )
     # Force use of the cde_ds coords instead of the x, y, time vars

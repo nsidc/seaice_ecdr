@@ -394,7 +394,7 @@ def compute_initial_daily_ecdr_dataset(
                 hemisphere=hemisphere,
                 date=date,
                 resolution=tb_data.resolution,
-                platform=platform,
+                platform=platform.short_name,
                 ancillary_source=ancillary_source,
             )
 
@@ -544,25 +544,25 @@ def compute_initial_daily_ecdr_dataset(
     logger.debug("Initialized spatial_interpolation_flag with TB fill locations")
 
     platform = get_platform_by_date(date)
-    if platform == "am2":
+    if platform.short_name == "am2":
         bt_coefs_init = pmi_bt_params_amsr2.get_ausi_amsr2_bootstrap_params(
             date=date,
             satellite="amsr2",
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform == "ame":
+    elif platform.short_name == "ame":
         bt_coefs_init = pmi_bt_params_amsre.get_ausi_amsre_bootstrap_params(
             date=date,
             satellite="amsre",
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform in get_args(NSIDC_0001_SATS):
+    elif platform.short_name in get_args(NSIDC_0001_SATS):
         bt_coefs_init = pmi_bt_params_0001.get_nsidc0001_bootstrap_params(
             date=date,
-            satellite=platform,
+            satellite=platform.short_name,
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform_is_smmr(platform):
+    elif platform_is_smmr(platform.short_name):
         bt_coefs_init = get_smmr_params(hemisphere=hemisphere, date=date)
     else:
         raise RuntimeError(f"platform bootstrap params not implemented: {platform}")
@@ -577,7 +577,7 @@ def compute_initial_daily_ecdr_dataset(
         hemisphere=hemisphere,
         date=date,
         resolution=tb_data.resolution,
-        platform=platform,
+        platform=platform.short_name,
         ancillary_source=ancillary_source,
     )
 
@@ -600,14 +600,14 @@ def compute_initial_daily_ecdr_dataset(
         pole_mask = nh_polehole_mask(
             date=date,
             resolution=tb_data.resolution,
-            sat=platform,
+            sat=platform.short_name,
             ancillary_source=ancillary_source,
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
 
     nt_params = get_cdr_nt_params(
         hemisphere=hemisphere,
-        platform=platform,
+        platform=platform.short_name,
     )
 
     nt_coefs = NtCoefs(
@@ -665,7 +665,7 @@ def compute_initial_daily_ecdr_dataset(
                 v19=bt_v19,
                 v22=bt_v22,
             ),
-            platform=platform.lower(),
+            platform=platform.short_name.lower(),
         )
         bt_v37 = transformed["v37"]
         bt_h37 = transformed["h37"]
@@ -695,7 +695,7 @@ def compute_initial_daily_ecdr_dataset(
         wintrc=bt_coefs_init["wintrc"],
         wslope=bt_coefs_init["wslope"],
         wxlimt=bt_coefs_init["wxlimt"],
-        is_smmr=platform_is_smmr(platform),
+        is_smmr=platform_is_smmr(platform.short_name),
     )
 
     # Note:
@@ -817,7 +817,7 @@ def compute_initial_daily_ecdr_dataset(
         tb_h37=bt_h37,
         tb_v19=bt_v19,
         bt_coefs=bt_coefs,
-        platform=platform,
+        platform=platform.short_name,
     )
 
     # Set any bootstrap concentrations below 10% to 0.
@@ -914,7 +914,7 @@ def compute_initial_daily_ecdr_dataset(
         tb_data=tb_data,
         algorithm=land_spillover_alg,
         land_mask=non_ocean_mask.data,
-        platform=platform,
+        platform=platform.short_name,
         ancillary_source=ancillary_source,
         bt_conc=bt_asCDRv4_conc,
         nt_conc=nt_asCDRv4_conc,
@@ -1215,7 +1215,7 @@ def get_idecdr_dir(*, intermediate_output_dir: Path) -> Path:
 def get_idecdr_filepath(
     *,
     date: dt.date,
-    platform,
+    platform: SUPPORTED_SAT,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
@@ -1251,7 +1251,7 @@ def make_idecdr_netcdf(
     platform = get_platform_by_date(date)
     output_path = get_idecdr_filepath(
         date=date,
-        platform=platform,
+        platform=platform.short_name,
         hemisphere=hemisphere,
         intermediate_output_dir=intermediate_output_dir,
         resolution=resolution,

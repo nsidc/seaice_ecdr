@@ -10,6 +10,7 @@ from typing import Final
 
 from pm_tb_data._types import NORTH
 
+from seaice_ecdr._types import SUPPORTED_SAT
 from seaice_ecdr.initial_daily_ecdr import get_idecdr_filepath
 from seaice_ecdr.temporal_composite_daily import (
     make_tiecdr_netcdf,
@@ -19,7 +20,7 @@ from seaice_ecdr.temporal_composite_daily import (
 date = dt.date(2021, 2, 19)
 hemisphere = NORTH
 resolution: Final = "12.5"
-platform = "am2"
+platform: SUPPORTED_SAT = "am2"
 land_spillover_alg: Final = "NT2"
 ancillary_source: Final = "CDRv5"
 
