@@ -548,7 +548,7 @@ def temporal_interpolation(
         cdr_conc_pre_polefill = cdr_conc.copy()
         platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
-            date=date, resolution=resolution, sat=platform
+            date=date, resolution=resolution, sat=platform.short_name
         )
         cdr_conc_pole_filled = fill_pole_hole(
             conc=cdr_conc,
@@ -618,7 +618,7 @@ def temporal_interpolation(
         bt_conc_pre_polefill = bt_conc_2d.copy()
         platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
-            date=date, resolution=resolution, sat=platform
+            date=date, resolution=resolution, sat=platform.short_name
         )
         bt_conc_pole_filled = fill_pole_hole(
             conc=bt_conc_2d,

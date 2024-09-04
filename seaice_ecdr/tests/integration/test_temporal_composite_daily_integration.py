@@ -19,7 +19,7 @@ from seaice_ecdr.temporal_composite_daily import (
 
 date = dt.date(2021, 2, 19)
 hemisphere = NORTH
-resolution: Final = "12.5"
+resolution: Final = "25"
 platform: SUPPORTED_SAT = "am2"
 
 

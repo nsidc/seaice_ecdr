@@ -27,7 +27,7 @@ def sample_idecdr_dataset_nh():
 
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
-    test_resolution: Final = "12.5"
+    test_resolution: Final = "25"
 
     ide_conc_ds = initial_daily_ecdr_dataset(
         date=test_date,
@@ -45,7 +45,7 @@ def sample_idecdr_dataset_sh():
 
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
-    test_resolution: Final = "12.5"
+    test_resolution: Final = "25"
 
     ide_conc_ds = initial_daily_ecdr_dataset(
         date=test_date,
@@ -130,7 +130,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
     tmpdir_path = Path(tmpdir)
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
-    test_resolution: Final = "12.5"
+    test_resolution: Final = "25"
     test_platform: SUPPORTED_SAT = "am2"
 
     make_idecdr_netcdf(
@@ -163,7 +163,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
     tmpdir_path = Path(tmpdir)
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
-    test_resolution: Final = "12.5"
+    test_resolution: Final = "25"
     test_platform: SUPPORTED_SAT = "am2"
 
     make_idecdr_netcdf(
