@@ -15,7 +15,7 @@ from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS, get_nsidc_0001_tbs_from
 from pm_tb_data.fetch.nsidc_0007 import get_nsidc_0007_tbs_from_disk
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.platforms import SUPPORTED_SAT, get_platform_by_date
+from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID, get_platform_by_date
 from seaice_ecdr.util import get_ecdr_grid_shape
 
 EXPECTED_ECDR_TB_NAMES = ("h19", "v19", "v22", "h37", "v37")
@@ -35,7 +35,7 @@ class EcdrTbData:
     tbs: EcdrTbs
     resolution: ECDR_SUPPORTED_RESOLUTIONS
     data_source: str
-    platform: SUPPORTED_SAT
+    platform: SUPPORTED_PLATFORM_ID
 
 
 def get_null_grid(

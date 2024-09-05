@@ -8,7 +8,7 @@ from typing import Any, Final, Literal, get_args
 import pandas as pd
 import xarray as xr
 
-from seaice_ecdr._types import SUPPORTED_SAT
+from seaice_ecdr._types import SUPPORTED_PLATFORM_ID
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.platforms import platform_for_id
 
@@ -138,7 +138,7 @@ def get_global_attrs(
     # of source filenames.
     source: str,
     # List of satellites that provided data for the given netcdf file.
-    sats: list[SUPPORTED_SAT],
+    sats: list[SUPPORTED_PLATFORM_ID],
 ) -> dict[str, Any]:
     """Return a dictionary containing the global attributes for a standard ECDR NetCDF file.
 

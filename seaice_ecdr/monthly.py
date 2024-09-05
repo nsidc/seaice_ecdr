@@ -35,7 +35,7 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.ancillary import flag_value_for_meaning
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
@@ -52,7 +52,7 @@ from seaice_ecdr.util import (
 def check_min_days_for_valid_month(
     *,
     daily_ds_for_month: xr.Dataset,
-    sat: SUPPORTED_SAT,
+    sat: SUPPORTED_PLATFORM_ID,
 ) -> None:
     days_in_ds = len(daily_ds_for_month.time)
     if sat == "n07":
@@ -103,7 +103,7 @@ def _get_daily_complete_filepaths_for_month(
     return data_list
 
 
-def _sat_for_month(*, sats: list[SUPPORTED_SAT]) -> SUPPORTED_SAT:
+def _sat_for_month(*, sats: list[SUPPORTED_PLATFORM_ID]) -> SUPPORTED_PLATFORM_ID:
     """Returns the satellite from this month given a list of input satellites.
 
     The sat for monthly files is based on which sat contributes most to the
@@ -502,7 +502,7 @@ def calc_surface_type_mask_monthly(
 def make_monthly_ds(
     *,
     daily_ds_for_month: xr.Dataset,
-    sat: SUPPORTED_SAT,
+    sat: SUPPORTED_PLATFORM_ID,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
@@ -598,7 +598,7 @@ def get_monthly_filepath(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    sat: SUPPORTED_SAT,
+    sat: SUPPORTED_PLATFORM_ID,
     year: int,
     month: int,
     complete_output_dir: Path,

@@ -16,7 +16,7 @@ from loguru import logger
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_tb_data._types import NORTH, Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.ancillary import get_non_ocean_mask, nh_polehole_mask
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
@@ -132,7 +132,7 @@ def get_tie_filepath(
     """Return the complete daily tie file path."""
 
     platform = get_platform_by_date(date)
-    sat = cast(SUPPORTED_SAT, platform)
+    sat = cast(SUPPORTED_PLATFORM_ID, platform)
 
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,

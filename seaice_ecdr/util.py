@@ -8,7 +8,7 @@ import pandas as pd
 import xarray as xr
 from pm_tb_data._types import Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.ancillary import get_ocean_mask
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.grid_id import get_grid_id
@@ -18,7 +18,7 @@ def standard_daily_filename(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    sat: SUPPORTED_SAT,
+    sat: SUPPORTED_PLATFORM_ID,
     date: dt.date,
 ) -> str:
     """Return standard daily NetCDF filename.
@@ -39,7 +39,7 @@ def nrt_daily_filename(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    sat: SUPPORTED_SAT,
+    sat: SUPPORTED_PLATFORM_ID,
     date: dt.date,
 ) -> str:
     standard_fn = standard_daily_filename(
@@ -84,7 +84,7 @@ def standard_monthly_filename(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    sat: SUPPORTED_SAT,
+    sat: SUPPORTED_PLATFORM_ID,
     year: int,
     month: int,
 ) -> str:
@@ -132,7 +132,7 @@ def standard_monthly_aggregate_filename(
 STANDARD_FN_REGEX = re.compile(r"sic_ps.*_.*_(?P<sat>.*)_.*.nc")
 
 
-def sat_from_filename(filename: str) -> SUPPORTED_SAT:
+def sat_from_filename(filename: str) -> SUPPORTED_PLATFORM_ID:
     match = STANDARD_FN_REGEX.match(filename)
 
     if not match:
@@ -141,8 +141,8 @@ def sat_from_filename(filename: str) -> SUPPORTED_SAT:
     sat = match.group("sat")
 
     # Ensure the sat is expected.
-    assert sat in get_args(SUPPORTED_SAT)
-    sat = cast(SUPPORTED_SAT, sat)
+    assert sat in get_args(SUPPORTED_PLATFORM_ID)
+    sat = cast(SUPPORTED_PLATFORM_ID, sat)
 
     return sat
 

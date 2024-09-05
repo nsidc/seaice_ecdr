@@ -9,7 +9,7 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr._types import SUPPORTED_SAT
+from seaice_ecdr._types import SUPPORTED_PLATFORM_ID
 from seaice_ecdr.initial_daily_ecdr import (
     get_idecdr_filepath,
     initial_daily_ecdr_dataset,
@@ -131,7 +131,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
     test_resolution: Final = "25"
-    test_platform: SUPPORTED_SAT = "am2"
+    test_platform: SUPPORTED_PLATFORM_ID = "am2"
 
     make_idecdr_netcdf(
         date=test_date,
@@ -164,7 +164,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
     test_resolution: Final = "25"
-    test_platform: SUPPORTED_SAT = "am2"
+    test_platform: SUPPORTED_PLATFORM_ID = "am2"
 
     make_idecdr_netcdf(
         date=test_date,

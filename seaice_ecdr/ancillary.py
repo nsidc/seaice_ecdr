@@ -18,7 +18,7 @@ from pm_tb_data._types import NORTH, Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.constants import CDR_ANCILLARY_DIR
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.platforms import SUPPORTED_SAT, get_platform_by_date
+from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID, get_platform_by_date
 
 
 def get_ancillary_filepath(
@@ -77,7 +77,7 @@ def get_surfacetype_da(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    platform: SUPPORTED_SAT,
+    platform: SUPPORTED_PLATFORM_ID,
 ) -> xr.DataArray:
     """Return a dataarray with surface type information for this date."""
     ancillary_ds = get_ancillary_ds(
@@ -229,7 +229,7 @@ def get_invalid_ice_mask(
     hemisphere: Hemisphere,
     date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    platform: SUPPORTED_SAT,
+    platform: SUPPORTED_PLATFORM_ID,
 ) -> xr.DataArray:
     """Return an invalid ice mask for the given date.
 

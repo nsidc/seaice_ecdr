@@ -9,7 +9,7 @@ import yaml
 from seaice_ecdr.platforms import (
     DEFAULT_PLATFORMS,
     PLATFORM_START_DATES,
-    SUPPORTED_SAT,
+    SUPPORTED_PLATFORM_ID,
     _get_platform_start_dates,
     _platform_available_for_date,
     _platform_start_dates_are_consistent,
@@ -17,7 +17,7 @@ from seaice_ecdr.platforms import (
     platform_for_id,
 )
 
-platform_test_dates: OrderedDict[SUPPORTED_SAT, dt.date] = OrderedDict(
+platform_test_dates: OrderedDict[SUPPORTED_PLATFORM_ID, dt.date] = OrderedDict(
     {
         "n07": dt.date(1980, 1, 1),
         "F08": dt.date(1990, 1, 1),
@@ -30,19 +30,19 @@ platform_test_dates: OrderedDict[SUPPORTED_SAT, dt.date] = OrderedDict(
 )
 
 
-def test_SUPPORTED_SAT():
+def test_SUPPORTED_PLATFORM_ID():
     cdrv5_sats = (
         "am2",
         "F17",
     )
 
     for sat in cdrv5_sats:
-        assert sat in get_args(SUPPORTED_SAT)
+        assert sat in get_args(SUPPORTED_PLATFORM_ID)
 
 
 def test_platforms_for_sats():
     for platform in DEFAULT_PLATFORMS:
-        assert platform.id in get_args(SUPPORTED_SAT)
+        assert platform.id in get_args(SUPPORTED_PLATFORM_ID)
 
 
 def test_default_platform_start_dates_are_consistent():
@@ -52,7 +52,7 @@ def test_default_platform_start_dates_are_consistent():
 
 
 def test_platform_availability_by_date():
-    all_platforms = list(get_args(SUPPORTED_SAT))
+    all_platforms = list(get_args(SUPPORTED_PLATFORM_ID))
 
     date_before_any_satellites = dt.date(1900, 1, 1)
     for platform_id in all_platforms:
@@ -63,7 +63,7 @@ def test_platform_availability_by_date():
         )
 
     date_after_dead_satellites = dt.date(2100, 1, 1)
-    dead_satellites: tuple[SUPPORTED_SAT] = (  # type: ignore[assignment]
+    dead_satellites: tuple[SUPPORTED_PLATFORM_ID] = (  # type: ignore[assignment]
         "n07",
         "F08",
         "F11",

@@ -21,7 +21,7 @@ import yaml
 from loguru import logger
 from pydantic import BaseModel
 
-from seaice_ecdr._types import SUPPORTED_SAT
+from seaice_ecdr._types import SUPPORTED_PLATFORM_ID
 
 
 class DateRange(BaseModel):
@@ -35,7 +35,7 @@ class Platform(BaseModel):
     # GCMD sensor name. E.g., SSMIS > Special Sensor Microwave Imager/Sounder
     sensor: str
     # E.g., "F17"
-    id: SUPPORTED_SAT
+    id: SUPPORTED_PLATFORM_ID
     date_range: DateRange
 
 
@@ -135,7 +135,7 @@ DEFAULT_PLATFORM_START_DATES: OrderedDict[dt.date, Platform] = OrderedDict(
 )
 
 
-def platform_for_id(id: SUPPORTED_SAT) -> Platform:
+def platform_for_id(id: SUPPORTED_PLATFORM_ID) -> Platform:
     for platform in DEFAULT_PLATFORMS:
         if platform.id == id:
             return platform
@@ -167,7 +167,7 @@ def read_platform_start_dates_cfg_override(
     # Assert that the platforms are in our list of supported sats.
     assert all(
         [
-            platform in get_args(SUPPORTED_SAT)
+            platform in get_args(SUPPORTED_PLATFORM_ID)
             for platform in platform_start_dates.values()
         ]
     )
@@ -278,12 +278,12 @@ def _get_platform_start_dates() -> OrderedDict[dt.date, Platform]:
     # platform start dates programatically. This is essentially global state and
     # it makes it very difficult to test out different combinations as a result.
     elif forced_platform_id := os.environ.get("FORCE_PLATFORM"):
-        if forced_platform_id not in get_args(SUPPORTED_SAT):
+        if forced_platform_id not in get_args(SUPPORTED_PLATFORM_ID):
             raise RuntimeError(
                 f"The forced platform ({forced_platform_id}) is not a supported platform."
             )
 
-        forced_platform_id = cast(SUPPORTED_SAT, forced_platform_id)
+        forced_platform_id = cast(SUPPORTED_PLATFORM_ID, forced_platform_id)
 
         forced_platform = platform_for_id(forced_platform_id)
         first_date_of_forced_platform = forced_platform.date_range.first_date

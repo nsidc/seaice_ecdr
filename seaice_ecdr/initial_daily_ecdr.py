@@ -30,7 +30,7 @@ from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_tb_data._types import NORTH, Hemisphere
 from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.ancillary import (
     get_empty_ds_with_time,
     get_invalid_ice_mask,
@@ -58,7 +58,7 @@ def cdr_bootstrap(
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
     bt_coefs,
-    platform: SUPPORTED_SAT,
+    platform: SUPPORTED_PLATFORM_ID,
 ):
     """Generate the raw bootstrap concentration field."""
     wtp_37v = bt_coefs["bt_wtp_v37"]
@@ -945,7 +945,7 @@ def get_idecdr_dir(*, intermediate_output_dir: Path) -> Path:
 def get_idecdr_filepath(
     *,
     date: dt.date,
-    platform: SUPPORTED_SAT,
+    platform: SUPPORTED_PLATFORM_ID,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
