@@ -254,18 +254,25 @@ def get_smmr_invalid_ice_mask(
     with xr.open_dataset(ancillary_file) as ds:
         invalid_ice_mask = ds.invalid_ice_mask.copy().astype(bool)
 
-    doy = date.timetuple().tm_yday
+    if "month" in invalid_ice_mask.variable.dims:
+        # Monthly ice mask
+        month = date.month
 
-    icemask_for_doy = invalid_ice_mask.sel(doy=doy)
+        icemask_for_date = invalid_ice_mask.sel(month=month)
+        icemask_for_date = icemask_for_date.drop_vars("month")
+    elif "doy" in invalid_ice_mask.variable.dims:
+        # day-of-year (doy) ice mask
+        doy = date.timetuple().tm_yday
+        icemask_for_date = invalid_ice_mask.sel(doy=doy)
 
-    # Drop the DOY dim. This is consistent with the other case returned by
-    # `get_invalid_ice_mask`, which has `month` as a dimension instead.
-    icemask_for_doy = icemask_for_doy.drop_vars("doy")
+        # Drop the DOY dim. This is consistent with the other case returned by
+        # `get_invalid_ice_mask`, which has `month` as a dimension instead.
+        icemask_for_date = icemask_for_date.drop_vars("doy")
 
     # Ice mask needs to be boolean
-    icemask_for_doy = icemask_for_doy.astype("bool")
+    icemask_for_date = icemask_for_date.astype("bool")
 
-    return icemask_for_doy
+    return icemask_for_date
 
 
 def get_invalid_ice_mask(
