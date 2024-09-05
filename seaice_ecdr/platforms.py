@@ -35,14 +35,16 @@ class Platform(BaseModel):
     # GCMD sensor name. E.g., SSMIS > Special Sensor Microwave Imager/Sounder
     sensor: str
     # E.g., "F17"
-    short_name: SUPPORTED_SAT
+    id: SUPPORTED_SAT
     date_range: DateRange
 
 
 AM2_PLATFORM = Platform(
     name="GCOM-W1 > Global Change Observation Mission 1st-Water",
     sensor="AMSR2 > Advanced Microwave Scanning Radiometer 2",
-    short_name="am2",
+    # TODO: rename as ID? Each platform should have a unique ID to identify it
+    # in other parts of the code.
+    id="am2",
     date_range=DateRange(
         first_date=dt.date(2012, 7, 2),
         last_date=None,
@@ -52,7 +54,7 @@ AM2_PLATFORM = Platform(
 AME_PLATFORM = Platform(
     name="Aqua > Earth Observing System, Aqua",
     sensor="AMSR-E > Advanced Microwave Scanning Radiometer-EOS",
-    short_name="ame",
+    id="ame",
     date_range=DateRange(
         first_date=dt.date(2002, 6, 1),
         last_date=dt.date(2011, 10, 3),
@@ -62,7 +64,7 @@ AME_PLATFORM = Platform(
 F17_PLATFORM = Platform(
     name="DMSP 5D-3/F17 > Defense Meteorological Satellite Program-F17",
     sensor="SSMIS > Special Sensor Microwave Imager/Sounder",
-    short_name="F17",
+    id="F17",
     date_range=DateRange(
         first_date=dt.date(2008, 1, 1),
         last_date=None,
@@ -72,7 +74,7 @@ F17_PLATFORM = Platform(
 F13_PLATFORM = Platform(
     name="DMSP 5D-2/F13 > Defense Meteorological Satellite Program-F13",
     sensor="SSM/I > Special Sensor Microwave/Imager",
-    short_name="F13",
+    id="F13",
     date_range=DateRange(
         first_date=dt.date(1995, 10, 1),
         last_date=dt.date(2007, 12, 31),
@@ -81,7 +83,7 @@ F13_PLATFORM = Platform(
 F11_PLATFORM = Platform(
     name="DMSP 5D-2/F11 > Defense Meteorological Satellite Program-F11",
     sensor="SSM/I > Special Sensor Microwave/Imager",
-    short_name="F11",
+    id="F11",
     date_range=DateRange(
         first_date=dt.date(1991, 12, 3),
         last_date=dt.date(1995, 9, 30),
@@ -90,7 +92,7 @@ F11_PLATFORM = Platform(
 F08_PLATFORM = Platform(
     name="DMSP 5D-2/F8 > Defense Meteorological Satellite Program-F8",
     sensor="SSM/I > Special Sensor Microwave/Imager",
-    short_name="F08",
+    id="F08",
     date_range=DateRange(
         first_date=dt.date(1987, 7, 10),
         last_date=dt.date(1991, 12, 2),
@@ -100,7 +102,7 @@ F08_PLATFORM = Platform(
 N07_PLATFORM = Platform(
     name="Nimbus-7",
     sensor="SMMR > Scanning Multichannel Microwave Radiometer",
-    short_name="n07",
+    id="n07",
     date_range=DateRange(
         first_date=dt.date(1978, 10, 25),
         last_date=dt.date(1987, 7, 9),
@@ -133,12 +135,12 @@ DEFAULT_PLATFORM_START_DATES: OrderedDict[dt.date, Platform] = OrderedDict(
 )
 
 
-def platform_for_short_name(short_name: SUPPORTED_SAT) -> Platform:
+def platform_for_id(id: SUPPORTED_SAT) -> Platform:
     for platform in DEFAULT_PLATFORMS:
-        if platform.short_name == short_name:
+        if platform.id == id:
             return platform
 
-    err_msg = f"Failed to find platform for {short_name=}"
+    err_msg = f"Failed to find platform for {id=}"
     raise RuntimeError(err_msg)
 
 
@@ -146,7 +148,7 @@ def read_platform_start_dates_cfg_override(
     start_dates_cfg_filename,
 ) -> OrderedDict[dt.date, Platform]:
     """The "platform_start_dates" dictionary is an OrderedDict
-    of keys (dates) with corresponding platform short names (values)
+    of keys (dates) with corresponding platform ids (values)
 
     Note: It seems like yaml can't safe_load() an OrderedDict.
     """
@@ -171,8 +173,7 @@ def read_platform_start_dates_cfg_override(
     )
 
     platform_start_dates_with_platform = {
-        date: platform_for_short_name(short_name)
-        for date, short_name in platform_start_dates.items()
+        date: platform_for_id(id) for date, id in platform_start_dates.items()
     }
 
     platform_start_dates_with_platform = cast(
@@ -193,7 +194,7 @@ def _platform_available_for_date(
     if date < first_available_date:
         print(
             f"""
-            Satellite {platform.short_name} is not available on date {date}.
+            Satellite {platform.id} is not available on date {date}.
             {date} is before first_available_date {first_available_date}
             Date info: {platform.date_range}
             """
@@ -276,15 +277,15 @@ def _get_platform_start_dates() -> OrderedDict[dt.date, Platform]:
     # TODO: it's clear that we should refactor to support passing in custom
     # platform start dates programatically. This is essentially global state and
     # it makes it very difficult to test out different combinations as a result.
-    elif forced_platform_short_name := os.environ.get("FORCE_PLATFORM"):
-        if forced_platform_short_name not in get_args(SUPPORTED_SAT):
+    elif forced_platform_id := os.environ.get("FORCE_PLATFORM"):
+        if forced_platform_id not in get_args(SUPPORTED_SAT):
             raise RuntimeError(
-                f"The forced platform ({forced_platform_short_name}) is not a supported platform."
+                f"The forced platform ({forced_platform_id}) is not a supported platform."
             )
 
-        forced_platform_short_name = cast(SUPPORTED_SAT, forced_platform_short_name)
+        forced_platform_id = cast(SUPPORTED_SAT, forced_platform_id)
 
-        forced_platform = platform_for_short_name(forced_platform_short_name)
+        forced_platform = platform_for_id(forced_platform_id)
         first_date_of_forced_platform = forced_platform.date_range.first_date
         _platform_start_dates = OrderedDict(
             {

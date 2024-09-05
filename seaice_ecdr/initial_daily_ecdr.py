@@ -398,25 +398,25 @@ def compute_initial_daily_ecdr_dataset(
     logger.debug("Initialized spatial_interpolation_flag with TB fill locations")
 
     platform = get_platform_by_date(date)
-    if platform.short_name == "am2":
+    if platform.id == "am2":
         bt_coefs_init = pmi_bt_params_amsr2.get_ausi_amsr2_bootstrap_params(
             date=date,
             satellite="amsr2",
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform.short_name == "ame":
+    elif platform.id == "ame":
         bt_coefs_init = pmi_bt_params_amsre.get_ausi_amsre_bootstrap_params(
             date=date,
             satellite="amsre",
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform.short_name in get_args(NSIDC_0001_SATS):
+    elif platform.id in get_args(NSIDC_0001_SATS):
         bt_coefs_init = pmi_bt_params_0001.get_nsidc0001_bootstrap_params(
             date=date,
-            satellite=platform.short_name,
+            satellite=platform.id,
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform.short_name == "n07":
+    elif platform.id == "n07":
         bt_coefs_init = get_smmr_params(hemisphere=hemisphere, date=date)
     else:
         raise RuntimeError(f"platform bootstrap params not implemented: {platform}")
@@ -431,7 +431,7 @@ def compute_initial_daily_ecdr_dataset(
         hemisphere=hemisphere,
         date=date,
         resolution=tb_data.resolution,
-        platform=platform.short_name,
+        platform=platform.id,
     )
 
     non_ocean_mask = get_non_ocean_mask(
@@ -452,13 +452,13 @@ def compute_initial_daily_ecdr_dataset(
         pole_mask = nh_polehole_mask(
             date=date,
             resolution=tb_data.resolution,
-            sat=platform.short_name,
+            sat=platform.id,
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
 
     nt_params = get_cdr_nt_params(
         hemisphere=hemisphere,
-        platform=platform.short_name,
+        platform=platform.id,
     )
 
     nt_coefs = NtCoefs(
@@ -513,7 +513,7 @@ def compute_initial_daily_ecdr_dataset(
                 v19=bt_v19,
                 v22=bt_v22,
             ),
-            platform=platform.short_name.lower(),
+            platform=platform.id.lower(),
         )
         bt_v37 = transformed["v37"]
         bt_h37 = transformed["h37"]
@@ -626,7 +626,7 @@ def compute_initial_daily_ecdr_dataset(
         tb_h37=ecdr_ide_ds["h37_day_si"].data[0, :, :],
         tb_v19=ecdr_ide_ds["v19_day_si"].data[0, :, :],
         bt_coefs=bt_coefs,
-        platform=platform.short_name,
+        platform=platform.id,
     )
 
     nt_conc = cdr_nasateam(
@@ -980,7 +980,7 @@ def make_idecdr_netcdf(
     platform = get_platform_by_date(date)
     output_path = get_idecdr_filepath(
         date=date,
-        platform=platform.short_name,
+        platform=platform.id,
         hemisphere=hemisphere,
         intermediate_output_dir=intermediate_output_dir,
         resolution=resolution,

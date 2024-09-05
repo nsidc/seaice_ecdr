@@ -10,7 +10,7 @@ import xarray as xr
 
 from seaice_ecdr._types import SUPPORTED_SAT
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
-from seaice_ecdr.platforms import platform_for_short_name
+from seaice_ecdr.platforms import platform_for_id
 
 # Datetime string format for date-related attributes.
 DATE_STR_FMT = "%Y-%m-%dT%H:%M:%SZ"
@@ -149,7 +149,7 @@ def get_global_attrs(
 
     # TODO: support different resolutions, platforms, and sensors!
     resolution: Final = "12.5"
-    platforms = [platform_for_short_name(sat) for sat in sats]
+    platforms = [platform_for_id(sat) for sat in sats]
     platform = ", ".join([platform.name for platform in platforms])
     sensor = ", ".join([platform.sensor for platform in platforms])
 

@@ -352,7 +352,7 @@ def read_or_create_and_read_idecdr_ds(
 
     ide_filepath = get_idecdr_filepath(
         date=date,
-        platform=platform.short_name,
+        platform=platform.id,
         hemisphere=hemisphere,
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
@@ -548,7 +548,7 @@ def temporal_interpolation(
         cdr_conc_pre_polefill = cdr_conc.copy()
         platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
-            date=date, resolution=resolution, sat=platform.short_name
+            date=date, resolution=resolution, sat=platform.id
         )
         cdr_conc_pole_filled = fill_pole_hole(
             conc=cdr_conc,
@@ -618,7 +618,7 @@ def temporal_interpolation(
         bt_conc_pre_polefill = bt_conc_2d.copy()
         platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
-            date=date, resolution=resolution, sat=platform.short_name
+            date=date, resolution=resolution, sat=platform.id
         )
         bt_conc_pole_filled = fill_pole_hole(
             conc=bt_conc_2d,

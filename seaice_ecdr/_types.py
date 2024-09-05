@@ -4,7 +4,7 @@ from typing import Literal
 ECDR_SUPPORTED_RESOLUTIONS = Literal["12.5", "25"]
 
 # Supported sats
-# TODO: rename to "PLATFORM_SHORT_NAME".
+# TODO: rename to "PLATFORM_ID".
 SUPPORTED_SAT = Literal[
     "am2",  # AMSR2
     "ame",  # AMSRE

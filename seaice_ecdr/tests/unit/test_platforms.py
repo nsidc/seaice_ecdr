@@ -14,7 +14,7 @@ from seaice_ecdr.platforms import (
     _platform_available_for_date,
     _platform_start_dates_are_consistent,
     get_platform_by_date,
-    platform_for_short_name,
+    platform_for_id,
 )
 
 platform_test_dates: OrderedDict[SUPPORTED_SAT, dt.date] = OrderedDict(
@@ -42,7 +42,7 @@ def test_SUPPORTED_SAT():
 
 def test_platforms_for_sats():
     for platform in DEFAULT_PLATFORMS:
-        assert platform.short_name in get_args(SUPPORTED_SAT)
+        assert platform.id in get_args(SUPPORTED_SAT)
 
 
 def test_default_platform_start_dates_are_consistent():
@@ -55,8 +55,8 @@ def test_platform_availability_by_date():
     all_platforms = list(get_args(SUPPORTED_SAT))
 
     date_before_any_satellites = dt.date(1900, 1, 1)
-    for platform_short_name in all_platforms:
-        platform = platform_for_short_name(platform_short_name)
+    for platform_id in all_platforms:
+        platform = platform_for_id(platform_id)
         assert not _platform_available_for_date(
             date=date_before_any_satellites,
             platform=platform,
@@ -70,17 +70,17 @@ def test_platform_availability_by_date():
         "F13",
         "ame",
     )
-    for platform_short_name in dead_satellites:
-        platform = platform_for_short_name(platform_short_name)
+    for platform_id in dead_satellites:
+        platform = platform_for_id(platform_id)
         assert not _platform_available_for_date(
             date=date_after_dead_satellites,
             platform=platform,
         )
 
-    for platform_short_name in platform_test_dates.keys():
-        platform = platform_for_short_name(platform_short_name)
+    for platform_id in platform_test_dates.keys():
+        platform = platform_for_id(platform_id)
         assert _platform_available_for_date(
-            date=platform_test_dates[platform_short_name],
+            date=platform_test_dates[platform_id],
             platform=platform,
         )
 
@@ -115,6 +115,6 @@ def test_override_platform_by_date(monkeypatch, tmpdir):
     platform_dates = _get_platform_start_dates()
 
     assert platform_dates == {
-        date: platform_for_short_name(short_name)  # type: ignore[arg-type]
-        for date, short_name in expected_platform_dates.items()
+        date: platform_for_id(id)  # type: ignore[arg-type]
+        for date, id in expected_platform_dates.items()
     }

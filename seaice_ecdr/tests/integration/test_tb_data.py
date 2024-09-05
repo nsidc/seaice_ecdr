@@ -10,7 +10,7 @@ from seaice_ecdr.tb_data import get_ecdr_tb_data
 def test_get_ecdr_tb_data():
     for date, platform in PLATFORM_START_DATES.items():
         ecdr_tb_data = get_ecdr_tb_data(date=date, hemisphere=NORTH)
-        assert ecdr_tb_data.platform == platform.short_name
+        assert ecdr_tb_data.platform == platform.id
 
         assert not np.all(np.isnan(ecdr_tb_data.tbs.v19))
         assert not np.all(np.isnan(ecdr_tb_data.tbs.h19))
