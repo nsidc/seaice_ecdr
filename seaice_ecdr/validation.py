@@ -276,6 +276,8 @@ def get_pixel_counts(
     # Note: we use 0.0999 instead of 0.1 because SIC values of 10% are
     # decoded from the integer value of 10 to 0.1, which is represented
     # as 0.099999 as a floating point data.
+    # Note: xarray .sum() is similar to numpy.nansum() in that it will
+    #       ignore NaNs in the summation operation
     gt_100_sic = int((seaice_conc_var > 1).sum())
     if product == "daily":
         less_than_10_sic = int(
