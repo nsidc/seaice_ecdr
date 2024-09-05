@@ -40,7 +40,7 @@ from seaice_ecdr.ancillary import (
     nh_polehole_mask,
 )
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import CDR_ANCILLARY_DIR, DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import get_platform_by_date
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
@@ -296,6 +296,7 @@ def get_nasateam_weather_mask(
 
 def get_flagmask(
     hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ancillary_source: ANCILLARY_SOURCES,
 ) -> None | npt.NDArray:
     """
@@ -309,24 +310,41 @@ def get_flagmask(
     #       (or at least a better location!)
 
     flagmask = None
+
+    if resolution == "25" and hemisphere == "north":
+        gridid = "psn25"
+        xdim = 304
+        ydim = 448
+    elif resolution == "25" and hemisphere == "south":
+        gridid = "pss25"
+        xdim = 316
+        ydim = 332
+    elif resolution == "12.5" and hemisphere == "north":
+        gridid = "psn12.5"
+        xdim = 608
+        ydim = 896
+    elif resolution == "12.5" and hemisphere == "south":
+        gridid = "pss12.5"
+        xdim = 632
+        ydim = 664
+
     if ancillary_source == "CDRv4":
-        if hemisphere == "north":
-            flagmask = np.fromfile(
-                "./flagmasks/flagmask_psn25_v04r00.dat", dtype=np.uint8
-            ).reshape(448, 304)
-        elif hemisphere == "south":
-            flagmask = np.fromfile(
-                "./flagmasks/flagmask_pss25_v04r00.dat", dtype=np.uint8
-            ).reshape(332, 316)
+        version_string = "v04r00"
     elif ancillary_source == "CDRv5":
-        if hemisphere == "north":
-            flagmask = np.fromfile(
-                "./flagmasks/flagmask_psn25_v05r01.dat", dtype=np.uint8
-            ).reshape(448, 304)
-        elif hemisphere == "south":
-            flagmask = np.fromfile(
-                "./flagmasks/flagmask_pss25_v05r01.dat", dtype=np.uint8
-            ).reshape(332, 316)
+        version_string = "v05r01"
+
+    flagmask_fn = CDR_ANCILLARY_DIR / f"flagmask_{gridid}_{version_string}.dat"
+    try:
+        flagmask_fn.is_file()
+    except AssertionError as e:
+        print(f"No such flagmask_fn: {flagmask_fn}")
+        raise e
+
+    try:
+        flagmask = np.fromfile(flagmask_fn, dtype=np.uint8).reshape(ydim, xdim)
+    except ValueError as e:
+        print(f"Could not reshape to: {xdim}, {ydim}")
+        raise e
 
     # With ancillary_source constrained to CDRv4 and CDRv5, this is unreachable
     # so these lines are commented out for mypy reasons
@@ -950,6 +968,7 @@ def compute_initial_daily_ecdr_dataset(
     # Apply the CDRv4 flags to the conc field for more direct comparison
     flagmask = get_flagmask(
         hemisphere=hemisphere,
+        resolution=tb_data.resolution,
         ancillary_source=ancillary_source,
     )
 
