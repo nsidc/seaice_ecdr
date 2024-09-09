@@ -27,7 +27,7 @@ from seaice_ecdr.initial_daily_ecdr import (
     write_ide_netcdf,
 )
 from seaice_ecdr.platforms import (
-    get_platform_by_date,
+    PLATFORM_CONFIG,
 )
 from seaice_ecdr.tb_data import EcdrTbData, map_tbs_to_ecdr_channels
 from seaice_ecdr.temporal_composite_daily import (
@@ -99,7 +99,7 @@ def read_or_create_and_read_nrt_idecdr_ds(
     intermediate_output_dir: Path,
     overwrite: bool,
 ):
-    platform = get_platform_by_date(date)
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     idecdr_filepath = get_idecdr_filepath(
         hemisphere=hemisphere,
         date=date,
