@@ -9,13 +9,13 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr._types import SUPPORTED_PLATFORM_ID
 from seaice_ecdr.initial_daily_ecdr import (
     get_idecdr_filepath,
     initial_daily_ecdr_dataset,
     make_idecdr_netcdf,
     write_ide_netcdf,
 )
+from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
 
 cdr_conc_fieldname = "conc"
 

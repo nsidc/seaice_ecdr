@@ -30,7 +30,7 @@ from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_tb_data._types import NORTH, Hemisphere
 from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_PLATFORM_ID
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
     get_empty_ds_with_time,
     get_invalid_ice_mask,
@@ -40,7 +40,7 @@ from seaice_ecdr.ancillary import (
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.platforms import get_platform_by_date
+from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
 from seaice_ecdr.spillover import land_spillover
 from seaice_ecdr.tb_data import (
@@ -397,7 +397,7 @@ def compute_initial_daily_ecdr_dataset(
     )
     logger.debug("Initialized spatial_interpolation_flag with TB fill locations")
 
-    platform = get_platform_by_date(date)
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     if platform.id == "am2":
         bt_coefs_init = pmi_bt_params_amsr2.get_ausi_amsr2_bootstrap_params(
             date=date,
@@ -977,7 +977,7 @@ def make_idecdr_netcdf(
     land_spillover_alg: Literal["NT2", "BT_NT"],
     overwrite_ide: bool = False,
 ) -> None:
-    platform = get_platform_by_date(date)
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     output_path = get_idecdr_filepath(
         date=date,
         platform=platform.id,

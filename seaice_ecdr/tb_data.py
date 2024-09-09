@@ -15,7 +15,7 @@ from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS, get_nsidc_0001_tbs_from
 from pm_tb_data.fetch.nsidc_0007 import get_nsidc_0007_tbs_from_disk
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID, get_platform_by_date
+from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import get_ecdr_grid_shape
 
 EXPECTED_ECDR_TB_NAMES = ("h19", "v19", "v22", "h37", "v37")
@@ -307,7 +307,7 @@ def get_25km_ecdr_tb_data(
     hemisphere: Hemisphere,
 ) -> EcdrTbData:
     """Get 25km ECDR Tb data for the given date and hemisphere."""
-    platform = get_platform_by_date(date)
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     if platform.id == "am2":
         return _get_am2_tbs(date=date, hemisphere=hemisphere, resolution="25")
     elif platform.id == "ame":
@@ -337,7 +337,7 @@ def get_ecdr_tb_data(
     data. It's up to the caller to decide how they want to handle resolution
     differences between platforms.
     """
-    platform = get_platform_by_date(date)
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     if platform.id == "am2":
         return _get_am2_tbs(date=date, hemisphere=hemisphere, resolution="12.5")
     elif platform.id == "ame":

@@ -18,7 +18,7 @@ from pm_tb_data._types import NORTH, Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.constants import CDR_ANCILLARY_DIR
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID, get_platform_by_date
+from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 
 
 def get_ancillary_filepath(
@@ -165,7 +165,7 @@ def nh_polehole_mask(
     polehole_bitmask = ancillary_ds.polehole_bitmask
 
     if sat is None:
-        sat = get_platform_by_date(
+        sat = PLATFORM_CONFIG.get_platform_by_date(
             date=date,
         )
 

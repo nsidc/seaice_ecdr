@@ -8,10 +8,11 @@ import pandas as pd
 import xarray as xr
 from pm_tb_data._types import Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_PLATFORM_ID
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import get_ocean_mask
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.grid_id import get_grid_id
+from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
 
 
 def standard_daily_filename(
