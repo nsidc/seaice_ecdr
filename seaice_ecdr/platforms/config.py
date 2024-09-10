@@ -22,9 +22,10 @@ from seaice_ecdr.platforms.models import (
 )
 
 _this_dir = Path(__file__).parent
-DEFAULT_PLATFORM_START_DATES_FILEPATH = Path(
+_DEFAULT_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
     _this_dir / "default_platform_start_dates.yml"
 )
+
 
 AM2_PLATFORM = Platform(
     name="GCOM-W1 > Global Change Observation Mission 1st-Water",
@@ -105,17 +106,25 @@ SUPPORTED_PLATFORMS = [
 ]
 
 
-def _get_platform_config(
-    *, start_dates_yml_filepath: Path = DEFAULT_PLATFORM_START_DATES_FILEPATH
-) -> PlatformConfig:
+def _get_platform_config() -> PlatformConfig:
     """Gets the platform config given a start dates filepath.
 
     This function is not intended to be used outside of this module, as it sets
     a global variable accessed from other parts of the code (`PLATFORM_CONFIG`).
     """
-    if not start_dates_yml_filepath.is_file():
+
+    if platform_override_filepath_str := os.environ.get(
+        "PLATFORM_START_DATES_CONFIG_FILEPATH"
+    ):
+        platform_start_dates_config_filepath = Path(platform_override_filepath_str)
+    else:
+        platform_start_dates_config_filepath = (
+            _DEFAULT_PLATFORM_START_DATES_CONFIG_FILEPATH
+        )
+
+    if not platform_start_dates_config_filepath.is_file():
         raise RuntimeError(
-            f"Could not find platform config file: {start_dates_yml_filepath}"
+            f"Could not find platform config file: {platform_start_dates_config_filepath}"
         )
 
     # TODO: drop support for "FORCE_PLATFORM" in favor of a platform start dates
@@ -143,7 +152,7 @@ def _get_platform_config(
             cdr_platform_start_dates=forced_cdr_platform_start_dates,
         )
 
-    with open(start_dates_yml_filepath, "r") as config_file:
+    with open(platform_start_dates_config_filepath, "r") as config_file:
         start_dates_cfg = yaml.safe_load(config_file)
         platform_cfg = PlatformConfig(platforms=SUPPORTED_PLATFORMS, **start_dates_cfg)
 

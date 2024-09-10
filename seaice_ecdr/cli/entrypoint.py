@@ -19,6 +19,9 @@ from seaice_ecdr.temporal_composite_daily import cli as tiecdr_cli
 from seaice_ecdr.validation import cli as validation_cli
 
 
+# TODO: could this add an arg for the entire group - platform config start
+# dates? This would allow this fucntion, the entrypoint to all other CLIs, to
+# set the platform config at a global level.
 @click.group()
 def cli():
     """Run the Sea Ice EDCDR."""
