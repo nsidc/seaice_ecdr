@@ -13,8 +13,8 @@ from seaice_ecdr.monthly import (
     QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS,
     QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS,
     _get_daily_complete_filepaths_for_month,
+    _platform_id_for_month,
     _qa_field_has_flag,
-    _sat_for_month,
     calc_cdr_seaice_conc_monthly,
     calc_melt_onset_day_cdr_seaice_conc_monthly,
     calc_qa_of_cdr_seaice_conc_monthly,
@@ -86,27 +86,27 @@ def test_check_min_day_for_valid_month():
     # Check that no error is raised for AMSR2, full month's worth of data
     check_min_days_for_valid_month(
         daily_ds_for_month=_mock_daily_ds_for_month(31),
-        sat="am2",
+        platform_id="am2",
     )
 
     # Check that an error is raised for AMSR2, not a full month's worth of data
     with pytest.raises(RuntimeError):
         check_min_days_for_valid_month(
             daily_ds_for_month=_mock_daily_ds_for_month(19),
-            sat="am2",
+            platform_id="am2",
         )
 
     # Check that an error is not raised for n07, with modified min worth of data
     check_min_days_for_valid_month(
         daily_ds_for_month=_mock_daily_ds_for_month(10),
-        sat="n07",
+        platform_id="n07",
     )
 
     # Check that an error is raised for n07, not a full month's worth of data
     with pytest.raises(RuntimeError):
         check_min_days_for_valid_month(
             daily_ds_for_month=_mock_daily_ds_for_month(9),
-            sat="n07",
+            platform_id="n07",
         )
 
 
@@ -514,7 +514,7 @@ def test_monthly_ds(monkeypatch, tmpdir):
     )
     actual = make_monthly_ds(
         daily_ds_for_month=_mock_daily_ds,
-        sat="am2",
+        platform_id="am2",
         hemisphere=NORTH,
         resolution="12.5",
         ancillary_source="CDRv5",
@@ -547,14 +547,14 @@ def test_monthly_ds(monkeypatch, tmpdir):
     xr.testing.assert_allclose(actual, after_write, atol=0.009)
 
 
-def test__sat_for_month():
-    assert "am2" == _sat_for_month(sats=["am2", "am2", "am2", "am2"])
+def test__platform_id_for_month():
+    assert "am2" == _platform_id_for_month(platform_ids=["am2", "am2", "am2", "am2"])
 
-    assert "am2" == _sat_for_month(sats=["F17", "F17", "am2", "am2"])
+    assert "am2" == _platform_id_for_month(platform_ids=["F17", "F17", "am2", "am2"])
 
-    assert "F17" == _sat_for_month(sats=["F13", "F13", "F13", "F17"])
+    assert "F17" == _platform_id_for_month(platform_ids=["F13", "F13", "F13", "F17"])
 
-    assert "am2" == _sat_for_month(sats=["F13", "F17", "am2"])
+    assert "am2" == _platform_id_for_month(platform_ids=["F13", "F17", "am2"])
 
 
 def test_calc_surface_mask_monthly():
