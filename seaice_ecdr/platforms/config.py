@@ -1,8 +1,10 @@
 """Platform config
 
-Contains hard-coded configuration for platforms supported by this code (e.g., AMSR2, F17, etc.).
+Contains configuration for platforms supported by this code (e.g., AMSR2, F17, etc.).
 
-Also contains functions to get platform information based on e.g., date.
+Platform start dates are read from a yaml file in this directory
+(`default_platform_start_dates.yml`) unless overridden by the
+`PLATFORM_START_DATES_CONFIG_FILEPATH` envvar.
 """
 
 import datetime as dt
