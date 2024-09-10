@@ -22,7 +22,7 @@ from seaice_ecdr.nc_util import concatenate_nc_files
 from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.util import (
     get_complete_output_dir,
-    sat_from_filename,
+    platform_id_from_filename,
     standard_daily_aggregate_filename,
 )
 
@@ -115,7 +115,7 @@ def _update_ncrcat_daily_ds(
         temporality="daily",
         aggregate=True,
         source=", ".join([fp.name for fp in daily_filepaths]),
-        sats=[sat_from_filename(fp.name) for fp in daily_filepaths],
+        platform_ids=[platform_id_from_filename(fp.name) for fp in daily_filepaths],
     )
     ds.attrs = daily_aggregate_ds_global_attrs
 

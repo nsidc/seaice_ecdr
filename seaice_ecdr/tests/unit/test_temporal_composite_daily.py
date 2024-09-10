@@ -82,12 +82,12 @@ def test_access_to_standard_output_filename(tmpdir):
     """Verify that standard output file names can be generated."""
     date = dt.date(2021, 2, 19)
     resolution: Final = "12.5"
-    sat: SUPPORTED_PLATFORM_ID = "am2"
+    platform_id: SUPPORTED_PLATFORM_ID = "am2"
 
     intermediate_output_dir = Path(tmpdir)
     sample_ide_filepath = get_idecdr_filepath(
         date=date,
-        platform=sat,
+        platform_id=platform_id,
         hemisphere=NORTH,
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,

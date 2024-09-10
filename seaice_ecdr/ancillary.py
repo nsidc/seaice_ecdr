@@ -18,11 +18,14 @@ from pm_tb_data._types import NORTH, Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.constants import CDR_ANCILLARY_DIR
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
+from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform
+from seaice_ecdr.platforms.config import N07_PLATFORM
 
 
 def get_ancillary_filepath(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> Path:
     grid_id = get_grid_id(
         hemisphere=hemisphere,
@@ -77,7 +80,6 @@ def get_surfacetype_da(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    platform: SUPPORTED_PLATFORM_ID,
 ) -> xr.DataArray:
     """Return a dataarray with surface type information for this date."""
     ancillary_ds = get_ancillary_ds(
@@ -91,7 +93,8 @@ def get_surfacetype_da(
     polehole_surface_type = 100
     if "polehole_bitmask" in ancillary_ds.data_vars.keys():
         polehole_bitmask = ancillary_ds.polehole_bitmask
-        polehole_bitlabel = f"{platform}_polemask"
+        platform = PLATFORM_CONFIG.get_platform_by_date(date)
+        polehole_bitlabel = f"{platform.id}_polemask"
         polehole_bitvalue = bitmask_value_for_meaning(
             var=polehole_bitmask,
             meaning=polehole_bitlabel,
@@ -154,7 +157,7 @@ def nh_polehole_mask(
     *,
     date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    sat=None,
+    platform: Platform | None = None,
 ) -> xr.DataArray:
     """Return the northern hemisphere pole hole mask for the given date and resolution."""
     ancillary_ds = get_ancillary_ds(
@@ -164,12 +167,12 @@ def nh_polehole_mask(
 
     polehole_bitmask = ancillary_ds.polehole_bitmask
 
-    if sat is None:
-        sat = PLATFORM_CONFIG.get_platform_by_date(
+    if platform is None:
+        platform = PLATFORM_CONFIG.get_platform_by_date(
             date=date,
         )
 
-    polehole_bitlabel = f"{sat}_polemask"
+    polehole_bitlabel = f"{platform.id}_polemask"
     polehole_bitvalue = bitmask_value_for_meaning(
         var=polehole_bitmask,
         meaning=polehole_bitlabel,
@@ -229,7 +232,7 @@ def get_invalid_ice_mask(
     hemisphere: Hemisphere,
     date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    platform: SUPPORTED_PLATFORM_ID,
+    platform: Platform,
 ) -> xr.DataArray:
     """Return an invalid ice mask for the given date.
 
@@ -237,7 +240,7 @@ def get_invalid_ice_mask(
     month-based mask.
     """
     # SMMR / n07 case:
-    if platform == "n07":
+    if platform == N07_PLATFORM:
         return get_smmr_invalid_ice_mask(hemisphere=hemisphere, date=date)
 
     # All other platforms:

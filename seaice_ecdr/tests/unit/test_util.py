@@ -13,8 +13,8 @@ from seaice_ecdr.util import (
     date_range,
     get_num_missing_pixels,
     nrt_daily_filename,
+    platform_id_from_filename,
     raise_error_for_dates,
-    sat_from_filename,
     standard_daily_aggregate_filename,
     standard_daily_filename,
     standard_monthly_aggregate_filename,
@@ -26,7 +26,7 @@ def test_daily_filename_north():
     expected = f"sic_psn12.5_20210101_am2_{ECDR_PRODUCT_VERSION}.nc"
 
     actual = standard_daily_filename(
-        hemisphere=NORTH, resolution="12.5", sat="am2", date=dt.date(2021, 1, 1)
+        hemisphere=NORTH, resolution="12.5", platform_id="am2", date=dt.date(2021, 1, 1)
     )
 
     assert actual == expected
@@ -36,7 +36,7 @@ def test_daily_filename_south():
     expected = f"sic_pss12.5_20210101_am2_{ECDR_PRODUCT_VERSION}.nc"
 
     actual = standard_daily_filename(
-        hemisphere=SOUTH, resolution="12.5", sat="am2", date=dt.date(2021, 1, 1)
+        hemisphere=SOUTH, resolution="12.5", platform_id="am2", date=dt.date(2021, 1, 1)
     )
 
     assert actual == expected
@@ -46,7 +46,7 @@ def test_nrt_daily_filename():
     expected = f"sic_psn12.5_20210101_am2_{ECDR_PRODUCT_VERSION}_P.nc"
 
     actual = nrt_daily_filename(
-        hemisphere=NORTH, resolution="12.5", sat="am2", date=dt.date(2021, 1, 1)
+        hemisphere=NORTH, resolution="12.5", platform_id="am2", date=dt.date(2021, 1, 1)
     )
 
     assert actual == expected
@@ -71,7 +71,7 @@ def test_monthly_filename_north():
     actual = standard_monthly_filename(
         hemisphere=NORTH,
         resolution="12.5",
-        sat="am2",
+        platform_id="am2",
         year=2021,
         month=1,
     )
@@ -85,7 +85,7 @@ def test_monthly_filename_south():
     actual = standard_monthly_filename(
         hemisphere=SOUTH,
         resolution="12.5",
-        sat="am2",
+        platform_id="am2",
         year=2021,
         month=1,
     )
@@ -108,30 +108,33 @@ def test_monthly_aggregate_filename():
     assert actual == expected
 
 
-def test_daily_sat_from_filename():
-    expected_sat: Final = "am2"
+def test_daily_platform_id_from_filename():
+    expected_platform_id: Final = "am2"
     fn = standard_daily_filename(
-        hemisphere=NORTH, resolution="12.5", sat=expected_sat, date=dt.date(2021, 1, 1)
+        hemisphere=NORTH,
+        resolution="12.5",
+        platform_id=expected_platform_id,
+        date=dt.date(2021, 1, 1),
     )
 
-    actual_sat = sat_from_filename(fn)
+    actual_platform_id = platform_id_from_filename(fn)
 
-    assert expected_sat == actual_sat
+    assert expected_platform_id == actual_platform_id
 
 
-def test_monthly_sat_from_filename():
-    expected_sat: Final = "F17"
+def test_monthly_platform_id_from_filename():
+    expected_platform_id: Final = "F17"
     fn = standard_monthly_filename(
         hemisphere=SOUTH,
         resolution="12.5",
-        sat=expected_sat,
+        platform_id=expected_platform_id,
         year=2021,
         month=1,
     )
 
-    actual_sat = sat_from_filename(fn)
+    actual_platform_id = platform_id_from_filename(fn)
 
-    assert expected_sat == actual_sat
+    assert expected_platform_id == actual_platform_id
 
 
 def test_date_range():

@@ -216,7 +216,7 @@ def _setup_ecdr_ds(
     ecdr_ide_ds.attrs["data_source"] = tb_data.data_source
 
     # Set the platform
-    ecdr_ide_ds.attrs["platform"] = tb_data.platform
+    ecdr_ide_ds.attrs["platform"] = tb_data.platform_id
 
     file_date = dt.date(1970, 1, 1) + dt.timedelta(
         days=int(ecdr_ide_ds.variables["time"].data)
@@ -431,7 +431,7 @@ def compute_initial_daily_ecdr_dataset(
         hemisphere=hemisphere,
         date=date,
         resolution=tb_data.resolution,
-        platform=platform.id,
+        platform=platform,
     )
 
     non_ocean_mask = get_non_ocean_mask(
@@ -452,7 +452,7 @@ def compute_initial_daily_ecdr_dataset(
         pole_mask = nh_polehole_mask(
             date=date,
             resolution=tb_data.resolution,
-            sat=platform.id,
+            platform=platform,
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
 
@@ -945,7 +945,7 @@ def get_idecdr_dir(*, intermediate_output_dir: Path) -> Path:
 def get_idecdr_filepath(
     *,
     date: dt.date,
-    platform: SUPPORTED_PLATFORM_ID,
+    platform_id: SUPPORTED_PLATFORM_ID,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
@@ -955,7 +955,7 @@ def get_idecdr_filepath(
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        sat=platform,
+        platform_id=platform_id,
         resolution=resolution,
     )
     idecdr_fn = "idecdr_" + standard_fn
@@ -980,7 +980,7 @@ def make_idecdr_netcdf(
     platform = PLATFORM_CONFIG.get_platform_by_date(date)
     output_path = get_idecdr_filepath(
         date=date,
-        platform=platform.id,
+        platform_id=platform.id,
         hemisphere=hemisphere,
         intermediate_output_dir=intermediate_output_dir,
         resolution=resolution,

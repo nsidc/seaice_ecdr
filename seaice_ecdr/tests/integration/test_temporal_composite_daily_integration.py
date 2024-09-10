@@ -20,7 +20,7 @@ from seaice_ecdr.temporal_composite_daily import (
 date = dt.date(2021, 2, 19)
 hemisphere = NORTH
 resolution: Final = "25"
-platform: SUPPORTED_PLATFORM_ID = "am2"
+platform_id: SUPPORTED_PLATFORM_ID = "am2"
 
 
 def test_read_or_create_and_read_idecdr_ds(tmpdir):
@@ -28,7 +28,7 @@ def test_read_or_create_and_read_idecdr_ds(tmpdir):
 
     sample_ide_filepath = get_idecdr_filepath(
         date=date,
-        platform=platform,
+        platform_id=platform_id,
         hemisphere=hemisphere,
         resolution=resolution,
         intermediate_output_dir=Path(tmpdir),

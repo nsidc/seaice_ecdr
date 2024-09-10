@@ -77,14 +77,14 @@ def get_ecdr_filepath(
         ecdr_filename = nrt_daily_filename(
             hemisphere=hemisphere,
             date=date,
-            sat=platform.id,
+            platform_id=platform.id,
             resolution=resolution,
         )
     else:
         ecdr_filename = standard_daily_filename(
             hemisphere=hemisphere,
             date=date,
-            sat=platform.id,
+            platform_id=platform.id,
             resolution=resolution,
         )
 
@@ -430,12 +430,10 @@ def _add_surfacetype_da(
     #       The methodology here should be reviewed to see if there is
     #       a "better" way to add a geo-referenced dataarray to an existing
     #       xr Dataset.
-    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     surfacetype_da = get_surfacetype_da(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        platform=platform.id,
     )
     # Force use of the cde_ds coords instead of the x, y, time vars
     # from the ancillary file (which *should* be compatible...but we

@@ -134,7 +134,7 @@ def get_tie_filepath(
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        sat=platform_id,
+        platform_id=platform_id,
         resolution=resolution,
     )
     # Add `tiecdr` to the beginning of the standard name to distinguish it as a
@@ -349,7 +349,7 @@ def read_or_create_and_read_idecdr_ds(
 
     ide_filepath = get_idecdr_filepath(
         date=date,
-        platform=platform.id,
+        platform_id=platform.id,
         hemisphere=hemisphere,
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
@@ -543,9 +543,9 @@ def temporal_interpolation(
     #       grid is having its pole hole filled!
     if fill_the_pole_hole and hemisphere == NORTH:
         cdr_conc_pre_polefill = cdr_conc.copy()
-        platform = PLATFORM_CONFIG.get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
-            date=date, resolution=resolution, sat=platform.id
+            date=date,
+            resolution=resolution,
         )
         cdr_conc_pole_filled = fill_pole_hole(
             conc=cdr_conc,
@@ -613,9 +613,9 @@ def temporal_interpolation(
 
         # Fill pole hole of BT
         bt_conc_pre_polefill = bt_conc_2d.copy()
-        platform = PLATFORM_CONFIG.get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
-            date=date, resolution=resolution, sat=platform.id
+            date=date,
+            resolution=resolution,
         )
         bt_conc_pole_filled = fill_pole_hole(
             conc=bt_conc_2d,

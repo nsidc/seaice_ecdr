@@ -13,7 +13,7 @@ def test_get_ecdr_tb_data():
         ecdr_tb_data = get_ecdr_tb_data(
             date=platform_start_date.start_date, hemisphere=NORTH
         )
-        assert ecdr_tb_data.platform == platform_start_date.platform_id
+        assert ecdr_tb_data.platform_id == platform_start_date.platform_id
 
         assert not np.all(np.isnan(ecdr_tb_data.tbs.v19))
         assert not np.all(np.isnan(ecdr_tb_data.tbs.h19))

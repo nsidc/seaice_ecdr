@@ -131,7 +131,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
     test_resolution: Final = "25"
-    test_platform: SUPPORTED_PLATFORM_ID = "am2"
+    test_platform_id: SUPPORTED_PLATFORM_ID = "am2"
 
     make_idecdr_netcdf(
         date=test_date,
@@ -144,7 +144,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,
         date=test_date,
-        platform=test_platform,
+        platform_id=test_platform_id,
         resolution=test_resolution,
         intermediate_output_dir=tmpdir_path,
     )
@@ -164,7 +164,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
     test_resolution: Final = "25"
-    test_platform: SUPPORTED_PLATFORM_ID = "am2"
+    test_platform_id: SUPPORTED_PLATFORM_ID = "am2"
 
     make_idecdr_netcdf(
         date=test_date,
@@ -177,7 +177,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,
         date=test_date,
-        platform=test_platform,
+        platform_id=test_platform_id,
         resolution=test_resolution,
         intermediate_output_dir=tmpdir_path,
     )

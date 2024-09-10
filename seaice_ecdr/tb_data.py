@@ -35,7 +35,7 @@ class EcdrTbData:
     tbs: EcdrTbs
     resolution: ECDR_SUPPORTED_RESOLUTIONS
     data_source: str
-    platform: SUPPORTED_PLATFORM_ID
+    platform_id: SUPPORTED_PLATFORM_ID
 
 
 def get_null_grid(
@@ -150,7 +150,7 @@ def _get_am2_tbs(
         tbs=ecdr_tbs,
         resolution=resolution,
         data_source=data_source,
-        platform="am2",
+        platform_id="am2",
     )
 
     return ecdr_tb_data
@@ -199,14 +199,14 @@ def _get_ame_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
         tbs=ecdr_tbs,
         resolution=tb_resolution,
         data_source=data_source,
-        platform="ame",
+        platform_id="ame",
     )
 
     return ecdr_tb_data
 
 
 def _get_nsidc_0001_tbs(
-    *, date: dt.date, hemisphere: Hemisphere, platform: NSIDC_0001_SATS
+    *, date: dt.date, hemisphere: Hemisphere, platform_id: NSIDC_0001_SATS
 ) -> EcdrTbData:
     NSIDC0001_DATA_DIR = Path("/ecs/DP4/PM/NSIDC-0001.006/")
     # NSIDC-0001 TBs for siconc are all at 25km
@@ -219,7 +219,7 @@ def _get_nsidc_0001_tbs(
             hemisphere=hemisphere,
             data_dir=NSIDC0001_DATA_DIR,
             resolution=nsidc0001_resolution,
-            sat=platform,
+            sat=platform_id,
         )
 
         ecdr_tbs = map_tbs_to_ecdr_channels(
@@ -244,7 +244,7 @@ def _get_nsidc_0001_tbs(
             f"Used all-null TBS for date={date},"
             f" hemisphere={hemisphere},"
             f" resolution={tb_resolution}"
-            f" platform={platform}"
+            f" platform_id={platform_id}"
         )
 
     # TODO: For debugging TBs, consider a print/log statement such as this:
@@ -253,7 +253,7 @@ def _get_nsidc_0001_tbs(
         tbs=ecdr_tbs,
         resolution=tb_resolution,
         data_source=data_source,
-        platform=platform,  # type: ignore[arg-type]
+        platform_id=platform_id,  # type: ignore[arg-type]
     )
 
     return ecdr_tb_data
@@ -294,7 +294,7 @@ def _get_nsidc_0007_tbs(*, hemisphere: Hemisphere, date: dt.date) -> EcdrTbData:
         tbs=ecdr_tbs,
         resolution=SMMR_RESOLUTION,
         data_source=data_source,
-        platform="n07",
+        platform_id="n07",
     )
 
     return ecdr_tb_data
@@ -314,7 +314,7 @@ def get_25km_ecdr_tb_data(
         raise NotImplementedError("AME is not yet supported at 25km resolution")
     elif platform.id in get_args(NSIDC_0001_SATS):
         return _get_nsidc_0001_tbs(
-            platform=platform,  # type: ignore[arg-type]
+            platform_id=platform.id,  # type: ignore[arg-type]
             date=date,
             hemisphere=hemisphere,
         )
@@ -344,7 +344,7 @@ def get_ecdr_tb_data(
         return _get_ame_tbs(date=date, hemisphere=hemisphere)
     elif platform.id in get_args(NSIDC_0001_SATS):
         return _get_nsidc_0001_tbs(
-            platform=platform.id,  # type: ignore[arg-type]
+            platform_id=platform.id,  # type: ignore[arg-type]
             date=date,
             hemisphere=hemisphere,
         )

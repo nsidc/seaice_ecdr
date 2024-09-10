@@ -137,7 +137,7 @@ def get_global_attrs(
     # of source filenames.
     source: str,
     # List of satellites that provided data for the given netcdf file.
-    sats: list[SUPPORTED_PLATFORM_ID],
+    platform_ids: list[SUPPORTED_PLATFORM_ID],
 ) -> dict[str, Any]:
     """Return a dictionary containing the global attributes for a standard ECDR NetCDF file.
 
@@ -148,7 +148,9 @@ def get_global_attrs(
 
     # TODO: support different resolutions, platforms, and sensors!
     resolution: Final = "12.5"
-    platforms = [PLATFORM_CONFIG.platform_for_id(sat) for sat in sats]
+    platforms = [
+        PLATFORM_CONFIG.platform_for_id(platform_id) for platform_id in platform_ids
+    ]
     platform = ", ".join([platform.name for platform in platforms])
     sensor = ", ".join([platform.sensor for platform in platforms])
 

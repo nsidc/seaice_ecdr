@@ -35,13 +35,13 @@ platform_test_dates: OrderedDict[SUPPORTED_PLATFORM_ID, dt.date] = OrderedDict(
 
 
 def test_SUPPORTED_PLATFORM_ID():
-    cdrv5_sats = (
+    cdrv5_platform_ids = (
         "am2",
         "F17",
     )
 
-    for sat in cdrv5_sats:
-        assert sat in get_args(SUPPORTED_PLATFORM_ID)
+    for platform_id in cdrv5_platform_ids:
+        assert platform_id in get_args(SUPPORTED_PLATFORM_ID)
 
 
 def test_platforms_for_sats():
