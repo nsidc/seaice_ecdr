@@ -71,7 +71,9 @@ def test_override_platform_by_date(monkeypatch, tmpdir):
     with open(override_file, "w") as yaml_file:
         yaml.safe_dump(expected_platform_dates, yaml_file)
 
-    platform_config = _get_platform_config(start_dates_yml_filepath=override_file)
+    monkeypatch.setenv("PLATFORM_START_DATES_CONFIG_FILEPATH", str(override_file))
+    platform_config = _get_platform_config()
+
     assert len(platform_config.cdr_platform_start_dates) == 2
     assert platform_config.cdr_platform_start_dates[0].platform_id == "F08"
     assert platform_config.cdr_platform_start_dates[0].start_date == dt.date(
@@ -88,6 +90,7 @@ def test__get_platform_config():
 
     assert len(platform_cfg.platforms) >= 1
     assert len(platform_cfg.cdr_platform_start_dates) >= 1
+    assert PLATFORM_CONFIG == platform_cfg
 
 
 def test_platform_config_validation_error():
