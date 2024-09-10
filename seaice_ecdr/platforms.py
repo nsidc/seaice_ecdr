@@ -60,8 +60,8 @@ PLATFORM_AVAILABILITY: OrderedDict[SUPPORTED_SAT, dict] = OrderedDict(
     F11={"first_date": dt.date(1991, 12, 3), "last_date": dt.date(1995, 9, 30)},
     F13={"first_date": dt.date(1995, 10, 1), "last_date": dt.date(2007, 12, 31)},
     F17={"first_date": dt.date(2008, 1, 1), "last_date": None},
-    ame={"first_date": dt.date(2002, 6, 1), "last_date": dt.date(2011, 10, 3)},
-    am2={"first_date": dt.date(2012, 7, 2), "last_date": None},
+    # ame={"first_date": dt.date(2002, 6, 1), "last_date": dt.date(2011, 10, 3)},
+    # am2={"first_date": dt.date(2012, 7, 2), "last_date": None},
 )
 
 
@@ -134,11 +134,11 @@ def get_platform_start_dates() -> OrderedDict[dt.date, SUPPORTED_SAT]:
                 dt.date(1987, 7, 10): "F08",
                 dt.date(1991, 12, 3): "F11",
                 dt.date(1995, 10, 1): "F13",
-                dt.date(2002, 6, 1): "ame",  # AMSR-E is first AMSR sat
+                # dt.date(2002, 6, 1): "ame",  # AMSR-E is first AMSR sat
                 # F17 starts while AMSR-E is up, on 2008-01-01. We don't use
                 # F17 until 2011-10-04.
-                dt.date(2011, 10, 4): "F17",
-                dt.date(2012, 7, 3): "am2",  # AMSR2
+                dt.date(2008, 1, 1): "F17",
+                # dt.date(2012, 7, 3): "am2",  # AMSR2
             }
         )
 
