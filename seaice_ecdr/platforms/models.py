@@ -58,7 +58,6 @@ class Platform(BaseModel):
     date_range: DateRange
 
 
-# TODO: consider util/api module for this?
 def platform_for_id(
     *, platforms: list[Platform], platform_id: SUPPORTED_PLATFORM_ID
 ) -> Platform:
