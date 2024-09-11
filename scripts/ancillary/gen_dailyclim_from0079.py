@@ -315,11 +315,11 @@ def gen_dailyclim_0079(hem, d0, d1):
 
     iim_ds = xr.Dataset(
         data_vars=dict(
-            invalid_ice_mask=invalid_ice_mask_arr,
+            invalid_ice_mask=invalid_ice_mask_arr[1:, :, :],  # exclude doy 0
             crs=reference_ds.crs,
         ),
         coords=dict(
-            doy=np.arange(0, 366 + 1, dtype=np.int16),
+            doy=np.arange(1, 366 + 1, dtype=np.int16),
             y=reference_ds.y,
             x=reference_ds.x,
         ),
