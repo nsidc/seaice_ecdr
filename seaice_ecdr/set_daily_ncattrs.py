@@ -68,7 +68,7 @@ def finalize_cdecdr_ds(
             ),
             "grid_mapping": "crs",
             "reference": "https://nsidc.org/data/g02202/versions/5",
-            "ancillary_variables": "stdev_of_cdr_seaice_conc cdr_qa_seaice_conc",
+            "ancillary_variables": "cdr_stdev_seaice_conc cdr_qa_seaice_conc",
             "valid_range": np.array((0, 100), dtype=np.uint8),
             "number_of_missing_pixels": num_missing_conc_pixels,
         },
@@ -76,9 +76,9 @@ def finalize_cdecdr_ds(
     )
 
     # Standard deviation file is converted from 2d to [time, y x] coords
-    ds["stdev_of_cdr_seaice_conc"] = (
+    ds["cdr_stdev_seaice_conc"] = (
         ("time", "y", "x"),
-        ds["stdev_of_cdr_seaice_conc"].data,
+        ds["cdr_stdev_seaice_conc"].data,
         {
             "_FillValue": -1,
             "long_name": (

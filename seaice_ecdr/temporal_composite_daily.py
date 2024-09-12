@@ -760,7 +760,7 @@ def temporal_interpolation(
     )
 
     # Set this to a data array
-    tie_ds["stdev_of_cdr_seaice_conc_raw"] = (
+    tie_ds["cdr_stdev_seaice_conc_raw"] = (
         ("time", "y", "x"),
         np.expand_dims(stddev_field.data, axis=0),
         {
@@ -786,7 +786,7 @@ def temporal_interpolation(
     ]
 
     stdev_field_filtered = filter_field_via_bitmask(
-        field_da=tie_ds["stdev_of_cdr_seaice_conc_raw"],
+        field_da=tie_ds["cdr_stdev_seaice_conc_raw"],
         flag_da=tie_ds["cdr_qa_seaice_conc"],
         filter_ids=filter_flags_to_apply,
     )
@@ -800,7 +800,7 @@ def temporal_interpolation(
 
     # Re-set the stdev data array...
     # Note: probably need to set land values to -1 here?
-    tie_ds["stdev_of_cdr_seaice_conc"] = (
+    tie_ds["cdr_stdev_seaice_conc"] = (
         ("time", "y", "x"),
         stdev_field_filtered.data,
         {
@@ -818,7 +818,7 @@ def temporal_interpolation(
         },
     )
 
-    tie_ds = tie_ds.drop_vars("stdev_of_cdr_seaice_conc_raw")
+    tie_ds = tie_ds.drop_vars("cdr_stdev_seaice_conc_raw")
 
     return tie_ds
 
