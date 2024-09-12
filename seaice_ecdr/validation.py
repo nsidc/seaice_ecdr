@@ -63,7 +63,7 @@ from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR, ECDR_PRODUCT_VERSION
 from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.util import date_range, get_complete_output_dir, get_num_missing_pixels
 
-VALIDATION_RESOLUTION: Final = "12.5"
+VALIDATION_RESOLUTION: Final = "25"
 
 ERROR_FILE_BITMASK = dict(
     missing_file=-9999,
@@ -443,8 +443,8 @@ def validate_outputs(
                 )
 
                 # monthly filepaths should have the form
-                # "sic_ps{n|s}12.5_{YYYYMM}_{sat}_v05r00.nc"
-                expected_fn_glob = f"sic_ps{hemisphere[0]}12.5_{year}{month:02}_*_{ECDR_PRODUCT_VERSION}.nc"
+                # "sic_ps{n|s}25_{YYYYMM}_{sat}_v05r00.nc"
+                expected_fn_glob = f"sic_ps{hemisphere[0]}25_{year}{month:02}_*_{ECDR_PRODUCT_VERSION}.nc"
                 results = list(monthly_dir.glob(expected_fn_glob))
                 if not results:
                     validation_dict = make_validation_dict_for_missing_file()

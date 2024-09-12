@@ -16,7 +16,7 @@ from loguru import logger
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_tb_data._types import NORTH, Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
     ANCILLARY_SOURCES,
     get_non_ocean_mask,
@@ -28,10 +28,7 @@ from seaice_ecdr.initial_daily_ecdr import (
     create_idecdr_for_date,
     get_idecdr_filepath,
 )
-from seaice_ecdr.platforms import (
-    get_first_platform_start_date,
-    get_platform_by_date,
-)
+from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.spillover import LAND_SPILL_ALGS
 from seaice_ecdr.util import (
     date_range,
@@ -136,13 +133,13 @@ def get_tie_filepath(
 ) -> Path:
     """Return the complete daily tie file path."""
 
-    platform = get_platform_by_date(date)
-    sat = cast(SUPPORTED_SAT, platform)
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
+    platform_id = platform.id
 
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        sat=sat,
+        platform_id=platform_id,
         resolution=resolution,
     )
     # Add `tiecdr` to the beginning of the standard name to distinguish it as a
@@ -175,7 +172,7 @@ def iter_dates_near_date(
     near-real-time use, because data from "the future" are not available.
     """
     earliest_date = target_date - dt.timedelta(days=day_range)
-    beginning_of_platform_coverage = get_first_platform_start_date()
+    beginning_of_platform_coverage = PLATFORM_CONFIG.get_first_platform_start_date()
     if earliest_date < beginning_of_platform_coverage:
         logger.warning(
             f"Resetting temporal interpolation earliest date from {earliest_date} to {beginning_of_platform_coverage}"
@@ -374,13 +371,13 @@ def read_or_create_and_read_idecdr_ds(
     overwrite_ide: bool = False,
 ) -> xr.Dataset:
     """Read an idecdr netCDF file, creating it if it doesn't exist."""
-    platform = get_platform_by_date(
+    platform = PLATFORM_CONFIG.get_platform_by_date(
         date,
     )
 
     ide_filepath = get_idecdr_filepath(
         date=date,
-        platform=platform,
+        platform_id=platform.id,
         hemisphere=hemisphere,
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
@@ -645,11 +642,9 @@ def temporal_interpolation(
     #       grid is having its pole hole filled!
     if fill_the_pole_hole and hemisphere == NORTH:
         cdr_conc_pre_polefill = cdr_conc.copy()
-        platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
             date=date,
             resolution=resolution,
-            sat=platform,
             ancillary_source=ancillary_source,
         )
         cdr_conc_pole_filled = fill_pole_hole(
@@ -720,11 +715,9 @@ def temporal_interpolation(
 
         # Fill pole hole of BT
         bt_conc_pre_polefill = bt_conc_2d.copy()
-        platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
             date=date,
             resolution=resolution,
-            sat=platform,
             ancillary_source=ancillary_source,
         )
         bt_conc_pole_filled = fill_pole_hole(

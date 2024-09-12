@@ -23,7 +23,7 @@ def test_daily_aggregate_matches_daily_data(tmpdir):
     )
 
     year = 2022
-    resolution: Final = "12.5"
+    resolution: Final = "25"
     land_spillover_alg: Final = "NT2"
     ancillary_source: Final = "CDRv5"
 

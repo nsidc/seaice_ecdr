@@ -31,7 +31,7 @@ from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_tb_data._types import NORTH, Hemisphere
 from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
     ANCILLARY_SOURCES,
     get_empty_ds_with_time,
@@ -42,7 +42,7 @@ from seaice_ecdr.ancillary import (
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import CDR_ANCILLARY_DIR, DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.platforms import get_platform_by_date
+from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
 from seaice_ecdr.spillover import LAND_SPILL_ALGS, land_spillover
 from seaice_ecdr.tb_data import (
@@ -54,8 +54,8 @@ from seaice_ecdr.tb_data import (
 from seaice_ecdr.util import get_intermediate_output_dir, standard_daily_filename
 
 
-def platform_is_smmr(platform):
-    return platform in ("n07", "s36")
+def platform_is_smmr(platform_id: SUPPORTED_PLATFORM_ID):
+    return platform_id in ("n07", "s36")
 
 
 def cdr_bootstrap_raw(
@@ -64,7 +64,7 @@ def cdr_bootstrap_raw(
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
     bt_coefs,
-    platform: SUPPORTED_SAT,
+    platform: SUPPORTED_PLATFORM_ID,
 ):
     """Generate the raw bootstrap concentration field.
     Note: tb fields should already be transformed before
@@ -205,7 +205,7 @@ def _setup_ecdr_ds(
     ecdr_ide_ds.attrs["data_source"] = tb_data.data_source
 
     # Set the platform
-    ecdr_ide_ds.attrs["platform"] = tb_data.platform
+    ecdr_ide_ds.attrs["platform"] = tb_data.platform_id
 
     file_date = dt.date(1970, 1, 1) + dt.timedelta(
         days=int(ecdr_ide_ds.variables["time"].data)
@@ -407,7 +407,7 @@ def compute_initial_daily_ecdr_dataset(
             # The CDRv4 calculation causes TB to be zero/missing where
             # no sea ice can occur because of invalid region or land
             logger.debug(f"Applying invalid ice mask to TB field: {tb_si_varname}")
-            platform = get_platform_by_date(date)
+            platform = PLATFORM_CONFIG.get_platform_by_date(date)
             invalid_ice_mask = get_invalid_ice_mask(
                 hemisphere=hemisphere,
                 date=date,
@@ -561,26 +561,26 @@ def compute_initial_daily_ecdr_dataset(
     )
     logger.debug("Initialized spatial_interpolation_flag with TB fill locations")
 
-    platform = get_platform_by_date(date)
-    if platform == "am2":
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
+    if platform.id == "am2":
         bt_coefs_init = pmi_bt_params_amsr2.get_ausi_amsr2_bootstrap_params(
             date=date,
             satellite="amsr2",
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform == "ame":
+    elif platform.id == "ame":
         bt_coefs_init = pmi_bt_params_amsre.get_ausi_amsre_bootstrap_params(
             date=date,
             satellite="amsre",
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform in get_args(NSIDC_0001_SATS):
+    elif platform.id in get_args(NSIDC_0001_SATS):
         bt_coefs_init = pmi_bt_params_0001.get_nsidc0001_bootstrap_params(
             date=date,
-            satellite=platform,
+            satellite=platform.id,
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform_is_smmr(platform):
+    elif platform_is_smmr(platform.id):
         bt_coefs_init = get_smmr_params(hemisphere=hemisphere, date=date)
     else:
         raise RuntimeError(f"platform bootstrap params not implemented: {platform}")
@@ -618,14 +618,14 @@ def compute_initial_daily_ecdr_dataset(
         pole_mask = nh_polehole_mask(
             date=date,
             resolution=tb_data.resolution,
-            sat=platform,
             ancillary_source=ancillary_source,
+            platform=platform,
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
 
     nt_params = get_cdr_nt_params(
         hemisphere=hemisphere,
-        platform=platform,
+        platform=platform.id,
     )
 
     nt_coefs = NtCoefs(
@@ -683,7 +683,7 @@ def compute_initial_daily_ecdr_dataset(
                 v19=bt_v19,
                 v22=bt_v22,
             ),
-            platform=platform.lower(),
+            platform=platform.id.lower(),
         )
         bt_v37 = transformed["v37"]
         bt_h37 = transformed["h37"]
@@ -713,7 +713,7 @@ def compute_initial_daily_ecdr_dataset(
         wintrc=bt_coefs_init["wintrc"],
         wslope=bt_coefs_init["wslope"],
         wxlimt=bt_coefs_init["wxlimt"],
-        is_smmr=platform_is_smmr(platform),
+        is_smmr=platform_is_smmr(platform.id),
     )
 
     # Note:
@@ -853,7 +853,7 @@ def compute_initial_daily_ecdr_dataset(
         tb_h37=bt_h37,
         tb_v19=bt_v19,
         bt_coefs=bt_coefs,
-        platform=platform,
+        platform=platform.id,
     )
 
     # Set any bootstrap concentrations below 10% to 0.
@@ -950,7 +950,6 @@ def compute_initial_daily_ecdr_dataset(
         tb_data=tb_data,
         algorithm=land_spillover_alg,
         land_mask=non_ocean_mask.data,
-        platform=platform,
         ancillary_source=ancillary_source,
         bt_conc=bt_asCDRv4_conc,
         nt_conc=nt_asCDRv4_conc,
@@ -1252,7 +1251,7 @@ def get_idecdr_dir(*, intermediate_output_dir: Path) -> Path:
 def get_idecdr_filepath(
     *,
     date: dt.date,
-    platform,
+    platform_id: SUPPORTED_PLATFORM_ID,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
@@ -1262,7 +1261,7 @@ def get_idecdr_filepath(
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        sat=platform,
+        platform_id=platform_id,
         resolution=resolution,
     )
     idecdr_fn = "idecdr_" + standard_fn
@@ -1285,10 +1284,10 @@ def make_idecdr_netcdf(
     ancillary_source: ANCILLARY_SOURCES,
     overwrite_ide: bool = False,
 ) -> None:
-    platform = get_platform_by_date(date)
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     output_path = get_idecdr_filepath(
         date=date,
-        platform=platform,
+        platform_id=platform.id,
         hemisphere=hemisphere,
         intermediate_output_dir=intermediate_output_dir,
         resolution=resolution,

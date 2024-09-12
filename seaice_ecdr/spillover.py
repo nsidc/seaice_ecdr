@@ -9,7 +9,6 @@ from pm_icecon.nt.compute_nt_ic import apply_nt_spillover
 from pm_tb_data._types import Hemisphere
 from scipy.ndimage import binary_dilation, generate_binary_structure, shift
 
-from seaice_ecdr._types import SUPPORTED_SAT
 from seaice_ecdr.ancillary import (
     ANCILLARY_SOURCES,
     get_adj123_field,
@@ -237,7 +236,6 @@ def land_spillover(
     tb_data: EcdrTbData,
     algorithm: LAND_SPILL_ALGS,
     land_mask: npt.NDArray,
-    platform: SUPPORTED_SAT,
     ancillary_source: ANCILLARY_SOURCES,
     bt_conc=None,  # only needed if the BT or NT spillover are used
     nt_conc=None,  # only needed if the BT or NT spillover are used

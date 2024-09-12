@@ -11,6 +11,7 @@ from typing import Final
 from pm_tb_data._types import NORTH
 
 from seaice_ecdr.initial_daily_ecdr import get_idecdr_filepath
+from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
 from seaice_ecdr.temporal_composite_daily import (
     make_tiecdr_netcdf,
     read_or_create_and_read_idecdr_ds,
@@ -18,8 +19,8 @@ from seaice_ecdr.temporal_composite_daily import (
 
 date = dt.date(2021, 2, 19)
 hemisphere = NORTH
-resolution: Final = "12.5"
-platform = "am2"
+resolution: Final = "25"
+platform_id: SUPPORTED_PLATFORM_ID = "am2"
 land_spillover_alg: Final = "NT2"
 ancillary_source: Final = "CDRv5"
 
@@ -29,7 +30,7 @@ def test_read_or_create_and_read_idecdr_ds(tmpdir):
 
     sample_ide_filepath = get_idecdr_filepath(
         date=date,
-        platform=platform,
+        platform_id=platform_id,
         hemisphere=hemisphere,
         resolution=resolution,
         intermediate_output_dir=Path(tmpdir),

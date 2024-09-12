@@ -14,7 +14,7 @@ from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.complete_daily_ecdr import create_standard_ecdr_for_dates
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import create_idecdr_for_date
-from seaice_ecdr.platforms import get_first_platform_start_date
+from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.spillover import LAND_SPILL_ALGS
 from seaice_ecdr.temporal_composite_daily import make_tiecdr_netcdf
 from seaice_ecdr.util import (
@@ -122,7 +122,7 @@ def cli(
     # craete a range of dates that includes the interpolation range. This
     # ensures that data expected for temporal interpolation of the requested
     # dates has the data it needs.
-    earliest_date = get_first_platform_start_date()
+    earliest_date = PLATFORM_CONFIG.get_first_platform_start_date()
     initial_start_date = max(earliest_date, start_date - dt.timedelta(days=5))
     initial_end_date = min(end_date + dt.timedelta(days=5), dt.date.today())
     initial_file_dates = list(
