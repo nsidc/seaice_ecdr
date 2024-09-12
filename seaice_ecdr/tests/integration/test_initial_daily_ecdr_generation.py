@@ -116,7 +116,7 @@ def test_seaice_idecdr_has_necessary_fields(
         "y",
         "y",
         "conc",
-        "qa_of_cdr_seaice_conc",
+        "cdr_qa_seaice_conc",
         "raw_bt_seaice_conc",
         "raw_nt_seaice_conc",
         "bt_weather_mask",
@@ -203,7 +203,7 @@ def test_seaice_idecdr_has_tyx_data_vars(
     """Test that idecdr netcdf has (time, y, x) dims for data fields."""
     expected_tyx_fields = (
         "conc",
-        "qa_of_cdr_seaice_conc",
+        "cdr_qa_seaice_conc",
         "raw_bt_seaice_conc",
         "raw_nt_seaice_conc",
         "bt_weather_mask",

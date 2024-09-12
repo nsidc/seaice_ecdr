@@ -1092,7 +1092,7 @@ def compute_initial_daily_ecdr_dataset(
     qa_bitmask[ecdr_ide_ds["spatial_interpolation_flag"].data[0, :, :] != 0] += 32
     qa_bitmask[non_ocean_mask] = 0
 
-    ecdr_ide_ds["qa_of_cdr_seaice_conc"] = (
+    ecdr_ide_ds["cdr_qa_seaice_conc"] = (
         ("time", "y", "x"),
         np.expand_dims(qa_bitmask, axis=0),
         {

@@ -238,7 +238,7 @@ def get_pixel_counts(
 
     # Handle the log file first. It contains information on the # of
     # pixels of each type in the surface_type_mask and the ocean mask
-    # (via qa_of_cdr_seaice_conc)
+    # (via cdr_qa_seaice_conc)
     # total ice land coast lake pole oceanmask ice-free missing bad melt
     total_num_pixels = len(ds.x) * len(ds.y)
     # Areas where there is a concentration detected.
