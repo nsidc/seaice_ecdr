@@ -5,6 +5,7 @@ import numpy as np
 import numpy.testing as nptesting  # Note: npt is numpy.typing
 import pytest
 import xarray as xr
+from loguru import logger
 from pm_tb_data._types import NORTH
 
 from seaice_ecdr import monthly, util
@@ -26,50 +27,51 @@ from seaice_ecdr.monthly import (
 
 
 def test__get_daily_complete_filepaths_for_month(fs):
-    complete_output_dir = Path("/path/to/data/dir/complete")
-    fs.create_dir(complete_output_dir)
-    nh_complete_dir = get_ecdr_dir(
-        complete_output_dir=complete_output_dir / "north",
+    intermediate_output_dir = Path("/path/to/data/dir/intermediate")
+    fs.create_dir(intermediate_output_dir)
+    nh_intermediate_dir = get_ecdr_dir(
+        intermediate_output_dir=intermediate_output_dir / "north",
         year=2022,
         is_nrt=False,
     )
-    sh_complete_dir = get_ecdr_dir(
-        complete_output_dir=complete_output_dir / "south",
+    sh_intermediate_dir = get_ecdr_dir(
+        intermediate_output_dir=intermediate_output_dir / "south",
         year=2022,
         is_nrt=False,
     )
     year = 2022
     month = 3
     _fake_files_for_test_year_month_and_hemisphere = [
-        nh_complete_dir / "sic_psn12.5_20220301_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220302_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220303_am2_v05r01.nc",
+        nh_intermediate_dir / "sic_psn12.5_20220301_F17_v05r01.nc",
+        nh_intermediate_dir / "sic_psn12.5_20220302_F17_v05r01.nc",
+        nh_intermediate_dir / "sic_psn12.5_20220303_F17_v05r01.nc",
     ]
     _fake_files = [
-        nh_complete_dir / "sic_psn12.5_20220201_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220201_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220202_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220202_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220203_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220203_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220301_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220302_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220303_am2_v05r01.nc",
+        nh_intermediate_dir / "sic_psn12.5_20220201_F17_v05r01.nc",
+        nh_intermediate_dir / "sic_pss12.5_20220201_F17_v05r01.nc",
+        nh_intermediate_dir / "sic_psn12.5_20220202_F17_v05r01.nc",
+        nh_intermediate_dir / "sic_pss12.5_20220202_F17_v05r01.nc",
+        nh_intermediate_dir / "sic_psn12.5_20220203_F17_v05r01.nc",
+        nh_intermediate_dir / "sic_pss12.5_20220203_F17_v05r01.nc",
+        nh_intermediate_dir / "sic_pss12.5_20220301_F17_v05r01.nc",
+        nh_intermediate_dir / "sic_pss12.5_20220302_F17_v05r01.nc",
+        nh_intermediate_dir / "sic_pss12.5_20220303_F17_v05r01.nc",
         *_fake_files_for_test_year_month_and_hemisphere,
-        nh_complete_dir / "sic_psn12.5_20220401_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220401_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220402_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220402_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220403_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220403_am2_v05r01.nc",
+        nh_intermediate_dir / "sic_psn12.5_20220401_F17_v05r01.nc",
+        sh_intermediate_dir / "sic_pss12.5_20220401_F17_v05r01.nc",
+        nh_intermediate_dir / "sic_psn12.5_20220402_F17_v05r01.nc",
+        sh_intermediate_dir / "sic_pss12.5_20220402_F17_v05r01.nc",
+        nh_intermediate_dir / "sic_psn12.5_20220403_F17_v05r01.nc",
+        sh_intermediate_dir / "sic_pss12.5_20220403_F17_v05r01.nc",
     ]
     for _file in _fake_files:
+        logger.info(f"creating {_file=}")
         fs.create_file(_file)
 
     actual = _get_daily_complete_filepaths_for_month(
         year=year,
         month=month,
-        complete_output_dir=complete_output_dir / NORTH,
+        intermediate_output_dir=intermediate_output_dir / NORTH,
         resolution="12.5",
         hemisphere=NORTH,
     )

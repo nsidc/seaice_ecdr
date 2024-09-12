@@ -231,7 +231,7 @@ def nrt_ecdr_for_day(
         date=date,
         hemisphere=hemisphere,
         resolution=LANCE_RESOLUTION,
-        complete_output_dir=complete_output_dir,
+        intermediate_output_dir=complete_output_dir,
         is_nrt=True,
     )
 
@@ -258,7 +258,6 @@ def nrt_ecdr_for_day(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=LANCE_RESOLUTION,
-                complete_output_dir=complete_output_dir,
                 intermediate_output_dir=intermediate_output_dir,
                 is_nrt=True,
                 ancillary_source=ancillary_source,
@@ -267,9 +266,10 @@ def nrt_ecdr_for_day(
             written_cde_ncfile = write_cde_netcdf(
                 cde_ds=cde_ds,
                 output_filepath=cde_filepath,
-                complete_output_dir=complete_output_dir,
+                intermediate_output_dir=complete_output_dir,
                 hemisphere=hemisphere,
             )
+            # TODO: still need to "publish" to the complete location
             logger.success(f"Wrote complete daily ncfile: {written_cde_ncfile}")
         except Exception as e:
             logger.exception(f"Failed to create NRT ECDR for {date=} {hemisphere=}")

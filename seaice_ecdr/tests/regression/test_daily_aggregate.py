@@ -40,11 +40,14 @@ def test_daily_aggregate_matches_daily_data(tmpdir):
             ancillary_source=ancillary_source,
         )
 
+        # TODO: this fucntin is really inteded to just read the ds associated
+        # with the intermediate file, but it can (I think) be used for the
+        # published version...
         ds = read_cdecdr_ds(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
-            complete_output_dir=complete_output_dir,
+            intermediate_output_dir=complete_output_dir,
             is_nrt=False,
         )
         datasets.append(ds)

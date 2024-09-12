@@ -15,9 +15,9 @@ from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import get_ancillary_ds
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
-from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
+from seaice_ecdr.publish_monthly import get_complete_monthly_dir
 from seaice_ecdr.util import (
     get_complete_output_dir,
     platform_id_from_filename,
@@ -31,7 +31,7 @@ def _get_monthly_complete_filepaths(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     complete_output_dir: Path,
 ) -> list[Path]:
-    monthly_dir = get_monthly_dir(
+    monthly_dir = get_complete_monthly_dir(
         complete_output_dir=complete_output_dir,
     )
 

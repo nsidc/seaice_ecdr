@@ -25,7 +25,10 @@ def test_make_standard_cdecdr_netcdf(base_output_dir_test_path):  # noqa
         # Assert that the checksums exist where we expect them to be.
         checksum_filepath = (
             base_output_dir_test_path
-            / "complete"
+            # TODO: checksums should only be written to the published,
+            # "complete" area. This needs to move to a different test, because
+            # the above produces intermediate output.
+            / "intermediate"
             / NORTH
             / "checksums"
             / "daily"

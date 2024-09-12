@@ -6,7 +6,7 @@ from pm_tb_data._types import NORTH
 
 from seaice_ecdr import monthly
 from seaice_ecdr.tests.integration import base_output_dir_test_path  # noqa
-from seaice_ecdr.util import get_complete_output_dir
+from seaice_ecdr.util import get_intermediate_output_dir
 
 ancillary_source: Final = "CDRv5"
 
@@ -20,7 +20,7 @@ def test_make_monthly_nc(base_output_dir_test_path, monkeypatch):  # noqa
         monthly, "check_min_days_for_valid_month", lambda *_args, **_kwargs: True
     )
 
-    complete_output_dir = get_complete_output_dir(
+    intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir_test_path,
         hemisphere=NORTH,
         is_nrt=False,
@@ -31,7 +31,7 @@ def test_make_monthly_nc(base_output_dir_test_path, monkeypatch):  # noqa
         month=3,
         hemisphere=NORTH,
         resolution="25",
-        complete_output_dir=complete_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
         ancillary_source=ancillary_source,
     )
 
@@ -45,7 +45,10 @@ def test_make_monthly_nc(base_output_dir_test_path, monkeypatch):  # noqa
     # Assert that the checksums exist where we expect them to be.
     checksum_filepath = (
         base_output_dir_test_path
-        / "complete"
+        # TODO: checksums should only be written to the published,
+        # "complete" area. This needs to move to a different test, because
+        # the above produces intermediate output.
+        / "intermediate"
         / NORTH
         / "checksums"
         / "monthly"

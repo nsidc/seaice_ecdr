@@ -1,5 +1,10 @@
 """Routines for generating completely filled daily eCDR files.
 
+This code takes temporally interpolated daily data (`temporal_composite_daily.py`) and adds:
+
+* melt onset (for NH)
+* The surface-type field
+* Sets necessary NC attrs
 """
 
 import copy
@@ -37,7 +42,6 @@ from seaice_ecdr.spillover import LAND_SPILL_ALGS
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
 from seaice_ecdr.util import (
     date_range,
-    get_complete_output_dir,
     get_ecdr_grid_shape,
     get_intermediate_output_dir,
     nrt_daily_filename,
@@ -49,18 +53,18 @@ from seaice_ecdr.util import (
 @cache
 def get_ecdr_dir(
     *,
-    complete_output_dir: Path,
+    intermediate_output_dir: Path,
     year: int,
     # TODO: extract nrt handling and make responsiblity for defining the output
     # dir a higher-level concern.
     is_nrt: bool,
 ) -> Path:
-    """Daily complete output dir for ECDR processing"""
+    """Daily output dir for ECDR processing"""
     if is_nrt:
         # NRT daily data just lives under the complete output dir.
-        ecdr_dir = complete_output_dir
+        ecdr_dir = intermediate_output_dir
     else:
-        ecdr_dir = complete_output_dir / "daily" / str(year)
+        ecdr_dir = intermediate_output_dir / "daily" / str(year)
     ecdr_dir.mkdir(parents=True, exist_ok=True)
 
     return ecdr_dir
@@ -70,10 +74,10 @@ def get_ecdr_filepath(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    complete_output_dir: Path,
+    intermediate_output_dir: Path,
     is_nrt: bool,
 ) -> Path:
-    """Return the complete daily eCDR file path."""
+    """Return the daily eCDR file path."""
     platform = PLATFORM_CONFIG.get_platform_by_date(date)
     if is_nrt:
         ecdr_filename = nrt_daily_filename(
@@ -91,7 +95,7 @@ def get_ecdr_filepath(
         )
 
     ecdr_dir = get_ecdr_dir(
-        complete_output_dir=complete_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
         year=date.year,
         is_nrt=is_nrt,
     )
@@ -182,14 +186,14 @@ def read_melt_onset_field_from_complete_daily(
     date,
     hemisphere,
     resolution,
-    complete_output_dir: Path,
+    intermediate_output_dir: Path,
     is_nrt: bool,
 ) -> npt.NDArray:
     cde_ds = read_cdecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        complete_output_dir=complete_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
         is_nrt=is_nrt,
     )
 
@@ -260,7 +264,6 @@ def create_melt_onset_field(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ancillary_source: ANCILLARY_SOURCES,
-    complete_output_dir: Path,
     intermediate_output_dir: Path,
     is_nrt: bool,
 ) -> npt.NDArray[np.uint8]:
@@ -317,7 +320,7 @@ def create_melt_onset_field(
                 date=date - dt.timedelta(days=1),
                 hemisphere=hemisphere,
                 resolution=resolution,
-                complete_output_dir=complete_output_dir,
+                intermediate_output_dir=intermediate_output_dir,
                 is_nrt=is_nrt,
             )
             logger.debug(f"using read melt_onset_field for prior for {day_of_year}")
@@ -363,7 +366,6 @@ def _add_melt_onset_for_nh(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ancillary_source: ANCILLARY_SOURCES,
-    complete_output_dir: Path,
     intermediate_output_dir: Path,
     is_nrt: bool,
 ) -> xr.Dataset:
@@ -374,7 +376,6 @@ def _add_melt_onset_for_nh(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        complete_output_dir=complete_output_dir,
         intermediate_output_dir=intermediate_output_dir,
         is_nrt=is_nrt,
         ancillary_source=ancillary_source,
@@ -469,7 +470,6 @@ def complete_daily_ecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ancillary_source: ANCILLARY_SOURCES,
-    complete_output_dir: Path,
     intermediate_output_dir: Path,
     is_nrt: bool,
 ) -> xr.Dataset:
@@ -501,7 +501,6 @@ def complete_daily_ecdr_ds(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
-            complete_output_dir=complete_output_dir,
             intermediate_output_dir=intermediate_output_dir,
             is_nrt=is_nrt,
             ancillary_source=ancillary_source,
@@ -521,7 +520,7 @@ def write_cde_netcdf(
     *,
     cde_ds: xr.Dataset,
     output_filepath: Path,
-    complete_output_dir: Path,
+    intermediate_output_dir: Path,
     hemisphere: Hemisphere,
     uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
     excluded_fields: Iterable[str] = [],
@@ -565,10 +564,10 @@ def write_cde_netcdf(
     )
 
     # Write checksum file for the complete daily output.
-    checksums_subdir = output_filepath.relative_to(complete_output_dir).parent
+    checksums_subdir = output_filepath.relative_to(intermediate_output_dir).parent
     write_checksum_file(
         input_filepath=output_filepath,
-        output_dir=complete_output_dir / "checksums" / checksums_subdir,
+        output_dir=intermediate_output_dir / "checksums" / checksums_subdir,
     )
 
     return output_filepath
@@ -584,14 +583,17 @@ def make_standard_cdecdr_netcdf(
     ancillary_source: ANCILLARY_SOURCES,
     overwrite_cde: bool = False,
 ) -> Path:
-    """Create a 'standard', complete (ready for prod) daily CDR NetCDF file.
+    """Create a 'standard', daily CDR NetCDF file.
 
     'standard' files are those that use the non-NRT input sources.
 
     This function is recursive. It will attempt to create earlier complete daily
     files if they do not exist.
+
+    The output of this function is a "complete" daily file for a given platform
+    start-dates configuration.
     """
-    complete_output_dir = get_complete_output_dir(
+    intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
         is_nrt=False,
@@ -600,7 +602,7 @@ def make_standard_cdecdr_netcdf(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        complete_output_dir=complete_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
         is_nrt=False,
     )
 
@@ -651,7 +653,6 @@ def make_standard_cdecdr_netcdf(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
-            complete_output_dir=complete_output_dir,
             intermediate_output_dir=intermediate_output_dir,
             is_nrt=False,
             ancillary_source=ancillary_source,
@@ -660,7 +661,7 @@ def make_standard_cdecdr_netcdf(
         written_cde_ncfile = write_cde_netcdf(
             cde_ds=cde_ds,
             output_filepath=cde_filepath,
-            complete_output_dir=complete_output_dir,
+            intermediate_output_dir=intermediate_output_dir,
             hemisphere=hemisphere,
         )
         logger.success(f"Wrote complete daily ncfile: {written_cde_ncfile}")
@@ -679,14 +680,14 @@ def read_cdecdr_ds(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    complete_output_dir: Path,
+    intermediate_output_dir: Path,
     is_nrt: bool,
 ) -> xr.Dataset:
     cde_filepath = get_ecdr_filepath(
         date,
         hemisphere,
         resolution,
-        complete_output_dir=complete_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
         is_nrt=is_nrt,
     )
     logger.debug(f"Reading cdeCDR file from: {cde_filepath}")

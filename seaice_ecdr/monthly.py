@@ -43,7 +43,7 @@ from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import (
-    get_complete_output_dir,
+    get_intermediate_output_dir,
     get_num_missing_pixels,
     platform_id_from_filename,
     standard_monthly_filename,
@@ -74,7 +74,7 @@ def _get_daily_complete_filepaths_for_month(
     *,
     year: int,
     month: int,
-    complete_output_dir: Path,
+    intermediate_output_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
@@ -90,7 +90,7 @@ def _get_daily_complete_filepaths_for_month(
             date=period.to_timestamp().date(),
             hemisphere=hemisphere,
             resolution=resolution,
-            complete_output_dir=complete_output_dir,
+            intermediate_output_dir=intermediate_output_dir,
             is_nrt=False,
         )
         if expected_fp.is_file():
@@ -99,7 +99,9 @@ def _get_daily_complete_filepaths_for_month(
             logger.warning(f"Expected to find {expected_fp} but found none.")
 
     if len(data_list) == 0:
-        raise RuntimeError("No daily data files found.")
+        raise RuntimeError(
+            f"No daily data files found looking in {intermediate_output_dir=}"
+        )
 
     return data_list
 
@@ -128,7 +130,7 @@ def get_daily_ds_for_month(
     *,
     year: int,
     month: int,
-    complete_output_dir: Path,
+    intermediate_output_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> xr.Dataset:
@@ -141,7 +143,7 @@ def get_daily_ds_for_month(
     data_list = _get_daily_complete_filepaths_for_month(
         year=year,
         month=month,
-        complete_output_dir=complete_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
         hemisphere=hemisphere,
         resolution=resolution,
     )
@@ -594,8 +596,8 @@ def make_monthly_ds(
     return monthly_ds.compute()
 
 
-def get_monthly_dir(*, complete_output_dir: Path) -> Path:
-    monthly_dir = complete_output_dir / "monthly"
+def get_monthly_dir(*, intermediate_output_dir: Path) -> Path:
+    monthly_dir = intermediate_output_dir / "monthly"
     monthly_dir.mkdir(parents=True, exist_ok=True)
 
     return monthly_dir
@@ -608,10 +610,10 @@ def get_monthly_filepath(
     platform_id: SUPPORTED_PLATFORM_ID,
     year: int,
     month: int,
-    complete_output_dir: Path,
+    intermediate_output_dir: Path,
 ) -> Path:
     output_dir = get_monthly_dir(
-        complete_output_dir=complete_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
     )
 
     output_fn = standard_monthly_filename(
@@ -632,14 +634,14 @@ def make_monthly_nc(
     year: int,
     month: int,
     hemisphere: Hemisphere,
-    complete_output_dir: Path,
+    intermediate_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ancillary_source: ANCILLARY_SOURCES,
 ) -> Path:
     daily_ds_for_month = get_daily_ds_for_month(
         year=year,
         month=month,
-        complete_output_dir=complete_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
         hemisphere=hemisphere,
         resolution=resolution,
     )
@@ -652,7 +654,7 @@ def make_monthly_nc(
         platform_id=platform_id,
         year=year,
         month=month,
-        complete_output_dir=complete_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
     )
 
     monthly_ds = make_monthly_ds(
@@ -681,7 +683,7 @@ def make_monthly_nc(
     # Write checksum file for the monthly output.
     write_checksum_file(
         input_filepath=output_path,
-        output_dir=complete_output_dir / "checksums" / "monthly",
+        output_dir=intermediate_output_dir / "checksums" / "monthly",
     )
 
     return output_path
@@ -766,7 +768,7 @@ def cli(
     if end_month is None:
         end_month = month
 
-    complete_output_dir = get_complete_output_dir(
+    intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
         is_nrt=False,
@@ -781,7 +783,7 @@ def cli(
             make_monthly_nc(
                 year=period.year,
                 month=period.month,
-                complete_output_dir=complete_output_dir,
+                intermediate_output_dir=intermediate_output_dir,
                 hemisphere=hemisphere,
                 resolution=resolution,
                 ancillary_source=ancillary_source,

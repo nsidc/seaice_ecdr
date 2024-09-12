@@ -23,7 +23,8 @@ def test_get_daily_complete_filepaths_for_year(fs):
             date=date,
             hemisphere="north",
             resolution="12.5",
-            complete_output_dir=complete_output_dir,
+            # TODO: this isn't "right", although it works.
+            intermediate_output_dir=complete_output_dir,
             is_nrt=False,
         )
 
@@ -38,7 +39,7 @@ def test_get_daily_complete_filepaths_for_year(fs):
             date=date,
             hemisphere="north",
             resolution="12.5",
-            complete_output_dir=complete_output_dir,
+            intermediate_output_dir=complete_output_dir,
             is_nrt=False,
         )
 
