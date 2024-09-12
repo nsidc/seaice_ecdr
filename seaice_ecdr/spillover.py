@@ -308,6 +308,7 @@ def land_spillover(
             conc=nt_conc_for_ntspillover,
             shoremap=shoremap,
             minic=minic,
+            match_CDRv4_cdralgos=True,
         )
         nt_asCDRv4 = (10.0 * spillover_applied_nt).astype(np.int16)
         nt_asCDRv4[is_negative_ntconc] = -10
