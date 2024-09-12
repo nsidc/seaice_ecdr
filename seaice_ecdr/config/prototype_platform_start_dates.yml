@@ -1,0 +1,8 @@
+# TODO: we do not currently support AMSRE at the 25km resolution
+# - platform_id: "ame"  # AMSR-E is first AMSR sat
+#   start_date: "2002-06-01"
+# F17 starts while AMSR-E is up, on 2008-01-01. We don't use F17 until
+# 2011-10-04.
+cdr_platform_start_dates:
+  - platform_id: "am2"
+    start_date: "2012-07-02"

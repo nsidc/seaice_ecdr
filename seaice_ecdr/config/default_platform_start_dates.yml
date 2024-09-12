@@ -1,0 +1,11 @@
+cdr_platform_start_dates:
+  - platform_id: "n07"
+    start_date: "1978-10-25"
+  - platform_id: "F08"
+    start_date: "1987-07-10"
+  - platform_id: "F11"
+    start_date: "1991-12-03"
+  - platform_id: "F13"
+    start_date: "1995-10-01"
+  - platform_id: "F17"
+    start_date: "2011-10-04"

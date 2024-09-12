@@ -25,7 +25,7 @@ from seaice_ecdr.platforms.models import (
 
 _this_dir = Path(__file__).parent
 _DEFAULT_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
-    _this_dir / "default_platform_start_dates.yml"
+    _this_dir / "../config/default_platform_start_dates.yml"
 )
 
 
