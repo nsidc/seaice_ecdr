@@ -61,6 +61,7 @@ from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR, ECDR_PRODUCT_VERSION
 from seaice_ecdr.monthly import get_monthly_dir
+from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.util import (
     date_range,
     get_intermediate_output_dir,
@@ -399,8 +400,10 @@ def validate_outputs(
         error_writer.writeheader()
         if product == "daily":
             for date in date_range(start_date=start_date, end_date=end_date):
+                platform = PLATFORM_CONFIG.get_platform_by_date(date)
                 data_fp = get_ecdr_filepath(
                     date=date,
+                    platform_id=platform.id,
                     hemisphere=hemisphere,
                     resolution=VALIDATION_RESOLUTION,
                     intermediate_output_dir=intermediate_output_dir,

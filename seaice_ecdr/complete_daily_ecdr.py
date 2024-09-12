@@ -36,7 +36,7 @@ from seaice_ecdr.melt import (
     date_in_nh_melt_season,
     melting,
 )
-from seaice_ecdr.platforms import PLATFORM_CONFIG
+from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
 from seaice_ecdr.spillover import LAND_SPILL_ALGS
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
@@ -75,22 +75,22 @@ def get_ecdr_filepath(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
+    platform_id: SUPPORTED_PLATFORM_ID,
     is_nrt: bool,
 ) -> Path:
     """Return the daily eCDR file path."""
-    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     if is_nrt:
         ecdr_filename = nrt_daily_filename(
             hemisphere=hemisphere,
             date=date,
-            platform_id=platform.id,
+            platform_id=platform_id,
             resolution=resolution,
         )
     else:
         ecdr_filename = standard_daily_filename(
             hemisphere=hemisphere,
             date=date,
-            platform_id=platform.id,
+            platform_id=platform_id,
             resolution=resolution,
         )
 
@@ -189,12 +189,14 @@ def read_melt_onset_field_from_complete_daily(
     intermediate_output_dir: Path,
     is_nrt: bool,
 ) -> npt.NDArray:
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     cde_ds = read_cdecdr_ds(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
         is_nrt=is_nrt,
+        platform_id=platform.id,
     )
 
     # TODO: Perhaps these field names should be in a dictionary somewhere?
@@ -598,11 +600,13 @@ def make_standard_cdecdr_netcdf(
         hemisphere=hemisphere,
         is_nrt=False,
     )
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     cde_filepath = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
+        platform_id=platform.id,
         is_nrt=False,
     )
 
@@ -681,6 +685,7 @@ def read_cdecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
+    platform_id: SUPPORTED_PLATFORM_ID,
     is_nrt: bool,
 ) -> xr.Dataset:
     cde_filepath = get_ecdr_filepath(
@@ -688,6 +693,7 @@ def read_cdecdr_ds(
         hemisphere,
         resolution,
         intermediate_output_dir=intermediate_output_dir,
+        platform_id=platform_id,
         is_nrt=is_nrt,
     )
     logger.debug(f"Reading cdeCDR file from: {cde_filepath}")

@@ -227,11 +227,13 @@ def nrt_ecdr_for_day(
         hemisphere=hemisphere,
         is_nrt=True,
     )
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     cde_filepath = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
         resolution=LANCE_RESOLUTION,
         intermediate_output_dir=complete_output_dir,
+        platform_id=platform.id,
         is_nrt=True,
     )
 

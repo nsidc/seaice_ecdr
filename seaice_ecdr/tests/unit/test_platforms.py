@@ -195,3 +195,38 @@ def test_get_first_platform_start_date():
     )
 
     assert actual == min_date
+
+
+def test_platform_available_for_date():
+    config = PlatformConfig(
+        platforms=[
+            Platform(
+                id="ame",
+                name="fooname",
+                sensor="sensorname",
+                date_range=DateRange(
+                    first_date=dt.date(2012, 7, 2),
+                    last_date=dt.date(2012, 12, 31),
+                ),
+            )
+        ],
+        cdr_platform_start_dates=[
+            PlatformStartDate(
+                platform_id="ame",
+                start_date=dt.date(2012, 7, 2),
+            )
+        ],
+    )
+
+    assert config.platform_available_for_date(
+        platform_id="ame", date=dt.date(2012, 7, 2)
+    )
+    assert config.platform_available_for_date(
+        platform_id="ame", date=dt.date(2012, 12, 31)
+    )
+    assert not config.platform_available_for_date(
+        platform_id="ame", date=dt.date(2012, 6, 30)
+    )
+    assert not config.platform_available_for_date(
+        platform_id="ame", date=dt.date(2013, 6, 30)
+    )

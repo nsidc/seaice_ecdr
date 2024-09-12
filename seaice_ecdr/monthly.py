@@ -41,7 +41,7 @@ from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
-from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
+from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import (
     get_intermediate_output_dir,
     get_num_missing_pixels,
@@ -86,11 +86,14 @@ def _get_daily_complete_filepaths_for_month(
         end=dt.date(year, month, last_day_of_month),
         freq="D",
     ):
+
+        platform = PLATFORM_CONFIG.get_platform_by_date(period.to_timestamp().date())
         expected_fp = get_ecdr_filepath(
             date=period.to_timestamp().date(),
             hemisphere=hemisphere,
             resolution=resolution,
             intermediate_output_dir=intermediate_output_dir,
+            platform_id=platform.id,
             is_nrt=False,
         )
         if expected_fp.is_file():
