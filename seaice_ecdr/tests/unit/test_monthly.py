@@ -2,7 +2,7 @@ import datetime as dt
 from pathlib import Path
 
 import numpy as np
-import numpy.testing as npt
+import numpy.testing as nptesting  # Note: npt is numpy.typing
 import pytest
 import xarray as xr
 from pm_tb_data._types import NORTH
@@ -124,7 +124,7 @@ def test__qa_field_has_flag():
         qa_field=mock_qa_field,
         flag_value=flag_1,
     )
-    npt.assert_array_equal(expected, actual)
+    nptesting.assert_array_equal(expected, actual)
 
     # flag 2
     expected = xr.DataArray([False, True, True])
@@ -132,7 +132,7 @@ def test__qa_field_has_flag():
         qa_field=mock_qa_field,
         flag_value=flag_2,
     )
-    npt.assert_array_equal(expected, actual)
+    nptesting.assert_array_equal(expected, actual)
 
     # flag 3
     expected = xr.DataArray([False, False, True])
@@ -140,7 +140,7 @@ def test__qa_field_has_flag():
         qa_field=mock_qa_field,
         flag_value=flag_3,
     )
-    npt.assert_array_equal(expected, actual)
+    nptesting.assert_array_equal(expected, actual)
 
 
 def _mock_daily_ds_for_month():
@@ -336,7 +336,7 @@ def test_calc_qa_of_cdr_seaice_conc_monthly():
         cdr_seaice_conc_monthly=_mean_daily_conc,
     )
 
-    npt.assert_array_equal(expected_flags, actual.values)
+    nptesting.assert_array_equal(expected_flags, actual.values)
 
 
 def test__calc_conc_monthly(monkeypatch):
@@ -386,9 +386,10 @@ def test__calc_conc_monthly(monkeypatch):
         daily_ds_for_month=mock_daily_ds,
         hemisphere="north",
         resolution="12.5",
+        ancillary_source="CDRv5",
     )
 
-    npt.assert_array_equal(
+    nptesting.assert_array_equal(
         actual.values,
         np.array(
             [
@@ -432,7 +433,7 @@ def test_calc_stdv_of_cdr_seaice_conc_monthly():
         == "Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation"
     )
 
-    npt.assert_array_equal(
+    nptesting.assert_array_equal(
         actual.values,
         np.array(
             [
@@ -474,7 +475,7 @@ def test_calc_melt_onset_day_cdr_seaice_conc_monthly():
     )
 
     assert actual.long_name == "Monthly Day of Snow Melt Onset Over Sea Ice"
-    npt.assert_array_equal(
+    nptesting.assert_array_equal(
         actual.values,
         np.array(
             [
@@ -516,6 +517,7 @@ def test_monthly_ds(monkeypatch, tmpdir):
         platform_id="am2",
         hemisphere=NORTH,
         resolution="12.5",
+        ancillary_source="CDRv5",
     )
 
     # Test that the dataset only contains the variables we expect.

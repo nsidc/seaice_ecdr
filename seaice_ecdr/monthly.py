@@ -36,7 +36,7 @@ from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import flag_value_for_meaning
+from seaice_ecdr.ancillary import ANCILLARY_SOURCES, flag_value_for_meaning
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
@@ -345,6 +345,7 @@ def calc_cdr_seaice_conc_monthly(
     daily_ds_for_month: xr.Dataset,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     """Create the `cdr_seaice_conc_monthly` variable."""
     daily_conc_for_month = daily_ds_for_month.cdr_seaice_conc
@@ -354,6 +355,7 @@ def calc_cdr_seaice_conc_monthly(
         seaice_conc_var=conc_monthly,
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     conc_monthly.name = "cdr_seaice_conc_monthly"
@@ -508,6 +510,7 @@ def make_monthly_ds(
     platform_id: SUPPORTED_PLATFORM_ID,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Create a monthly dataset from daily data.
 
@@ -526,6 +529,7 @@ def make_monthly_ds(
         daily_ds_for_month=daily_ds_for_month,
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     # Create `stdev_of_cdr_seaice_conc_monthly`, the standard deviation of the
@@ -630,6 +634,7 @@ def make_monthly_nc(
     hemisphere: Hemisphere,
     complete_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> Path:
     daily_ds_for_month = get_daily_ds_for_month(
         year=year,
@@ -655,6 +660,7 @@ def make_monthly_nc(
         platform_id=platform_id,
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     # Set `x` and `y` `_FillValue` to `None`. Although unset initially, `xarray`
@@ -739,6 +745,11 @@ def make_monthly_nc(
     required=True,
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
+@click.option(
+    "--ancillary-source",
+    required=True,
+    type=click.Choice(get_args(ANCILLARY_SOURCES)),
+)
 def cli(
     *,
     year: int,
@@ -748,6 +759,7 @@ def cli(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ):
     if end_year is None:
         end_year = year
@@ -772,6 +784,7 @@ def cli(
                 complete_output_dir=complete_output_dir,
                 hemisphere=hemisphere,
                 resolution=resolution,
+                ancillary_source=ancillary_source,
             )
         except Exception:
             error_periods.append(period)

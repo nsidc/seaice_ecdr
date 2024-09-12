@@ -21,6 +21,8 @@ date = dt.date(2021, 2, 19)
 hemisphere = NORTH
 resolution: Final = "25"
 platform_id: SUPPORTED_PLATFORM_ID = "am2"
+land_spillover_alg: Final = "NT2"
+ancillary_source: Final = "CDRv5"
 
 
 def test_read_or_create_and_read_idecdr_ds(tmpdir):
@@ -39,6 +41,8 @@ def test_read_or_create_and_read_idecdr_ds(tmpdir):
         hemisphere=hemisphere,
         resolution=resolution,
         intermediate_output_dir=Path(tmpdir),
+        land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
 
     assert sample_ide_filepath.exists()
@@ -47,6 +51,8 @@ def test_read_or_create_and_read_idecdr_ds(tmpdir):
         hemisphere=hemisphere,
         resolution=resolution,
         intermediate_output_dir=Path(tmpdir),
+        land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
 
     assert test_ide_ds_with_creation == test_ide_ds_with_reading
@@ -70,6 +76,8 @@ def test_create_tiecdr_file(tmpdir):
         resolution=resolution,
         intermediate_output_dir=Path(tmpdir),
         interp_range=2,
+        land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
 
     assert fp.is_file()

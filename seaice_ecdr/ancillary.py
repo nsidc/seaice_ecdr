@@ -8,9 +8,10 @@ alongside the ECDR.
 import datetime as dt
 from functools import cache
 from pathlib import Path
-from typing import get_args
+from typing import Literal, get_args
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import xarray as xr
 from pm_tb_data._types import NORTH, Hemisphere
@@ -21,25 +22,36 @@ from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform
 from seaice_ecdr.platforms.config import N07_PLATFORM
 
+ANCILLARY_SOURCES = Literal["CDRv4", "CDRv5"]
+
 
 def get_ancillary_filepath(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> Path:
     grid_id = get_grid_id(
         hemisphere=hemisphere,
         resolution=resolution,
     )
 
-    filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}.nc"
+    if ancillary_source == "CDRv5":
+        filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}.nc"
+    elif ancillary_source == "CDRv4":
+        filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}-v04r00.nc"
+    else:
+        raise ValueError(f"Unknown ancillary source: {ancillary_source}")
 
     return filepath
 
 
 @cache
 def get_ancillary_ds(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Return xr Dataset of ancillary data for this hemisphere/resolution."""
     # TODO: This list could be determined from an examination of
@@ -49,7 +61,11 @@ def get_ancillary_ds(
             "ECDR currently only supports {get_args(ECDR_SUPPORTED_RESOLUTIONS)} resolutions."
         )
 
-    filepath = get_ancillary_filepath(hemisphere=hemisphere, resolution=resolution)
+    filepath = get_ancillary_filepath(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
     ds = xr.load_dataset(filepath)
 
     return ds
@@ -80,11 +96,13 @@ def get_surfacetype_da(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     """Return a dataarray with surface type information for this date."""
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     xvar = ancillary_ds.variables["x"]
@@ -157,12 +175,14 @@ def nh_polehole_mask(
     *,
     date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
     platform: Platform | None = None,
 ) -> xr.DataArray:
     """Return the northern hemisphere pole hole mask for the given date and resolution."""
     ancillary_ds = get_ancillary_ds(
         hemisphere=NORTH,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     polehole_bitmask = ancillary_ds.polehole_bitmask
@@ -191,7 +211,10 @@ def nh_polehole_mask(
     return polehole_mask
 
 
-def get_smmr_ancillary_filepath(*, hemisphere) -> Path:
+# def get_smmr_ancillary_filepath(*, hemisphere, ancillary_source: ANCILLARY_SOURCES) -> Path:
+def get_daily_ancillary_filepath(
+    *, hemisphere, ancillary_source: ANCILLARY_SOURCES
+) -> Path:
     """Return filepath to SMMR ancillary NetCDF.
 
     Contains a day-of-year climatology used for SMMR.
@@ -201,30 +224,56 @@ def get_smmr_ancillary_filepath(*, hemisphere) -> Path:
         # Hard-coded to 25km resolution, which is what we expect for SMMR.
         resolution="25",
     )
-    fn = f"ecdr-ancillary-{grid_id}-smmr-invalid-ice.nc"
-    filepath = CDR_ANCILLARY_DIR / fn
+
+    if ancillary_source == "CDRv5":
+        filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}-smmr-invalid-ice.nc"
+    elif ancillary_source == "CDRv4":
+        filepath = (
+            CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}-smmr-invalid-ice-v04r00.nc"
+        )
+    else:
+        raise ValueError(f"Unknown smmr ancillary source: {ancillary_source}")
 
     return filepath
 
 
-def get_smmr_invalid_ice_mask(*, date: dt.date, hemisphere: Hemisphere) -> xr.DataArray:
-    ancillary_file = get_smmr_ancillary_filepath(hemisphere=hemisphere)
+def get_smmr_invalid_ice_mask(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+) -> xr.DataArray:
+    # TODO: Consider using daily instead of monthly icemask for SMMR?  Others?
+    # ancillary_file = get_daily_ancillary_filepath(hemisphere=hemisphere, ancillary_source=ancillary_source)
+    ancillary_file = get_ancillary_filepath(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
 
     with xr.open_dataset(ancillary_file) as ds:
         invalid_ice_mask = ds.invalid_ice_mask.copy().astype(bool)
 
-    doy = date.timetuple().tm_yday
+    if "month" in invalid_ice_mask.variable.dims:
+        # Monthly ice mask
+        month = date.month
 
-    icemask_for_doy = invalid_ice_mask.sel(doy=doy)
+        icemask_for_date = invalid_ice_mask.sel(month=month)
+        icemask_for_date = icemask_for_date.drop_vars("month")
+    elif "doy" in invalid_ice_mask.variable.dims:
+        # day-of-year (doy) ice mask
+        doy = date.timetuple().tm_yday
+        icemask_for_date = invalid_ice_mask.sel(doy=doy)
 
-    # Drop the DOY dim. This is consistent with the other case returned by
-    # `get_invalid_ice_mask`, which has `month` as a dimension instead.
-    icemask_for_doy = icemask_for_doy.drop_vars("doy")
+        # Drop the DOY dim. This is consistent with the other case returned by
+        # `get_invalid_ice_mask`, which has `month` as a dimension instead.
+        icemask_for_date = icemask_for_date.drop_vars("doy")
 
     # Ice mask needs to be boolean
-    icemask_for_doy = icemask_for_doy.astype("bool")
+    icemask_for_date = icemask_for_date.astype("bool")
 
-    return icemask_for_doy
+    return icemask_for_date
 
 
 def get_invalid_ice_mask(
@@ -232,6 +281,7 @@ def get_invalid_ice_mask(
     hemisphere: Hemisphere,
     date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
     platform: Platform,
 ) -> xr.DataArray:
     """Return an invalid ice mask for the given date.
@@ -241,12 +291,16 @@ def get_invalid_ice_mask(
     """
     # SMMR / n07 case:
     if platform == N07_PLATFORM:
-        return get_smmr_invalid_ice_mask(hemisphere=hemisphere, date=date)
-
+        # TODO: Daily (SMMR) mask is used at end for cleanup,
+        #       but not for initial TB field generation
+        # Skip the smmr invalid ice mask for now...
+        print("WARNING: Using non-SMMR invalid ice masks")
+        # return get_smmr_invalid_ice_mask(hemisphere=hemisphere, date=date)
     # All other platforms:
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     invalid_ice_mask = ancillary_ds.invalid_ice_mask.sel(month=date.month)
@@ -263,7 +317,10 @@ def get_invalid_ice_mask(
 
 
 def get_ocean_mask(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     """Return a binary mask where True values represent `ocean`.
 
@@ -272,6 +329,7 @@ def get_ocean_mask(
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     surface_type = ancillary_ds.surface_type
@@ -300,6 +358,7 @@ def get_non_ocean_mask(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     """Return a binary mask where True values represent non-ocean pixels.
 
@@ -308,6 +367,7 @@ def get_non_ocean_mask(
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     surface_type = ancillary_ds.surface_type
@@ -344,11 +404,15 @@ def get_non_ocean_mask(
 
 
 def get_land90_conc_field(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     land90_da = ancillary_ds.l90c
@@ -357,11 +421,15 @@ def get_land90_conc_field(
 
 
 def get_adj123_field(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     adj123_da = ancillary_ds.adj123
@@ -369,13 +437,99 @@ def get_adj123_field(
     return adj123_da
 
 
+def get_nt_landmask(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+) -> npt.NDArray:
+    """Returns a numpy array equivalent to that used in the original
+    NT code, particularly for the NT land spillover algorithm."""
+
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
+    if "cdrv4_landmask" in ancillary_ds.variables.keys():
+        return np.array(ancillary_ds.variables["cdrv4_nt_landmask"])
+
+    # If a landmask field like that used in CDRv4 is not available in
+    # the ancillary field, create it
+    raise RuntimeError("gen_cdrv4_nt_landmask() not yet implemented.")
+    # cdrv4_nt_landmask = gen_cdrv4_nt_landmask(
+    #     ancillary_ds=ancillary_ds,
+    # )
+
+    # return cdrv4_nt_landmask
+
+
+def get_nt_shoremap(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+) -> npt.NDArray:
+    """Returns a numpy array equivalent to that used in the original
+    NT code, particularly for the NT land spillover algorithm."""
+
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
+    if "cdrv4_nt_shoremap" in ancillary_ds.variables.keys():
+        return np.array(ancillary_ds.variables["cdrv4_nt_shoremap"])
+
+    # If a shoremap field like that used in CDRv4 is not available in
+    # the ancillary field, create it
+    raise RuntimeError("gen_cdrv4_nt_shoremap() not yet implemented.")
+    # cdrv4_nt_shoremap = gen_cdrv4_nt_shoremap(
+    #     ancillary_ds=ancillary_ds,
+    # )
+
+    # return cdrv4_nt_shoremap
+
+
+def get_nt_minic(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+) -> npt.NDArray:
+    """Returns a numpy array equivalent to that used in the original
+    NT code, particularly for the NT land spillover algorithm."""
+
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
+    if "cdrv4_nt_minic" in ancillary_ds.variables.keys():
+        return np.array(ancillary_ds.variables["cdrv4_nt_minic"])
+
+    # If a minic field like that used in CDRv4 is not available in
+    # the ancillary field, create it
+    raise RuntimeError("gen_cdrv4_nt_minic() not yet implemented.")
+    # cdrv4_nt_minic = gen_cdrv4_nt_minic(
+    #     ancillary_ds=ancillary_ds,
+    # )
+
+    # return cdrv4_nt_minic
+
+
 def get_empty_ds_with_time(
-    *, hemisphere: Hemisphere, resolution: ECDR_SUPPORTED_RESOLUTIONS, date: dt.date
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    date: dt.date,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Return an "empty" xarray dataset with x, y, crs, and time set."""
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     time_as_int = (date - dt.date(1970, 1, 1)).days

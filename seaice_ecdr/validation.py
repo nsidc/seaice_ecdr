@@ -53,6 +53,7 @@ from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
     bitmask_value_for_meaning,
     flag_value_for_meaning,
 )
@@ -216,6 +217,7 @@ def get_pixel_counts(
     ds: xr.Dataset,
     product: Product,
     hemisphere: Hemisphere,
+    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ) -> dict[str, int]:
     """Return pixel counts from the daily or monthly ds.
 
@@ -267,12 +269,15 @@ def get_pixel_counts(
         seaice_conc_var=seaice_conc_var,
         hemisphere=hemisphere,
         resolution=VALIDATION_RESOLUTION,
+        ancillary_source=ancillary_source,
     )
 
     # Per CDR v4, "bad" ice pixels are outside the expected range.
     # Note: we use 0.0999 instead of 0.1 because SIC values of 10% are
     # decoded from the integer value of 10 to 0.1, which is represented
     # as 0.099999 as a floating point data.
+    # Note: xarray .sum() is similar to numpy.nansum() in that it will
+    #       ignore NaNs in the summation operation
     gt_100_sic = int((seaice_conc_var > 1).sum())
     if product == "daily":
         less_than_10_sic = int(
