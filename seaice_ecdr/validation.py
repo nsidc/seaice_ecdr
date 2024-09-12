@@ -233,7 +233,7 @@ def get_pixel_counts(
         conc_var_name = conc_var_name + "_monthly"
     seaice_conc_var = ds[conc_var_name]
 
-    qa_var_name = "qa_of_" + conc_var_name
+    qa_var_name = "cdr_qa_seaice_conc"
     qa_var = ds[qa_var_name]
 
     # Handle the log file first. It contains information on the # of
