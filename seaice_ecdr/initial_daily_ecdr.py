@@ -817,18 +817,36 @@ def compute_initial_daily_ecdr_dataset(
 
     # TODO: note that we are using bt_<vars> not <_day_si> vars...
 
-    bt_coefs["v1937_iceline"] = bt.get_linfit(
-        land_mask=ecdr_ide_ds["non_ocean_mask"].data,
-        tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
-        tbx=bt_v37,
-        tby=bt_v19,
-        lnline=bt_coefs_init["v1937_lnline"],
-        add=bt_coefs["add2"],
-        water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-        tba=bt_h37,
-        iceline=bt_coefs["vh37_iceline"],
-        ad_line_offset=bt_coefs["ad_line_offset"],
-    )
+    # NOTE: cdralgos uses ret_linfit1() for NH sets 1,2 and SH set2
+    #            and uses ret_linfit2() for NH set 2
+    pre_AMSR_platforms = ("n07", "F08", "F11", "F13", "F17")
+    if hemisphere == "south" and platform in pre_AMSR_platforms:
+        bt_coefs["v1937_iceline"] = bt.get_linfit(
+            land_mask=ecdr_ide_ds["non_ocean_mask"].data,
+            tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
+            tbx=bt_v37,
+            tby=bt_v19,
+            lnline=bt_coefs_init["v1937_lnline"],
+            add=bt_coefs["add2"],
+            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            # these default to None; so using "ret_linfit1(), not ret_linfit2()"
+            # tba=bt_h37,
+            # iceline=bt_coefs["vh37_iceline"],
+            # ad_line_offset=bt_coefs["ad_line_offset"],
+        )
+    else:
+        bt_coefs["v1937_iceline"] = bt.get_linfit(
+            land_mask=ecdr_ide_ds["non_ocean_mask"].data,
+            tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
+            tbx=bt_v37,
+            tby=bt_v19,
+            lnline=bt_coefs_init["v1937_lnline"],
+            add=bt_coefs["add2"],
+            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            tba=bt_h37,
+            iceline=bt_coefs["vh37_iceline"],
+            ad_line_offset=bt_coefs["ad_line_offset"],
+        )
 
     bt_conc = cdr_bootstrap_raw(
         tb_v37=bt_v37,
