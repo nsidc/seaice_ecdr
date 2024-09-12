@@ -30,9 +30,7 @@ from seaice_ecdr.melt import (
     date_in_nh_melt_season,
     melting,
 )
-from seaice_ecdr.platforms import (
-    get_platform_by_date,
-)
+from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
 from seaice_ecdr.util import (
@@ -74,19 +72,19 @@ def get_ecdr_filepath(
     is_nrt: bool,
 ) -> Path:
     """Return the complete daily eCDR file path."""
-    platform = get_platform_by_date(date)
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     if is_nrt:
         ecdr_filename = nrt_daily_filename(
             hemisphere=hemisphere,
             date=date,
-            sat=platform,
+            platform_id=platform.id,
             resolution=resolution,
         )
     else:
         ecdr_filename = standard_daily_filename(
             hemisphere=hemisphere,
             date=date,
-            sat=platform,
+            platform_id=platform.id,
             resolution=resolution,
         )
 
@@ -432,12 +430,10 @@ def _add_surfacetype_da(
     #       The methodology here should be reviewed to see if there is
     #       a "better" way to add a geo-referenced dataarray to an existing
     #       xr Dataset.
-    platform = get_platform_by_date(date)
     surfacetype_da = get_surfacetype_da(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        platform=platform,
     )
     # Force use of the cde_ds coords instead of the x, y, time vars
     # from the ancillary file (which *should* be compatible...but we

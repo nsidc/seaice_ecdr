@@ -23,7 +23,7 @@ def test_daily_aggreagate_matches_daily_data(tmpdir):
     )
 
     year = 2022
-    resolution: Final = "12.5"
+    resolution: Final = "25"
 
     # First, ensure some daily data is created.
     datasets = []

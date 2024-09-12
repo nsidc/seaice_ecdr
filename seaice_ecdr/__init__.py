@@ -5,7 +5,7 @@ from loguru import logger
 
 from seaice_ecdr.constants import LOGS_DIR
 
-__version__ = "v0.1.0"
+__version__ = "v0.2.0"
 
 DEFAULT_LOG_LEVEL = "INFO"
 

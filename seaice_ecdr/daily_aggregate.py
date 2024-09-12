@@ -19,10 +19,10 @@ from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
-from seaice_ecdr.platforms import get_first_platform_start_date
+from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.util import (
     get_complete_output_dir,
-    sat_from_filename,
+    platform_id_from_filename,
     standard_daily_aggregate_filename,
 )
 
@@ -37,7 +37,9 @@ def _get_daily_complete_filepaths_for_year(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
     data_list = []
-    start_date = max(dt.date(year, 1, 1), get_first_platform_start_date())
+    start_date = max(
+        dt.date(year, 1, 1), PLATFORM_CONFIG.get_first_platform_start_date()
+    )
     for period in pd.period_range(start=start_date, end=dt.date(year, 12, 31)):
         expected_fp = get_ecdr_filepath(
             date=period.to_timestamp().date(),
@@ -113,7 +115,7 @@ def _update_ncrcat_daily_ds(
         temporality="daily",
         aggregate=True,
         source=", ".join([fp.name for fp in daily_filepaths]),
-        sats=[sat_from_filename(fp.name) for fp in daily_filepaths],
+        platform_ids=[platform_id_from_filename(fp.name) for fp in daily_filepaths],
     )
     ds.attrs = daily_aggregate_ds_global_attrs
 

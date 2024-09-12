@@ -26,7 +26,7 @@ def test_make_monthly_nc(base_output_dir_test_path, monkeypatch):  # noqa
         year=2022,
         month=3,
         hemisphere=NORTH,
-        resolution="12.5",
+        resolution="25",
         complete_output_dir=complete_output_dir,
     )
 
