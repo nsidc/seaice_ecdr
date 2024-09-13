@@ -254,10 +254,6 @@ def temporally_composite_dataarray(
     if daily_climatology_mask is not None:
         temp_comp_2d[daily_climatology_mask] = 0
 
-    if daily_climatology_mask is not None:
-        daily_climatology_mask.tofile("dailyclimmask.dat")
-        print("WROTE dailyclimmask.dat")
-
     # Initialize arrays
     initial_missing_locs = np.isnan(temp_comp_2d.data)
 
