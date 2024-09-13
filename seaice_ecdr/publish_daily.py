@@ -3,7 +3,7 @@ from pathlib import Path
 
 from datatree import DataTree
 from loguru import logger
-from pm_tb_data._types import Hemisphere
+from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.complete_daily_ecdr import read_cdecdr_ds
@@ -104,7 +104,27 @@ def publish_daily_nc(
         is_nrt=False,
     )
 
-    complete_daily_ds: DataTree = DataTree(data=default_daily_ds)
+    # publication-ready daily data are grouped using `DataTree`.
+    # Create a `cdr_supplementary` group for "supplemntary" fields
+    cdr_supplementary_fields = [
+        "raw_bt_seaice_conc",
+        "raw_nt_seaice_conc",
+        "surface_type_mask",
+    ]
+    # Melt onset only occurs in the NH.
+    if hemisphere == NORTH:
+        cdr_supplementary_fields.append("cdr_melt_onset_day")
+
+    complete_daily_ds: DataTree = DataTree.from_dict(
+        {
+            "/": default_daily_ds[
+                [k for k in default_daily_ds if k not in cdr_supplementary_fields]
+            ],
+            "cdr_supplementary": default_daily_ds[cdr_supplementary_fields].drop_vars(
+                ["x", "y", "time"]
+            ),
+        }
+    )
 
     if PLATFORM_CONFIG.platform_available_for_date(
         platform_id=PROTOTYPE_PLATFORM_ID,
