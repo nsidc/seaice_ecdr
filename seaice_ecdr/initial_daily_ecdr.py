@@ -354,10 +354,10 @@ def get_flagmask(
     return flagmask
 
 
-def is_pre_AMSR_platform(platform: SUPPORTED_PLATFORM_ID):
+def is_pre_AMSR_platform(platform_id: SUPPORTED_PLATFORM_ID):
     """Returns True for SMMR, SSMI, SSMIS platforms"""
     pre_AMSR_platforms = ("n07", "F08", "F11", "F13", "F17")
-    return platform.id in pre_AMSR_platforms
+    return platform_id in pre_AMSR_platforms
 
 
 def compute_initial_daily_ecdr_dataset(
