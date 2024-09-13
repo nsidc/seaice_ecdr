@@ -163,10 +163,15 @@ def publish_daily_nc(
                     ].replace("cdr_", f"{PROTOTYPE_PLATFORM_ID}_")
             # Drop x, y, and time coordinate variables. These will be inherited from the parent.
             prototype_subgroup = prototype_subgroup.drop_vars(["x", "y", "time"])
+            # Retain only the group-specific global attrs
+            prototype_subgroup.attrs = {
+                k: v
+                for k, v in prototype_subgroup.attrs.items()
+                if k in ["source", "sensor", "platform"]
+            }
             complete_daily_ds[PROTOTYPE_PLATFORM_DATA_GROUP_NAME] = DataTree(
                 data=prototype_subgroup,
             )
-            # TODO: consider which global attrs we want to retain in the prototype group. All of them?
         except FileNotFoundError:
             logger.warning(
                 f"Failed to find prototype daily file for {date=} {PROTOTYPE_PLATFORM_ID=}"
