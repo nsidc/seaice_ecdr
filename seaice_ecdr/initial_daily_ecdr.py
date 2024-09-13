@@ -820,7 +820,7 @@ def compute_initial_daily_ecdr_dataset(
     # NOTE: cdralgos uses ret_linfit1() for NH sets 1,2 and SH set2
     #            and uses ret_linfit2() for NH set 2
     pre_AMSR_platforms = ("n07", "F08", "F11", "F13", "F17")
-    if hemisphere == "south" and platform in pre_AMSR_platforms:
+    if hemisphere == "south" and platform.id in pre_AMSR_platforms:
         bt_coefs["v1937_iceline"] = bt.get_linfit(
             land_mask=ecdr_ide_ds["non_ocean_mask"].data,
             tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
