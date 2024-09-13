@@ -17,7 +17,6 @@ from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
-    ANCILLARY_SOURCES,
     get_non_ocean_mask,
     get_surfacetype_da,
 )
@@ -31,9 +30,10 @@ from seaice_ecdr.melt import (
     date_in_nh_melt_season,
     melting,
 )
-from seaice_ecdr.platforms import PLATFORM_CONFIG
+from seaice_ecdr.platforms import (
+    get_platform_by_date,
+)
 from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
-from seaice_ecdr.spillover import LAND_SPILL_ALGS
 from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
 from seaice_ecdr.util import (
     date_range,
@@ -74,19 +74,19 @@ def get_ecdr_filepath(
     is_nrt: bool,
 ) -> Path:
     """Return the complete daily eCDR file path."""
-    platform = PLATFORM_CONFIG.get_platform_by_date(date)
+    platform = get_platform_by_date(date)
     if is_nrt:
         ecdr_filename = nrt_daily_filename(
             hemisphere=hemisphere,
             date=date,
-            platform_id=platform.id,
+            sat=platform,
             resolution=resolution,
         )
     else:
         ecdr_filename = standard_daily_filename(
             hemisphere=hemisphere,
             date=date,
-            platform_id=platform.id,
+            sat=platform,
             resolution=resolution,
         )
 
@@ -127,8 +127,6 @@ def read_or_create_and_read_standard_tiecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
-    land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
     overwrite_tie: bool = False,
 ) -> xr.Dataset:
     """Read an tiecdr netCDF file, creating it if it doesn't exist.
@@ -141,8 +139,6 @@ def read_or_create_and_read_standard_tiecdr_ds(
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
         overwrite_tie=overwrite_tie,
-        land_spillover_alg=land_spillover_alg,
-        ancillary_source=ancillary_source,
     )
 
     tie_ds = read_tiecdr_ds(
@@ -259,7 +255,6 @@ def create_melt_onset_field(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
     complete_output_dir: Path,
     intermediate_output_dir: Path,
     is_nrt: bool,
@@ -341,7 +336,6 @@ def create_melt_onset_field(
     non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
 
     updated_melt_onset = update_melt_onset_for_day(
@@ -362,7 +356,6 @@ def _add_melt_onset_for_nh(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
     complete_output_dir: Path,
     intermediate_output_dir: Path,
     is_nrt: bool,
@@ -377,7 +370,6 @@ def _add_melt_onset_for_nh(
         complete_output_dir=complete_output_dir,
         intermediate_output_dir=intermediate_output_dir,
         is_nrt=is_nrt,
-        ancillary_source=ancillary_source,
     )
 
     # Update cde_ds with melt onset info
@@ -429,7 +421,6 @@ def _add_surfacetype_da(
     cde_ds: xr.Dataset,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Add the surface_type field to the complete daily dataset for the given date."""
     cde_ds_with_surfacetype = cde_ds.copy()
@@ -441,11 +432,12 @@ def _add_surfacetype_da(
     #       The methodology here should be reviewed to see if there is
     #       a "better" way to add a geo-referenced dataarray to an existing
     #       xr Dataset.
+    platform = get_platform_by_date(date)
     surfacetype_da = get_surfacetype_da(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
+        platform=platform,
     )
     # Force use of the cde_ds coords instead of the x, y, time vars
     # from the ancillary file (which *should* be compatible...but we
@@ -468,7 +460,6 @@ def complete_daily_ecdr_ds(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
     complete_output_dir: Path,
     intermediate_output_dir: Path,
     is_nrt: bool,
@@ -490,7 +481,6 @@ def complete_daily_ecdr_ds(
         cde_ds=cde_ds,
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
 
     # For the northern hemisphere, create the melt onset field and add it to the
@@ -504,12 +494,9 @@ def complete_daily_ecdr_ds(
             complete_output_dir=complete_output_dir,
             intermediate_output_dir=intermediate_output_dir,
             is_nrt=is_nrt,
-            ancillary_source=ancillary_source,
         )
 
-    cde_ds = finalize_cdecdr_ds(
-        cde_ds, hemisphere, resolution, ancillary_source=ancillary_source
-    )
+    cde_ds = finalize_cdecdr_ds(cde_ds, hemisphere, resolution)
 
     # TODO: Need to ensure that the cdr_seaice_conc field does not have values
     #       where seaice cannot occur, eg over land or lakes
@@ -535,9 +522,7 @@ def write_cde_netcdf(
 
     This function also creates a checksum file for the complete daily netcdf.
     """
-    logger.info(
-        f"Writing netCDF of complete, temporally interpolated eCDR file to: {output_filepath}"
-    )
+    logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
     for excluded_field in excluded_fields:
         if excluded_field in cde_ds.variables.keys():
             cde_ds = cde_ds.drop_vars(excluded_field)
@@ -580,8 +565,6 @@ def make_standard_cdecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     base_output_dir: Path,
-    land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
     overwrite_cde: bool = False,
 ) -> Path:
     """Create a 'standard', complete (ready for prod) daily CDR NetCDF file.
@@ -623,8 +606,6 @@ def make_standard_cdecdr_netcdf(
             hemisphere=hemisphere,
             resolution=resolution,
             intermediate_output_dir=intermediate_output_dir,
-            land_spillover_alg=land_spillover_alg,
-            ancillary_source=ancillary_source,
         )
 
         # Ensure the previous day's complete daily field exists for the melt
@@ -642,8 +623,6 @@ def make_standard_cdecdr_netcdf(
                 resolution=resolution,
                 base_output_dir=base_output_dir,
                 overwrite_cde=overwrite_cde,
-                land_spillover_alg=land_spillover_alg,
-                ancillary_source=ancillary_source,
             )
 
         cde_ds = complete_daily_ecdr_ds(
@@ -654,7 +633,6 @@ def make_standard_cdecdr_netcdf(
             complete_output_dir=complete_output_dir,
             intermediate_output_dir=intermediate_output_dir,
             is_nrt=False,
-            ancillary_source=ancillary_source,
         )
 
         written_cde_ncfile = write_cde_netcdf(
@@ -701,8 +679,6 @@ def create_standard_ecdr_for_dates(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     base_output_dir: Path,
-    land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
     overwrite_cde: bool = False,
 ) -> list[dt.date]:
     """Create "standard" (non-NRT) daily ECDR NC files for the provided dates.
@@ -721,8 +697,6 @@ def create_standard_ecdr_for_dates(
                 resolution=resolution,
                 base_output_dir=base_output_dir,
                 overwrite_cde=overwrite_cde,
-                land_spillover_alg=land_spillover_alg,
-                ancillary_source=ancillary_source,
             )
         except Exception:
             logger.exception(f"Failed to create standard ECDR for {date=}")
@@ -792,17 +766,6 @@ def create_standard_ecdr_for_dates(
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
 @click.option(
-    "--land-spillover-alg",
-    required=True,
-    # type=click.Choice(("BT_NT", "NT2", "ILS")),
-    type=click.Choice(get_args(LAND_SPILL_ALGS)),
-)
-@click.option(
-    "--ancillary-source",
-    required=True,
-    type=click.Choice(get_args(ANCILLARY_SOURCES)),
-)
-@click.option(
     "--overwrite",
     is_flag=True,
 )
@@ -813,8 +776,6 @@ def cli(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
     overwrite: bool,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.
@@ -826,7 +787,6 @@ def cli(
     projection, resolution, and bounds), and TBtype (TB type includes source and
     methodology for getting those TBs onto the grid)
     """
-    # raise ValueError('made it to here!')
     if end_date is None:
         end_date = copy.copy(date)
 
@@ -836,7 +796,5 @@ def cli(
         resolution=resolution,
         base_output_dir=base_output_dir,
         overwrite_cde=overwrite,
-        land_spillover_alg=land_spillover_alg,
-        ancillary_source=ancillary_source,
     )
     raise_error_for_dates(error_dates=error_dates)

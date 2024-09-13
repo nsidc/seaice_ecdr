@@ -5,7 +5,6 @@ import xarray as xr
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.util import get_num_missing_pixels
 
@@ -31,7 +30,6 @@ def finalize_cdecdr_ds(
     ds_in: xr.Dataset,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
     fields_to_drop: list = CDECDR_FIELDS_TO_DROP,
     fields_to_rename: dict = CDECDR_FIELDS_TO_RENAME,
 ) -> xr.Dataset:
@@ -53,7 +51,6 @@ def finalize_cdecdr_ds(
         seaice_conc_var=ds["cdr_seaice_conc"],
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
     ds["cdr_seaice_conc"] = (
         ("time", "y", "x"),
@@ -351,7 +348,7 @@ def finalize_cdecdr_ds(
         temporality="daily",
         aggregate=False,
         source=f"Generated from {ds_in.data_source}",
-        platform_ids=[ds_in.platform],
+        sats=[ds_in.platform],
     )
     ds.attrs = new_global_attrs
 

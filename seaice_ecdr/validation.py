@@ -53,7 +53,6 @@ from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.ancillary import (
-    ANCILLARY_SOURCES,
     bitmask_value_for_meaning,
     flag_value_for_meaning,
 )
@@ -63,7 +62,7 @@ from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR, ECDR_PRODUCT_VERSION
 from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.util import date_range, get_complete_output_dir, get_num_missing_pixels
 
-VALIDATION_RESOLUTION: Final = "25"
+VALIDATION_RESOLUTION: Final = "12.5"
 
 ERROR_FILE_BITMASK = dict(
     missing_file=-9999,
@@ -217,7 +216,6 @@ def get_pixel_counts(
     ds: xr.Dataset,
     product: Product,
     hemisphere: Hemisphere,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ) -> dict[str, int]:
     """Return pixel counts from the daily or monthly ds.
 
@@ -269,15 +267,12 @@ def get_pixel_counts(
         seaice_conc_var=seaice_conc_var,
         hemisphere=hemisphere,
         resolution=VALIDATION_RESOLUTION,
-        ancillary_source=ancillary_source,
     )
 
     # Per CDR v4, "bad" ice pixels are outside the expected range.
     # Note: we use 0.0999 instead of 0.1 because SIC values of 10% are
     # decoded from the integer value of 10 to 0.1, which is represented
     # as 0.099999 as a floating point data.
-    # Note: xarray .sum() is similar to numpy.nansum() in that it will
-    #       ignore NaNs in the summation operation
     gt_100_sic = int((seaice_conc_var > 1).sum())
     if product == "daily":
         less_than_10_sic = int(
@@ -443,8 +438,8 @@ def validate_outputs(
                 )
 
                 # monthly filepaths should have the form
-                # "sic_ps{n|s}25_{YYYYMM}_{sat}_v05r00.nc"
-                expected_fn_glob = f"sic_ps{hemisphere[0]}25_{year}{month:02}_*_{ECDR_PRODUCT_VERSION}.nc"
+                # "sic_ps{n|s}12.5_{YYYYMM}_{sat}_v05r00.nc"
+                expected_fn_glob = f"sic_ps{hemisphere[0]}12.5_{year}{month:02}_*_{ECDR_PRODUCT_VERSION}.nc"
                 results = list(monthly_dir.glob(expected_fn_glob))
                 if not results:
                     validation_dict = make_validation_dict_for_missing_file()

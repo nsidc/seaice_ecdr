@@ -35,17 +35,16 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES, flag_value_for_meaning
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr.ancillary import flag_value_for_meaning
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
-from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import (
     get_complete_output_dir,
     get_num_missing_pixels,
-    platform_id_from_filename,
+    sat_from_filename,
     standard_monthly_filename,
 )
 
@@ -53,10 +52,10 @@ from seaice_ecdr.util import (
 def check_min_days_for_valid_month(
     *,
     daily_ds_for_month: xr.Dataset,
-    platform_id: SUPPORTED_PLATFORM_ID,
+    sat: SUPPORTED_SAT,
 ) -> None:
     days_in_ds = len(daily_ds_for_month.time)
-    if platform_id == "n07":
+    if sat == "n07":
         min_days = 10
     else:
         min_days = 20
@@ -104,24 +103,22 @@ def _get_daily_complete_filepaths_for_month(
     return data_list
 
 
-def _platform_id_for_month(
-    *, platform_ids: list[SUPPORTED_PLATFORM_ID]
-) -> SUPPORTED_PLATFORM_ID:
-    """Returns the platform ID from this month given a list of input platforms.
+def _sat_for_month(*, sats: list[SUPPORTED_SAT]) -> SUPPORTED_SAT:
+    """Returns the satellite from this month given a list of input satellites.
 
-    The platform for monthly files is based on which platform contributes most to the
-    month. If two platforms contribute equally, use the latest platform in the series.
+    The sat for monthly files is based on which sat contributes most to the
+    month. If two sats contribute equally, use the latest sat in the series.
 
-    Function assumes the list of platform ids is already sorted (i.e., the latest
-    platform is `platform_ids[-1]`).
+    Function assumes the list of satellites is already sorted (i.e., the latest
+    satellite is `sats[-1]`).
     """
-    # More than one platform, we need to choose the most common/latest in the series.
-    # `Counter` returns a dict keyed by `platform` with counts as values:
-    count = Counter(platform_ids)
-    most_common_platform_ids = count.most_common()
-    most_common_and_latest_platform_id = most_common_platform_ids[-1][0]
+    # More than one sat, we need to choose the most common/latest in the series.
+    # `Counter` returns a dict keyed by `sat` with counts as values:
+    count = Counter(sats)
+    most_common_sats = count.most_common()
+    most_common_and_latest_sat = most_common_sats[-1][0]
 
-    return most_common_and_latest_platform_id
+    return most_common_and_latest_sat
 
 
 def get_daily_ds_for_month(
@@ -159,19 +156,19 @@ def get_daily_ds_for_month(
         data=data_list, dims=("time",), coords=dict(time=ds.time)
     )
 
-    # Extract `platform_id` from the filenames contributing to this
+    # Extract `sat` from the filenames contributing to this
     # dataset. Ideally, we would use a custom `combine_attrs` when reading the
-    # data with `xr.open_mfdataset` in order to get the platform/sensor from global
+    # data with `xr.open_mfdataset` in order to get the sat/sensor from global
     # attrs in each of the contributing files. Unfortunately this interface is
     # poorly documented and seems to have limited support. E.g., see
     # https://github.com/pydata/xarray/issues/6679
-    platform_ids = []
+    sats = []
     for filepath in data_list:
-        platform_ids.append(platform_id_from_filename(filepath.name))
+        sats.append(sat_from_filename(filepath.name))
 
-    platform_id = _platform_id_for_month(platform_ids=platform_ids)
+    sat = _sat_for_month(sats=sats)
 
-    ds.attrs["platform_id"] = platform_id
+    ds.attrs["sat"] = sat
 
     return ds
 
@@ -345,7 +342,6 @@ def calc_cdr_seaice_conc_monthly(
     daily_ds_for_month: xr.Dataset,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     """Create the `cdr_seaice_conc_monthly` variable."""
     daily_conc_for_month = daily_ds_for_month.cdr_seaice_conc
@@ -355,7 +351,6 @@ def calc_cdr_seaice_conc_monthly(
         seaice_conc_var=conc_monthly,
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
 
     conc_monthly.name = "cdr_seaice_conc_monthly"
@@ -507,10 +502,9 @@ def calc_surface_type_mask_monthly(
 def make_monthly_ds(
     *,
     daily_ds_for_month: xr.Dataset,
-    platform_id: SUPPORTED_PLATFORM_ID,
+    sat: SUPPORTED_SAT,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Create a monthly dataset from daily data.
 
@@ -520,7 +514,7 @@ def make_monthly_ds(
     # Min-day check
     check_min_days_for_valid_month(
         daily_ds_for_month=daily_ds_for_month,
-        platform_id=platform_id,
+        sat=sat,
     )
 
     # create `cdr_seaice_conc_monthly`. This is the combined monthly SIC.
@@ -529,7 +523,6 @@ def make_monthly_ds(
         daily_ds_for_month=daily_ds_for_month,
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
 
     # Create `stdev_of_cdr_seaice_conc_monthly`, the standard deviation of the
@@ -583,11 +576,11 @@ def make_monthly_ds(
         temporality="monthly",
         aggregate=False,
         source=", ".join([fp.item().name for fp in daily_ds_for_month.filepaths]),
-        # TODO: consider providing all platforms that went into month? This would be
+        # TODO: consider providing all sats that went into month? This would be
         # consistent with how we handle the aggregate filenames. Is it
-        # misleading to indicate that a month is a single platform when it may not
+        # misleading to indicate that a month is a single sat when it may not
         # really be?
-        platform_ids=[platform_id],
+        sats=[sat],
     )
     monthly_ds.attrs.update(monthly_ds_global_attrs)
 
@@ -605,7 +598,7 @@ def get_monthly_filepath(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    platform_id: SUPPORTED_PLATFORM_ID,
+    sat: SUPPORTED_SAT,
     year: int,
     month: int,
     complete_output_dir: Path,
@@ -617,7 +610,7 @@ def get_monthly_filepath(
     output_fn = standard_monthly_filename(
         hemisphere=hemisphere,
         resolution=resolution,
-        platform_id=platform_id,
+        sat=sat,
         year=year,
         month=month,
     )
@@ -634,7 +627,6 @@ def make_monthly_nc(
     hemisphere: Hemisphere,
     complete_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> Path:
     daily_ds_for_month = get_daily_ds_for_month(
         year=year,
@@ -644,12 +636,12 @@ def make_monthly_nc(
         resolution=resolution,
     )
 
-    platform_id = daily_ds_for_month.platform_id
+    sat = daily_ds_for_month.sat
 
     output_path = get_monthly_filepath(
         hemisphere=hemisphere,
         resolution=resolution,
-        platform_id=platform_id,
+        sat=sat,
         year=year,
         month=month,
         complete_output_dir=complete_output_dir,
@@ -657,10 +649,9 @@ def make_monthly_nc(
 
     monthly_ds = make_monthly_ds(
         daily_ds_for_month=daily_ds_for_month,
-        platform_id=platform_id,
+        sat=sat,
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
 
     # Set `x` and `y` `_FillValue` to `None`. Although unset initially, `xarray`
@@ -745,11 +736,6 @@ def make_monthly_nc(
     required=True,
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
-@click.option(
-    "--ancillary-source",
-    required=True,
-    type=click.Choice(get_args(ANCILLARY_SOURCES)),
-)
 def cli(
     *,
     year: int,
@@ -759,7 +745,6 @@ def cli(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
 ):
     if end_year is None:
         end_year = year
@@ -784,7 +769,6 @@ def cli(
                 complete_output_dir=complete_output_dir,
                 hemisphere=hemisphere,
                 resolution=resolution,
-                ancillary_source=ancillary_source,
             )
         except Exception:
             error_periods.append(period)

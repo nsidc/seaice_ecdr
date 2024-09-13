@@ -9,10 +9,7 @@ from seaice_ecdr.ancillary import get_smmr_invalid_ice_mask
 def test_get_smmr_invalid_ice_mask():
     for hemisphere in get_args(Hemisphere):
         icemask = get_smmr_invalid_ice_mask(
-            date=dt.date(2023, 1, 29),
-            hemisphere=hemisphere,
-            resolution="25",
-            ancillary_source="CDRv4",
+            hemisphere=hemisphere, date=dt.date(2023, 1, 29)
         )
 
         assert icemask.dtype == bool

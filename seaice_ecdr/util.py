@@ -8,30 +8,29 @@ import pandas as pd
 import xarray as xr
 from pm_tb_data._types import Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES, get_ocean_mask
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr.ancillary import get_ocean_mask
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
 
 
 def standard_daily_filename(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    platform_id: SUPPORTED_PLATFORM_ID,
+    sat: SUPPORTED_SAT,
     date: dt.date,
 ) -> str:
     """Return standard daily NetCDF filename.
 
-    North Daily files: sic_psn12.5_{YYYYMMDD}_{platform_id}_v05r01.nc
-    South Daily files: sic_pss12.5_{YYYYMMDD}_{platform_id}_v05r01.nc
+    North Daily files: sic_psn12.5_YYYYMMDD_sat_v05r01.nc
+    South Daily files: sic_pss12.5_YYYYMMDD_sat_v05r01.nc
     """
     grid_id = get_grid_id(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    fn = f"sic_{grid_id}_{date:%Y%m%d}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc"
+    fn = f"sic_{grid_id}_{date:%Y%m%d}_{sat}_{ECDR_PRODUCT_VERSION}.nc"
 
     return fn
 
@@ -40,13 +39,13 @@ def nrt_daily_filename(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    platform_id: SUPPORTED_PLATFORM_ID,
+    sat: SUPPORTED_SAT,
     date: dt.date,
 ) -> str:
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         resolution=resolution,
-        platform_id=platform_id,
+        sat=sat,
         date=date,
     )
     standard_fn_path = Path(standard_fn)
@@ -85,20 +84,20 @@ def standard_monthly_filename(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    platform_id: SUPPORTED_PLATFORM_ID,
+    sat: SUPPORTED_SAT,
     year: int,
     month: int,
 ) -> str:
     """Return standard monthly NetCDF filename.
 
-    North Monthly files: sic_psn12.5_{YYYYMM}_{platform_id}_v05r01.nc
-    South Monthly files: sic_pss12.5_{YYYYMM}_{platform_id}_v05r01.nc
+    North Monthly files: sic_psn12.5_YYYYMM_sat_v05r01.nc
+    South Monthly files: sic_pss12.5_YYYYMM_sat_v05r01.nc
     """
     grid_id = get_grid_id(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    fn = f"sic_{grid_id}_{year}{month:02}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc"
+    fn = f"sic_{grid_id}_{year}{month:02}_{sat}_{ECDR_PRODUCT_VERSION}.nc"
 
     return fn
 
@@ -130,22 +129,22 @@ def standard_monthly_aggregate_filename(
 
 
 # This regex works for both daily and monthly filenames.
-STANDARD_FN_REGEX = re.compile(r"sic_ps.*_.*_(?P<platform_id>.*)_.*.nc")
+STANDARD_FN_REGEX = re.compile(r"sic_ps.*_.*_(?P<sat>.*)_.*.nc")
 
 
-def platform_id_from_filename(filename: str) -> SUPPORTED_PLATFORM_ID:
+def sat_from_filename(filename: str) -> SUPPORTED_SAT:
     match = STANDARD_FN_REGEX.match(filename)
 
     if not match:
-        raise RuntimeError(f"Failed to parse platform from {filename}")
+        raise RuntimeError(f"Failed to parse satellite from {filename}")
 
-    platform_id = match.group("platform_id")
+    sat = match.group("sat")
 
-    # Ensure the platform is expected.
-    assert platform_id in get_args(SUPPORTED_PLATFORM_ID)
-    platform_id = cast(SUPPORTED_PLATFORM_ID, platform_id)
+    # Ensure the sat is expected.
+    assert sat in get_args(SUPPORTED_SAT)
+    sat = cast(SUPPORTED_SAT, sat)
 
-    return platform_id
+    return sat
 
 
 def date_range(*, start_date: dt.date, end_date: dt.date) -> Iterator[dt.date]:
@@ -186,13 +185,11 @@ def get_num_missing_pixels(
     seaice_conc_var: xr.DataArray,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> int:
     """The number of missing pixels is anywhere that there are nans over ocean."""
     ocean_mask = get_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
 
     num_missing_pixels = int((seaice_conc_var.isnull() & ocean_mask).astype(int).sum())

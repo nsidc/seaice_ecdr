@@ -14,7 +14,6 @@ from pm_tb_data.fetch.amsr.lance_amsr2 import (
     download_latest_lance_files,
 )
 
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.complete_daily_ecdr import (
     complete_daily_ecdr_ds,
@@ -28,7 +27,7 @@ from seaice_ecdr.initial_daily_ecdr import (
     write_ide_netcdf,
 )
 from seaice_ecdr.platforms import (
-    PLATFORM_CONFIG,
+    get_platform_by_date,
 )
 from seaice_ecdr.tb_data import EcdrTbData, map_tbs_to_ecdr_channels
 from seaice_ecdr.temporal_composite_daily import (
@@ -49,7 +48,6 @@ def compute_nrt_initial_daily_ecdr_dataset(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
     # TODO: handle missing data case.
@@ -59,7 +57,7 @@ def compute_nrt_initial_daily_ecdr_dataset(
         data_dir=LANCE_NRT_DATA_DIR,
     )
     data_source: Final = "LANCE AU_SI12"
-    platform_id: Final = "am2"
+    platform: Final = "am2"
 
     ecdr_tbs = map_tbs_to_ecdr_channels(
         # TODO/Note: this mapping is the same as used for `am2`.
@@ -81,15 +79,13 @@ def compute_nrt_initial_daily_ecdr_dataset(
         tbs=ecdr_tbs,
         resolution=LANCE_RESOLUTION,
         data_source=data_source,
-        platform_id=platform_id,
+        platform=platform,
     )
 
     nrt_initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         tb_data=tb_data,
-        land_spillover_alg="NT2",
-        ancillary_source=ancillary_source,
     )
 
     return nrt_initial_ecdr_ds
@@ -102,11 +98,11 @@ def read_or_create_and_read_nrt_idecdr_ds(
     intermediate_output_dir: Path,
     overwrite: bool,
 ):
-    platform = PLATFORM_CONFIG.get_platform_by_date(date)
+    platform = get_platform_by_date(date)
     idecdr_filepath = get_idecdr_filepath(
         hemisphere=hemisphere,
         date=date,
-        platform_id=platform.id,
+        platform=platform,
         intermediate_output_dir=intermediate_output_dir,
         resolution="12.5",
     )
@@ -151,7 +147,6 @@ def temporally_interpolated_nrt_ecdr_dataset(
     intermediate_output_dir: Path,
     overwrite: bool,
     days_to_look_previously: int = 5,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ) -> xr.Dataset:
     init_datasets = []
     for date in date_range(
@@ -174,7 +169,6 @@ def temporally_interpolated_nrt_ecdr_dataset(
         data_stack=data_stack,
         interp_range=days_to_look_previously,
         one_sided_limit=days_to_look_previously,
-        ancillary_source=ancillary_source,
     )
 
     return temporally_interpolated_ds
@@ -219,7 +213,6 @@ def nrt_ecdr_for_day(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     overwrite: bool,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ):
     """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
     complete_output_dir = get_complete_output_dir(
@@ -261,7 +254,6 @@ def nrt_ecdr_for_day(
                 complete_output_dir=complete_output_dir,
                 intermediate_output_dir=intermediate_output_dir,
                 is_nrt=True,
-                ancillary_source=ancillary_source,
             )
 
             written_cde_ncfile = write_cde_netcdf(
