@@ -200,7 +200,7 @@ def read_melt_onset_field_from_complete_daily(
     )
 
     # TODO: Perhaps these field names should be in a dictionary somewhere?
-    melt_onset_from_ds = cde_ds["melt_onset_day_cdr_seaice_conc"].to_numpy()
+    melt_onset_from_ds = cde_ds["cdr_melt_onset_day"].to_numpy()
 
     return melt_onset_from_ds
 
@@ -384,7 +384,7 @@ def _add_melt_onset_for_nh(
     )
 
     # Update cde_ds with melt onset info
-    cde_ds_with_melt_onset["melt_onset_day_cdr_seaice_conc"] = (
+    cde_ds_with_melt_onset["cdr_melt_onset_day"] = (
         ("time", "y", "x"),
         melt_onset_field,
         {
@@ -404,14 +404,8 @@ def _add_melt_onset_for_nh(
     # the np.squeeze() function here is to remove the time dim so that
     # this becomes a 2d array for updating the qa_... field
     is_melt_has_occurred = np.squeeze(
-        (
-            MELT_SEASON_FIRST_DOY
-            <= cde_ds_with_melt_onset["melt_onset_day_cdr_seaice_conc"].data
-        )
-        & (
-            cde_ds_with_melt_onset["melt_onset_day_cdr_seaice_conc"].data
-            <= MELT_SEASON_LAST_DOY
-        )
+        (MELT_SEASON_FIRST_DOY <= cde_ds_with_melt_onset["cdr_melt_onset_day"].data)
+        & (cde_ds_with_melt_onset["cdr_melt_onset_day"].data <= MELT_SEASON_LAST_DOY)
     )
     # TODO: the flag value being "or"ed to the bitmask should be looked
     #       up as the temporally-interpolation-has-occured value

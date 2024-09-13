@@ -3,7 +3,7 @@
 Note: quotes below (>) are taken from the CDR v4 ATBD:
 https://nsidc.org/sites/default/files/documents/technical-reference/cdrp-atbd-final.pdf
 
-Includes code repsonsible for creating the `melt_onset_day_cdr_seaice_conc`
+Includes code repsonsible for creating the `cdr_melt_onset_day`
 variable in final CDR files:
 
 > contains the day of year on which melting sea ice was first detected in each

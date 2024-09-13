@@ -16,9 +16,9 @@ from seaice_ecdr.monthly import (
     _get_daily_complete_filepaths_for_month,
     _platform_id_for_month,
     _qa_field_has_flag,
+    calc_cdr_melt_onset_day_monthly,
     calc_cdr_qa_seaice_conc_monthly,
     calc_cdr_seaice_conc_monthly,
-    calc_melt_onset_day_cdr_seaice_conc_monthly,
     calc_stdv_of_cdr_seaice_conc_monthly,
     calc_surface_type_mask_monthly,
     check_min_days_for_valid_month,
@@ -257,7 +257,7 @@ def _mock_daily_ds_for_month():
             raw_nt_seaice_conc=(("x", "time"), _mock_data),
             raw_bt_seaice_conc=(("x", "time"), _mock_data),
             cdr_qa_seaice_conc=(("x", "time"), _mock_daily_qa_fields),
-            melt_onset_day_cdr_seaice_conc=(("x", "time"), _mock_daily_melt_onset),
+            cdr_melt_onset_day=(("x", "time"), _mock_daily_melt_onset),
             surface_type_mask=(("x", "time"), _mock_surface_type_mask),
             filepaths=(
                 ("time",),
@@ -440,7 +440,7 @@ def test_calc_stdv_of_cdr_seaice_conc_monthly():
     )
 
 
-def test_calc_melt_onset_day_cdr_seaice_conc_monthly():
+def test_calc_cdr_melt_onset_day_monthly():
     # time ->
     pixel_one = np.array([60, 60, 60])
     pixel_two = np.array([np.nan, 200, 200])
@@ -464,7 +464,7 @@ def test_calc_melt_onset_day_cdr_seaice_conc_monthly():
         ),
     )
 
-    actual = calc_melt_onset_day_cdr_seaice_conc_monthly(
+    actual = calc_cdr_melt_onset_day_monthly(
         daily_melt_onset_for_month=mock_daily_melt,
     )
 
@@ -519,7 +519,7 @@ def test_monthly_ds(monkeypatch, tmpdir):
         [
             "cdr_seaice_conc_monthly",
             "stdv_of_cdr_seaice_conc_monthly",
-            "melt_onset_day_cdr_seaice_conc_monthly",
+            "cdr_melt_onset_day_monthly",
             "cdr_qa_seaice_conc_monthly",
             "crs",
             "surface_type_mask",

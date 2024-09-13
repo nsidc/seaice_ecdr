@@ -9,7 +9,7 @@ Variables:
   concentration
 * `cdr_qa_seaice_conc_monthly`: QA Fields (Weather filters, land
   spillover, valid ice mask, spatial and temporal interpolation, melt onset)
-* `melt_onset_day_cdr_seaice_conc_monthly`: Melt onset day (Value from the last
+* `cdr_melt_onset_day_monthly`: Melt onset day (Value from the last
   day of the month)
 
 Notes about CDR v4:
@@ -404,38 +404,32 @@ def calc_stdv_of_cdr_seaice_conc_monthly(
     return stdv_of_cdr_seaice_conc_monthly
 
 
-def calc_melt_onset_day_cdr_seaice_conc_monthly(
+def calc_cdr_melt_onset_day_monthly(
     *,
     daily_melt_onset_for_month: xr.DataArray,
 ) -> xr.DataArray:
-    """Create the `melt_onset_day_cdr_seaice_conc_monthly` variable."""
-    # Create `melt_onset_day_cdr_seaice_conc_monthly`. This is the value from
+    """Create the `cdr_melt_onset_day_monthly` variable."""
+    # Create `cdr_melt_onset_day_monthly`. This is the value from
     # the last day of the month.
-    melt_onset_day_cdr_seaice_conc_monthly = daily_melt_onset_for_month.sel(
+    cdr_melt_onset_day_monthly = daily_melt_onset_for_month.sel(
         time=daily_melt_onset_for_month.time.max()
     )
-    melt_onset_day_cdr_seaice_conc_monthly.name = (
-        "melt_onset_day_cdr_seaice_conc_monthly"
-    )
-    melt_onset_day_cdr_seaice_conc_monthly = (
-        melt_onset_day_cdr_seaice_conc_monthly.drop_vars("time")
-    )
+    cdr_melt_onset_day_monthly.name = "cdr_melt_onset_day_monthly"
+    cdr_melt_onset_day_monthly = cdr_melt_onset_day_monthly.drop_vars("time")
 
-    melt_onset_day_cdr_seaice_conc_monthly = (
-        melt_onset_day_cdr_seaice_conc_monthly.assign_attrs(
-            long_name="Monthly Day of Snow Melt Onset Over Sea Ice",
-            units="1",
-            valid_range=(np.ubyte(60), np.ubyte(255)),
-            grid_mapping="crs",
-        )
+    cdr_melt_onset_day_monthly = cdr_melt_onset_day_monthly.assign_attrs(
+        long_name="Monthly Day of Snow Melt Onset Over Sea Ice",
+        units="1",
+        valid_range=(np.ubyte(60), np.ubyte(255)),
+        grid_mapping="crs",
     )
-    melt_onset_day_cdr_seaice_conc_monthly.encoding = dict(
+    cdr_melt_onset_day_monthly.encoding = dict(
         _FillValue=None,
         dtype=np.uint8,
         zlib=True,
     )
 
-    return melt_onset_day_cdr_seaice_conc_monthly
+    return cdr_melt_onset_day_monthly
 
 
 def _assign_time_to_monthly_ds(
@@ -555,12 +549,10 @@ def make_monthly_ds(
     # Add monthly melt onset if the hemisphere is north. We don't detect melt in
     # the southern hemisphere.
     if hemisphere == NORTH:
-        melt_onset_day_cdr_seaice_conc_monthly = calc_melt_onset_day_cdr_seaice_conc_monthly(
-            daily_melt_onset_for_month=daily_ds_for_month.melt_onset_day_cdr_seaice_conc,
+        cdr_melt_onset_day_monthly = calc_cdr_melt_onset_day_monthly(
+            daily_melt_onset_for_month=daily_ds_for_month.cdr_melt_onset_day,
         )
-        monthly_ds_data_vars["melt_onset_day_cdr_seaice_conc_monthly"] = (
-            melt_onset_day_cdr_seaice_conc_monthly
-        )
+        monthly_ds_data_vars["cdr_melt_onset_day_monthly"] = cdr_melt_onset_day_monthly
 
     monthly_ds = xr.Dataset(
         data_vars=monthly_ds_data_vars,

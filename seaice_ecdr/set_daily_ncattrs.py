@@ -140,9 +140,9 @@ def finalize_cdecdr_ds(
 
     # Note: this is NH only, hence the try/except block
     try:
-        ds["melt_onset_day_cdr_seaice_conc"] = (
+        ds["cdr_melt_onset_day"] = (
             ("time", "y", "x"),
-            ds["melt_onset_day_cdr_seaice_conc"].data,
+            ds["cdr_melt_onset_day"].data,
             {
                 "standard_name": "status_flag",
                 "long_name": "Day Of Year of NH Snow Melt Onset On Sea Ice",
