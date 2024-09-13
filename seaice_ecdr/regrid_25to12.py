@@ -19,7 +19,6 @@ from scipy.signal import convolve2d
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
-    ANCILLARY_SOURCES,
     get_adj123_field,
     get_empty_ds_with_time,
     get_non_ocean_mask,
@@ -37,7 +36,6 @@ def _setup_ecdr_ds_replacement(
     xr_tbs: xr.Dataset,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ) -> xr.Dataset:
     # Initialize geo-referenced xarray Dataset
     grid_id = get_grid_id(
@@ -46,10 +44,7 @@ def _setup_ecdr_ds_replacement(
     )
 
     ecdr_ide_ds = get_empty_ds_with_time(
-        hemisphere=hemisphere,
-        resolution=resolution,
-        date=date,
-        ancillary_source=ancillary_source,
+        hemisphere=hemisphere, resolution=resolution, date=date
     )
 
     # Set initial global attributes
@@ -77,7 +72,6 @@ def _setup_ecdr_ds_replacement(
 
 def get_reprojection_da_psn25to12(
     hemisphere: Hemisphere,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ) -> xr.DataArray:
     """Returns a mask with:
     0: No values will be interpolated
@@ -85,12 +79,8 @@ def get_reprojection_da_psn25to12(
     2: block interpolation should be applied
     3: nearest neighbor interpolation should be applied
     """
-    is_ocean_25 = get_ocean_mask(
-        hemisphere=hemisphere, resolution="25", ancillary_source=ancillary_source
-    )
-    is_ocean_12 = get_ocean_mask(
-        hemisphere=hemisphere, resolution="12.5", ancillary_source=ancillary_source
-    )
+    is_ocean_25 = get_ocean_mask(hemisphere=hemisphere, resolution="25")
+    is_ocean_12 = get_ocean_mask(hemisphere=hemisphere, resolution="12.5")
 
     # Calculate where bilinear interpolation will compute properly
     resize25 = np.zeros(is_ocean_25.shape, dtype=np.float32)
@@ -251,7 +241,6 @@ def adjust_reprojected_siconc_field(
     siconc_da: xr.DataArray,
     hemisphere: Hemisphere,
     adjustment_array: npt.NDArray,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
     min_siext: float = 0.10,
     n_adj: int = 3,
 ) -> xr.DataArray:
@@ -261,7 +250,6 @@ def adjust_reprojected_siconc_field(
     coast_adj = get_adj123_field(
         hemisphere=hemisphere,
         resolution="12.5",
-        ancillary_source=ancillary_source,
     ).to_numpy()
 
     # Initialize ice_edge_adjacency to 255
@@ -311,7 +299,6 @@ def reproject_ideds_25to12(
     date,
     hemisphere,
     resolution,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ):
     # Determine reprojection_masks
     reprojection_da = get_reprojection_da_psn25to12(hemisphere=hemisphere)
@@ -338,7 +325,6 @@ def reproject_ideds_25to12(
         xr_tbs=reprojected_tbs_ds,
         resolution=resolution,
         hemisphere=hemisphere,
-        ancillary_source=ancillary_source,
     )
     # add data_source and platform to the dataset attrs.
     reprojected_ideds.attrs["data_source"] = initial_ecdr_ds.data_source
@@ -348,7 +334,6 @@ def reproject_ideds_25to12(
     reprojected_ideds["non_ocean_mask"] = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
 
     # Block-replace (=nearest-neighbor interp)

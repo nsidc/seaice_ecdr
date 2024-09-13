@@ -362,8 +362,6 @@ if __name__ == "__main__":
 
         filepath = get_ancillary_filepath(hemisphere=hemisphere, resolution="12.5")
         ancillary_ds.compute()
-        ### SS: Temporarily change name of filepath
-        breakpoint()
         ancillary_ds.to_netcdf(filepath)
 
         logger.info(f"wrote {filepath}")

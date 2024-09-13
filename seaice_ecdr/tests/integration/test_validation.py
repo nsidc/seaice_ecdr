@@ -9,9 +9,6 @@ from seaice_ecdr.tests.integration import base_output_dir_test_path  # noqa
 from seaice_ecdr.validation import validate_outputs
 
 
-@pytest.mark.skip(
-    reason="skipping because currently adding CDRv4 flags to conc fields in order to match CDRv4 results, but in CDRv5 we want all non-valid values to be the fill value"
-)
 @pytest.mark.order(after="test_monthly.py::test_make_monthly_nc")
 def test_validate_outputs(base_output_dir_test_path):  # noqa
     for product_type, hemisphere in itertools.product(
@@ -39,8 +36,4 @@ def test_validate_outputs(base_output_dir_test_path):  # noqa
             with open(outputs["error_filepath"], "r") as error_csv:
                 reader = csv.DictReader(error_csv)
                 for row in reader:
-                    try:
-                        assert row["error_code"] == "0"
-                    except AssertionError as e:
-                        print(f'nonzero error_code: {row["error_code"]}')
-                        raise e
+                    assert row["error_code"] == "0"

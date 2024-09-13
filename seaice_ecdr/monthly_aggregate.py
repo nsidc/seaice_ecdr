@@ -20,7 +20,7 @@ from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
 from seaice_ecdr.util import (
     get_complete_output_dir,
-    platform_id_from_filename,
+    sat_from_filename,
     standard_monthly_aggregate_filename,
 )
 
@@ -38,8 +38,8 @@ def _get_monthly_complete_filepaths(
     # TODO: the monthly filenames are encoded in the
     # `util.standard_monthly_filename` func. Can we adapt that to use wildcards
     # and return a glob-able string?
-    # North Monthly files: sic_psn12.5_{YYYYMM}_{platform_id}_v05r00.nc
-    # South Monthly files: sic_pss12.5_{YYYYMM}_{platform_id}_v05r00.nc
+    # North Monthly files: sic_psn12.5_YYYYMM_sat_v05r00.nc
+    # South Monthly files: sic_pss12.5_YYYYMM_sat_v05r00.nc
     filename_pattern = f"sic_ps{hemisphere[0]}{resolution}_*.nc"
 
     monthly_files = list(sorted(monthly_dir.glob(filename_pattern)))
@@ -102,7 +102,7 @@ def _update_ncrcat_monthly_ds(
         temporality="monthly",
         aggregate=True,
         source=", ".join([fp.name for fp in monthly_filepaths]),
-        platform_ids=[platform_id_from_filename(fp.name) for fp in monthly_filepaths],
+        sats=[sat_from_filename(fp.name) for fp in monthly_filepaths],
     )
     agg_ds.attrs = monthly_aggregate_ds_global_attrs
 

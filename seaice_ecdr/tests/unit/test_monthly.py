@@ -2,7 +2,7 @@ import datetime as dt
 from pathlib import Path
 
 import numpy as np
-import numpy.testing as nptesting  # Note: npt is numpy.typing
+import numpy.testing as npt
 import pytest
 import xarray as xr
 from pm_tb_data._types import NORTH
@@ -13,8 +13,8 @@ from seaice_ecdr.monthly import (
     QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS,
     QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS,
     _get_daily_complete_filepaths_for_month,
-    _platform_id_for_month,
     _qa_field_has_flag,
+    _sat_for_month,
     calc_cdr_seaice_conc_monthly,
     calc_melt_onset_day_cdr_seaice_conc_monthly,
     calc_qa_of_cdr_seaice_conc_monthly,
@@ -86,27 +86,27 @@ def test_check_min_day_for_valid_month():
     # Check that no error is raised for AMSR2, full month's worth of data
     check_min_days_for_valid_month(
         daily_ds_for_month=_mock_daily_ds_for_month(31),
-        platform_id="am2",
+        sat="am2",
     )
 
     # Check that an error is raised for AMSR2, not a full month's worth of data
     with pytest.raises(RuntimeError):
         check_min_days_for_valid_month(
             daily_ds_for_month=_mock_daily_ds_for_month(19),
-            platform_id="am2",
+            sat="am2",
         )
 
     # Check that an error is not raised for n07, with modified min worth of data
     check_min_days_for_valid_month(
         daily_ds_for_month=_mock_daily_ds_for_month(10),
-        platform_id="n07",
+        sat="n07",
     )
 
     # Check that an error is raised for n07, not a full month's worth of data
     with pytest.raises(RuntimeError):
         check_min_days_for_valid_month(
             daily_ds_for_month=_mock_daily_ds_for_month(9),
-            platform_id="n07",
+            sat="n07",
         )
 
 
@@ -124,7 +124,7 @@ def test__qa_field_has_flag():
         qa_field=mock_qa_field,
         flag_value=flag_1,
     )
-    nptesting.assert_array_equal(expected, actual)
+    npt.assert_array_equal(expected, actual)
 
     # flag 2
     expected = xr.DataArray([False, True, True])
@@ -132,7 +132,7 @@ def test__qa_field_has_flag():
         qa_field=mock_qa_field,
         flag_value=flag_2,
     )
-    nptesting.assert_array_equal(expected, actual)
+    npt.assert_array_equal(expected, actual)
 
     # flag 3
     expected = xr.DataArray([False, False, True])
@@ -140,7 +140,7 @@ def test__qa_field_has_flag():
         qa_field=mock_qa_field,
         flag_value=flag_3,
     )
-    nptesting.assert_array_equal(expected, actual)
+    npt.assert_array_equal(expected, actual)
 
 
 def _mock_daily_ds_for_month():
@@ -336,7 +336,7 @@ def test_calc_qa_of_cdr_seaice_conc_monthly():
         cdr_seaice_conc_monthly=_mean_daily_conc,
     )
 
-    nptesting.assert_array_equal(expected_flags, actual.values)
+    npt.assert_array_equal(expected_flags, actual.values)
 
 
 def test__calc_conc_monthly(monkeypatch):
@@ -386,10 +386,9 @@ def test__calc_conc_monthly(monkeypatch):
         daily_ds_for_month=mock_daily_ds,
         hemisphere="north",
         resolution="12.5",
-        ancillary_source="CDRv5",
     )
 
-    nptesting.assert_array_equal(
+    npt.assert_array_equal(
         actual.values,
         np.array(
             [
@@ -433,7 +432,7 @@ def test_calc_stdv_of_cdr_seaice_conc_monthly():
         == "Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation"
     )
 
-    nptesting.assert_array_equal(
+    npt.assert_array_equal(
         actual.values,
         np.array(
             [
@@ -475,7 +474,7 @@ def test_calc_melt_onset_day_cdr_seaice_conc_monthly():
     )
 
     assert actual.long_name == "Monthly Day of Snow Melt Onset Over Sea Ice"
-    nptesting.assert_array_equal(
+    npt.assert_array_equal(
         actual.values,
         np.array(
             [
@@ -514,10 +513,9 @@ def test_monthly_ds(monkeypatch, tmpdir):
     )
     actual = make_monthly_ds(
         daily_ds_for_month=_mock_daily_ds,
-        platform_id="am2",
+        sat="am2",
         hemisphere=NORTH,
         resolution="12.5",
-        ancillary_source="CDRv5",
     )
 
     # Test that the dataset only contains the variables we expect.
@@ -547,14 +545,14 @@ def test_monthly_ds(monkeypatch, tmpdir):
     xr.testing.assert_allclose(actual, after_write, atol=0.009)
 
 
-def test__platform_id_for_month():
-    assert "am2" == _platform_id_for_month(platform_ids=["am2", "am2", "am2", "am2"])
+def test__sat_for_month():
+    assert "am2" == _sat_for_month(sats=["am2", "am2", "am2", "am2"])
 
-    assert "am2" == _platform_id_for_month(platform_ids=["F17", "F17", "am2", "am2"])
+    assert "am2" == _sat_for_month(sats=["F17", "F17", "am2", "am2"])
 
-    assert "F17" == _platform_id_for_month(platform_ids=["F13", "F13", "F13", "F17"])
+    assert "F17" == _sat_for_month(sats=["F13", "F13", "F13", "F17"])
 
-    assert "am2" == _platform_id_for_month(platform_ids=["F13", "F17", "am2"])
+    assert "am2" == _sat_for_month(sats=["F13", "F17", "am2"])
 
 
 def test_calc_surface_mask_monthly():
