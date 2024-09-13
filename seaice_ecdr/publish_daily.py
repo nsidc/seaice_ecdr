@@ -155,14 +155,18 @@ def publish_daily_nc(
             prototype_subgroup = prototype_daily_ds[cdr_var_fieldnames].rename_vars(
                 remap_names
             )
+            # Rename ancillary variables.
+            for var in prototype_subgroup.values():
+                if "ancillary_variables" in var.attrs:
+                    var.attrs["ancillary_variables"] = var.attrs[
+                        "ancillary_variables"
+                    ].replace("cdr_", f"{PROTOTYPE_PLATFORM_ID}_")
             # Drop x, y, and time coordinate variables. These will be inherited from the parent.
             prototype_subgroup = prototype_subgroup.drop_vars(["x", "y", "time"])
             complete_daily_ds[PROTOTYPE_PLATFORM_DATA_GROUP_NAME] = DataTree(
                 data=prototype_subgroup,
             )
             # TODO: consider which global attrs we want to retain in the prototype group. All of them?
-            # TODO: `ancillary_variables` attr in e.g., `am2_seaice_conc` need
-            # to be updated. They currently show `cdr_`.
         except FileNotFoundError:
             logger.warning(
                 f"Failed to find prototype daily file for {date=} {PROTOTYPE_PLATFORM_ID=}"
