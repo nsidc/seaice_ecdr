@@ -115,14 +115,21 @@ def publish_daily_nc(
     if hemisphere == NORTH:
         cdr_supplementary_fields.append("cdr_melt_onset_day")
 
+    # Drop x, y, time coordinate variables. These will be inherited from the
+    # root group.
+    cdr_supplementary_group = default_daily_ds[cdr_supplementary_fields].drop_vars(
+        ["x", "y", "time"]
+    )
+    # remove attrs from supplementary group. These will be inherted from the
+    # root group.
+    cdr_supplementary_group.attrs = {}
+
     complete_daily_ds: DataTree = DataTree.from_dict(
         {
             "/": default_daily_ds[
                 [k for k in default_daily_ds if k not in cdr_supplementary_fields]
             ],
-            "cdr_supplementary": default_daily_ds[cdr_supplementary_fields].drop_vars(
-                ["x", "y", "time"]
-            ),
+            "cdr_supplementary": cdr_supplementary_group,
         }
     )
 
