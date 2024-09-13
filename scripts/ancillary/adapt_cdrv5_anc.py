@@ -46,8 +46,10 @@ from scipy.signal import convolve2d
 ecdr_anc_fn = {
     "psn12.5": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-psn12.5.nc",
     "pss12.5": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-pss12.5.nc",
-    "psn25": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-psn25.nc",
-    "pss25": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-pss25.nc",
+    # "psn25": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-psn25.nc",
+    # "pss25": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-pss25.nc",
+    "psn25": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-psn25_new.nc",
+    "pss25": "/share/apps/G02202_V5/v05r00_ancillary/ecdr-ancillary-pss25_new.nc",
 }
 
 nsidc0771_fn = {
@@ -148,10 +150,8 @@ def calc_adj123_np(surftype_da, ocean_val=50, coast_val=200):
     Output:
         Numpy array with adjacency values of 1, 2, 3
     """
-    surftype = surftype_da.as_numpy()
+    surftype = surftype_da.to_numpy()
     is_ocean = surftype == ocean_val
-    is_coast = surftype == coast_val
-    is_land = (~is_ocean) & (~is_coast)
 
     kernel = [
         [
@@ -167,7 +167,7 @@ def calc_adj123_np(surftype_da, ocean_val=50, coast_val=200):
         ],
     ]
     adj123_arr = np.zeros(surftype.shape, dtype=np.uint8)
-    adj123_arr[is_land] = 255
+    adj123_arr[~is_ocean] = 255
     for adj_val in range(1, 4):
         is_unlabeled = adj123_arr == 0
         is_labeled = (adj123_arr == 255) | ((~is_unlabeled) & (adj123_arr < adj_val))
@@ -182,7 +182,7 @@ def calc_adj123_np(surftype_da, ocean_val=50, coast_val=200):
         adj123_arr[is_newly_labeled] = adj_val
 
     # Remove the land grid cells from the adjacency matrix
-    adj123_arr[adj123_arr == 255] = 0
+    # adj123_arr[adj123_arr == 255] = 0
 
     return adj123_arr
 
@@ -559,8 +559,7 @@ def generate_ecdr_anc_file(gridid):
                             ds_hires_anc.data_vars["polehole_bitmask"].attrs[
                                 "flag_masks"
                             ]
-                        )
-                        - 1,
+                        ),
                     )
                 ),
             ),

@@ -3,16 +3,19 @@ from functools import partial
 from itertools import chain
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Final, get_args
+from typing import get_args
 
 import click
 from pm_tb_data._types import Hemisphere
 
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.complete_daily_ecdr import create_standard_ecdr_for_dates
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import create_idecdr_for_date
-from seaice_ecdr.platforms import get_first_platform_start_date
+from seaice_ecdr.platforms import PLATFORM_CONFIG
+from seaice_ecdr.spillover import LAND_SPILL_ALGS
 from seaice_ecdr.temporal_composite_daily import make_tiecdr_netcdf
 from seaice_ecdr.util import (
     date_range,
@@ -20,6 +23,10 @@ from seaice_ecdr.util import (
     get_intermediate_output_dir,
     raise_error_for_dates,
 )
+
+# TODO:
+#  ancillary sources are given in seaice_ecdr.ancillary.ANCILLARY_SOURCES
+#    but are manually spelled out in the click options here
 
 
 @click.command(name="multiprocess-daily")
@@ -80,12 +87,34 @@ from seaice_ecdr.util import (
     "--overwrite",
     is_flag=True,
 )
+@click.option(
+    "--land-spillover-alg",
+    required=False,
+    # type=click.Choice(["BT_NT", "NT2", "ILS"]),
+    type=click.Choice(get_args(LAND_SPILL_ALGS)),
+    default="BT_NT",
+)
+@click.option(
+    "--ancillary-source",
+    required=True,
+    # type=click.Choice(["CDRv4", "CDRv5"]),
+    type=click.Choice(get_args(ANCILLARY_SOURCES)),
+    default="CDRv5",
+)
+@click.option(
+    "--resolution",
+    required=True,
+    type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
+)
 def cli(
     start_date: dt.date,
     end_date: dt.date,
     hemisphere: Hemisphere,
     base_output_dir: Path,
     overwrite: bool,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ):
     dates = list(date_range(start_date=start_date, end_date=end_date))
     dates_by_year = get_dates_by_year(dates)
@@ -93,7 +122,7 @@ def cli(
     # craete a range of dates that includes the interpolation range. This
     # ensures that data expected for temporal interpolation of the requested
     # dates has the data it needs.
-    earliest_date = get_first_platform_start_date()
+    earliest_date = PLATFORM_CONFIG.get_first_platform_start_date()
     initial_start_date = max(earliest_date, start_date - dt.timedelta(days=5))
     initial_end_date = min(end_date + dt.timedelta(days=5), dt.date.today())
     initial_file_dates = list(
@@ -106,14 +135,14 @@ def cli(
         is_nrt=False,
     )
 
-    resolution: Final = "12.5"
-
     _create_idecdr_wrapper = partial(
         create_idecdr_for_date,
         hemisphere=hemisphere,
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
         overwrite_ide=overwrite,
+        land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
 
     _create_tiecdr_wrapper = partial(
@@ -122,6 +151,8 @@ def cli(
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
         overwrite_tie=overwrite,
+        land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
 
     _complete_daily_wrapper = partial(
@@ -130,6 +161,8 @@ def cli(
         resolution=resolution,
         base_output_dir=base_output_dir,
         overwrite_cde=overwrite,
+        land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
 
     # Use 6 cores. This seems to perform well. Using the max number available
