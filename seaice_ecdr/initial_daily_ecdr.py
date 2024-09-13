@@ -20,45 +20,56 @@ import pm_icecon.bt.params.nsidc0001 as pmi_bt_params_0001
 import pm_icecon.nt.compute_nt_ic as nt
 import xarray as xr
 from loguru import logger
+from pm_icecon._types import LandSpilloverMethods
 from pm_icecon.bt.params.nsidc0007 import get_smmr_params
 from pm_icecon.bt.xfer_tbs import xfer_rss_tbs
 from pm_icecon.errors import UnexpectedSatelliteError
-from pm_icecon.fill_polehole import fill_pole_hole
 from pm_icecon.interpolation import spatial_interp_tbs
-from pm_icecon.land_spillover import apply_nt2_land_spillover
 from pm_icecon.nt._types import NasateamGradientRatioThresholds
 from pm_icecon.nt.params.params import get_cdr_nt_params
 from pm_icecon.nt.tiepoints import NasateamTiePoints
 from pm_tb_data._types import NORTH, Hemisphere
 from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
-    get_adj123_field,
+    ANCILLARY_SOURCES,
     get_empty_ds_with_time,
     get_invalid_ice_mask,
-    get_land90_conc_field,
     get_non_ocean_mask,
     nh_polehole_mask,
 )
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import CDR_ANCILLARY_DIR, DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.grid_id import get_grid_id
-from seaice_ecdr.platforms import get_platform_by_date
+from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
-from seaice_ecdr.tb_data import EXPECTED_ECDR_TB_NAMES, EcdrTbData, get_ecdr_tb_data
+from seaice_ecdr.spillover import LAND_SPILL_ALGS, land_spillover
+from seaice_ecdr.tb_data import (
+    EXPECTED_ECDR_TB_NAMES,
+    EcdrTbData,
+    get_25km_ecdr_tb_data,
+    get_ecdr_tb_data,
+)
 from seaice_ecdr.util import get_intermediate_output_dir, standard_daily_filename
 
 
-def cdr_bootstrap(
+def platform_is_smmr(platform_id: SUPPORTED_PLATFORM_ID):
+    return platform_id in ("n07", "s36")
+
+
+def cdr_bootstrap_raw(
     *,
     tb_v37: npt.NDArray,
     tb_h37: npt.NDArray,
     tb_v19: npt.NDArray,
     bt_coefs,
-    platform: SUPPORTED_SAT,
+    platform: SUPPORTED_PLATFORM_ID,
 ):
-    """Generate the raw bootstrap concentration field."""
+    """Generate the raw bootstrap concentration field.
+    Note: tb fields should already be transformed before
+          being passed to this function.
+    """
     wtp_37v = bt_coefs["bt_wtp_v37"]
     wtp_37h = bt_coefs["bt_wtp_h37"]
     wtp_19v = bt_coefs["bt_wtp_v19"]
@@ -66,24 +77,6 @@ def cdr_bootstrap(
     itp_37v = bt_coefs["bt_itp_v37"]
     itp_37h = bt_coefs["bt_itp_h37"]
     itp_19v = bt_coefs["bt_itp_v19"]
-
-    # Transform TBs for the bootstrap calculation
-    try:
-        transformed = xfer_rss_tbs(
-            tbs=dict(
-                v37=tb_v37,
-                h37=tb_h37,
-                v19=tb_v19,
-            ),
-            platform=platform.lower(),
-        )
-        tb_v37 = transformed["v37"]
-        tb_h37 = transformed["h37"]
-        tb_v19 = transformed["v19"]
-    except UnexpectedSatelliteError:
-        logger.warning(
-            f"No BT Tb transformation to F13 available for {platform=}. Using untransformed Tbs instead."
-        )
 
     bt_conc = bt.calc_bootstrap_conc(
         tb_v37=tb_v37,
@@ -95,19 +88,13 @@ def cdr_bootstrap(
         itp_37v=itp_37v,
         itp_37h=itp_37h,
         itp_19v=itp_19v,
-        line_37v37h=bt_coefs["vh37_lnline"],
-        line_37v19v=bt_coefs["v1937_lnline"],
+        line_37v37h=bt_coefs["vh37_iceline"],
+        line_37v19v=bt_coefs["v1937_iceline"],
         ad_line_offset=bt_coefs["ad_line_offset"],
         maxic_frac=bt_coefs["maxic"],
         # Note: the missing value of 255 ends up getting set to `nan` below.
         missing_flag_value=255,
     )
-
-    # Set any bootstrap concentrations below 10% to 0.
-    bt_conc[bt_conc < 10] = 0
-
-    # Remove bt_conc flags (e.g., missing)
-    bt_conc[bt_conc >= 250] = np.nan
 
     return bt_conc
 
@@ -193,6 +180,7 @@ def _setup_ecdr_ds(
     date: dt.date,
     tb_data: EcdrTbData,
     hemisphere: Hemisphere,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     # Initialize geo-referenced xarray Dataset
     grid_id = get_grid_id(
@@ -201,7 +189,10 @@ def _setup_ecdr_ds(
     )
 
     ecdr_ide_ds = get_empty_ds_with_time(
-        hemisphere=hemisphere, resolution=tb_data.resolution, date=date
+        hemisphere=hemisphere,
+        resolution=tb_data.resolution,
+        date=date,
+        ancillary_source=ancillary_source,
     )
 
     # Set initial global attributes
@@ -214,7 +205,7 @@ def _setup_ecdr_ds(
     ecdr_ide_ds.attrs["data_source"] = tb_data.data_source
 
     # Set the platform
-    ecdr_ide_ds.attrs["platform"] = tb_data.platform
+    ecdr_ide_ds.attrs["platform"] = tb_data.platform_id
 
     file_date = dt.date(1970, 1, 1) + dt.timedelta(
         days=int(ecdr_ide_ds.variables["time"].data)
@@ -273,23 +264,94 @@ def get_nasateam_weather_mask(
         ecdr_ide_ds["v37_day_si"].data[0, :, :],
         ecdr_ide_ds["v19_day_si"].data[0, :, :],
     )
+    # Round off for better match with CDRv4 results
+    nt_gr_3719 = np.round(nt_gr_3719, 4)
 
     nt_3719_weather_mask = nt_gr_3719 > nt_coefs["nt_gradient_thresholds"]["3719"]
 
     # SMMR does not have a 22v channel that's suitable for the nt weather
     # filter. Instead, we just re-use the 3719 gradient ratios for 2219.
-    if ecdr_ide_ds.platform == "n07":
+    if platform_is_smmr(ecdr_ide_ds.platform):
         return nt_3719_weather_mask
 
     nt_gr_2219 = nt.compute_ratio(
         ecdr_ide_ds["v22_day_si"].data[0, :, :],
         ecdr_ide_ds["v19_day_si"].data[0, :, :],
     )
-    nt_2219_weather_mask = nt_gr_2219 > nt_coefs["nt_gradient_thresholds"]["2219"]
+    # Round off for better match with CDRv4 results
+    nt_gr_2219 = np.round(nt_gr_2219, 4)
 
+    nt_2219_weather_mask = nt_gr_2219 > nt_coefs["nt_gradient_thresholds"]["2219"]
     weather_mask = nt_3719_weather_mask | nt_2219_weather_mask
 
+    is_zero_tb = (
+        (ecdr_ide_ds["v22_day_si"].data[0, :, :] == 0)
+        | (ecdr_ide_ds["v19_day_si"].data[0, :, :] == 0)
+        | (ecdr_ide_ds["v37_day_si"].data[0, :, :] == 0)
+    )
+    weather_mask[is_zero_tb] = 0
+
     return weather_mask
+
+
+def get_flagmask(
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+) -> None | npt.NDArray:
+    """
+    Return a set of flags (uint8s of value 251-255)
+    that correspond to non-ocean features of this grid/landmask
+    """
+
+    # NOTE: This could be better organized and name-conventioned?
+
+    # TODO: Put these flagmasks in the ancillary files
+    #       (or at least a better location!)
+
+    flagmask = None
+
+    if resolution == "25" and hemisphere == "north":
+        gridid = "psn25"
+        xdim = 304
+        ydim = 448
+    elif resolution == "25" and hemisphere == "south":
+        gridid = "pss25"
+        xdim = 316
+        ydim = 332
+    elif resolution == "12.5" and hemisphere == "north":
+        gridid = "psn12.5"
+        xdim = 608
+        ydim = 896
+    elif resolution == "12.5" and hemisphere == "south":
+        gridid = "pss12.5"
+        xdim = 632
+        ydim = 664
+
+    if ancillary_source == "CDRv4":
+        version_string = "v04r00"
+    elif ancillary_source == "CDRv5":
+        version_string = "v05r01"
+
+    flagmask_fn = CDR_ANCILLARY_DIR / f"flagmask_{gridid}_{version_string}.dat"
+    try:
+        flagmask_fn.is_file()
+    except AssertionError as e:
+        print(f"No such flagmask_fn: {flagmask_fn}")
+        raise e
+
+    try:
+        flagmask = np.fromfile(flagmask_fn, dtype=np.uint8).reshape(ydim, xdim)
+    except ValueError as e:
+        print(f"Could not reshape to: {xdim}, {ydim}")
+        raise e
+
+    # With ancillary_source constrained to CDRv4 and CDRv5, this is unreachable
+    # so these lines are commented out for mypy reasons
+    # if flagmask is None:
+    #     logger.warning(f"No flagmask found for {hemisphere=} {ancillary_source=}")
+
+    return flagmask
 
 
 def compute_initial_daily_ecdr_dataset(
@@ -297,7 +359,8 @@ def compute_initial_daily_ecdr_dataset(
     date: dt.date,
     hemisphere: Hemisphere,
     tb_data: EcdrTbData,
-    fill_the_pole_hole: bool = False,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -312,15 +375,50 @@ def compute_initial_daily_ecdr_dataset(
         date=date,
         tb_data=tb_data,
         hemisphere=hemisphere,
+        ancillary_source=ancillary_source,
     )
 
     # Spatially interpolate the brightness temperatures
     for tbname in EXPECTED_ECDR_TB_NAMES:
         tb_day_name = f"{tbname}_day"
+
         tb_si_varname = f"{tb_day_name}_si"
-        tb_si_data = spatial_interp_tbs(ecdr_ide_ds[tb_day_name].data[0, :, :])
+
+        if ancillary_source == "CDRv5":
+            # The CDRv5 spatint requires min of two adj grid cells
+            #   and allows corner grid cells with weighting of 0.707
+            tb_si_data = spatial_interp_tbs(
+                ecdr_ide_ds[tb_day_name].data[0, :, :],
+            )
+        elif ancillary_source == "CDRv4":
+            # The CDRv4 calculation does not use diagonal grid cells
+            #   and requires a min of 3 adjacent grid cells
+            tb_si_data = spatial_interp_tbs(
+                ecdr_ide_ds[tb_day_name].data[0, :, :],
+                corner_weight=0,
+                min_weightsum=3,
+                image_shift_mode="grid-wrap",  # CDRv4 wraps tb field for interp
+            )
+
         tb_si_longname = f"Spatially interpolated {ecdr_ide_ds[tb_day_name].long_name}"
         tb_units = "K"
+
+        if ancillary_source == "CDRv4":
+            # The CDRv4 calculation causes TB to be zero/missing where
+            # no sea ice can occur because of invalid region or land
+            logger.debug(f"Applying invalid ice mask to TB field: {tb_si_varname}")
+            platform = PLATFORM_CONFIG.get_platform_by_date(date)
+            invalid_ice_mask = get_invalid_ice_mask(
+                hemisphere=hemisphere,
+                date=date,
+                resolution=tb_data.resolution,
+                platform=platform,
+                ancillary_source=ancillary_source,
+            )
+
+            # Set the TB values to zero at (monthly?) invalid ice mask
+            tb_si_data[invalid_ice_mask] = 0
+
         ecdr_ide_ds[tb_si_varname] = (
             ("time", "y", "x"),
             np.expand_dims(tb_si_data, axis=0),
@@ -336,6 +434,29 @@ def compute_initial_daily_ecdr_dataset(
                 "zlib": True,
             },
         )
+
+    # Enforce missing TB value consistency across all channels
+    _, ydim, xdim = ecdr_ide_ds["v19_day_si"].data.shape
+    is_atleastone_zerotb = np.zeros((1, ydim, xdim), dtype="bool")
+    is_atleastone_nantb = np.zeros((1, ydim, xdim), dtype="bool")
+    tb_field_list = [
+        "h19_day_si",
+        "v19_day_si",
+        "v22_day_si",
+        "h37_day_si",
+        "v37_day_si",
+    ]
+    for key in tb_field_list:
+        if key in ecdr_ide_ds.variables.keys():
+            is_zero_tb = ecdr_ide_ds[key].data == 0
+            is_atleastone_zerotb[is_zero_tb] = True
+
+            is_NaN_tb = np.isnan(ecdr_ide_ds[key].data)
+            is_atleastone_nantb[is_NaN_tb] = True
+    for key in tb_field_list:
+        if key in ecdr_ide_ds.variables.keys():
+            ecdr_ide_ds[key].data[is_atleastone_zerotb] = 0
+            ecdr_ide_ds[key].data[is_atleastone_nantb] = np.nan
 
     # Set up the spatial interpolation bitmask field where the various
     # TB fields were interpolated
@@ -363,11 +484,56 @@ def compute_initial_daily_ecdr_dataset(
         non_ocean_mask = get_non_ocean_mask(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
+            ancillary_source=ancillary_source,
         )
         spatint_bitmask_arr[non_ocean_mask.data] = 0
 
         # Drop the un-spatially interpolated TB field to save space and compute
         ecdr_ide_ds = ecdr_ide_ds.drop_vars(tb_varname)
+
+    # Attempt to get exact duplicate of v4
+    # v4 uses np.round() to average the TB arrays as integers.
+    # this code uses floats (not integers) for the TB values.
+    # Because np.round() rounds to the nearest even value (not the nearest
+    #   value!), the results are not the same as adding 0.5 and then cropping
+    #     eg np.round(1834.5) -> 1834
+    #     eg np.round(1835.5) -> 1836
+    #  See: https://docs.scipy.org/doc//numpy-1.9.0/reference/generated/numpy.around.html#numpy.around
+    # In order to reproduce the v4 rounding values, need to first round to
+    # two decimal places, then round to 1
+    ecdr_ide_ds["v37_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["v37_day_si"].data, 2), 1
+    )
+    ecdr_ide_ds["h37_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["h37_day_si"].data, 2), 1
+    )
+    ecdr_ide_ds["v19_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["v19_day_si"].data, 2), 1
+    )
+    ecdr_ide_ds["h19_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["h19_day_si"].data, 2), 1
+    )
+    ecdr_ide_ds["v22_day_si"].data = np.round(
+        np.round(ecdr_ide_ds["v22_day_si"].data, 2), 1
+    )
+
+    # Set a missing data mask using 19V TB field
+    # Note: this will not include missing TBs in the day's invalid_ice field
+    ecdr_ide_ds["missing_tb_mask"] = (
+        ("time", "y", "x"),
+        np.isnan(ecdr_ide_ds["v19_day_si"].data),
+        {
+            "grid_mapping": "crs",
+            "standard_name": "missing_tb_binary_mask",
+            "long_name": "Map of Missing TBs",
+            "comment": "Mask indicating pixels with missing TBs",
+            "units": 1,
+        },
+        {
+            "zlib": True,
+        },
+    )
+    logger.debug("Initialized missing_tb_mask where TB was NaN")
 
     spat_int_flag_mask_values = np.array([1, 2, 4, 8, 16, 32], dtype=np.uint8)
     ecdr_ide_ds["spatial_interpolation_flag"] = (
@@ -395,26 +561,26 @@ def compute_initial_daily_ecdr_dataset(
     )
     logger.debug("Initialized spatial_interpolation_flag with TB fill locations")
 
-    platform = get_platform_by_date(date)
-    if platform == "am2":
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
+    if platform.id == "am2":
         bt_coefs_init = pmi_bt_params_amsr2.get_ausi_amsr2_bootstrap_params(
             date=date,
             satellite="amsr2",
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform == "ame":
+    elif platform.id == "ame":
         bt_coefs_init = pmi_bt_params_amsre.get_ausi_amsre_bootstrap_params(
             date=date,
             satellite="amsre",
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform in get_args(NSIDC_0001_SATS):
+    elif platform.id in get_args(NSIDC_0001_SATS):
         bt_coefs_init = pmi_bt_params_0001.get_nsidc0001_bootstrap_params(
             date=date,
-            satellite=platform,
+            satellite=platform.id,
             gridid=ecdr_ide_ds.grid_id,
         )
-    elif platform == "n07":
+    elif platform_is_smmr(platform.id):
         bt_coefs_init = get_smmr_params(hemisphere=hemisphere, date=date)
     else:
         raise RuntimeError(f"platform bootstrap params not implemented: {platform}")
@@ -430,11 +596,13 @@ def compute_initial_daily_ecdr_dataset(
         date=date,
         resolution=tb_data.resolution,
         platform=platform,
+        ancillary_source=ancillary_source,
     )
 
     non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=tb_data.resolution,
+        ancillary_source=ancillary_source,
     )
 
     ecdr_ide_ds["invalid_ice_mask"] = invalid_ice_mask.expand_dims(dim="time")
@@ -450,13 +618,14 @@ def compute_initial_daily_ecdr_dataset(
         pole_mask = nh_polehole_mask(
             date=date,
             resolution=tb_data.resolution,
-            sat=platform,
+            ancillary_source=ancillary_source,
+            platform=platform,
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
 
     nt_params = get_cdr_nt_params(
         hemisphere=hemisphere,
-        platform=platform,
+        platform=platform.id,
     )
 
     nt_coefs = NtCoefs(
@@ -490,19 +659,22 @@ def compute_initial_daily_ecdr_dataset(
         },
     )
 
+    # NOTE: Strictly speaking, perhaps this should happen before computing
+    #       the TB mask?  But that does a very broad check (10 < TB < 350K)
+    #       and so does not end up mattering
     # TODO: this mapping is in preparation for using separately-transformed
     #       TBs in the Bootstrap algorithm.  The better approach would be to
     #       adjust the parameters for each platform so that this tranformation
     #       would not be needed.  That's...a fair bit of work though.
+    # NOTE: Notice that the bootstrap algorithms below will take these
+    #       transformed *local* bt_??? vars, not he ecdr_ide_es arrays
     bt_v37 = ecdr_ide_ds["v37_day_si"].data[0, :, :]
     bt_h37 = ecdr_ide_ds["h37_day_si"].data[0, :, :]
     bt_v22 = ecdr_ide_ds["v22_day_si"].data[0, :, :]
     bt_v19 = ecdr_ide_ds["v19_day_si"].data[0, :, :]
 
     # Transform TBs for the bootstrap calculation
-    # TODO: DRY out this code some...These transformations also occur for the
-    # bootstrap SIC conc. We only want to transform Tbs for the bootstrap SIC
-    # calc and the weather filtering.
+    # TODO: Are there separate NT algorithm TB transformations?
     try:
         transformed = xfer_rss_tbs(
             tbs=dict(
@@ -511,19 +683,23 @@ def compute_initial_daily_ecdr_dataset(
                 v19=bt_v19,
                 v22=bt_v22,
             ),
-            platform=platform.lower(),
+            platform=platform.id.lower(),
         )
         bt_v37 = transformed["v37"]
         bt_h37 = transformed["h37"]
         bt_v19 = transformed["v19"]
         bt_v22 = transformed["v22"]
     except UnexpectedSatelliteError:
-        logger.warning(
-            f"No BT Tb transformation to F13 available for {platform=}. Using untransformed Tbs instead."
-        )
+        logger.info(f"Using un-transformed TBs for {platform=}.")
 
     # Compute the BT weather mask
-    bt_weather_mask = bt.get_weather_mask(
+
+    # Note: the variable returned is water_arr in cdralgos
+    # Note: in cdrv4, only part of the water_arr is labeled "BT weather"
+    #       but I think that's because there are two parts to the
+    #       BT weather filter
+    # bt_weather_mask = bt.get_weather_mask(
+    bt_water_mask = bt.get_water_mask(
         v37=bt_v37,
         h37=bt_h37,
         v22=bt_v22,
@@ -532,16 +708,26 @@ def compute_initial_daily_ecdr_dataset(
         tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
         ln1=bt_coefs_init["vh37_lnline"],
         date=date,
-        # TODO: in the (distant?) future, we will want these to come
+        # TODO: in the future, we will want these to come
         #       from a bt_coefs structure, not bt_coefs_init
         wintrc=bt_coefs_init["wintrc"],
         wslope=bt_coefs_init["wslope"],
         wxlimt=bt_coefs_init["wxlimt"],
+        is_smmr=platform_is_smmr(platform.id),
     )
 
-    ecdr_ide_ds["bt_weather_mask"] = (
+    # Note:
+    # Here, the "bt_weather_mask" is the almost "water_arr" variable in cdralgos
+    # However, it does not include the invalid_tb_mask (which here also
+    # includes the pole hole) nor does it include land, so:
+    # cdralgos_water_arr = bt_weather_mask | (ecdr_ide_ds["invalid_tb_mask"].data & ~ecdr_ide_ds["non_ocean_mask"].data)
+    # Note that this cdralgos_water_arr will differ because it will have
+    # zeros where there is no data because of the pole hole
+
+    ecdr_ide_ds["bt_weather_mask"] = (  # note <-- name is weather_mask
         ("time", "y", "x"),
-        np.expand_dims(bt_weather_mask.data, axis=0),
+        # np.expand_dims(bt_weather_mask.data, axis=0),
+        np.expand_dims(bt_water_mask.data, axis=0),  # note <-- var water_mask
         {
             "grid_mapping": "crs",
             "standard_name": "bt_weather_binary_mask",
@@ -571,68 +757,124 @@ def compute_initial_daily_ecdr_dataset(
     for coef in bt_coefs_to_update:
         bt_coefs.pop(coef, None)
 
-    bt_coefs["vh37_lnline"] = bt.get_linfit(
+    """
+    This is the fortran function:
+        call ret_linfit1(
+     >    nc, nr, land, gdata, v37, h37, ln, lnchk, add1, water_arr,
+     >    vh37)
+    """
+    bt_coefs["vh37_iceline"] = bt.get_linfit(
         land_mask=ecdr_ide_ds["non_ocean_mask"].data,
         tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
-        tbx=ecdr_ide_ds["v37_day_si"].data[0, :, :],
-        tby=ecdr_ide_ds["h37_day_si"].data[0, :, :],
+        tbx=bt_v37,  # Note: <-- not the ecdr_ide_ds key/value
+        tby=bt_h37,  # Note: <-- not the ecdr_ide_ds key/value
         lnline=bt_coefs_init["vh37_lnline"],
         add=bt_coefs["add1"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+        water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],  # note: water
     )
 
-    bt_coefs["bt_wtp_v37"] = bt.calculate_water_tiepoint(
-        wtp_init=bt_coefs_init["bt_wtp_v37"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-        tb=ecdr_ide_ds["v37_day_si"].data[0, :, :],
-    )
+    # TODO: Keeping commented-out weather_mask kwarg calls to highlight
+    #       the transition from weather_mask to water_mask in these function
+    #       calls
+    if ancillary_source == "CDRv4":
+        logger.error("SKIPPING calculation of water tiepoint to match CDRv4")
+        bt_coefs["bt_wtp_v37"] = bt_coefs_init["bt_wtp_v37"]
+    else:
+        bt_coefs["bt_wtp_v37"] = bt.calculate_water_tiepoint(
+            wtp_init=bt_coefs_init["bt_wtp_v37"],
+            # weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            tb=bt_v37,
+        )
 
-    bt_coefs["bt_wtp_h37"] = bt.calculate_water_tiepoint(
-        wtp_init=bt_coefs_init["bt_wtp_h37"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-        tb=ecdr_ide_ds["h37_day_si"].data[0, :, :],
-    )
+    if ancillary_source == "CDRv4":
+        logger.error("SKIPPING calculation of water tiepoint to match CDRv4")
+        bt_coefs["bt_wtp_h37"] = bt_coefs_init["bt_wtp_h37"]
+    else:
+        bt_coefs["bt_wtp_h37"] = bt.calculate_water_tiepoint(
+            wtp_init=bt_coefs_init["bt_wtp_h37"],
+            # weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            tb=bt_h37,
+        )
 
-    bt_coefs["bt_wtp_v19"] = bt.calculate_water_tiepoint(
-        wtp_init=bt_coefs_init["bt_wtp_v19"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-        tb=ecdr_ide_ds["v19_day_si"].data[0, :, :],
-    )
+    if ancillary_source == "CDRv4":
+        logger.error("SKIPPING calculation of water tiepoint to match CDRv4")
+        bt_coefs["bt_wtp_v19"] = bt_coefs_init["bt_wtp_v19"]
+    else:
+        bt_coefs["bt_wtp_v19"] = bt.calculate_water_tiepoint(
+            wtp_init=bt_coefs_init["bt_wtp_v19"],
+            # weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            tb=bt_v19,
+        )
 
     bt_coefs["ad_line_offset"] = bt.get_adj_ad_line_offset(
         wtp_x=bt_coefs["bt_wtp_v37"],
         wtp_y=bt_coefs["bt_wtp_h37"],
-        line_37v37h=bt_coefs["vh37_lnline"],
+        line_37v37h=bt_coefs["vh37_iceline"],
     )
 
-    bt_coefs["v1937_lnline"] = bt.get_linfit(
-        land_mask=ecdr_ide_ds["non_ocean_mask"].data,
-        tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
-        tbx=ecdr_ide_ds["v37_day_si"].data[0, :, :],
-        tby=ecdr_ide_ds["v19_day_si"].data[0, :, :],
-        lnline=bt_coefs_init["v1937_lnline"],
-        add=bt_coefs["add2"],
-        weather_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-        tba=ecdr_ide_ds["h37_day_si"].data[0, :, :],
-        iceline=bt_coefs["vh37_lnline"],
-        ad_line_offset=bt_coefs["ad_line_offset"],
-    )
+    # TODO: note that we are using bt_<vars> not <_day_si> vars...
 
-    # finally, compute the CDR.
-    bt_conc = cdr_bootstrap(
-        tb_v37=ecdr_ide_ds["v37_day_si"].data[0, :, :],
-        tb_h37=ecdr_ide_ds["h37_day_si"].data[0, :, :],
-        tb_v19=ecdr_ide_ds["v19_day_si"].data[0, :, :],
+    # NOTE: cdralgos uses ret_linfit1() for NH sets 1,2 and SH set2
+    #            and uses ret_linfit2() for NH set 2
+    pre_AMSR_platforms = ("n07", "F08", "F11", "F13", "F17")
+    if hemisphere == "south" and platform in pre_AMSR_platforms:
+        bt_coefs["v1937_iceline"] = bt.get_linfit(
+            land_mask=ecdr_ide_ds["non_ocean_mask"].data,
+            tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
+            tbx=bt_v37,
+            tby=bt_v19,
+            lnline=bt_coefs_init["v1937_lnline"],
+            add=bt_coefs["add2"],
+            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            # these default to None; so using "ret_linfit1(), not ret_linfit2()"
+            # tba=bt_h37,
+            # iceline=bt_coefs["vh37_iceline"],
+            # ad_line_offset=bt_coefs["ad_line_offset"],
+        )
+    else:
+        bt_coefs["v1937_iceline"] = bt.get_linfit(
+            land_mask=ecdr_ide_ds["non_ocean_mask"].data,
+            tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
+            tbx=bt_v37,
+            tby=bt_v19,
+            lnline=bt_coefs_init["v1937_lnline"],
+            add=bt_coefs["add2"],
+            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            tba=bt_h37,
+            iceline=bt_coefs["vh37_iceline"],
+            ad_line_offset=bt_coefs["ad_line_offset"],
+        )
+
+    bt_conc = cdr_bootstrap_raw(
+        tb_v37=bt_v37,
+        tb_h37=bt_h37,
+        tb_v19=bt_v19,
         bt_coefs=bt_coefs,
-        platform=platform,
+        platform=platform.id,
     )
 
+    # Set any bootstrap concentrations below 10% to 0.
+    # NOTE: This is probably necessary for land spillover algorithms
+    #       to properly work with "exactly 0% siconc" calculations
+    # TODO: This 10% cutoff should be a configuration value
+    bt_conc[bt_conc < 10] = 0
+
+    # Remove bt_conc flags (e.g., missing) and set to NaN
+    bt_conc[bt_conc >= 250] = np.nan
+
+    # Now, compute CDR version of NT estimate
     nt_conc = cdr_nasateam(
         tb_h19=ecdr_ide_ds["h19_day_si"].data[0, :, :],
         tb_v37=ecdr_ide_ds["v37_day_si"].data[0, :, :],
         tb_v19=ecdr_ide_ds["v19_day_si"].data[0, :, :],
         nt_tiepoints=nt_coefs["nt_tiepoints"],
     )
+
+    # Need to set invalid ice to zero (note: this includes land)
+    nt_conc[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] = 0
 
     cdr_conc_raw = calculate_cdr_conc(
         bt_conc=bt_conc,
@@ -671,63 +913,85 @@ def compute_initial_daily_ecdr_dataset(
     cdr_conc = cdr_conc_raw.copy()
     cdr_conc[set_to_zero_sic] = 0
 
-    # Will use spillover_applied with values:
-    #  1: NT2
-    #  2: BT (not yet added)
-    #  4: NT (not yet added)
-    spillover_applied = np.zeros((ydim, xdim), dtype=np.uint8)
+    # TODO: Some minimum thresholding already occurs for bt_conc
+    #       for bt_conc (and nt_conc?).  I don't think the
+    #       land_spillover algorithm should have to rely on this.
     cdr_conc_pre_spillover = cdr_conc.copy()
-    logger.debug("Applying NT2 land spillover technique...")
-    l90c = get_land90_conc_field(
+
+    bt_asCDRv4_conc = bt_conc.copy()
+    bt_asCDRv4_conc[ecdr_ide_ds["bt_weather_mask"].data[0, :, :]] = 0
+    bt_asCDRv4_conc[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] = 0
+    bt_asCDRv4_conc[ecdr_ide_ds["non_ocean_mask"].data] = 120.0
+    bt_asCDRv4_conc[np.isnan(bt_asCDRv4_conc)] = 110.0
+    # Here, difference from v4 is ~3E-05 (ie 4-byte floating point roundoff)
+
+    nt_asCDRv4_conc = nt_conc.copy()
+    # Convert to 2-byte int
+    is_nt_nan = np.isnan(nt_asCDRv4_conc)
+    nt_asCDRv4_conc = (10 * nt_asCDRv4_conc).astype(np.int16)
+
+    # In CDRv4, NT weather is only where weather condition removes NT conc
+    is_ntwx_CDRv4 = (nt_conc > 0) & ecdr_ide_ds["nt_weather_mask"].data[0, :, :]
+    nt_asCDRv4_conc[is_ntwx_CDRv4] = 0
+
+    nt_asCDRv4_conc[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] = -10
+    nt_asCDRv4_conc[is_nt_nan] = -10
+
+    # Note: the NT array here is np.int16
+    nt_asCDRv4_conc = nt_asCDRv4_conc.copy()
+    is_negative_10 = nt_asCDRv4_conc == -10
+
+    nt_asCDRv4_conc = np.divide(nt_asCDRv4_conc, 10.0).astype(np.float32)
+    nt_asCDRv4_conc[is_negative_10] = -10
+
+    cdr_conc = land_spillover(
+        cdr_conc=cdr_conc,
         hemisphere=hemisphere,
-        resolution=tb_data.resolution,
-    )
-    adj123 = get_adj123_field(
-        hemisphere=hemisphere,
-        resolution=tb_data.resolution,
-    )
-    cdr_conc = apply_nt2_land_spillover(
-        conc=cdr_conc,
-        adj123=adj123.data,
-        l90c=l90c.data,
-        anchoring_siconc=50.0,
-        affect_dist3=True,
+        tb_data=tb_data,
+        algorithm=land_spillover_alg,
+        land_mask=non_ocean_mask.data,
+        ancillary_source=ancillary_source,
+        bt_conc=bt_asCDRv4_conc,
+        nt_conc=nt_asCDRv4_conc,
+        bt_wx=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+        fix_goddard_bt_error=True,
     )
 
-    spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = 1
+    # In case we used the BT-NT land spillover, set cdr_conc to zero
+    # where weather filtered...except that it's only the nt wx that gets
+    # applied...and only where NT wx removed NT conc
+    if land_spillover_alg == "BT_NT":
+        set_to_zero_sic = (
+            ecdr_ide_ds["nt_weather_mask"].data[0, :, :]
+            | ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]
+        )
+        cdr_conc[is_ntwx_CDRv4] = 0
 
-    # Fill the NH pole hole
-    # TODO: Should check for NH and have grid-dependent filling scheme
-    # NOTE: Usually, the pole hole will be filled in pass 3 ("complete_daily"),
-    #       along with melt onset calc.
-    if fill_the_pole_hole and hemisphere == NORTH:
-        cdr_conc_pre_polefill = cdr_conc.copy()
-        platform = get_platform_by_date(date)
-        near_pole_hole_mask = nh_polehole_mask(
-            date=date,
-            resolution=tb_data.resolution,
-            sat=platform,
-        )
-        cdr_conc = fill_pole_hole(
-            conc=cdr_conc,
-            near_pole_hole_mask=near_pole_hole_mask.data,
-        )
-        logger.debug("Filled pole hole")
-        is_pole_filled = (cdr_conc != cdr_conc_pre_polefill) & (~np.isnan(cdr_conc))
-        if "spatial_interpolation_bitmask" in ecdr_ide_ds.variables.keys():
-            ecdr_ide_ds["spatial_interpolation_flag"] = ecdr_ide_ds[
-                "spatial_interpolation_flag"
-            ].where(
-                ~is_pole_filled,
-                other=TB_SPATINT_BITMASK_MAP["pole_filled"],
-            )
-            logger.debug("Updated spatial_interpolation with pole hole value")
+    spillover_applied = np.full((ydim, xdim), False, dtype=bool)
+    spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = True
 
     # Mask out non-ocean pixels and clamp conc to between 10-100%.
     # TODO: These values should be in a configuration file/structure
     cdr_conc[non_ocean_mask.data] = np.nan
     cdr_conc[cdr_conc < 10] = 0
     cdr_conc[cdr_conc > 100] = 100
+
+    # Set missing TBs to NaN
+    cdr_conc[ecdr_ide_ds["missing_tb_mask"].data[0, :, :]] = np.nan
+    bt_conc[ecdr_ide_ds["missing_tb_mask"].data[0, :, :]] = np.nan
+    nt_conc[ecdr_ide_ds["missing_tb_mask"].data[0, :, :]] = np.nan
+
+    # TODO: Remove these CDRv4 flags?
+    # Apply the CDRv4 flags to the conc field for more direct comparison
+    flagmask = get_flagmask(
+        hemisphere=hemisphere,
+        resolution=tb_data.resolution,
+        ancillary_source=ancillary_source,
+    )
+
+    if flagmask is not None:
+        cdr_conc[flagmask > 250] = flagmask[flagmask > 250]
+        cdr_conc[np.isnan(cdr_conc)] = 255
 
     # Add the BT raw field to the dataset
     bt_conc = bt_conc / 100.0  # re-set range from 0 to 1
@@ -747,7 +1011,7 @@ def compute_initial_daily_ecdr_dataset(
         },
     )
 
-    # Add the BT coefficients to the raw_bt_seaice_conc DataArray
+    # Add the BT coefficients to the raw_bt_seaice_conc DataArray as attrs
     for attr in sorted(bt_coefs.keys()):
         if type(bt_coefs[attr]) in (float, int):
             ecdr_ide_ds.variables["raw_bt_seaice_conc"].attrs[attr] = bt_coefs[attr]
@@ -811,7 +1075,7 @@ def compute_initial_daily_ecdr_dataset(
     # Add the QA bitmask field to the initial daily xarray dataset
     #   1: BT weather
     #   2: NT weather
-    #   4: NT2 spillover (or in general...any/all spillover corrections)
+    #   4: Land spillover applied (e.g,. NT2 land spillover)
     #   8: Missing TBs (exclusive of valid_ice mask)
     #  16: Invalid ice mask
     #  32: Spatial interpolation applied
@@ -822,7 +1086,7 @@ def compute_initial_daily_ecdr_dataset(
     qa_bitmask = np.zeros((ydim, xdim), dtype=np.uint8)
     qa_bitmask[ecdr_ide_ds["bt_weather_mask"].data[0, :, :]] += 1
     qa_bitmask[ecdr_ide_ds["nt_weather_mask"].data[0, :, :]] += 2
-    qa_bitmask[spillover_applied == 1] += 4
+    qa_bitmask[spillover_applied] += 4
     qa_bitmask[invalid_tb_mask & ~ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 8
     qa_bitmask[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 16
     qa_bitmask[ecdr_ide_ds["spatial_interpolation_flag"].data[0, :, :] != 0] += 32
@@ -876,16 +1140,32 @@ def initial_daily_ecdr_dataset(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Create xr dataset containing the first pass of daily enhanced CDR."""
-    tb_data = get_ecdr_tb_data(
-        date=date,
-        hemisphere=hemisphere,
-    )
+    # TODO: if/else should be temporary. It's just a way to clearly divide how a
+    # requestion for 12.5km or 25km ECDR is handled.
+    if resolution == "12.5":
+        # In the 12.5km case, we try to get 12.5km Tbs, but sometimes we get
+        # 25km (older, non-AMSR platforms)
+        tb_data = get_ecdr_tb_data(
+            date=date,
+            hemisphere=hemisphere,
+        )
+    else:
+        # In the 25km case, we always expect 25km Tbs
+        tb_data = get_25km_ecdr_tb_data(
+            date=date,
+            hemisphere=hemisphere,
+        )
+
     initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         tb_data=tb_data,
+        land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
 
     # If the computed ide_ds is not on the desired grid (ie resolution),
@@ -918,6 +1198,7 @@ def write_ide_netcdf(
         "raw_bt_seaice_conc",
     ),
     tb_fields: Iterable[str] = ("h19_day_si", "h37_day_si"),
+    # tb_fields: Iterable[str] = ("h19_day_si", "h37_day_si", "v19_day_si", "v22_day_si", "v37_day_si"),
 ) -> Path:
     """Write the initial_ecdr_ds to a netCDF file and return the path."""
     logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
@@ -970,7 +1251,7 @@ def get_idecdr_dir(*, intermediate_output_dir: Path) -> Path:
 def get_idecdr_filepath(
     *,
     date: dt.date,
-    platform,
+    platform_id: SUPPORTED_PLATFORM_ID,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
@@ -980,7 +1261,7 @@ def get_idecdr_filepath(
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        sat=platform,
+        platform_id=platform_id,
         resolution=resolution,
     )
     idecdr_fn = "idecdr_" + standard_fn
@@ -999,12 +1280,14 @@ def make_idecdr_netcdf(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
     excluded_fields: Iterable[str],
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
     overwrite_ide: bool = False,
 ) -> None:
-    platform = get_platform_by_date(date)
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     output_path = get_idecdr_filepath(
         date=date,
-        platform=platform,
+        platform_id=platform.id,
         hemisphere=hemisphere,
         intermediate_output_dir=intermediate_output_dir,
         resolution=resolution,
@@ -1016,6 +1299,8 @@ def make_idecdr_netcdf(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
+            land_spillover_alg=land_spillover_alg,
+            ancillary_source=ancillary_source,
         )
 
         written_ide_ncfile = write_ide_netcdf(
@@ -1036,6 +1321,8 @@ def create_idecdr_for_date(
     intermediate_output_dir: Path,
     overwrite_ide: bool = False,
     verbose_intermed_ncfile: bool = False,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
     excluded_fields = []
     if not verbose_intermed_ncfile:
@@ -1046,10 +1333,10 @@ def create_idecdr_for_date(
             "h37_day",
             "v37_day",
             # "h19_day_si",  # include this field for melt onset calculation
-            "v19_day_si",
-            "v22_day_si",
+            "v19_day_si",  # comment out this line to get all TB fields
+            "v22_day_si",  # comment out this line to get all TB fields
             # "h37_day_si",  # include this field for melt onset calculation
-            "v37_day_si",
+            "v37_day_si",  # comment out this line to get all TB fields
             "NT_icecon_min",
             "non_ocean_mask",
             "pole_mask",
@@ -1065,6 +1352,8 @@ def create_idecdr_for_date(
             intermediate_output_dir=intermediate_output_dir,
             excluded_fields=excluded_fields,
             overwrite_ide=overwrite_ide,
+            land_spillover_alg=land_spillover_alg,
+            ancillary_source=ancillary_source,
         )
 
     except Exception as e:
@@ -1093,6 +1382,11 @@ def create_idecdr_for_date(
     "--hemisphere",
     required=True,
     type=click.Choice(get_args(Hemisphere)),
+)
+@click.option(
+    "--land-spillover-alg",
+    required=True,
+    type=click.Choice(get_args(LandSpilloverMethods)),
 )
 @click.option(
     "--base-output-dir",
@@ -1130,13 +1424,20 @@ def create_idecdr_for_date(
     default=False,
     type=bool,
 )
+@click.option(
+    "--ancillary-source",
+    required=True,
+    type=click.Choice(get_args(ANCILLARY_SOURCES)),
+)
 def cli(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    land_spillover_alg: LAND_SPILL_ALGS,
     verbose_intermed_ncfile: bool,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
     """Run the initial daily ECDR algorithm with AMSR2 data.
 
@@ -1155,4 +1456,6 @@ def cli(
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
         verbose_intermed_ncfile=verbose_intermed_ncfile,
+        land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )

@@ -20,7 +20,11 @@ dependencies:
   - pandas ~=1.4.4
   - opencv ~=4.8.0
   - pm_tb_data ~=0.4.0
-  - pm_icecon ~=0.3.1
+  - pm_icecon ~=0.4.0
+  - leafmap
+  - rioxarray
+  - hvplot
+  - jupyter_bokeh
 
   #############################
   # Non-imported dependencies #
@@ -33,6 +37,8 @@ dependencies:
   - mypy ==1.7.0
   - pyfakefs ~=5.2.4
   - pytest-order ~=1.0.1
+  # required by leafmap
+  - localtileserver
 
   # other utilities
   - bump-my-version ~=0.10.0
