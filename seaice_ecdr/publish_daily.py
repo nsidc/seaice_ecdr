@@ -87,7 +87,7 @@ def publish_daily_nc(
     # TODO: consider extracting to config or a kwarg of this function for more
     # flexible use with other platforms in the future.
     PROTOTYPE_PLATFORM_ID: SUPPORTED_PLATFORM_ID = "am2"
-    PROTOTYPE_PLATFORM_DATA_GROUP_NAME = "amsr2_prototype"
+    PROTOTYPE_PLATFORM_DATA_GROUP_NAME = "prototype_amsr2"
 
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir,
