@@ -1343,6 +1343,7 @@ def create_idecdr_for_date(
             "invalid_tb_mask",
             "bt_weather_mask",
             "nt_weather_mask",
+            "missing_tb_mask",
         ]
     try:
         make_idecdr_netcdf(

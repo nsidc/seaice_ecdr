@@ -133,6 +133,7 @@ def read_or_create_and_read_nrt_idecdr_ds(
             "pole_mask",
             "bt_weather_mask",
             "nt_weather_mask",
+            "missing_tb_mask",
         ]
         write_ide_netcdf(
             ide_ds=nrt_initial_ecdr_ds,
