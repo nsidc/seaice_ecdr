@@ -1,14 +1,20 @@
+import copy
 import datetime as dt
 from pathlib import Path
+from typing import Iterable, get_args
 
+import click
 from datatree import DataTree
 from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.intermediate_daily import read_cdecdr_ds
 from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import (
+    date_range,
     get_complete_output_dir,
     get_intermediate_output_dir,
     nrt_daily_filename,
@@ -246,14 +252,106 @@ def publish_daily_nc(
         is_nrt=False,
     )
     complete_daily_ds.to_netcdf(complete_daily_filepath)
+    logger.info(f"Staged NC file for publication: {complete_daily_filepath}")
 
     return complete_daily_filepath
 
 
-if __name__ == "__main__":
-    publish_daily_nc(
-        base_output_dir=Path("/share/apps/G02202_V5/25km/combined/"),
-        hemisphere="north",
-        resolution="25",
-        date=dt.date(2022, 3, 2),
+def publish_daily_nc_for_dates(
+    *,
+    base_output_dir: Path,
+    dates: Iterable[dt.date],
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> list[Path]:
+    output_filepaths = []
+    for date in dates:
+        output_filepath = publish_daily_nc(
+            base_output_dir=base_output_dir,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            date=date,
+        )
+        output_filepaths.append(output_filepath)
+
+    return output_filepaths
+
+
+@click.command(name="stage-for-publication")
+@click.option(
+    "-d",
+    "--date",
+    required=True,
+    type=click.DateTime(
+        formats=(
+            "%Y-%m-%d",
+            "%Y%m%d",
+            "%Y.%m.%d",
+        )
+    ),
+    callback=datetime_to_date,
+)
+@click.option(
+    "--end-date",
+    required=False,
+    type=click.DateTime(
+        formats=(
+            "%Y-%m-%d",
+            "%Y%m%d",
+            "%Y.%m.%d",
+        )
+    ),
+    # Like `datetime_to_date` but allows `None`.
+    callback=lambda _ctx, _param, value: value if value is None else value.date(),
+    default=None,
+    help="If given, run temporal composite for `--date` through this end date.",
+)
+@click.option(
+    "-h",
+    "--hemisphere",
+    required=True,
+    type=click.Choice(get_args(Hemisphere)),
+)
+@click.option(
+    "--base-output-dir",
+    required=True,
+    type=click.Path(
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        writable=True,
+        resolve_path=True,
+        path_type=Path,
+    ),
+    default=DEFAULT_BASE_OUTPUT_DIR,
+    help=(
+        "Base output directory for standard ECDR outputs."
+        " Subdirectories are created for outputs of"
+        " different stages of processing."
+    ),
+    show_default=True,
+)
+@click.option(
+    "-r",
+    "--resolution",
+    required=True,
+    type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
+)
+def cli(
+    *,
+    date: dt.date,
+    end_date: dt.date | None,
+    hemisphere: Hemisphere,
+    base_output_dir: Path,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> None:
+    """Stage daily NC files for publication."""
+    if end_date is None:
+        end_date = copy.copy(date)
+
+    publish_daily_nc_for_dates(
+        dates=date_range(start_date=date, end_date=end_date),
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        resolution=resolution,
     )

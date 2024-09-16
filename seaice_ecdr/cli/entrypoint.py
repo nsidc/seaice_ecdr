@@ -14,6 +14,7 @@ from seaice_ecdr.monthly import cli as monthly_cli
 from seaice_ecdr.monthly_aggregate import cli as monthly_aggregate_cli
 from seaice_ecdr.multiprocess_daily import cli as multiprocess_daily_cli
 from seaice_ecdr.nrt import nrt_cli
+from seaice_ecdr.publish_daily import cli as publish_daily_cli
 from seaice_ecdr.temporal_composite_daily import cli as tiecdr_cli
 from seaice_ecdr.validation import cli as validation_cli
 
@@ -33,6 +34,7 @@ cli.add_command(daily_aggregate_cli)
 cli.add_command(monthly_aggregate_cli)
 cli.add_command(validation_cli)
 cli.add_command(multiprocess_daily_cli)
+cli.add_command(publish_daily_cli)
 
 if __name__ == "__main__":
     cli()
