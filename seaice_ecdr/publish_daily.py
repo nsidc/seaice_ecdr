@@ -109,13 +109,17 @@ def _add_coordinates_attr(complete_daily_ds):
                 var.attrs["coordinates"] = "time y x"
 
 
+# TODO: consider a better name. `publish` implies this function might actually
+# publish it to a publicly accessible archive. That's something ops will do
+# separately. This just generates the publication-ready nc file to it's expected
+# publication staging location.
 def publish_daily_nc(
     *,
     base_output_dir: Path,
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-) -> None:
+) -> Path:
     """Prepares a daily nc file for publication.
 
     If data for the provided prototype platform is available for the given date,
@@ -242,6 +246,8 @@ def publish_daily_nc(
         is_nrt=False,
     )
     complete_daily_ds.to_netcdf(complete_daily_filepath)
+
+    return complete_daily_filepath
 
 
 if __name__ == "__main__":
