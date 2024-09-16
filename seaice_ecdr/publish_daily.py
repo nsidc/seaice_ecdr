@@ -70,6 +70,20 @@ def get_complete_daily_filepath(
     return ecdr_filepath
 
 
+def _add_coordinates_attr(complete_daily_ds):
+    # Add `coordinates` attr to all variables
+    # TODO: this should also be set at variable creation time, not here as a
+    # final post-processsing step.
+    for group_name in complete_daily_ds.groups:
+        group = complete_daily_ds[group_name]
+        for var_name in group.variables:
+            if var_name in ("crs", "time", "y", "x"):
+                continue
+            var = group[var_name]
+            if var.dims == ("time", "y", "x"):
+                var.attrs["coordinates"] = "time y x"
+
+
 def publish_daily_nc(
     *,
     base_output_dir: Path,
@@ -203,17 +217,7 @@ def publish_daily_nc(
     complete_daily_ds.y.attrs["coverage_content_type"] = "coordinate"
     complete_daily_ds.time.attrs["coverage_content_type"] = "coordinate"
 
-    # Add `coordinates` attr to all variables
-    # TODO: this should also be set at variable creation time, not here as a
-    # final post-processsing step.
-    for group_name in complete_daily_ds.groups:
-        group = complete_daily_ds[group_name]
-        for var_name in group.variables:
-            if var_name in ("crs", "time", "y", "x"):
-                continue
-            var = group[var_name]
-            if var.dims == ("time", "y", "x"):
-                var.attrs["coordinates"] = "time y x"
+    _add_coordinates_attr(complete_daily_ds)
 
     # write out finalized nc file.
     complete_output_dir = get_complete_output_dir(
