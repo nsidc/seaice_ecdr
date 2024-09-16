@@ -410,11 +410,11 @@ def _add_melt_onset_for_nh(
     # TODO: the flag value being "or"ed to the bitmask should be looked
     #       up as the temporally-interpolation-has-occured value
     #       rather than hardcoded as '128'.
-    cde_ds_with_melt_onset["cdr_qa_seaice_conc"] = cde_ds_with_melt_onset[
-        "cdr_qa_seaice_conc"
+    cde_ds_with_melt_onset["cdr_seaice_conc_qa"] = cde_ds_with_melt_onset[
+        "cdr_seaice_conc_qa"
     ].where(
         ~is_melt_has_occurred,
-        other=np.bitwise_or(cde_ds_with_melt_onset["cdr_qa_seaice_conc"], 128),
+        other=np.bitwise_or(cde_ds_with_melt_onset["cdr_seaice_conc_qa"], 128),
     )
 
     return cde_ds_with_melt_onset

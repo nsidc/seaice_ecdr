@@ -602,9 +602,9 @@ def temporal_interpolation(
     is_temporally_interpolated = (ti_flags > 0) & (ti_flags <= 55)
     # TODO: this bit mask of 64 added to (equals bitwise "or")
     #       should be looked up from a map of flag mask values
-    tie_ds["cdr_qa_seaice_conc"] = tie_ds["cdr_qa_seaice_conc"].where(
+    tie_ds["cdr_seaice_conc_qa"] = tie_ds["cdr_seaice_conc_qa"].where(
         ~is_temporally_interpolated,
-        other=np.bitwise_or(tie_ds["cdr_qa_seaice_conc"].data, 64),
+        other=np.bitwise_or(tie_ds["cdr_seaice_conc_qa"].data, 64),
     )
 
     # Add the temporal interp flags to the dataset
@@ -787,7 +787,7 @@ def temporal_interpolation(
 
     stdev_field_filtered = filter_field_via_bitmask(
         field_da=tie_ds["cdr_stdev_seaice_conc_raw"],
-        flag_da=tie_ds["cdr_qa_seaice_conc"],
+        flag_da=tie_ds["cdr_seaice_conc_qa"],
         filter_ids=filter_flags_to_apply,
     )
 

@@ -233,12 +233,12 @@ def get_pixel_counts(
         conc_var_name = conc_var_name + "_monthly"
     seaice_conc_var = ds[conc_var_name]
 
-    qa_var_name = "cdr_qa_seaice_conc"
+    qa_var_name = "cdr_seaice_conc_qa"
     qa_var = ds[qa_var_name]
 
     # Handle the log file first. It contains information on the # of
     # pixels of each type in the surface_type_mask and the ocean mask
-    # (via cdr_qa_seaice_conc)
+    # (via cdr_seaice_conc_qa)
     # total ice land coast lake pole oceanmask ice-free missing bad melt
     total_num_pixels = len(ds.x) * len(ds.y)
     # Areas where there is a concentration detected.

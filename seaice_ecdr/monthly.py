@@ -7,7 +7,7 @@ Variables:
 * `cdr_seaice_conc_monthly`: Create combined monthly sea ice concentration
 * `cdr_stdev_seaice_conc_monthly`: Calculate standard deviation of sea ice
   concentration
-* `cdr_qa_seaice_conc_monthly`: QA Fields (Weather filters, land
+* `cdr_seaice_conc_qa_monthly`: QA Fields (Weather filters, land
   spillover, valid ice mask, spatial and temporal interpolation, melt onset)
 * `cdr_melt_onset_day_monthly`: Melt onset day (Value from the last
   day of the month)
@@ -183,7 +183,7 @@ def get_daily_ds_for_month(
 
 # TODO: utilize these in the daily complete processing. Or use constant from
 # that module!
-CDR_QA_SEAICE_CONC_DAILY_BITMASKS = OrderedDict(
+CDR_SEAICE_CONC_QA_DAILY_BITMASKS = OrderedDict(
     bt_weather_filter_applied=1,
     nt_weather_filter_applied=2,
     land_spillover_applied=4,
@@ -196,7 +196,7 @@ CDR_QA_SEAICE_CONC_DAILY_BITMASKS = OrderedDict(
 )
 
 # TODO: rename. This is actually a bit mask (except the fill_value)
-CDR_QA_SEAICE_CONC_MONTHLY_BITMASKS = OrderedDict(
+CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS = OrderedDict(
     {
         "average_concentration_exceeds_0.15": 1,
         "average_concentration_exceeds_0.30": 2,
@@ -220,32 +220,32 @@ def _qa_field_has_flag(*, qa_field: xr.DataArray, flag_value: int) -> xr.DataArr
     return qa_field_contains_flag
 
 
-def calc_cdr_qa_seaice_conc_monthly(
+def calc_cdr_seaice_conc_qa_monthly(
     *,
     daily_ds_for_month: xr.Dataset,
     cdr_seaice_conc_monthly: xr.DataArray,
 ) -> xr.DataArray:
-    """Create `cdr_qa_seaice_conc_monthly`."""
+    """Create `cdr_seaice_conc_qa_monthly`."""
     # initialize the variable
-    cdr_qa_seaice_conc_monthly = xr.full_like(
+    cdr_seaice_conc_qa_monthly = xr.full_like(
         cdr_seaice_conc_monthly,
         fill_value=0,
         dtype=np.uint8,
     )
-    cdr_qa_seaice_conc_monthly.name = "cdr_qa_seaice_conc_monthly"
+    cdr_seaice_conc_qa_monthly.name = "cdr_seaice_conc_qa_monthly"
 
     average_exceeds_15 = cdr_seaice_conc_monthly > 0.15
-    cdr_qa_seaice_conc_monthly = cdr_qa_seaice_conc_monthly.where(
+    cdr_seaice_conc_qa_monthly = cdr_seaice_conc_qa_monthly.where(
         ~average_exceeds_15,
-        cdr_qa_seaice_conc_monthly
-        + CDR_QA_SEAICE_CONC_MONTHLY_BITMASKS["average_concentration_exceeds_0.15"],
+        cdr_seaice_conc_qa_monthly
+        + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS["average_concentration_exceeds_0.15"],
     )
 
     average_exceeds_30 = cdr_seaice_conc_monthly > 0.30
-    cdr_qa_seaice_conc_monthly = cdr_qa_seaice_conc_monthly.where(
+    cdr_seaice_conc_qa_monthly = cdr_seaice_conc_qa_monthly.where(
         ~average_exceeds_30,
-        cdr_qa_seaice_conc_monthly
-        + CDR_QA_SEAICE_CONC_MONTHLY_BITMASKS["average_concentration_exceeds_0.30"],
+        cdr_seaice_conc_qa_monthly
+        + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS["average_concentration_exceeds_0.30"],
     )
 
     days_in_ds = len(daily_ds_for_month.time)
@@ -254,10 +254,10 @@ def calc_cdr_qa_seaice_conc_monthly(
     at_least_half_have_sic_gt_15 = (daily_ds_for_month.cdr_seaice_conc > 0.15).sum(
         dim="time"
     ) >= majority_of_days
-    cdr_qa_seaice_conc_monthly = cdr_qa_seaice_conc_monthly.where(
+    cdr_seaice_conc_qa_monthly = cdr_seaice_conc_qa_monthly.where(
         ~at_least_half_have_sic_gt_15,
-        cdr_qa_seaice_conc_monthly
-        + CDR_QA_SEAICE_CONC_MONTHLY_BITMASKS[
+        cdr_seaice_conc_qa_monthly
+        + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS[
             "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
         ],
     )
@@ -265,76 +265,76 @@ def calc_cdr_qa_seaice_conc_monthly(
     at_least_half_have_sic_gt_30 = (daily_ds_for_month.cdr_seaice_conc > 0.30).sum(
         dim="time"
     ) >= majority_of_days
-    cdr_qa_seaice_conc_monthly = cdr_qa_seaice_conc_monthly.where(
+    cdr_seaice_conc_qa_monthly = cdr_seaice_conc_qa_monthly.where(
         ~at_least_half_have_sic_gt_30,
-        cdr_qa_seaice_conc_monthly
-        + CDR_QA_SEAICE_CONC_MONTHLY_BITMASKS[
+        cdr_seaice_conc_qa_monthly
+        + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS[
             "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30"
         ],
     )
 
     # Use "invalid_ice_mask_applied", which is actually the invalid ice mask.
     invalid_ice_mask_applied = _qa_field_has_flag(
-        qa_field=daily_ds_for_month.cdr_qa_seaice_conc,
-        flag_value=CDR_QA_SEAICE_CONC_DAILY_BITMASKS["invalid_ice_mask_applied"],
+        qa_field=daily_ds_for_month.cdr_seaice_conc_qa,
+        flag_value=CDR_SEAICE_CONC_QA_DAILY_BITMASKS["invalid_ice_mask_applied"],
     ).any(dim="time")
-    cdr_qa_seaice_conc_monthly = cdr_qa_seaice_conc_monthly.where(
+    cdr_seaice_conc_qa_monthly = cdr_seaice_conc_qa_monthly.where(
         ~invalid_ice_mask_applied,
-        cdr_qa_seaice_conc_monthly
-        + CDR_QA_SEAICE_CONC_MONTHLY_BITMASKS["invalid_ice_mask_applied"],
+        cdr_seaice_conc_qa_monthly
+        + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS["invalid_ice_mask_applied"],
     )
 
     at_least_one_day_during_month_has_spatial_interpolation = _qa_field_has_flag(
-        qa_field=daily_ds_for_month.cdr_qa_seaice_conc,
-        flag_value=CDR_QA_SEAICE_CONC_DAILY_BITMASKS["spatial_interpolation_applied"],
+        qa_field=daily_ds_for_month.cdr_seaice_conc_qa,
+        flag_value=CDR_SEAICE_CONC_QA_DAILY_BITMASKS["spatial_interpolation_applied"],
     ).any(dim="time")
-    cdr_qa_seaice_conc_monthly = cdr_qa_seaice_conc_monthly.where(
+    cdr_seaice_conc_qa_monthly = cdr_seaice_conc_qa_monthly.where(
         ~at_least_one_day_during_month_has_spatial_interpolation,
-        cdr_qa_seaice_conc_monthly
-        + CDR_QA_SEAICE_CONC_MONTHLY_BITMASKS[
+        cdr_seaice_conc_qa_monthly
+        + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS[
             "at_least_one_day_during_month_has_spatial_interpolation"
         ],
     )
 
     at_least_one_day_during_month_has_temporal_interpolation = _qa_field_has_flag(
-        qa_field=daily_ds_for_month.cdr_qa_seaice_conc,
-        flag_value=CDR_QA_SEAICE_CONC_DAILY_BITMASKS["temporal_interpolation_applied"],
+        qa_field=daily_ds_for_month.cdr_seaice_conc_qa,
+        flag_value=CDR_SEAICE_CONC_QA_DAILY_BITMASKS["temporal_interpolation_applied"],
     ).any(dim="time")
-    cdr_qa_seaice_conc_monthly = cdr_qa_seaice_conc_monthly.where(
+    cdr_seaice_conc_qa_monthly = cdr_seaice_conc_qa_monthly.where(
         ~at_least_one_day_during_month_has_temporal_interpolation,
-        cdr_qa_seaice_conc_monthly
-        + CDR_QA_SEAICE_CONC_MONTHLY_BITMASKS[
+        cdr_seaice_conc_qa_monthly
+        + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS[
             "at_least_one_day_during_month_has_temporal_interpolation"
         ],
     )
 
     at_least_one_day_during_month_has_melt_detected = _qa_field_has_flag(
-        qa_field=daily_ds_for_month.cdr_qa_seaice_conc,
-        flag_value=CDR_QA_SEAICE_CONC_DAILY_BITMASKS["start_of_melt_detected"],
+        qa_field=daily_ds_for_month.cdr_seaice_conc_qa,
+        flag_value=CDR_SEAICE_CONC_QA_DAILY_BITMASKS["start_of_melt_detected"],
     ).any(dim="time")
-    cdr_qa_seaice_conc_monthly = cdr_qa_seaice_conc_monthly.where(
+    cdr_seaice_conc_qa_monthly = cdr_seaice_conc_qa_monthly.where(
         ~at_least_one_day_during_month_has_melt_detected,
-        cdr_qa_seaice_conc_monthly
-        + CDR_QA_SEAICE_CONC_MONTHLY_BITMASKS[
+        cdr_seaice_conc_qa_monthly
+        + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS[
             "at_least_one_day_during_month_has_melt_detected"
         ],
     )
 
-    cdr_qa_seaice_conc_monthly = cdr_qa_seaice_conc_monthly.assign_attrs(
+    cdr_seaice_conc_qa_monthly = cdr_seaice_conc_qa_monthly.assign_attrs(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QC flags",
         standard_name="status_flag",
-        flag_meanings=" ".join(k for k in CDR_QA_SEAICE_CONC_MONTHLY_BITMASKS.keys()),
-        flag_masks=[np.uint8(v) for v in CDR_QA_SEAICE_CONC_MONTHLY_BITMASKS.values()],
+        flag_meanings=" ".join(k for k in CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS.keys()),
+        flag_masks=[np.uint8(v) for v in CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS.values()],
         grid_mapping="crs",
         valid_range=(np.uint8(0), np.uint8(255)),
     )
 
-    cdr_qa_seaice_conc_monthly.encoding = dict(
+    cdr_seaice_conc_qa_monthly.encoding = dict(
         dtype=np.uint8,
         zlib=True,
     )
 
-    return cdr_qa_seaice_conc_monthly
+    return cdr_seaice_conc_qa_monthly
 
 
 def calc_cdr_seaice_conc_monthly(
@@ -529,7 +529,7 @@ def make_monthly_ds(
         daily_cdr_seaice_conc=daily_ds_for_month.cdr_seaice_conc,
     )
 
-    cdr_qa_seaice_conc_monthly = calc_cdr_qa_seaice_conc_monthly(
+    cdr_seaice_conc_qa_monthly = calc_cdr_seaice_conc_qa_monthly(
         daily_ds_for_month=daily_ds_for_month,
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
     )
@@ -542,7 +542,7 @@ def make_monthly_ds(
     monthly_ds_data_vars = dict(
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
         stdv_of_cdr_seaice_conc_monthly=stdv_of_cdr_seaice_conc_monthly,
-        cdr_qa_seaice_conc_monthly=cdr_qa_seaice_conc_monthly,
+        cdr_seaice_conc_qa_monthly=cdr_seaice_conc_qa_monthly,
         surface_type_mask=surface_type_mask_monthly,
     )
 

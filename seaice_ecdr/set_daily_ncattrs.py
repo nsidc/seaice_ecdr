@@ -68,7 +68,7 @@ def finalize_cdecdr_ds(
             ),
             "grid_mapping": "crs",
             "reference": "https://nsidc.org/data/g02202/versions/5",
-            "ancillary_variables": "cdr_stdev_seaice_conc cdr_qa_seaice_conc",
+            "ancillary_variables": "cdr_stdev_seaice_conc cdr_seaice_conc_qa",
             "valid_range": np.array((0, 100), dtype=np.uint8),
             "number_of_missing_pixels": num_missing_conc_pixels,
         },
@@ -121,9 +121,9 @@ def finalize_cdecdr_ds(
         qa_flag_masks.append(128)  # Melt_start_detected
         qa_flag_meanings += " melt_start_detected"
 
-    ds["cdr_qa_seaice_conc"] = (
+    ds["cdr_seaice_conc_qa"] = (
         ("time", "y", "x"),
-        ds["cdr_qa_seaice_conc"].data.astype(np.uint8),
+        ds["cdr_seaice_conc_qa"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
             "long_name": "Passive Microwave Sea Ice Concentration QC flags",

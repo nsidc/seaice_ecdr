@@ -384,7 +384,7 @@ def reproject_ideds_25to12(
         "raw_bt_seaice_conc",
         "raw_nt_seaice_conc",
         "conc",
-        "cdr_qa_seaice_conc",
+        "cdr_seaice_conc_qa",
     )
 
     for var_name in bilinear_regrid_vars:
