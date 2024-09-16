@@ -207,9 +207,9 @@ def finalize_cdecdr_ds(
     # Note: cannot have one-sided interpolations of 4- or 5- days, so
     #       the values 4, 5, 40, and 50 are not possible
     # TODO: Use common dict with key/vals for flag masks/meanings
-    ds["cdr_temporal_interpolation_flag"] = (
+    ds["cdr_seaice_conc_interp_temporal"] = (
         ("time", "y", "x"),
-        ds["cdr_temporal_interpolation_flag"].data.astype(np.uint8),
+        ds["cdr_seaice_conc_interp_temporal"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
             "long_name": "Passive Microwave Sea Ice Concentration temporal interpolation flags",
