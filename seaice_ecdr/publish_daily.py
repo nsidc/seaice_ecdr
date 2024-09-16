@@ -184,6 +184,37 @@ def publish_daily_nc(
                 f"Failed to find prototype daily file for {date=} {PROTOTYPE_PLATFORM_ID=}"
             )
 
+    # Remove `valid_range` from coordinate attrs
+    # TODO: this should be handled upstream of this code. I think we inherit the
+    # attrs for x/y from the ancillary files that we get the x/y variables from.
+    complete_daily_ds.x.attrs = {
+        k: v for k, v in complete_daily_ds.x.attrs.items() if k != "valid_range"
+    }
+    complete_daily_ds.y.attrs = {
+        k: v for k, v in complete_daily_ds.y.attrs.items() if k != "valid_range"
+    }
+    complete_daily_ds.time.attrs = {
+        k: v for k, v in complete_daily_ds.time.attrs.items() if k != "valid_range"
+    }
+
+    # TODO: This attr should be set upstream of this point, as with the removal
+    # of valid_range above.
+    complete_daily_ds.x.attrs["coverage_content_type"] = "coordinate"
+    complete_daily_ds.y.attrs["coverage_content_type"] = "coordinate"
+    complete_daily_ds.time.attrs["coverage_content_type"] = "coordinate"
+
+    # Add `coordinates` attr to all variables
+    # TODO: this should also be set at variable creation time, not here as a
+    # final post-processsing step.
+    for group_name in complete_daily_ds.groups:
+        group = complete_daily_ds[group_name]
+        for var_name in group.variables:
+            if var_name in ("crs", "time", "y", "x"):
+                continue
+            var = group[var_name]
+            if var.dims == ("time", "y", "x"):
+                var.attrs["coordinates"] = "time y x"
+
     # write out finalized nc file.
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
