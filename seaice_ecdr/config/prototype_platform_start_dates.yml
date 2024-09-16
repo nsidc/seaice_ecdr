@@ -5,4 +5,5 @@
 # 2011-10-04.
 cdr_platform_start_dates:
   - platform_id: "am2"
-    start_date: "2012-07-02"
+    # We start Jan 1 2013 as the first full calendar year with AMSR2 data.
+    start_date: "2013-01-01"
