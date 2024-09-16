@@ -5,7 +5,7 @@ Follows the same procedure as CDR v4.
 Variables:
 
 * `cdr_seaice_conc_monthly`: Create combined monthly sea ice concentration
-* `cdr_stdev_seaice_conc_monthly`: Calculate standard deviation of sea ice
+* `cdr_seaice_conc_stdev_monthly`: Calculate standard deviation of sea ice
   concentration
 * `cdr_seaice_conc_qa_monthly`: QA Fields (Weather filters, land
   spillover, valid ice mask, spatial and temporal interpolation, melt onset)
@@ -523,7 +523,7 @@ def make_monthly_ds(
         ancillary_source=ancillary_source,
     )
 
-    # Create `cdr_stdev_seaice_conc_monthly`, the standard deviation of the
+    # Create `cdr_seaice_conc_stdev_monthly`, the standard deviation of the
     # sea ice concentration.
     stdv_of_cdr_seaice_conc_monthly = calc_stdv_of_cdr_seaice_conc_monthly(
         daily_cdr_seaice_conc=daily_ds_for_month.cdr_seaice_conc,

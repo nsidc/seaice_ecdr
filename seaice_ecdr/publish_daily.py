@@ -151,7 +151,7 @@ def publish_daily_nc(
                 "cdr_seaice_conc_qa",
                 "cdr_seaice_conc_interp_spatial",
                 "cdr_seaice_conc_interp_temporal",
-                "cdr_stdev_seaice_conc",
+                "cdr_seaice_conc_stdev",
             ]
             remap_names = {
                 cdr_var_fieldname: cdr_var_fieldname.replace(
