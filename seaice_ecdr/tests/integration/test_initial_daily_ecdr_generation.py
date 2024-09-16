@@ -122,7 +122,7 @@ def test_seaice_idecdr_has_necessary_fields(
         "bt_weather_mask",
         "nt_weather_mask",
         "invalid_ice_mask",
-        "cdr_spatial_interpolation_flag",
+        "cdr_seaice_conc_interp_spatial",
     )
     for field_name in expected_fields:
         assert field_name in sample_idecdr_dataset_nh.variables.keys()
@@ -209,7 +209,7 @@ def test_seaice_idecdr_has_tyx_data_vars(
         "bt_weather_mask",
         "nt_weather_mask",
         "invalid_ice_mask",
-        "cdr_spatial_interpolation_flag",
+        "cdr_seaice_conc_interp_spatial",
     )
     for field_name in expected_tyx_fields:
         nh_data_shape = sample_idecdr_dataset_nh[field_name].shape

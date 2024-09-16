@@ -354,7 +354,7 @@ def reproject_ideds_25to12(
     # Block-replace (=nearest-neighbor interp)
     #   then extrapolate to no-value ocean grid cells
     block_regrid_vars = (
-        "cdr_spatial_interpolation_flag",
+        "cdr_seaice_conc_interp_spatial",
         "invalid_ice_mask",
         "invalid_tb_mask",
         "bt_weather_mask",

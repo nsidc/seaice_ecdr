@@ -149,7 +149,7 @@ def publish_daily_nc(
             cdr_var_fieldnames = [
                 "cdr_seaice_conc",
                 "cdr_qa_seaice_conc",
-                "cdr_spatial_interpolation_flag",
+                "cdr_seaice_conc_interp_spatial",
                 "cdr_temporal_interpolation_flag",
                 "cdr_stdev_seaice_conc",
             ]

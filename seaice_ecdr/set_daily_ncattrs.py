@@ -185,9 +185,9 @@ def finalize_cdecdr_ds(
             " pole_hole_spatially_interpolated_(Arctic_only)"
         )
 
-    ds["cdr_spatial_interpolation_flag"] = (
+    ds["cdr_seaice_conc_interp_spatial"] = (
         ("time", "y", "x"),
-        ds["cdr_spatial_interpolation_flag"].data.astype(np.uint8),
+        ds["cdr_seaice_conc_interp_spatial"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
             "long_name": "Passive Microwave Sea Ice Concentration spatial interpolation flags",
