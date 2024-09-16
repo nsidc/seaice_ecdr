@@ -103,6 +103,7 @@ def _update_ncrcat_monthly_ds(
         aggregate=True,
         source=", ".join([fp.name for fp in monthly_filepaths]),
         platform_ids=[platform_id_from_filename(fp.name) for fp in monthly_filepaths],
+        resolution=resolution,
     )
     agg_ds.attrs = monthly_aggregate_ds_global_attrs
 
