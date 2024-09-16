@@ -354,6 +354,12 @@ def get_flagmask(
     return flagmask
 
 
+def is_pre_AMSR_platform(platform_id: SUPPORTED_PLATFORM_ID):
+    """Returns True for SMMR, SSMI, SSMIS platforms"""
+    pre_AMSR_platforms = ("n07", "F08", "F11", "F13", "F17")
+    return platform_id in pre_AMSR_platforms
+
+
 def compute_initial_daily_ecdr_dataset(
     *,
     date: dt.date,
@@ -815,12 +821,12 @@ def compute_initial_daily_ecdr_dataset(
         line_37v37h=bt_coefs["vh37_iceline"],
     )
 
-    # TODO: note that we are using bt_<vars> not <_day_si> vars...
+    # NOTE: note that we are using bt_<vars> not <_day_si> vars...
+    #       The bt_vars have been adjusted to match F13 TB distributions
 
     # NOTE: cdralgos uses ret_linfit1() for NH sets 1,2 and SH set2
     #            and uses ret_linfit2() for NH set 2
-    pre_AMSR_platforms = ("n07", "F08", "F11", "F13", "F17")
-    if hemisphere == "south" and platform in pre_AMSR_platforms:
+    if hemisphere == "south" and is_pre_AMSR_platform(platform.id):
         bt_coefs["v1937_iceline"] = bt.get_linfit(
             land_mask=ecdr_ide_ds["non_ocean_mask"].data,
             tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
@@ -829,7 +835,8 @@ def compute_initial_daily_ecdr_dataset(
             lnline=bt_coefs_init["v1937_lnline"],
             add=bt_coefs["add2"],
             water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-            # these default to None; so using "ret_linfit1(), not ret_linfit2()"
+            # these default to None in bt.get_linfit()
+            #   this is equivalent to using "ret_linfit1(), not ret_linfit2()"
             # tba=bt_h37,
             # iceline=bt_coefs["vh37_iceline"],
             # ad_line_offset=bt_coefs["ad_line_offset"],
