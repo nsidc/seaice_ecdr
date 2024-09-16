@@ -352,6 +352,7 @@ def finalize_cdecdr_ds(
         aggregate=False,
         source=f"Generated from {ds_in.data_source}",
         platform_ids=[ds_in.platform],
+        resolution=resolution,
     )
     ds.attrs = new_global_attrs
 

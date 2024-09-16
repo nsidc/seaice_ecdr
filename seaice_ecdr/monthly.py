@@ -577,6 +577,7 @@ def make_monthly_ds(
         # misleading to indicate that a month is a single platform when it may not
         # really be?
         platform_ids=[platform_id],
+        resolution=resolution,
     )
     monthly_ds.attrs.update(monthly_ds_global_attrs)
 

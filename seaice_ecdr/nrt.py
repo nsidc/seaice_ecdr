@@ -108,6 +108,7 @@ def read_or_create_and_read_nrt_idecdr_ds(
         date=date,
         platform_id=platform.id,
         intermediate_output_dir=intermediate_output_dir,
+        # TODO: we want to support 25km NRT.
         resolution="12.5",
     )
 

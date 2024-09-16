@@ -157,6 +157,7 @@ def _get_am2_tbs(
 
 
 def _get_ame_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
+    # TODO: support 25km AME data
     tb_resolution: Final = "12.5"
     ame_resolution_str = {
         "12.5": "12",

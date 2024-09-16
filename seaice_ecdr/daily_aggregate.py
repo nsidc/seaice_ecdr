@@ -118,6 +118,7 @@ def _update_ncrcat_daily_ds(
         aggregate=True,
         source=", ".join([fp.name for fp in daily_filepaths]),
         platform_ids=[platform_id_from_filename(fp.name) for fp in daily_filepaths],
+        resolution=resolution,
     )
     ds.attrs = daily_aggregate_ds_global_attrs
 
