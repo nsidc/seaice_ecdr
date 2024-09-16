@@ -58,8 +58,8 @@ from seaice_ecdr.ancillary import (
     flag_value_for_meaning,
 )
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR, ECDR_PRODUCT_VERSION
+from seaice_ecdr.intermediate_daily import get_ecdr_filepath
 from seaice_ecdr.monthly import get_monthly_dir
 from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.util import (

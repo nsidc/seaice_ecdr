@@ -11,7 +11,7 @@ from seaice_ecdr.util import get_intermediate_output_dir
 ancillary_source: Final = "CDRv5"
 
 
-@pytest.mark.order(after="test_complete_daily.py::test_make_cdecdr_netcdf")
+@pytest.mark.order(after="test_intermediate_daily.py::test_make_cdecdr_netcdf")
 def test_make_monthly_nc(base_output_dir_test_path, monkeypatch):  # noqa
     # usually we require at least 20 days of data for a valid month. This mock
     # data is just 3 days in size, so we need to mock the

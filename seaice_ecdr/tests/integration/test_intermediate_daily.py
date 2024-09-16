@@ -3,7 +3,7 @@ from typing import Final
 
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr.complete_daily_ecdr import make_standard_cdecdr_netcdf
+from seaice_ecdr.intermediate_daily import make_standard_cdecdr_netcdf
 from seaice_ecdr.tests.integration import base_output_dir_test_path  # noqa
 
 ancillary_source: Final = "CDRv5"

@@ -1,4 +1,4 @@
-"""Tests of the routines in test_complete_daily_ecdr.py.  """
+"""Tests of the routines in test_intermediate_daily.py."""
 
 import datetime as dt
 from pathlib import Path
@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from pm_tb_data._types import NORTH, SOUTH
 
-from seaice_ecdr import complete_daily_ecdr as cdecdr
+from seaice_ecdr import intermediate_daily as cdecdr
 from seaice_ecdr.melt import MELT_ONSET_FILL_VALUE
 from seaice_ecdr.util import get_intermediate_output_dir
 

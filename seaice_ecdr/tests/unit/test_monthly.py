@@ -9,7 +9,7 @@ from loguru import logger
 from pm_tb_data._types import NORTH
 
 from seaice_ecdr import monthly, util
-from seaice_ecdr.complete_daily_ecdr import get_ecdr_dir
+from seaice_ecdr.intermediate_daily import get_ecdr_dir
 from seaice_ecdr.monthly import (
     CDR_SEAICE_CONC_QA_DAILY_BITMASKS,
     CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS,

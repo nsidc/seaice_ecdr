@@ -6,7 +6,7 @@ from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.complete_daily_ecdr import read_cdecdr_ds
+from seaice_ecdr.intermediate_daily import read_cdecdr_ds
 from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import (
     get_complete_output_dir,

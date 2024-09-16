@@ -16,16 +16,16 @@ from pm_tb_data.fetch.amsr.lance_amsr2 import (
 
 from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.complete_daily_ecdr import (
-    complete_daily_ecdr_ds,
-    get_ecdr_filepath,
-    write_cde_netcdf,
-)
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR, LANCE_NRT_DATA_DIR
 from seaice_ecdr.initial_daily_ecdr import (
     compute_initial_daily_ecdr_dataset,
     get_idecdr_filepath,
     write_ide_netcdf,
+)
+from seaice_ecdr.intermediate_daily import (
+    complete_daily_ecdr_ds,
+    get_ecdr_filepath,
+    write_cde_netcdf,
 )
 from seaice_ecdr.platforms import (
     PLATFORM_CONFIG,

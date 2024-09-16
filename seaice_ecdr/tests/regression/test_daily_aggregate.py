@@ -5,11 +5,11 @@ from typing import Final
 import xarray as xr
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr.complete_daily_ecdr import make_standard_cdecdr_netcdf, read_cdecdr_ds
 from seaice_ecdr.daily_aggregate import (
     get_daily_aggregate_filepath,
     make_daily_aggregate_netcdf_for_year,
 )
+from seaice_ecdr.intermediate_daily import make_standard_cdecdr_netcdf, read_cdecdr_ds
 from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.publish_daily import publish_daily_nc
 from seaice_ecdr.util import get_complete_output_dir

@@ -1,10 +1,10 @@
 import datetime as dt
 from pathlib import Path
 
-from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.daily_aggregate import (
     _get_daily_complete_filepaths_for_year,
 )
+from seaice_ecdr.intermediate_daily import get_ecdr_filepath
 from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.util import date_range
 
