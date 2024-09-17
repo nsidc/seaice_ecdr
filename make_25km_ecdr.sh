@@ -15,6 +15,10 @@ HEMISPHERE="north"
 # Force the use of AMSR2
 PLATFORM_START_DATES_CONFIG_FILEPATH=seaice_ecdr/config/prototype_platform_start_dates.yml ./scripts/cli.sh multiprocess-daily --start-date $START_DATE --end-date $END_DATE --hemisphere $HEMISPHERE --base-output-dir $BASE_OUTPUT_DIR --land-spillover-alg BT_NT --resolution 25 --ancillary-source CDRv4
 
+# Stage files for publication
+./scripts/cli.sh stage-for-publication --date $START_DATE --end-date $END_DATE --hemisphere $HEMISPHERE --base-output-dir $BASE_OUTPUT_DIR --resolution 25
+
+
 # Combine where there's overlap between the two, and publish to an output dir
 # that's ready for publication.
 
