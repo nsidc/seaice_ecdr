@@ -41,6 +41,8 @@ def test__get_daily_complete_filepaths_for_month(fs):
     )
     year = 2022
     month = 3
+    # TODO: get the version string from config instead of hard-coding it to
+    # `v05r01` here.
     _fake_files_for_test_year_month_and_hemisphere = [
         nh_intermediate_dir / "sic_psn12.5_20220301_F17_v05r01.nc",
         nh_intermediate_dir / "sic_psn12.5_20220302_F17_v05r01.nc",
