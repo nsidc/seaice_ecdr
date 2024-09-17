@@ -58,10 +58,15 @@ from seaice_ecdr.ancillary import (
     flag_value_for_meaning,
 )
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR, ECDR_PRODUCT_VERSION
+from seaice_ecdr.intermediate_daily import get_ecdr_filepath
 from seaice_ecdr.monthly import get_monthly_dir
-from seaice_ecdr.util import date_range, get_complete_output_dir, get_num_missing_pixels
+from seaice_ecdr.platforms import PLATFORM_CONFIG
+from seaice_ecdr.util import (
+    date_range,
+    get_intermediate_output_dir,
+    get_num_missing_pixels,
+)
 
 VALIDATION_RESOLUTION: Final = "25"
 
@@ -228,12 +233,12 @@ def get_pixel_counts(
         conc_var_name = conc_var_name + "_monthly"
     seaice_conc_var = ds[conc_var_name]
 
-    qa_var_name = "qa_of_" + conc_var_name
+    qa_var_name = "cdr_seaice_conc_qa"
     qa_var = ds[qa_var_name]
 
     # Handle the log file first. It contains information on the # of
     # pixels of each type in the surface_type_mask and the ocean mask
-    # (via qa_of_cdr_seaice_conc)
+    # (via cdr_seaice_conc_qa)
     # total ice land coast lake pole oceanmask ice-free missing bad melt
     total_num_pixels = len(ds.x) * len(ds.y)
     # Areas where there is a concentration detected.
@@ -369,7 +374,7 @@ def validate_outputs(
     * error_seaice_{n|s}_daily_{start_year}_{end_year}.csv. Contains the
       following fields: [year, month, day, error_code]
     """
-    complete_output_dir = get_complete_output_dir(
+    intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
         is_nrt=False,
@@ -395,11 +400,13 @@ def validate_outputs(
         error_writer.writeheader()
         if product == "daily":
             for date in date_range(start_date=start_date, end_date=end_date):
+                platform = PLATFORM_CONFIG.get_platform_by_date(date)
                 data_fp = get_ecdr_filepath(
                     date=date,
+                    platform_id=platform.id,
                     hemisphere=hemisphere,
                     resolution=VALIDATION_RESOLUTION,
-                    complete_output_dir=complete_output_dir,
+                    intermediate_output_dir=intermediate_output_dir,
                     is_nrt=False,
                 )
 
@@ -439,7 +446,7 @@ def validate_outputs(
             months = range(start_date.month, end_date.month + 1)
             for year, month in itertools.product(years, months):
                 monthly_dir = get_monthly_dir(
-                    complete_output_dir=complete_output_dir,
+                    intermediate_output_dir=intermediate_output_dir,
                 )
 
                 # monthly filepaths should have the form

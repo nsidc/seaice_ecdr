@@ -5,11 +5,13 @@ from typing import Final
 import xarray as xr
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr.complete_daily_ecdr import make_standard_cdecdr_netcdf, read_cdecdr_ds
 from seaice_ecdr.daily_aggregate import (
     get_daily_aggregate_filepath,
     make_daily_aggregate_netcdf_for_year,
 )
+from seaice_ecdr.intermediate_daily import make_standard_cdecdr_netcdf, read_cdecdr_ds
+from seaice_ecdr.platforms import PLATFORM_CONFIG
+from seaice_ecdr.publish_daily import publish_daily_nc
 from seaice_ecdr.util import get_complete_output_dir
 
 
@@ -39,12 +41,23 @@ def test_daily_aggregate_matches_daily_data(tmpdir):
             land_spillover_alg=land_spillover_alg,
             ancillary_source=ancillary_source,
         )
+        publish_daily_nc(
+            base_output_dir=base_output_dir,
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+        )
 
+        # TODO: this fucntin is really inteded to just read the ds associated
+        # with the intermediate file, but it can (I think) be used for the
+        # published version...
+        platform = PLATFORM_CONFIG.get_platform_by_date(date)
         ds = read_cdecdr_ds(
             date=date,
             hemisphere=hemisphere,
             resolution=resolution,
-            complete_output_dir=complete_output_dir,
+            intermediate_output_dir=complete_output_dir,
+            platform_id=platform.id,
             is_nrt=False,
         )
         datasets.append(ds)

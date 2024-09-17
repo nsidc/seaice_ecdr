@@ -15,11 +15,11 @@ from pm_tb_data._types import Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import ANCILLARY_SOURCES, get_ancillary_ds
 from seaice_ecdr.checksum import write_checksum_file
-from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
 from seaice_ecdr.platforms import PLATFORM_CONFIG
+from seaice_ecdr.publish_daily import get_complete_daily_filepath
 from seaice_ecdr.util import (
     get_complete_output_dir,
     platform_id_from_filename,
@@ -41,7 +41,7 @@ def _get_daily_complete_filepaths_for_year(
         dt.date(year, 1, 1), PLATFORM_CONFIG.get_first_platform_start_date()
     )
     for period in pd.period_range(start=start_date, end=dt.date(year, 12, 31)):
-        expected_fp = get_ecdr_filepath(
+        expected_fp = get_complete_daily_filepath(
             date=period.to_timestamp().date(),
             hemisphere=hemisphere,
             resolution=resolution,

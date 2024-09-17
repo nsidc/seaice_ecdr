@@ -20,7 +20,7 @@ from seaice_ecdr.temporal_composite_daily import (
 date = dt.date(2021, 2, 19)
 hemisphere = NORTH
 resolution: Final = "25"
-platform_id: SUPPORTED_PLATFORM_ID = "am2"
+platform_id: SUPPORTED_PLATFORM_ID = "F17"
 land_spillover_alg: Final = "NT2"
 ancillary_source: Final = "CDRv5"
 

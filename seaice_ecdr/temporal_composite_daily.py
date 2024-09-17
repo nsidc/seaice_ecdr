@@ -612,13 +612,13 @@ def temporal_interpolation(
     is_temporally_interpolated = (ti_flags > 0) & (ti_flags <= 55)
     # TODO: this bit mask of 64 added to (equals bitwise "or")
     #       should be looked up from a map of flag mask values
-    tie_ds["qa_of_cdr_seaice_conc"] = tie_ds["qa_of_cdr_seaice_conc"].where(
+    tie_ds["cdr_seaice_conc_qa"] = tie_ds["cdr_seaice_conc_qa"].where(
         ~is_temporally_interpolated,
-        other=np.bitwise_or(tie_ds["qa_of_cdr_seaice_conc"].data, 64),
+        other=np.bitwise_or(tie_ds["cdr_seaice_conc_qa"].data, 64),
     )
 
     # Add the temporal interp flags to the dataset
-    tie_ds["temporal_interpolation_flag"] = (
+    tie_ds["cdr_seaice_conc_interp_temporal"] = (
         ("time", "y", "x"),
         np.expand_dims(ti_flags, axis=0),
         {
@@ -667,7 +667,7 @@ def temporal_interpolation(
             ~np.isnan(cdr_conc_pole_filled)
         )
 
-        if "spatial_interpolation_flag" not in tie_ds.variables.keys():
+        if "cdr_seaice_conc_interp_spatial" not in tie_ds.variables.keys():
             raise RuntimeError("Spatial interpolation flag not found in tie_ds.")
 
         # TODO: These are constants for the eCDR runs.  They should
@@ -684,8 +684,8 @@ def temporal_interpolation(
             "h37": 16,
             "pole_filled": 32,
         }
-        tie_ds["spatial_interpolation_flag"] = tie_ds[
-            "spatial_interpolation_flag"
+        tie_ds["cdr_seaice_conc_interp_spatial"] = tie_ds[
+            "cdr_seaice_conc_interp_spatial"
         ].where(
             ~is_pole_filled,
             other=TB_SPATINT_BITMASK_MAP["pole_filled"],
@@ -770,7 +770,7 @@ def temporal_interpolation(
     )
 
     # Set this to a data array
-    tie_ds["stdev_of_cdr_seaice_conc_raw"] = (
+    tie_ds["cdr_seaice_conc_stdev_raw"] = (
         ("time", "y", "x"),
         np.expand_dims(stddev_field.data, axis=0),
         {
@@ -796,8 +796,8 @@ def temporal_interpolation(
     ]
 
     stdev_field_filtered = filter_field_via_bitmask(
-        field_da=tie_ds["stdev_of_cdr_seaice_conc_raw"],
-        flag_da=tie_ds["qa_of_cdr_seaice_conc"],
+        field_da=tie_ds["cdr_seaice_conc_stdev_raw"],
+        flag_da=tie_ds["cdr_seaice_conc_qa"],
         filter_ids=filter_flags_to_apply,
     )
 
@@ -810,7 +810,7 @@ def temporal_interpolation(
 
     # Re-set the stdev data array...
     # Note: probably need to set land values to -1 here?
-    tie_ds["stdev_of_cdr_seaice_conc"] = (
+    tie_ds["cdr_seaice_conc_stdev"] = (
         ("time", "y", "x"),
         stdev_field_filtered.data,
         {
@@ -828,7 +828,7 @@ def temporal_interpolation(
         },
     )
 
-    tie_ds = tie_ds.drop_vars("stdev_of_cdr_seaice_conc_raw")
+    tie_ds = tie_ds.drop_vars("cdr_seaice_conc_stdev_raw")
 
     return tie_ds
 

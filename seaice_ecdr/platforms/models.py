@@ -189,3 +189,17 @@ class PlatformConfig(BaseModel):
         earliest_date = self.cdr_platform_start_dates[0].start_date
 
         return earliest_date
+
+    def platform_available_for_date(
+        self, platform_id: SUPPORTED_PLATFORM_ID, date: dt.date
+    ) -> bool:
+        """Indicates if the given platform ID is avaiable for the provided date."""
+        platform = self.platform_for_id(platform_id)
+        if date < platform.date_range.first_date:
+            return False
+
+        last_date = platform.date_range.last_date
+        if last_date is not None and date > last_date:
+            return False
+
+        return True

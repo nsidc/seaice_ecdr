@@ -1,7 +1,7 @@
 import datetime as dt
 import re
 from pathlib import Path
-from typing import Iterator, Literal, cast, get_args
+from typing import Iterable, Iterator, Literal, cast, get_args
 
 import numpy as np
 import pandas as pd
@@ -154,7 +154,7 @@ def date_range(*, start_date: dt.date, end_date: dt.date) -> Iterator[dt.date]:
         yield pd_timestamp.date()
 
 
-def get_dates_by_year(dates: list[dt.date]) -> list[list[dt.date]]:
+def get_dates_by_year(dates: Iterable[dt.date]) -> list[list[dt.date]]:
     """Given a list of dates, return the dates grouped by year."""
     years = sorted(np.unique([date.year for date in dates]))
     dates_by_year = {}

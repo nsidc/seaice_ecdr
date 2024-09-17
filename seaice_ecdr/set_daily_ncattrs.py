@@ -68,7 +68,7 @@ def finalize_cdecdr_ds(
             ),
             "grid_mapping": "crs",
             "reference": "https://nsidc.org/data/g02202/versions/5",
-            "ancillary_variables": "stdev_of_cdr_seaice_conc qa_of_cdr_seaice_conc",
+            "ancillary_variables": "cdr_seaice_conc_stdev cdr_seaice_conc_qa",
             "valid_range": np.array((0, 100), dtype=np.uint8),
             "number_of_missing_pixels": num_missing_conc_pixels,
         },
@@ -76,9 +76,9 @@ def finalize_cdecdr_ds(
     )
 
     # Standard deviation file is converted from 2d to [time, y x] coords
-    ds["stdev_of_cdr_seaice_conc"] = (
+    ds["cdr_seaice_conc_stdev"] = (
         ("time", "y", "x"),
-        ds["stdev_of_cdr_seaice_conc"].data,
+        ds["cdr_seaice_conc_stdev"].data,
         {
             "_FillValue": -1,
             "long_name": (
@@ -121,9 +121,9 @@ def finalize_cdecdr_ds(
         qa_flag_masks.append(128)  # Melt_start_detected
         qa_flag_meanings += " melt_start_detected"
 
-    ds["qa_of_cdr_seaice_conc"] = (
+    ds["cdr_seaice_conc_qa"] = (
         ("time", "y", "x"),
-        ds["qa_of_cdr_seaice_conc"].data.astype(np.uint8),
+        ds["cdr_seaice_conc_qa"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
             "long_name": "Passive Microwave Sea Ice Concentration QC flags",
@@ -140,9 +140,9 @@ def finalize_cdecdr_ds(
 
     # Note: this is NH only, hence the try/except block
     try:
-        ds["melt_onset_day_cdr_seaice_conc"] = (
+        ds["cdr_melt_onset_day"] = (
             ("time", "y", "x"),
-            ds["melt_onset_day_cdr_seaice_conc"].data,
+            ds["cdr_melt_onset_day"].data,
             {
                 "standard_name": "status_flag",
                 "long_name": "Day Of Year of NH Snow Melt Onset On Sea Ice",
@@ -185,9 +185,9 @@ def finalize_cdecdr_ds(
             " pole_hole_spatially_interpolated_(Arctic_only)"
         )
 
-    ds["spatial_interpolation_flag"] = (
+    ds["cdr_seaice_conc_interp_spatial"] = (
         ("time", "y", "x"),
-        ds["spatial_interpolation_flag"].data.astype(np.uint8),
+        ds["cdr_seaice_conc_interp_spatial"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
             "long_name": "Passive Microwave Sea Ice Concentration spatial interpolation flags",
@@ -207,9 +207,9 @@ def finalize_cdecdr_ds(
     # Note: cannot have one-sided interpolations of 4- or 5- days, so
     #       the values 4, 5, 40, and 50 are not possible
     # TODO: Use common dict with key/vals for flag masks/meanings
-    ds["temporal_interpolation_flag"] = (
+    ds["cdr_seaice_conc_interp_temporal"] = (
         ("time", "y", "x"),
-        ds["temporal_interpolation_flag"].data.astype(np.uint8),
+        ds["cdr_seaice_conc_interp_temporal"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
             "long_name": "Passive Microwave Sea Ice Concentration temporal interpolation flags",

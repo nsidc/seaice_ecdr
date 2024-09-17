@@ -88,5 +88,6 @@ module = [
   "yaml.*",
   "cv2.*",
   "ruamel.*",
+  "datatree.*",
 ]
 ignore_missing_imports = true

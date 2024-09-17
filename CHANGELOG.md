@@ -1,3 +1,9 @@
+# v0.3.0
+
+* Add new `daily` cli that produces daily NC files ready for publication. During
+  the AMSR2 period, a `prototype_amsr2` group is added to the final output files
+  with AMSR2-derived fields.
+
 # match-cdrv4 (commit 87271ec)
 
 * `match-cdrv4` tag marks the commit at which this code supports replicating the

@@ -3,7 +3,7 @@ from typing import Final
 
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr.complete_daily_ecdr import make_standard_cdecdr_netcdf
+from seaice_ecdr.intermediate_daily import make_standard_cdecdr_netcdf
 from seaice_ecdr.tests.integration import base_output_dir_test_path  # noqa
 
 ancillary_source: Final = "CDRv5"
@@ -21,15 +21,3 @@ def test_make_standard_cdecdr_netcdf(base_output_dir_test_path):  # noqa
         )
 
         assert output_path.is_file()
-
-        # Assert that the checksums exist where we expect them to be.
-        checksum_filepath = (
-            base_output_dir_test_path
-            / "complete"
-            / NORTH
-            / "checksums"
-            / "daily"
-            / "2022"
-            / (output_path.name + ".mnf")
-        )
-        assert checksum_filepath.is_file()

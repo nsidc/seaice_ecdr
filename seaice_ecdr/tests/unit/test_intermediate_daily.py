@@ -1,4 +1,4 @@
-"""Tests of the routines in test_complete_daily_ecdr.py.  """
+"""Tests of the routines in test_intermediate_daily.py."""
 
 import datetime as dt
 from pathlib import Path
@@ -7,18 +7,13 @@ import numpy as np
 import pytest
 from pm_tb_data._types import NORTH, SOUTH
 
-from seaice_ecdr import complete_daily_ecdr as cdecdr
+from seaice_ecdr import intermediate_daily as cdecdr
 from seaice_ecdr.melt import MELT_ONSET_FILL_VALUE
-from seaice_ecdr.util import get_complete_output_dir, get_intermediate_output_dir
+from seaice_ecdr.util import get_intermediate_output_dir
 
 
 def test_no_melt_onset_for_southern_hemisphere(tmpdir):
     """Verify that attempting to create a melt onset field for the SH raises an error"""
-    complete_output_dir = get_complete_output_dir(
-        base_output_dir=Path(tmpdir),
-        hemisphere=SOUTH,
-        is_nrt=False,
-    )
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=Path(tmpdir),
         hemisphere=SOUTH,
@@ -31,7 +26,6 @@ def test_no_melt_onset_for_southern_hemisphere(tmpdir):
                 hemisphere=SOUTH,
                 resolution="12.5",
                 ancillary_source="CDRv5",
-                complete_output_dir=complete_output_dir,
                 intermediate_output_dir=intermediate_output_dir,
                 is_nrt=False,
             )
@@ -41,11 +35,6 @@ def test_melt_onset_field_outside_melt_season(tmpdir):
     """Verify that melt onset is all fill value when not in melt season."""
     hemisphere = NORTH
 
-    complete_output_dir = get_complete_output_dir(
-        base_output_dir=Path(tmpdir),
-        hemisphere=hemisphere,
-        is_nrt=False,
-    )
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=Path(tmpdir),
         hemisphere=hemisphere,
@@ -57,7 +46,6 @@ def test_melt_onset_field_outside_melt_season(tmpdir):
             hemisphere=hemisphere,
             resolution="12.5",
             ancillary_source="CDRv5",
-            complete_output_dir=complete_output_dir,
             intermediate_output_dir=intermediate_output_dir,
             is_nrt=False,
         )

@@ -116,13 +116,13 @@ def test_seaice_idecdr_has_necessary_fields(
         "y",
         "y",
         "conc",
-        "qa_of_cdr_seaice_conc",
+        "cdr_seaice_conc_qa",
         "raw_bt_seaice_conc",
         "raw_nt_seaice_conc",
         "bt_weather_mask",
         "nt_weather_mask",
         "invalid_ice_mask",
-        "spatial_interpolation_flag",
+        "cdr_seaice_conc_interp_spatial",
     )
     for field_name in expected_fields:
         assert field_name in sample_idecdr_dataset_nh.variables.keys()
@@ -135,7 +135,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
     test_resolution: Final = "25"
-    test_platform_id: SUPPORTED_PLATFORM_ID = "am2"
+    test_platform_id: SUPPORTED_PLATFORM_ID = "F17"
     ancillary_source: Final = "CDRv5"
 
     make_idecdr_netcdf(
@@ -170,7 +170,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
     test_date = dt.datetime(2021, 4, 5).date()
     test_hemisphere = NORTH
     test_resolution: Final = "25"
-    test_platform_id: SUPPORTED_PLATFORM_ID = "am2"
+    test_platform_id: SUPPORTED_PLATFORM_ID = "F17"
     ancillary_source: Final = "CDRv5"
 
     make_idecdr_netcdf(
@@ -203,13 +203,13 @@ def test_seaice_idecdr_has_tyx_data_vars(
     """Test that idecdr netcdf has (time, y, x) dims for data fields."""
     expected_tyx_fields = (
         "conc",
-        "qa_of_cdr_seaice_conc",
+        "cdr_seaice_conc_qa",
         "raw_bt_seaice_conc",
         "raw_nt_seaice_conc",
         "bt_weather_mask",
         "nt_weather_mask",
         "invalid_ice_mask",
-        "spatial_interpolation_flag",
+        "cdr_seaice_conc_interp_spatial",
     )
     for field_name in expected_tyx_fields:
         nh_data_shape = sample_idecdr_dataset_nh[field_name].shape

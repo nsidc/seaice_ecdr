@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import cast, get_args
 
 import yaml
+from loguru import logger
 
 from seaice_ecdr.platforms.models import (
     SUPPORTED_PLATFORM_ID,
@@ -24,8 +25,11 @@ from seaice_ecdr.platforms.models import (
 )
 
 _this_dir = Path(__file__).parent
-_DEFAULT_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
-    _this_dir / "default_platform_start_dates.yml"
+DEFAULT_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
+    _this_dir / "../config/default_platform_start_dates.yml"
+)
+PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
+    _this_dir / "../config/prototype_platform_start_dates.yml"
 )
 
 
@@ -121,8 +125,12 @@ def _get_platform_config() -> PlatformConfig:
         platform_start_dates_config_filepath = Path(platform_override_filepath_str)
     else:
         platform_start_dates_config_filepath = (
-            _DEFAULT_PLATFORM_START_DATES_CONFIG_FILEPATH
+            DEFAULT_PLATFORM_START_DATES_CONFIG_FILEPATH
         )
+
+    logger.info(
+        f"Using platform start dates from {platform_start_dates_config_filepath}"
+    )
 
     if not platform_start_dates_config_filepath.is_file():
         raise RuntimeError(

@@ -16,16 +16,16 @@ from pm_tb_data.fetch.amsr.lance_amsr2 import (
 
 from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.complete_daily_ecdr import (
-    complete_daily_ecdr_ds,
-    get_ecdr_filepath,
-    write_cde_netcdf,
-)
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR, LANCE_NRT_DATA_DIR
 from seaice_ecdr.initial_daily_ecdr import (
     compute_initial_daily_ecdr_dataset,
     get_idecdr_filepath,
     write_ide_netcdf,
+)
+from seaice_ecdr.intermediate_daily import (
+    complete_daily_ecdr_ds,
+    get_ecdr_filepath,
+    write_cde_netcdf,
 )
 from seaice_ecdr.platforms import (
     PLATFORM_CONFIG,
@@ -134,6 +134,7 @@ def read_or_create_and_read_nrt_idecdr_ds(
             "pole_mask",
             "bt_weather_mask",
             "nt_weather_mask",
+            "missing_tb_mask",
         ]
         write_ide_netcdf(
             ide_ds=nrt_initial_ecdr_ds,
@@ -228,11 +229,13 @@ def nrt_ecdr_for_day(
         hemisphere=hemisphere,
         is_nrt=True,
     )
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     cde_filepath = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
         resolution=LANCE_RESOLUTION,
-        complete_output_dir=complete_output_dir,
+        intermediate_output_dir=complete_output_dir,
+        platform_id=platform.id,
         is_nrt=True,
     )
 
@@ -259,7 +262,6 @@ def nrt_ecdr_for_day(
                 date=date,
                 hemisphere=hemisphere,
                 resolution=LANCE_RESOLUTION,
-                complete_output_dir=complete_output_dir,
                 intermediate_output_dir=intermediate_output_dir,
                 is_nrt=True,
                 ancillary_source=ancillary_source,
@@ -268,9 +270,10 @@ def nrt_ecdr_for_day(
             written_cde_ncfile = write_cde_netcdf(
                 cde_ds=cde_ds,
                 output_filepath=cde_filepath,
-                complete_output_dir=complete_output_dir,
+                intermediate_output_dir=complete_output_dir,
                 hemisphere=hemisphere,
             )
+            # TODO: still need to "publish" to the complete location
             logger.success(f"Wrote complete daily ncfile: {written_cde_ncfile}")
         except Exception as e:
             logger.exception(f"Failed to create NRT ECDR for {date=} {hemisphere=}")
@@ -312,7 +315,7 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     download_latest_lance_files(output_dir=output_dir, overwrite=overwrite)
 
 
-@click.command(name="daily")
+@click.command(name="daily-nrt")
 @click.option(
     "-d",
     "--date",
