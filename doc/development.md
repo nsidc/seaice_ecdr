@@ -163,3 +163,14 @@ When making a new release of G02202 based on this code:
   archive containing the `seaice_ecdr`, `pm_icecon`, and `pm_tb_data`
   repositories and ancillary data. This `.zip` package should then be sent to
   NOAA for archival.
+
+
+### Replicating CDRv4 results
+
+There are a number of improvements and bug fixes that have been made since the
+CDRv4. To produce CDRv4-compatible results with this code, checkout the
+`match-cdrv4` tag (commit 87271ec):
+
+```
+git checkout match-cdrv4
+```

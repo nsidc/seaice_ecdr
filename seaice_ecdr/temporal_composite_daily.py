@@ -254,10 +254,6 @@ def temporally_composite_dataarray(
     if daily_climatology_mask is not None:
         temp_comp_2d[daily_climatology_mask] = 0
 
-    if daily_climatology_mask is not None:
-        daily_climatology_mask.tofile("dailyclimmask.dat")
-        print("WROTE dailyclimmask.dat")
-
     # Initialize arrays
     initial_missing_locs = np.isnan(temp_comp_2d.data)
 
@@ -525,12 +521,26 @@ def get_daily_climatology_mask(
     daily_ds = None
 
     if hemisphere == "north" and resolution == "25":
+        # New mask.  Valid/invalid extends into landmask
+        # daily_ds = Dataset(
+        #    "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-dailyclim.nc"
+        # )
+
+        # Mask used in v04r00.  Includes landmask and may have mismatches
+        # between landmask and ocean, especially in Southern Hemisphere
         daily_ds = Dataset(
-            "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-dailyclim.nc"
+            "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-smmr-invalid-ice-v04r00.nc"
         )
     elif hemisphere == "south" and resolution == "25":
+        # New mask.  Valid/invalid extends into landmask
+        # daily_ds = Dataset(
+        #    "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-pss25-dailyclim.nc"
+        # )
+
+        # Mask used in v04r00.  Includes landmask and may have mismatches
+        # between landmask and ocean, especially in Southern Hemisphere
         daily_ds = Dataset(
-            "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-pss25-dailyclim.nc"
+            "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-pss25-smmr-invalid-ice-v04r00.nc"
         )
 
     if daily_ds is None:
