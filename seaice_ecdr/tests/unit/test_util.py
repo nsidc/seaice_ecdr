@@ -8,7 +8,7 @@ from pm_tb_data._types import NORTH, SOUTH
 
 from seaice_ecdr import util
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
-from seaice_ecdr.multiprocess_daily import get_dates_by_year
+from seaice_ecdr.multiprocess_intermediate_daily import get_dates_by_year
 from seaice_ecdr.util import (
     date_range,
     get_num_missing_pixels,

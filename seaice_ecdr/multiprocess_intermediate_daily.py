@@ -29,7 +29,7 @@ from seaice_ecdr.util import (
 #    but are manually spelled out in the click options here
 
 
-@click.command(name="multiprocess-daily")
+@click.command(name="multiprocess-intermediate-daily")
 @click.option(
     "-d",
     "--start-date",
