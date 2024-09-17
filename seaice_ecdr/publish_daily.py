@@ -1,7 +1,7 @@
 import copy
 import datetime as dt
 from pathlib import Path
-from typing import Iterable, get_args
+from typing import get_args
 
 import click
 from datatree import DataTree
@@ -252,7 +252,7 @@ def publish_daily_nc(
         is_nrt=False,
     )
     complete_daily_ds.to_netcdf(complete_daily_filepath)
-    logger.info(f"Staged NC file for publication: {complete_daily_filepath}")
+    logger.success(f"Staged NC file for publication: {complete_daily_filepath}")
 
     return complete_daily_filepath
 
@@ -260,10 +260,12 @@ def publish_daily_nc(
 def publish_daily_nc_for_dates(
     *,
     base_output_dir: Path,
-    dates: Iterable[dt.date],
+    start_date: dt.date,
+    end_date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
+    dates = date_range(start_date=start_date, end_date=end_date)
     output_filepaths = []
     for date in dates:
         output_filepath = publish_daily_nc(
@@ -350,7 +352,8 @@ def cli(
         end_date = copy.copy(date)
 
     publish_daily_nc_for_dates(
-        dates=date_range(start_date=date, end_date=end_date),
+        start_date=date,
+        end_date=end_date,
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
         resolution=resolution,

@@ -2,6 +2,8 @@
 
 import click
 
+from seaice_ecdr.cli.daily import cli as daily_cli
+
 # TODO: The daily-aggregate processing is very parallelizable because
 #       each year is indendent of every other year.  It could be
 #       implemented with multi-processing to speed up production
@@ -37,6 +39,9 @@ cli.add_command(monthly_aggregate_cli)
 cli.add_command(validation_cli)
 cli.add_command(multiprocess_intermediate_daily_cli)
 cli.add_command(publish_daily_cli)
+
+# this is the CLI ops will interact with to produce standard daily file.s
+cli.add_command(daily_cli)
 
 if __name__ == "__main__":
     cli()

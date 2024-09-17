@@ -315,7 +315,7 @@ def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
     download_latest_lance_files(output_dir=output_dir, overwrite=overwrite)
 
 
-@click.command(name="daily")
+@click.command(name="daily-nrt")
 @click.option(
     "-d",
     "--date",
