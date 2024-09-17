@@ -1,4 +1,5 @@
 import datetime as dt
+import os
 from functools import partial
 from itertools import chain
 from multiprocessing import Pool
@@ -95,9 +96,11 @@ def multiprocess_intermediate_daily(
         ancillary_source=ancillary_source,
     )
 
-    # Use 6 cores. This seems to perform well. Using the max number available
-    # can cause issues...
-    with Pool(6) as multi_pool:
+    # Use two less than the available number of cores by default. E.g., on an
+    # 8-core VM, 6 cores seems to perform pretty well.
+    num_available_cores = os.cpu_count() or 1
+    num_cores_to_use = max(1, num_available_cores - 2)
+    with Pool(num_cores_to_use) as multi_pool:
         multi_pool.map(_create_idecdr_wrapper, initial_file_dates)
         multi_pool.map(_create_tiecdr_wrapper, dates)
 
