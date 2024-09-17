@@ -131,7 +131,6 @@ def make_daily_aggregate_netcdf_for_year(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     complete_output_dir: Path,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ) -> None:
     try:
         daily_filepaths = _get_daily_complete_filepaths_for_year(

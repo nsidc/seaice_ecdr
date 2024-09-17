@@ -68,7 +68,6 @@ def test_daily_aggregate_matches_daily_data(tmpdir):
         hemisphere=hemisphere,
         resolution=resolution,
         complete_output_dir=complete_output_dir,
-        ancillary_source=ancillary_source,
     )
 
     # Read back in the data.
