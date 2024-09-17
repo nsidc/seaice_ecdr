@@ -46,8 +46,15 @@ def multiprocess_intermediate_daily(
     # ensures that data expected for temporal interpolation of the requested
     # dates has the data it needs.
     earliest_date = PLATFORM_CONFIG.get_first_platform_start_date()
-    initial_start_date = max(earliest_date, start_date - dt.timedelta(days=5))
-    initial_end_date = min(end_date + dt.timedelta(days=5), dt.date.today())
+    # TODO: the interpolation range should be set by some config that gets
+    # shared between this and the temporal interpolation code.
+    INTERPOLATION_RANGE_DAYS: int = 5
+    initial_start_date = max(
+        earliest_date, start_date - dt.timedelta(days=INTERPOLATION_RANGE_DAYS)
+    )
+    initial_end_date = min(
+        end_date + dt.timedelta(days=INTERPOLATION_RANGE_DAYS), dt.date.today()
+    )
     initial_file_dates = list(
         date_range(start_date=initial_start_date, end_date=initial_end_date)
     )
