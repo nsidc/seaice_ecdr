@@ -26,7 +26,6 @@ from seaice_ecdr.ancillary import (
     get_non_ocean_mask,
     get_surfacetype_da,
 )
-from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.melt import (
@@ -557,13 +556,6 @@ def write_cde_netcdf(
         unlimited_dims=[
             "time",
         ],
-    )
-
-    # Write checksum file for the complete daily output.
-    checksums_subdir = output_filepath.relative_to(intermediate_output_dir).parent
-    write_checksum_file(
-        input_filepath=output_filepath,
-        output_dir=intermediate_output_dir / "checksums" / checksums_subdir,
     )
 
     return output_filepath

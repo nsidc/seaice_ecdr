@@ -9,6 +9,7 @@ from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.intermediate_daily import read_cdecdr_ds
@@ -253,6 +254,13 @@ def publish_daily_nc(
     )
     complete_daily_ds.to_netcdf(complete_daily_filepath)
     logger.success(f"Staged NC file for publication: {complete_daily_filepath}")
+
+    # Write checksum file for the complete daily output.
+    checksums_subdir = complete_daily_filepath.relative_to(complete_output_dir).parent
+    write_checksum_file(
+        input_filepath=complete_daily_filepath,
+        output_dir=complete_output_dir / "checksums" / checksums_subdir,
+    )
 
     return complete_daily_filepath
 

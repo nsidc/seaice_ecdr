@@ -21,18 +21,3 @@ def test_make_standard_cdecdr_netcdf(base_output_dir_test_path):  # noqa
         )
 
         assert output_path.is_file()
-
-        # Assert that the checksums exist where we expect them to be.
-        checksum_filepath = (
-            base_output_dir_test_path
-            # TODO: checksums should only be written to the published,
-            # "complete" area. This needs to move to a different test, because
-            # the above produces intermediate output.
-            / "intermediate"
-            / NORTH
-            / "checksums"
-            / "daily"
-            / "2022"
-            / (output_path.name + ".mnf")
-        )
-        assert checksum_filepath.is_file()

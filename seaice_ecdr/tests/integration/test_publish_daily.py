@@ -1,6 +1,7 @@
 import datetime as dt
 
 import datatree
+from pm_tb_data._types import NORTH
 
 from seaice_ecdr.publish_daily import publish_daily_nc
 from seaice_ecdr.tests.integration import base_output_dir_test_path  # noqa
@@ -28,3 +29,15 @@ def test_publish_daily_nc(base_output_dir_test_path):  # noqa
         assert "valid_range" not in ds.time.attrs.keys()
         assert "valid_range" not in ds.x.attrs.keys()
         assert "valid_range" not in ds.y.attrs.keys()
+
+        # Assert that the checksums exist where we expect them to be.
+        checksum_filepath = (
+            base_output_dir_test_path
+            / "complete"
+            / NORTH
+            / "checksums"
+            / "daily"
+            / "2022"
+            / (output_path.name + ".mnf")
+        )
+        assert checksum_filepath.is_file()
