@@ -9,6 +9,7 @@ from loguru import logger
 from pm_tb_data._types import NORTH
 
 from seaice_ecdr import monthly, util
+from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.intermediate_daily import get_ecdr_dir
 from seaice_ecdr.monthly import (
     CDR_SEAICE_CONC_QA_DAILY_BITMASKS,
@@ -41,30 +42,28 @@ def test__get_daily_complete_filepaths_for_month(fs):
     )
     year = 2022
     month = 3
-    # TODO: get the version string from config instead of hard-coding it to
-    # `v05r01` here.
     _fake_files_for_test_year_month_and_hemisphere = [
-        nh_intermediate_dir / "sic_psn12.5_20220301_F17_v05r01.nc",
-        nh_intermediate_dir / "sic_psn12.5_20220302_F17_v05r01.nc",
-        nh_intermediate_dir / "sic_psn12.5_20220303_F17_v05r01.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220301_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220302_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220303_F17_{ECDR_PRODUCT_VERSION}.nc",
     ]
     _fake_files = [
-        nh_intermediate_dir / "sic_psn12.5_20220201_F17_v05r01.nc",
-        nh_intermediate_dir / "sic_pss12.5_20220201_F17_v05r01.nc",
-        nh_intermediate_dir / "sic_psn12.5_20220202_F17_v05r01.nc",
-        nh_intermediate_dir / "sic_pss12.5_20220202_F17_v05r01.nc",
-        nh_intermediate_dir / "sic_psn12.5_20220203_F17_v05r01.nc",
-        nh_intermediate_dir / "sic_pss12.5_20220203_F17_v05r01.nc",
-        nh_intermediate_dir / "sic_pss12.5_20220301_F17_v05r01.nc",
-        nh_intermediate_dir / "sic_pss12.5_20220302_F17_v05r01.nc",
-        nh_intermediate_dir / "sic_pss12.5_20220303_F17_v05r01.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220201_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss12.5_20220201_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220202_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss12.5_20220202_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220203_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss12.5_20220203_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss12.5_20220301_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss12.5_20220302_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss12.5_20220303_F17_{ECDR_PRODUCT_VERSION}.nc",
         *_fake_files_for_test_year_month_and_hemisphere,
-        nh_intermediate_dir / "sic_psn12.5_20220401_F17_v05r01.nc",
-        sh_intermediate_dir / "sic_pss12.5_20220401_F17_v05r01.nc",
-        nh_intermediate_dir / "sic_psn12.5_20220402_F17_v05r01.nc",
-        sh_intermediate_dir / "sic_pss12.5_20220402_F17_v05r01.nc",
-        nh_intermediate_dir / "sic_psn12.5_20220403_F17_v05r01.nc",
-        sh_intermediate_dir / "sic_pss12.5_20220403_F17_v05r01.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220401_F17_{ECDR_PRODUCT_VERSION}.nc",
+        sh_intermediate_dir / f"sic_pss12.5_20220401_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220402_F17_{ECDR_PRODUCT_VERSION}.nc",
+        sh_intermediate_dir / f"sic_pss12.5_20220402_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220403_F17_{ECDR_PRODUCT_VERSION}.nc",
+        sh_intermediate_dir / f"sic_pss12.5_20220403_F17_{ECDR_PRODUCT_VERSION}.nc",
     ]
     for _file in _fake_files:
         logger.info(f"creating {_file=}")

@@ -40,7 +40,11 @@ from seaice_ecdr.ancillary import (
     nh_polehole_mask,
 )
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import CDR_ANCILLARY_DIR, DEFAULT_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import (
+    CDR_ANCILLARY_DIR,
+    DEFAULT_BASE_OUTPUT_DIR,
+    ECDR_PRODUCT_VERSION,
+)
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
@@ -331,7 +335,7 @@ def get_flagmask(
     if ancillary_source == "CDRv4":
         version_string = "v04r00"
     elif ancillary_source == "CDRv5":
-        version_string = "v05r01"
+        version_string = ECDR_PRODUCT_VERSION
 
     flagmask_fn = CDR_ANCILLARY_DIR / f"flagmask_{gridid}_{version_string}.dat"
     try:
