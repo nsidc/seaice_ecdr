@@ -22,8 +22,8 @@ def test_publish_daily_nc(base_output_dir_test_path):  # noqa
 
         # TODO: we would expect this date to contain the amsr2 prototype group,
         # but the integration tests do not currently run with the AMSR2 platform
-        # config, so the `prototype_amsr2` group is not present.
-        # assert "prototype_amsr2" in ds.groups
+        # config, so the `prototype_am2` group is not present.
+        # assert "prototype_am2" in ds.groups
         assert "/cdr_supplementary" in ds.groups
 
         assert "valid_range" not in ds.time.attrs.keys()
