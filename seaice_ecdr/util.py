@@ -24,8 +24,8 @@ def standard_daily_filename(
 ) -> str:
     """Return standard daily NetCDF filename.
 
-    North Daily files: sic_psn12.5_{YYYYMMDD}_{platform_id}_v05r01.nc
-    South Daily files: sic_pss12.5_{YYYYMMDD}_{platform_id}_v05r01.nc
+    North Daily files: sic_psn12.5_{YYYYMMDD}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc
+    South Daily files: sic_pss12.5_{YYYYMMDD}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc
     """
     grid_id = get_grid_id(
         hemisphere=hemisphere,
@@ -67,8 +67,8 @@ def standard_daily_aggregate_filename(
 ) -> str:
     """Return standard daily aggregate NetCDF filename.
 
-    North Daily aggregate files: sic_psn12.5_YYYYMMDD-YYYYMMDD_v05r01.nc
-    South Daily aggregate files: sic_pss12.5_YYYYMMDD-YYYYMMDD_v05r01.nc
+    North Daily aggregate files: sic_psn12.5_YYYYMMDD-YYYYMMDD_{ECDR_PRODUCT_VERSION}.nc
+    South Daily aggregate files: sic_pss12.5_YYYYMMDD-YYYYMMDD_{ECDR_PRODUCT_VERSION}.nc
     """
     grid_id = get_grid_id(
         hemisphere=hemisphere,
@@ -91,8 +91,8 @@ def standard_monthly_filename(
 ) -> str:
     """Return standard monthly NetCDF filename.
 
-    North Monthly files: sic_psn12.5_{YYYYMM}_{platform_id}_v05r01.nc
-    South Monthly files: sic_pss12.5_{YYYYMM}_{platform_id}_v05r01.nc
+    North Monthly files: sic_psn12.5_{YYYYMM}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc
+    South Monthly files: sic_pss12.5_{YYYYMM}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc
     """
     grid_id = get_grid_id(
         hemisphere=hemisphere,
@@ -114,8 +114,8 @@ def standard_monthly_aggregate_filename(
 ) -> str:
     """Return standard monthly aggregate NetCDF filename.
 
-    North Monthly aggregate files: sic_psn12.5_YYYYMM-YYYYMM_v05r01.nc
-    South Monthly aggregate files: sic_pss12.5_YYYYMM-YYYYMM_v05r01.nc
+    North Monthly aggregate files: sic_psn12.5_YYYYMM-YYYYMM_{ECDR_PRODUCT_VERSION}.nc
+    South Monthly aggregate files: sic_pss12.5_YYYYMM-YYYYMM_{ECDR_PRODUCT_VERSION}.nc
     """
     date_str = f"{start_year}{start_month:02}-{end_year}{end_month:02}"
 

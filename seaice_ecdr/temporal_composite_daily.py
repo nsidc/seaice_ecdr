@@ -521,6 +521,7 @@ def get_daily_climatology_mask(
     daily_ds = None
 
     if hemisphere == "north" and resolution == "25":
+        # TODO: here and below, replace the hard-coded string with use of `CDR_ANCILLARY_DIR`
         # New mask.  Valid/invalid extends into landmask
         # daily_ds = Dataset(
         #    "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-dailyclim.nc"
