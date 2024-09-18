@@ -58,12 +58,13 @@ from seaice_ecdr.ancillary import (
     flag_value_for_meaning,
 )
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR, ECDR_PRODUCT_VERSION
+from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.intermediate_daily import get_ecdr_filepath
 from seaice_ecdr.intermediate_monthly import get_intermediate_monthly_dir
 from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.util import (
     date_range,
+    find_standard_monthly_netcdf_files,
     get_intermediate_output_dir,
     get_num_missing_pixels,
 )
@@ -449,10 +450,14 @@ def validate_outputs(
                     intermediate_output_dir=intermediate_output_dir,
                 )
 
-                # monthly filepaths should have the form
-                # "sic_ps{n|s}25_{YYYYMM}_{sat}_v05r00.nc"
-                expected_fn_glob = f"sic_ps{hemisphere[0]}25_{year}{month:02}_*_{ECDR_PRODUCT_VERSION}.nc"
-                results = list(monthly_dir.glob(expected_fn_glob))
+                results = find_standard_monthly_netcdf_files(
+                    search_dir=monthly_dir,
+                    hemisphere=hemisphere,
+                    resolution="25",
+                    year=year,
+                    month=month,
+                    platform_id="*",
+                )
                 if not results:
                     validation_dict = make_validation_dict_for_missing_file()
                 else:

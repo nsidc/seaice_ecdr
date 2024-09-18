@@ -81,6 +81,30 @@ def standard_daily_aggregate_filename(
     return fn
 
 
+def _standard_monthly_filename(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    platform_id: str,
+    year: int | str,
+    month: int | str,
+) -> str:
+    """Function that has looser typing for wild-cardable (in a glob) kwargs than
+    `standard_monthly_filename`.
+
+    `standard_monthly_filename` is typed more strictly to ensure that output
+    filenames conform to our expectations. This lets you pass in e.g., `"*"` for
+    `platform_id`.
+    """
+    grid_id = get_grid_id(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    fn = f"sic_{grid_id}_{year}{month:02}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc"
+
+    return fn
+
+
 def standard_monthly_filename(
     *,
     hemisphere: Hemisphere,
@@ -94,13 +118,39 @@ def standard_monthly_filename(
     North Monthly files: sic_psn12.5_{YYYYMM}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc
     South Monthly files: sic_pss12.5_{YYYYMM}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc
     """
-    grid_id = get_grid_id(
+    return _standard_monthly_filename(
         hemisphere=hemisphere,
         resolution=resolution,
+        platform_id=platform_id,
+        year=year,
+        month=month,
     )
-    fn = f"sic_{grid_id}_{year}{month:02}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc"
 
-    return fn
+
+def find_standard_monthly_netcdf_files(
+    *,
+    search_dir: Path,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    platform_id: ECDR_SUPPORTED_RESOLUTIONS | str,
+    year: int | str,
+    month: int | str,
+) -> list[Path]:
+    """Find standard monthly nc files matching the given params.
+
+    `platform_id`, `year`, and `month` are wild-cardable (e.g., one can pass in
+    a `*`) to search for files that match multiple platforms/years/months.
+    """
+    fn_glob = _standard_monthly_filename(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        platform_id=platform_id,
+        year=year,
+        month=month,
+    )
+
+    results = search_dir.glob(fn_glob)
+    return list(results)
 
 
 def standard_monthly_aggregate_filename(
