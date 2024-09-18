@@ -60,7 +60,7 @@ from seaice_ecdr.ancillary import (
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR, ECDR_PRODUCT_VERSION
 from seaice_ecdr.intermediate_daily import get_ecdr_filepath
-from seaice_ecdr.monthly import get_monthly_dir
+from seaice_ecdr.intermediate_monthly import get_intermediate_monthly_dir
 from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.util import (
     date_range,
@@ -445,7 +445,7 @@ def validate_outputs(
             years = range(start_date.year, end_date.year + 1)
             months = range(start_date.month, end_date.month + 1)
             for year, month in itertools.product(years, months):
-                monthly_dir = get_monthly_dir(
+                monthly_dir = get_intermediate_monthly_dir(
                     intermediate_output_dir=intermediate_output_dir,
                 )
 

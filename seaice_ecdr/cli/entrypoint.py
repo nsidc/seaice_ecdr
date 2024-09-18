@@ -12,7 +12,7 @@ from seaice_ecdr.cli.daily import cli as daily_cli
 from seaice_ecdr.daily_aggregate import cli as daily_aggregate_cli
 from seaice_ecdr.initial_daily_ecdr import cli as ecdr_cli
 from seaice_ecdr.intermediate_daily import cli as intermediate_daily_cli
-from seaice_ecdr.monthly import cli as monthly_cli
+from seaice_ecdr.intermediate_monthly import cli as intermediate_monthly_cli
 from seaice_ecdr.monthly_aggregate import cli as monthly_aggregate_cli
 from seaice_ecdr.multiprocess_intermediate_daily import (
     cli as multiprocess_intermediate_daily_cli,
@@ -33,7 +33,7 @@ cli.add_command(ecdr_cli)
 cli.add_command(tiecdr_cli)
 cli.add_command(nrt_cli)
 cli.add_command(intermediate_daily_cli)
-cli.add_command(monthly_cli)
+cli.add_command(intermediate_monthly_cli)
 cli.add_command(monthly_aggregate_cli)
 cli.add_command(validation_cli)
 cli.add_command(multiprocess_intermediate_daily_cli)

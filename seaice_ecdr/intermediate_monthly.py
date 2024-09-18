@@ -495,7 +495,7 @@ def calc_surface_type_mask_monthly(
     return monthly_surface_mask
 
 
-def make_monthly_ds(
+def make_intermediate_monthly_ds(
     *,
     daily_ds_for_month: xr.Dataset,
     platform_id: SUPPORTED_PLATFORM_ID,
@@ -584,14 +584,14 @@ def make_monthly_ds(
     return monthly_ds.compute()
 
 
-def get_monthly_dir(*, intermediate_output_dir: Path) -> Path:
+def get_intermediate_monthly_dir(*, intermediate_output_dir: Path) -> Path:
     monthly_dir = intermediate_output_dir / "monthly"
     monthly_dir.mkdir(parents=True, exist_ok=True)
 
     return monthly_dir
 
 
-def get_monthly_filepath(
+def get_intermediate_monthly_filepath(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
@@ -600,7 +600,7 @@ def get_monthly_filepath(
     month: int,
     intermediate_output_dir: Path,
 ) -> Path:
-    output_dir = get_monthly_dir(
+    output_dir = get_intermediate_monthly_dir(
         intermediate_output_dir=intermediate_output_dir,
     )
 
@@ -617,7 +617,7 @@ def get_monthly_filepath(
     return output_path
 
 
-def make_monthly_nc(
+def make_intermediate_monthly_nc(
     *,
     year: int,
     month: int,
@@ -636,7 +636,7 @@ def make_monthly_nc(
 
     platform_id = daily_ds_for_month.platform_id
 
-    output_path = get_monthly_filepath(
+    output_path = get_intermediate_monthly_filepath(
         hemisphere=hemisphere,
         resolution=resolution,
         platform_id=platform_id,
@@ -645,7 +645,7 @@ def make_monthly_nc(
         intermediate_output_dir=intermediate_output_dir,
     )
 
-    monthly_ds = make_monthly_ds(
+    monthly_ds = make_intermediate_monthly_ds(
         daily_ds_for_month=daily_ds_for_month,
         platform_id=platform_id,
         hemisphere=hemisphere,
@@ -677,7 +677,7 @@ def make_monthly_nc(
     return output_path
 
 
-@click.command(name="monthly")
+@click.command(name="intermediate-monthly")
 @click.option(
     "--year",
     required=True,
@@ -768,7 +768,7 @@ def cli(
         freq="M",
     ):
         try:
-            make_monthly_nc(
+            make_intermediate_monthly_nc(
                 year=period.year,
                 month=period.month,
                 intermediate_output_dir=intermediate_output_dir,
