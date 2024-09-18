@@ -30,6 +30,7 @@ def make_25km_ecdr(
     end_date: dt.date,
     hemisphere: Hemisphere,
     base_output_dir: Path,
+    no_multiprocessing: bool,
 ):
     # TODO: consider extracting these to CLI options that default to these values.
     RESOLUTION: Final = "25"
@@ -39,8 +40,12 @@ def make_25km_ecdr(
     # date config.
     AM2_START_DATE = dt.date(2013, 1, 1)
     # Use the default platform dates, which excldues AMSR2
+    if no_multiprocessing:
+        daily_intermediate_cmd = "intermediate-daily"
+    else:
+        daily_intermediate_cmd = "multiprocess-intermediate-daily"
     _run_cmd(
-        f"{CLI_EXE_PATH} multiprocess-intermediate-daily"
+        f"{CLI_EXE_PATH} {daily_intermediate_cmd}"
         f" --start-date {start_date:%Y-%m-%d} --end-date {end_date:%Y-%m-%d}"
         f" --hemisphere {hemisphere}"
         f" --base-output-dir {base_output_dir}"
@@ -54,7 +59,7 @@ def make_25km_ecdr(
     if start_date >= AM2_START_DATE:
         _run_cmd(
             f"export PLATFORM_START_DATES_CONFIG_FILEPATH={PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH} &&"
-            f" {CLI_EXE_PATH} multiprocess-intermediate-daily"
+            f" {CLI_EXE_PATH} {daily_intermediate_cmd}"
             f" --start-date {start_date:%Y-%m-%d} --end-date {end_date:%Y-%m-%d}"
             f" --hemisphere {hemisphere}"
             f" --base-output-dir {base_output_dir}"
@@ -77,6 +82,7 @@ def make_25km_ecdr(
 @click.option(
     "-d",
     "--date",
+    "--start-date",
     required=True,
     type=click.DateTime(
         formats=(
@@ -127,12 +133,19 @@ def make_25km_ecdr(
     ),
     show_default=True,
 )
+@click.option(
+    "--no-multiprocessing",
+    help="Disable multiprocessing. Useful for debugging purposes.",
+    is_flag=True,
+    default=False,
+)
 def cli(
     *,
     date: dt.date,
     end_date: dt.date | None,
     hemisphere: Hemisphere,
     base_output_dir: Path,
+    no_multiprocessing: bool,
 ):
     if end_date is None:
         end_date = copy.copy(date)
@@ -141,6 +154,7 @@ def cli(
         end_date=end_date,
         hemisphere=hemisphere,
         base_output_dir=base_output_dir,
+        no_multiprocessing=no_multiprocessing,
     )
 
 
