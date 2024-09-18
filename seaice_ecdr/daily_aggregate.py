@@ -118,17 +118,28 @@ def _update_ncrcat_daily_ds(
         if k != "number_of_missing_pixels"
     }
 
-    # TODO: ideally this is more generic (e.g., we get the prototype platform ID
-    # from config)
-    if "/prototype_amsr2" in ds.groups:
-        ds["prototype_amsr2"]["am2_seaice_conc"].attrs = {
-            k: v
-            for k, v in ds["prototype_amsr2"]["am2_seaice_conc"].attrs.items()
-            if k != "number_of_missing_pixels"
-        }
+    # Remove "number_of_missing_pixels" attr from seaice conc var in any
+    # prototype subgroups
+    prototype_groups = [
+        group_name for group_name in ds.groups if "/prototype_" in group_name
+    ]
+    if len(prototype_groups) > 0:
+        for prototype_group in prototype_groups:
+            # We expect prototype group name to have the form
+            # `prototype_{platform_id}`
+            platform_id = prototype_group.split("_")[1]
+            prototype_group_name = f"prototype_{platform_id}"
+            prototype_seaice_conc_name = f"{platform_id}_seaice_conc"
+            ds[prototype_group_name][prototype_seaice_conc_name].attrs = {
+                k: v
+                for k, v in ds[prototype_group_name][
+                    prototype_seaice_conc_name
+                ].attrs.items()
+                if k != "number_of_missing_pixels"
+            }
 
     # Set global attributes. Only updates to the root group are necessary. The
-    # `prototype_amsr2` and `cdr_supplementary` groups will keep its attrs unchanged.
+    # `prototype_{platform_id}` and `cdr_supplementary` groups will keep its attrs unchanged.
     daily_aggregate_ds_global_attrs = get_global_attrs(
         time=ds.time,
         temporality="daily",

@@ -74,9 +74,9 @@ def test_daily_aggregate_matches_daily_data(tmpdir):
     agg_cdr_supplementary_ds = xr.open_dataset(
         aggregate_filepath, group="cdr_supplementary"
     )
-    # TODO: prototype_amsr2 does not currently exist in this regression test
+    # TODO: prototype_am2 does not currently exist in this regression test
     # because only data for the default platforms are being generated
-    # agg_prototype_amsr2_ds = xr.open_dataset(aggregate_filepath, group="prototype_amsr2")
+    # agg_prototype_am2_ds = xr.open_dataset(aggregate_filepath, group="prototype_am2")
 
     checksum_filepath = (
         complete_output_dir
