@@ -724,10 +724,11 @@ def create_standard_ecdr_for_dates(
     return error_dates
 
 
-@click.command(name="cdecdr")
+@click.command(name="intermediate-daily")
 @click.option(
     "-d",
     "--date",
+    "--start-date",
     required=True,
     type=click.DateTime(
         formats=(

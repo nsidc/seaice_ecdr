@@ -9,4 +9,4 @@ START_DATE="2022-03-01"
 END_DATE="2022-04-01"
 HEMISPHERE="north"
 
-./scripts/cli.sh daily --date $START_DATE --end-date $END_DATE --hemisphere $HEMISPHERE --base-output-dir $BASE_OUTPUT_DIR
+./scripts/cli.sh daily --date $START_DATE --end-date $END_DATE --hemisphere $HEMISPHERE --base-output-dir $BASE_OUTPUT_DIR --no-multiprocessing
