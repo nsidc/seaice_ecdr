@@ -34,14 +34,16 @@ cli.add_command(tiecdr_cli)
 cli.add_command(nrt_cli)
 cli.add_command(intermediate_daily_cli)
 cli.add_command(monthly_cli)
-cli.add_command(daily_aggregate_cli)
 cli.add_command(monthly_aggregate_cli)
 cli.add_command(validation_cli)
 cli.add_command(multiprocess_intermediate_daily_cli)
 cli.add_command(publish_daily_cli)
 
+# CLIs that ops will use below:
 # this is the CLI ops will interact with to produce standard daily file.s
 cli.add_command(daily_cli)
+# This is the CLI that ops will use to generate daily aggregate files by year:
+cli.add_command(daily_aggregate_cli)
 
 if __name__ == "__main__":
     cli()
