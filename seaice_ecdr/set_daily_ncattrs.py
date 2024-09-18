@@ -83,7 +83,7 @@ def finalize_cdecdr_ds(
             "_FillValue": -1,
             "long_name": (
                 "Passive Microwave Sea Ice"
-                "Concentration Source Estimated Standard Deviation"
+                " Concentration Source Estimated Standard Deviation"
             ),
             "units": "1",
             "grid_mapping": "crs",
