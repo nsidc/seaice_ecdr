@@ -7,8 +7,8 @@ from tempfile import TemporaryDirectory
 from typing import get_args
 
 import click
+import datatree
 import pandas as pd
-import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
@@ -84,7 +84,7 @@ def get_daily_aggregate_filepath(
 
 def _update_ncrcat_daily_ds(
     *,
-    ds: xr.Dataset,
+    ds: datatree.DataTree,
     daily_filepaths: list[Path],
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
@@ -99,19 +99,36 @@ def _update_ncrcat_daily_ds(
         resolution=resolution,
         ancillary_source=ancillary_source,
     )
-    ds["latitude"] = surf_geo_ds.latitude
-    ds["longitude"] = surf_geo_ds.longitude
+    # Lat and lon fields are placed under the "cdr_supplementary" group.
+    for sup_var in ("latitude", "longitude"):
+        ds["cdr_supplementary"][sup_var] = surf_geo_ds[sup_var]
+        # Add in the `coordinates` attr to lat and lon.
+        ds["cdr_supplementary"][sup_var].attrs["coordinates"] = "y x"
+
+    # lat and lon fields have x and y coordinate variables associated with them
+    # and get added automatically when adding those fields above. This drops
+    # those unnecessary vars that will be inherited from the root group.
+    ds["cdr_supplementary"] = ds["cdr_supplementary"].drop_vars(["x", "y"])
 
     # Remove the "number of missing pixels" attr from the daily aggregate conc
-    # variable.
+    # variables.
     ds["cdr_seaice_conc"].attrs = {
         k: v
         for k, v in ds["cdr_seaice_conc"].attrs.items()
         if k != "number_of_missing_pixels"
     }
 
-    # setup global attrs
-    # Set global attributes
+    # TODO: ideally this is more generic (e.g., we get the prototype platform ID
+    # from config)
+    if "/prototype_amsr2" in ds.groups:
+        ds["prototype_amsr2"]["am2_seaice_conc"].attrs = {
+            k: v
+            for k, v in ds["prototype_amsr2"]["am2_seaice_conc"].attrs.items()
+            if k != "number_of_missing_pixels"
+        }
+
+    # Set global attributes. Only updates to the root group are necessary. The
+    # `prototype_amsr2` and `cdr_supplementary` groups will keep its attrs unchanged.
     daily_aggregate_ds_global_attrs = get_global_attrs(
         time=ds.time,
         temporality="daily",
@@ -120,7 +137,7 @@ def _update_ncrcat_daily_ds(
         platform_ids=[platform_id_from_filename(fp.name) for fp in daily_filepaths],
         resolution=resolution,
     )
-    ds.attrs = daily_aggregate_ds_global_attrs
+    ds.attrs = daily_aggregate_ds_global_attrs  # type: ignore[assignment]
 
     return ds
 
@@ -151,7 +168,7 @@ def make_daily_aggregate_netcdf_for_year(
                 input_filepaths=daily_filepaths,
                 output_filepath=tmp_output_fp,
             )
-            daily_ds = xr.open_dataset(tmp_output_fp, chunks=dict(time=1))
+            daily_ds = datatree.open_datatree(tmp_output_fp, chunks=dict(time=1))
             daily_ds = _update_ncrcat_daily_ds(
                 ds=daily_ds,
                 daily_filepaths=daily_filepaths,
@@ -167,11 +184,13 @@ def make_daily_aggregate_netcdf_for_year(
                 complete_output_dir=complete_output_dir,
             )
 
+            # The daily ds should already be set to handle `time` as an
+            # unlimited dim.
+            assert daily_ds.encoding["unlimited_dims"] == {"time"}
+
+            # Write out the aggregate daily file.
             daily_ds.to_netcdf(
                 output_path,
-                unlimited_dims=[
-                    "time",
-                ],
             )
 
         logger.success(f"Wrote daily aggregate file for year={year} to {output_path}")
