@@ -110,7 +110,7 @@ def improved_land_spillover(
     siconc is less than a threshold [sie_min]
 
     The ils_arr is encoded as:
-        0: missing information: siconc cannot be used to anchor/disanchore
+        0: missing information: siconc cannot be used to anchor/disanchor
         1: non-ocean (ie land or other grid cells without siconc (~lake))
         2: ocean that may be removed by land spillover, if dilated sie low
         3: ocean whose concentration may anchor/disanchor coastal siconc
@@ -260,8 +260,6 @@ def land_spillover(
             conc=cdr_conc,
             adj123=adj123.data,
             l90c=l90c.data,
-            # anchoring_siconc=50.0,
-            # affect_dist3=True,
             anchoring_siconc=0.0,
             affect_dist3=False,
         )
@@ -284,8 +282,6 @@ def land_spillover(
             conc=cdr_conc,
             adj123=adj123.data,
             l90c=l90c.data,
-            # anchoring_siconc=50.0,
-            # affect_dist3=True,
             anchoring_siconc=0.0,
             affect_dist3=False,
         )
