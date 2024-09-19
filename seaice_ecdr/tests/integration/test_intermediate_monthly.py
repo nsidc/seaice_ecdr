@@ -43,17 +43,3 @@ def test_make_intermediate_monthly_nc(base_output_dir_test_path, monkeypatch):  
     # by `make_intermediate_monthly_ds`
     ds = xr.open_dataset(output_path)
     assert ds is not None
-
-    # Assert that the checksums exist where we expect them to be.
-    checksum_filepath = (
-        base_output_dir_test_path
-        # TODO: checksums should only be written to the published,
-        # "complete" area. This needs to move to a different test, because
-        # the above produces intermediate output.
-        / "intermediate"
-        / NORTH
-        / "checksums"
-        / "monthly"
-        / (output_path.name + ".mnf")
-    )
-    assert checksum_filepath.is_file()

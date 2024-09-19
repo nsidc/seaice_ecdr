@@ -13,6 +13,11 @@ from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.intermediate_daily import read_cdecdr_ds
+from seaice_ecdr.nc_util import (
+    add_coordinate_coverage_content_type,
+    add_coordinates_attr,
+    remove_valid_range_from_coordinate_vars,
+)
 from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import (
     date_range,
@@ -75,45 +80,6 @@ def get_complete_daily_filepath(
     ecdr_filepath = ecdr_dir / ecdr_filename
 
     return ecdr_filepath
-
-
-def _remove_valid_range_from_coord_vars(complete_daily_ds):
-    """removes `valid_range` attr from coordinate variables in-place"""
-    # TODO: this should be handled upstream of this code. I think we inherit the
-    # attrs for x/y from the ancillary files that we get the x/y variables from.
-    complete_daily_ds.x.attrs = {
-        k: v for k, v in complete_daily_ds.x.attrs.items() if k != "valid_range"
-    }
-    complete_daily_ds.y.attrs = {
-        k: v for k, v in complete_daily_ds.y.attrs.items() if k != "valid_range"
-    }
-    complete_daily_ds.time.attrs = {
-        k: v for k, v in complete_daily_ds.time.attrs.items() if k != "valid_range"
-    }
-
-
-def _add_coordinate_coverage_content_type(complete_daily_ds):
-    """Adds `coverage_content_type` to the provided datatree dataset in-place."""
-    # TODO: This attr should be set upstream of this point, as with the removal
-    # of valid_range above.
-    complete_daily_ds.x.attrs["coverage_content_type"] = "coordinate"
-    complete_daily_ds.y.attrs["coverage_content_type"] = "coordinate"
-    complete_daily_ds.time.attrs["coverage_content_type"] = "coordinate"
-
-
-def _add_coordinates_attr(complete_daily_ds):
-    """Adds `coordinates` attr to data variables in-place"""
-    # Add `coordinates` attr to all variables
-    # TODO: this should also be set at variable creation time, not here as a
-    # final post-processsing step.
-    for group_name in complete_daily_ds.groups:
-        group = complete_daily_ds[group_name]
-        for var_name in group.variables:
-            if var_name in ("crs", "time", "y", "x"):
-                continue
-            var = group[var_name]
-            if var.dims == ("time", "y", "x"):
-                var.attrs["coordinates"] = "time y x"
 
 
 # TODO: consider a better name. `publish` implies this function might actually
@@ -235,9 +201,9 @@ def publish_daily_nc(
             )
 
     # Remove `valid_range` from coordinate attrs
-    _remove_valid_range_from_coord_vars(complete_daily_ds)
-    _add_coordinate_coverage_content_type(complete_daily_ds)
-    _add_coordinates_attr(complete_daily_ds)
+    remove_valid_range_from_coordinate_vars(complete_daily_ds)
+    add_coordinate_coverage_content_type(complete_daily_ds)
+    add_coordinates_attr(complete_daily_ds)
 
     # write out finalized nc file.
     complete_output_dir = get_complete_output_dir(

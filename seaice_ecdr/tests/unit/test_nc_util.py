@@ -1,10 +1,13 @@
 import xarray as xr
 from datatree import DataTree
 
-from seaice_ecdr import publish_daily
+from seaice_ecdr.nc_util import (
+    add_coordinate_coverage_content_type,
+    remove_valid_range_from_coordinate_vars,
+)
 
 
-def test__remove_valid_range_from_coord_vars():
+def test_remove_valid_range_from_coord_vars():
     mock_ds = DataTree.from_dict(
         {
             "/": xr.Dataset(
@@ -18,13 +21,13 @@ def test__remove_valid_range_from_coord_vars():
     )
 
     assert "valid_range" in mock_ds.x.attrs.keys()
-    publish_daily._remove_valid_range_from_coord_vars(mock_ds)
+    remove_valid_range_from_coordinate_vars(mock_ds)
     assert "valid_range" not in mock_ds.x.attrs.keys()
     assert "valid_range" not in mock_ds.y.attrs.keys()
     assert "valid_range" not in mock_ds.time.attrs.keys()
 
 
-def test__add_coordinate_coverage_type():
+def test_add_coordinate_coverage_type():
     mock_ds = DataTree.from_dict(
         {
             "/": xr.Dataset(
@@ -38,7 +41,7 @@ def test__add_coordinate_coverage_type():
     )
 
     assert "coverage_content_type" not in mock_ds.x.attrs.keys()
-    publish_daily._add_coordinate_coverage_content_type(mock_ds)
+    add_coordinate_coverage_content_type(mock_ds)
     assert "coverage_content_type" in mock_ds.x.attrs.keys()
     assert "coverage_content_type" in mock_ds.y.attrs.keys()
     assert "coverage_content_type" in mock_ds.time.attrs.keys()
