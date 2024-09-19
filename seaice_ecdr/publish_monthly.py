@@ -162,7 +162,7 @@ def prepare_monthly_nc_for_publication(
         prototype_monthly_ds = xr.open_dataset(prototype_monthly_fps[0])
         cdr_var_fieldnames = [
             "cdr_seaice_conc_monthly",
-            "cdr_seaice_conc_qa_monthly",
+            "cdr_seaice_conc_monthly_qa",
             "cdr_seaice_conc_stdev_monthly",
         ]
         remap_names = {
