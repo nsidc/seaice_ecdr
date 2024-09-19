@@ -1,28 +1,17 @@
 import copy
 import datetime as dt
-import subprocess
 from pathlib import Path
 from typing import Final, get_args
 
 import click
 from pm_tb_data._types import Hemisphere
 
-from seaice_ecdr.cli.util import datetime_to_date
+from seaice_ecdr.cli.util import CLI_EXE_PATH, datetime_to_date, run_cmd
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.platforms.config import PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH
 from seaice_ecdr.publish_daily import publish_daily_nc_for_dates
 
 _THIS_DIR = Path(__file__).parent
-
-CLI_EXE_PATH = _THIS_DIR / "../../scripts/cli.sh"
-
-
-def _run_cmd(cmd: str):
-    subprocess.run(
-        cmd,
-        shell=True,
-        check=True,
-    )
 
 
 def make_25km_ecdr(
@@ -44,7 +33,7 @@ def make_25km_ecdr(
         daily_intermediate_cmd = "intermediate-daily"
     else:
         daily_intermediate_cmd = "multiprocess-intermediate-daily"
-    _run_cmd(
+    run_cmd(
         f"{CLI_EXE_PATH} {daily_intermediate_cmd}"
         f" --start-date {start_date:%Y-%m-%d} --end-date {end_date:%Y-%m-%d}"
         f" --hemisphere {hemisphere}"
@@ -57,7 +46,7 @@ def make_25km_ecdr(
     # If the given start & end date intersect with the AMSR2 period, run that
     # separately:
     if start_date >= AM2_START_DATE:
-        _run_cmd(
+        run_cmd(
             f"export PLATFORM_START_DATES_CONFIG_FILEPATH={PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH} &&"
             f" {CLI_EXE_PATH} {daily_intermediate_cmd}"
             f" --start-date {start_date:%Y-%m-%d} --end-date {end_date:%Y-%m-%d}"

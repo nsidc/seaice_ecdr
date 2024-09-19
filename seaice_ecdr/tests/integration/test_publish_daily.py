@@ -1,12 +1,14 @@
 import datetime as dt
 
 import datatree
+import pytest
 from pm_tb_data._types import NORTH
 
 from seaice_ecdr.publish_daily import publish_daily_nc
 from seaice_ecdr.tests.integration import base_output_dir_test_path  # noqa
 
 
+@pytest.mark.order(after="test_intermediate_daily.py::test_make_standard_cdecdr_netcdf")
 def test_publish_daily_nc(base_output_dir_test_path):  # noqa
     for day in range(1, 5):
         output_path = publish_daily_nc(

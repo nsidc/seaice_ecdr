@@ -4,7 +4,7 @@ import pytest
 import xarray as xr
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr import monthly
+from seaice_ecdr import intermediate_monthly
 from seaice_ecdr.tests.integration import base_output_dir_test_path  # noqa
 from seaice_ecdr.util import get_intermediate_output_dir
 
@@ -12,12 +12,14 @@ ancillary_source: Final = "CDRv5"
 
 
 @pytest.mark.order(after="test_intermediate_daily.py::test_make_cdecdr_netcdf")
-def test_make_monthly_nc(base_output_dir_test_path, monkeypatch):  # noqa
+def test_make_intermediate_monthly_nc(base_output_dir_test_path, monkeypatch):  # noqa
     # usually we require at least 20 days of data for a valid month. This mock
     # data is just 3 days in size, so we need to mock the
     # "check_min_days_for_valid_month" function.
     monkeypatch.setattr(
-        monthly, "check_min_days_for_valid_month", lambda *_args, **_kwargs: True
+        intermediate_monthly,
+        "check_min_days_for_valid_month",
+        lambda *_args, **_kwargs: True,
     )
 
     intermediate_output_dir = get_intermediate_output_dir(
@@ -26,7 +28,7 @@ def test_make_monthly_nc(base_output_dir_test_path, monkeypatch):  # noqa
         is_nrt=False,
     )
 
-    output_path = monthly.make_monthly_nc(
+    output_path = intermediate_monthly.make_intermediate_monthly_nc(
         year=2022,
         month=3,
         hemisphere=NORTH,
@@ -38,20 +40,6 @@ def test_make_monthly_nc(base_output_dir_test_path, monkeypatch):  # noqa
     assert output_path.is_file()
 
     # Confirm that the netcdf file is readable and matches the dataset provided
-    # by `make_monthly_ds`
+    # by `make_intermediate_monthly_ds`
     ds = xr.open_dataset(output_path)
     assert ds is not None
-
-    # Assert that the checksums exist where we expect them to be.
-    checksum_filepath = (
-        base_output_dir_test_path
-        # TODO: checksums should only be written to the published,
-        # "complete" area. This needs to move to a different test, because
-        # the above produces intermediate output.
-        / "intermediate"
-        / NORTH
-        / "checksums"
-        / "monthly"
-        / (output_path.name + ".mnf")
-    )
-    assert checksum_filepath.is_file()

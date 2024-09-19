@@ -1,4 +1,5 @@
 import datetime as dt
+from pathlib import Path
 from typing import Final
 
 import numpy as np
@@ -9,8 +10,10 @@ from pm_tb_data._types import NORTH, SOUTH
 from seaice_ecdr import util
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.multiprocess_intermediate_daily import get_dates_by_year
+from seaice_ecdr.platforms.models import SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import (
     date_range,
+    find_standard_monthly_netcdf_files,
     get_num_missing_pixels,
     nrt_daily_filename,
     platform_id_from_filename,
@@ -135,6 +138,33 @@ def test_monthly_platform_id_from_filename():
     actual_platform_id = platform_id_from_filename(fn)
 
     assert expected_platform_id == actual_platform_id
+
+
+def test_find_standard_monthly_netcdf_files(fs):
+    monthly_output_dir = Path("/path/to/data/dir/monthly")
+    fs.create_dir(monthly_output_dir)
+    platform_ids: list[SUPPORTED_PLATFORM_ID] = ["am2", "F17"]
+    for platform_id in platform_ids:
+        fake_monthly_filename = standard_monthly_filename(
+            hemisphere=NORTH,
+            resolution="25",
+            platform_id=platform_id,
+            year=2021,
+            month=1,
+        )
+        fake_monthly_filepath = monthly_output_dir / fake_monthly_filename
+        fs.create_file(fake_monthly_filepath)
+
+    found_files_wildcard_platform_id = find_standard_monthly_netcdf_files(
+        search_dir=monthly_output_dir,
+        hemisphere=NORTH,
+        resolution="25",
+        platform_id="*",
+        year=2021,
+        month=1,
+    )
+
+    assert len(found_files_wildcard_platform_id) == 2
 
 
 def test_date_range():

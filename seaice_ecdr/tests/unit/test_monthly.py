@@ -8,22 +8,22 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr import monthly, util
+from seaice_ecdr import intermediate_monthly, util
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.intermediate_daily import get_ecdr_dir
-from seaice_ecdr.monthly import (
+from seaice_ecdr.intermediate_monthly import (
+    CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS,
     CDR_SEAICE_CONC_QA_DAILY_BITMASKS,
-    CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS,
     _get_daily_complete_filepaths_for_month,
     _platform_id_for_month,
     _qa_field_has_flag,
     calc_cdr_melt_onset_day_monthly,
     calc_cdr_seaice_conc_monthly,
-    calc_cdr_seaice_conc_qa_monthly,
-    calc_stdv_of_cdr_seaice_conc_monthly,
+    calc_cdr_seaice_conc_monthly_qa,
+    calc_cdr_seaice_conc_monthly_stdev,
     calc_surface_type_mask_monthly,
     check_min_days_for_valid_month,
-    make_monthly_ds,
+    make_intermediate_monthly_ds,
 )
 
 
@@ -283,50 +283,50 @@ def _mock_daily_ds_for_month():
     return _mock_daily_ds
 
 
-def test_calc_cdr_seaice_conc_qa_monthly():
+def test_calc_cdr_seaice_conc_monthly_qa():
     _mock_daily_ds = _mock_daily_ds_for_month()
     expected_flags = np.array(
         [
-            CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS["average_concentration_exceeds_0.15"]
-            + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS[
+            CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS["average_concentration_exceeds_0.15"]
+            + CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ],
-            CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS["average_concentration_exceeds_0.15"]
-            + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS[
+            CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS["average_concentration_exceeds_0.15"]
+            + CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ]
-            + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS["average_concentration_exceeds_0.30"]
-            + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS[
+            + CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS["average_concentration_exceeds_0.30"]
+            + CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30"
             ],
-            CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS[
+            CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ],
-            CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS[
+            CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30"
             ]
-            + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS["average_concentration_exceeds_0.15"]
-            + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS[
+            + CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS["average_concentration_exceeds_0.15"]
+            + CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ],
-            CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS["invalid_ice_mask_applied"],
-            CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS[
+            CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS["invalid_ice_mask_applied"],
+            CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS[
                 "at_least_one_day_during_month_has_spatial_interpolation"
             ],
-            CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS[
+            CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS[
                 "at_least_one_day_during_month_has_temporal_interpolation"
             ],
-            CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS[
+            CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS[
                 "at_least_one_day_during_month_has_melt_detected"
             ]
-            + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS["average_concentration_exceeds_0.15"]
-            + CDR_SEAICE_CONC_QA_MONTHLY_BITMASKS["average_concentration_exceeds_0.30"],
+            + CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS["average_concentration_exceeds_0.15"]
+            + CDR_SEAICE_CONC_MONTHLY_QA_BITMASKS["average_concentration_exceeds_0.30"],
             0,
         ]
     )
 
     _mean_daily_conc = _mock_daily_ds.cdr_seaice_conc.mean(dim="time")
-    actual = calc_cdr_seaice_conc_qa_monthly(
+    actual = calc_cdr_seaice_conc_monthly_qa(
         daily_ds_for_month=_mock_daily_ds,
         cdr_seaice_conc_monthly=_mean_daily_conc,
     )
@@ -397,7 +397,7 @@ def test__calc_conc_monthly(monkeypatch):
     )
 
 
-def test_calc_stdv_of_cdr_seaice_conc_monthly():
+def test_calc_cdr_seaice_conc_monthly_stdev():
     # time ->
     pixel_one = np.array([0.12, 0.15, 0.23])
     pixel_two = np.array([0.46, 0.55, 0.54])
@@ -419,7 +419,7 @@ def test_calc_stdv_of_cdr_seaice_conc_monthly():
         ),
     )
 
-    actual = calc_stdv_of_cdr_seaice_conc_monthly(
+    actual = calc_cdr_seaice_conc_monthly_stdev(
         daily_cdr_seaice_conc=mock_daily_conc,
     )
 
@@ -491,7 +491,9 @@ def test_monthly_ds(monkeypatch, tmpdir):
     # data is just 3 days in size, so we need to mock the
     # "check_min_days_for_valid_month" function.
     monkeypatch.setattr(
-        monthly, "check_min_days_for_valid_month", lambda *_args, **_kwargs: True
+        intermediate_monthly,
+        "check_min_days_for_valid_month",
+        lambda *_args, **_kwargs: True,
     )
 
     _mock_oceanmask = xr.DataArray(
@@ -507,7 +509,7 @@ def test_monthly_ds(monkeypatch, tmpdir):
     monkeypatch.setattr(
         util, "get_ocean_mask", lambda *_args, **_kwargs: _mock_oceanmask
     )
-    actual = make_monthly_ds(
+    actual = make_intermediate_monthly_ds(
         daily_ds_for_month=_mock_daily_ds,
         platform_id="am2",
         hemisphere=NORTH,
@@ -519,9 +521,9 @@ def test_monthly_ds(monkeypatch, tmpdir):
     expected_vars = sorted(
         [
             "cdr_seaice_conc_monthly",
-            "stdv_of_cdr_seaice_conc_monthly",
+            "cdr_seaice_conc_monthly_stdev",
             "cdr_melt_onset_day_monthly",
-            "cdr_seaice_conc_qa_monthly",
+            "cdr_seaice_conc_monthly_qa",
             "crs",
             "surface_type_mask",
         ]

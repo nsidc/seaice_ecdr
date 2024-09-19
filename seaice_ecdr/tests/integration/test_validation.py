@@ -12,7 +12,7 @@ from seaice_ecdr.validation import validate_outputs
 @pytest.mark.skip(
     reason="skipping because currently adding CDRv4 flags to conc fields in order to match CDRv4 results, but in CDRv5 we want all non-valid values to be the fill value"
 )
-@pytest.mark.order(after="test_monthly.py::test_make_monthly_nc")
+@pytest.mark.order(after="test_monthly.py::test_make_intermediate_monthly_nc")
 def test_validate_outputs(base_output_dir_test_path):  # noqa
     for product_type, hemisphere in itertools.product(
         # TODO: currently just iterate over NORTH, because that's what data is
