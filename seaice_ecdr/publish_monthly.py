@@ -104,7 +104,6 @@ def prepare_monthly_nc_for_publication(
         if f"_{PROTOTYPE_PLATFORM_ID}_" not in fp.name
     ]
     if len(default_monthly_fps) != 1:
-        breakpoint()
         raise RuntimeError(
             f"Failed to find an intermediate monthly file for {year=}, {month=}, {hemisphere} in {intermediate_monthly_dir}"
         )
