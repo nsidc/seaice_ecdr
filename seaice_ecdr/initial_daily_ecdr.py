@@ -546,13 +546,13 @@ def compute_initial_daily_ecdr_dataset(
     logger.debug("Initialized missing_tb_mask where TB was NaN")
 
     spat_int_flag_mask_values = np.array([1, 2, 4, 8, 16, 32], dtype=np.uint8)
-    ecdr_ide_ds["cdr_seaice_conc_interp_spatial"] = (
+    ecdr_ide_ds["cdr_seaice_conc_interp_spatial_flag"] = (
         ("time", "y", "x"),
         np.expand_dims(spatint_bitmask_arr, axis=0),
         {
             "grid_mapping": "crs",
             "standard_name": "status_flag",
-            "long_name": "cdr_seaice_conc_interp_spatial",
+            "long_name": "cdr_seaice_conc_interp_spatial_flag",
             "units": 1,
             "flag_masks": spat_int_flag_mask_values,
             "flag_meanings": (
@@ -1100,7 +1100,9 @@ def compute_initial_daily_ecdr_dataset(
     qa_bitmask[spillover_applied] += 4
     qa_bitmask[invalid_tb_mask & ~ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 8
     qa_bitmask[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 16
-    qa_bitmask[ecdr_ide_ds["cdr_seaice_conc_interp_spatial"].data[0, :, :] != 0] += 32
+    qa_bitmask[
+        ecdr_ide_ds["cdr_seaice_conc_interp_spatial_flag"].data[0, :, :] != 0
+    ] += 32
     qa_bitmask[non_ocean_mask] = 0
 
     ecdr_ide_ds["cdr_seaice_conc_qa"] = (

@@ -668,7 +668,7 @@ def temporal_interpolation(
             ~np.isnan(cdr_conc_pole_filled)
         )
 
-        if "cdr_seaice_conc_interp_spatial" not in tie_ds.variables.keys():
+        if "cdr_seaice_conc_interp_spatial_flag" not in tie_ds.variables.keys():
             raise RuntimeError("Spatial interpolation flag not found in tie_ds.")
 
         # TODO: These are constants for the eCDR runs.  They should
@@ -685,8 +685,8 @@ def temporal_interpolation(
             "h37": 16,
             "pole_filled": 32,
         }
-        tie_ds["cdr_seaice_conc_interp_spatial"] = tie_ds[
-            "cdr_seaice_conc_interp_spatial"
+        tie_ds["cdr_seaice_conc_interp_spatial_flag"] = tie_ds[
+            "cdr_seaice_conc_interp_spatial_flag"
         ].where(
             ~is_pole_filled,
             other=TB_SPATINT_BITMASK_MAP["pole_filled"],
