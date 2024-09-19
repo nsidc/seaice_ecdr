@@ -104,6 +104,7 @@ def prepare_monthly_nc_for_publication(
         if f"_{PROTOTYPE_PLATFORM_ID}_" not in fp.name
     ]
     if len(default_monthly_fps) != 1:
+        breakpoint()
         raise RuntimeError(
             f"Failed to find an intermediate monthly file for {year=}, {month=}, {hemisphere} in {intermediate_monthly_dir}"
         )
@@ -161,8 +162,8 @@ def prepare_monthly_nc_for_publication(
         prototype_monthly_ds = xr.open_dataset(prototype_monthly_fps[0])
         cdr_var_fieldnames = [
             "cdr_seaice_conc_monthly",
-            "cdr_qa_seaice_conc_monthly",
-            "cdr_stdev_seaice_conc_monthly",
+            "cdr_seaice_conc_qa_monthly",
+            "cdr_seaice_conc_stdev_monthly",
         ]
         remap_names = {
             cdr_var_fieldname: cdr_var_fieldname.replace(
@@ -187,7 +188,7 @@ def prepare_monthly_nc_for_publication(
         prototype_subgroup.attrs = {
             k: v
             for k, v in prototype_subgroup.attrs.items()
-            if k in ["source", "sensor", "platform"]
+            if k in ["sensor", "platform"]
         }
 
         complete_monthly_ds[PROTOTYPE_PLATFORM_DATA_GROUP_NAME] = datatree.DataTree(

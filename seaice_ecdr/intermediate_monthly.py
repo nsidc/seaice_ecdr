@@ -377,30 +377,30 @@ def calc_cdr_seaice_conc_monthly(
     return conc_monthly
 
 
-def calc_stdv_of_cdr_seaice_conc_monthly(
+def calc_cdr_seaice_conc_stdev_monthly(
     *,
     daily_cdr_seaice_conc: xr.DataArray,
 ) -> xr.DataArray:
-    """Create the `stdv_of_cdr_seaice_conc_monthly` variable."""
-    stdv_of_cdr_seaice_conc_monthly = daily_cdr_seaice_conc.std(
+    """Create the `cdr_seaice_conc_stdev_monthly` variable."""
+    cdr_seaice_conc_stdev_monthly = daily_cdr_seaice_conc.std(
         dim="time",
         ddof=1,
     )
-    stdv_of_cdr_seaice_conc_monthly.name = "stdv_of_cdr_seaice_conc_monthly"
+    cdr_seaice_conc_stdev_monthly.name = "cdr_seaice_conc_stdev_monthly"
 
-    stdv_of_cdr_seaice_conc_monthly = stdv_of_cdr_seaice_conc_monthly.assign_attrs(
+    cdr_seaice_conc_stdev_monthly = cdr_seaice_conc_stdev_monthly.assign_attrs(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
         valid_range=(np.float32(0.0), np.float32(1.0)),
         grid_mapping="crs",
         units="1",
     )
 
-    stdv_of_cdr_seaice_conc_monthly.encoding = dict(
+    cdr_seaice_conc_stdev_monthly.encoding = dict(
         _FillValue=-1,
         zlib=True,
     )
 
-    return stdv_of_cdr_seaice_conc_monthly
+    return cdr_seaice_conc_stdev_monthly
 
 
 def calc_cdr_melt_onset_day_monthly(
@@ -524,7 +524,7 @@ def make_intermediate_monthly_ds(
 
     # Create `cdr_seaice_conc_stdev_monthly`, the standard deviation of the
     # sea ice concentration.
-    stdv_of_cdr_seaice_conc_monthly = calc_stdv_of_cdr_seaice_conc_monthly(
+    cdr_seaice_conc_stdev_monthly = calc_cdr_seaice_conc_stdev_monthly(
         daily_cdr_seaice_conc=daily_ds_for_month.cdr_seaice_conc,
     )
 
@@ -540,7 +540,7 @@ def make_intermediate_monthly_ds(
 
     monthly_ds_data_vars = dict(
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
-        stdv_of_cdr_seaice_conc_monthly=stdv_of_cdr_seaice_conc_monthly,
+        cdr_seaice_conc_stdev_monthly=cdr_seaice_conc_stdev_monthly,
         cdr_seaice_conc_qa_monthly=cdr_seaice_conc_qa_monthly,
         surface_type_mask=surface_type_mask_monthly,
     )
@@ -663,8 +663,8 @@ def make_intermediate_monthly_nc(
             "time",
         ],
     )
-    logger.success(
-        f"Wrote monthly file for {year=} and {month=} using {len(daily_ds_for_month.time)} daily files to {output_path}"
+    logger.info(
+        f"Wrote intermediate monthly file for {year=} and {month=} using {len(daily_ds_for_month.time)} daily files to {output_path}"
     )
 
     return output_path
