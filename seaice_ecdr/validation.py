@@ -235,6 +235,9 @@ def get_pixel_counts(
     seaice_conc_var = ds[conc_var_name]
 
     qa_var_name = "cdr_seaice_conc_qa_flag"
+    if product == "monthly":
+        qa_var_name = "cdr_seaice_conc_monthly_qa_flag"
+
     qa_var = ds[qa_var_name]
 
     # Handle the log file first. It contains information on the # of
@@ -453,7 +456,7 @@ def validate_outputs(
                 results = find_standard_monthly_netcdf_files(
                     search_dir=monthly_dir,
                     hemisphere=hemisphere,
-                    resolution="25",
+                    resolution=VALIDATION_RESOLUTION,
                     year=year,
                     month=month,
                     platform_id="*",
