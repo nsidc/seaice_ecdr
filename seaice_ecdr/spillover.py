@@ -23,7 +23,7 @@ from seaice_ecdr.tb_data import (
 from seaice_ecdr.util import get_ecdr_grid_shape
 
 NT_MAPS_DIR = Path("/share/apps/G02202_V5/cdr_testdata/nt_datafiles/data36/maps")
-LAND_SPILL_ALGS = Literal["BT_NT", "NT2", "ILS", "ILSb"]
+LAND_SPILL_ALGS = Literal["BT_NT", "NT2", "ILS", "ILSb", "NT2_BT"]
 
 
 def convert_nonocean_to_shoremap(*, is_nonocean: npt.NDArray):
@@ -110,7 +110,7 @@ def improved_land_spillover(
     siconc is less than a threshold [sie_min]
 
     The ils_arr is encoded as:
-        0: missing information: siconc cannot be used to anchor/disanchore
+        0: missing information: siconc cannot be used to anchor/disanchor
         1: non-ocean (ie land or other grid cells without siconc (~lake))
         2: ocean that may be removed by land spillover, if dilated sie low
         3: ocean whose concentration may anchor/disanchor coastal siconc
@@ -260,12 +260,49 @@ def land_spillover(
             conc=cdr_conc,
             adj123=adj123.data,
             l90c=l90c.data,
-            # anchoring_siconc=50.0,
-            # affect_dist3=True,
             anchoring_siconc=0.0,
             affect_dist3=False,
         )
         spillover_applied = spillover_applied_nt2
+    elif algorithm == "NT2_BT":
+        # Apply the NT2 land spillover_algorithm to the cdr_conc_field
+        #   and then apply the BT land spillover algorithm
+
+        l90c = get_land90_conc_field(
+            hemisphere=hemisphere,
+            resolution=tb_data.resolution,
+            ancillary_source=ancillary_source,
+        )
+        adj123 = get_adj123_field(
+            hemisphere=hemisphere,
+            resolution=tb_data.resolution,
+            ancillary_source=ancillary_source,
+        )
+        spillover_applied_nt2 = apply_nt2_land_spillover(
+            conc=cdr_conc,
+            adj123=adj123.data,
+            l90c=l90c.data,
+            anchoring_siconc=0.0,
+            affect_dist3=False,
+        )
+
+        # Apply the BT land spillover algorithm to the cdr_conc field
+        non_ocean_mask = get_non_ocean_mask(
+            hemisphere=hemisphere,
+            resolution=tb_data.resolution,
+            ancillary_source=ancillary_source,
+        )
+
+        spillover_applied_nt2_bt = coastal_fix(
+            conc=spillover_applied_nt2,
+            missing_flag_value=np.nan,
+            land_mask=land_mask,
+            minic=10,
+            fix_goddard_bt_error=fix_goddard_bt_error,
+        )
+
+        spillover_applied = spillover_applied_nt2_bt
+
     elif algorithm == "BT_NT":
         non_ocean_mask = get_non_ocean_mask(
             hemisphere=hemisphere,
