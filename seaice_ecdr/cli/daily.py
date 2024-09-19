@@ -33,7 +33,8 @@ def make_25km_ecdr(
 ):
     # TODO: consider extracting these to CLI options that default to these values.
     RESOLUTION: Final = "25"
-    LAND_SPILLOVER_ALG: Final = "BT_NT"
+    LAND_SPILLOVER_ALG: Final = "NT2_BT"
+
     ANCILLARY_SOURCE: Final = "CDRv4"
     # TODO: the amsr2 start date should ideally be read from the platform start
     # date config.
