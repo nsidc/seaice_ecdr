@@ -163,7 +163,7 @@ def prepare_monthly_nc_for_publication(
         cdr_var_fieldnames = [
             "cdr_seaice_conc_monthly",
             "cdr_seaice_conc_monthly_qa",
-            "cdr_seaice_conc_stdev_monthly",
+            "cdr_seaice_conc_monthly_stdev",
         ]
         remap_names = {
             cdr_var_fieldname: cdr_var_fieldname.replace(

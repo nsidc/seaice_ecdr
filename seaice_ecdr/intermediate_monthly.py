@@ -5,7 +5,7 @@ Follows the same procedure as CDR v4.
 Variables:
 
 * `cdr_seaice_conc_monthly`: Create combined monthly sea ice concentration
-* `cdr_seaice_conc_stdev_monthly`: Calculate standard deviation of sea ice
+* `cdr_seaice_conc_monthly_stdev`: Calculate standard deviation of sea ice
   concentration
 * `cdr_seaice_conc_monthly_qa`: QA Fields (Weather filters, land
   spillover, valid ice mask, spatial and temporal interpolation, melt onset)
@@ -377,30 +377,30 @@ def calc_cdr_seaice_conc_monthly(
     return conc_monthly
 
 
-def calc_cdr_seaice_conc_stdev_monthly(
+def calc_cdr_seaice_conc_monthly_stdev(
     *,
     daily_cdr_seaice_conc: xr.DataArray,
 ) -> xr.DataArray:
-    """Create the `cdr_seaice_conc_stdev_monthly` variable."""
-    cdr_seaice_conc_stdev_monthly = daily_cdr_seaice_conc.std(
+    """Create the `cdr_seaice_conc_monthly_stdev` variable."""
+    cdr_seaice_conc_monthly_stdev = daily_cdr_seaice_conc.std(
         dim="time",
         ddof=1,
     )
-    cdr_seaice_conc_stdev_monthly.name = "cdr_seaice_conc_stdev_monthly"
+    cdr_seaice_conc_monthly_stdev.name = "cdr_seaice_conc_monthly_stdev"
 
-    cdr_seaice_conc_stdev_monthly = cdr_seaice_conc_stdev_monthly.assign_attrs(
+    cdr_seaice_conc_monthly_stdev = cdr_seaice_conc_monthly_stdev.assign_attrs(
         long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
         valid_range=(np.float32(0.0), np.float32(1.0)),
         grid_mapping="crs",
         units="1",
     )
 
-    cdr_seaice_conc_stdev_monthly.encoding = dict(
+    cdr_seaice_conc_monthly_stdev.encoding = dict(
         _FillValue=-1,
         zlib=True,
     )
 
-    return cdr_seaice_conc_stdev_monthly
+    return cdr_seaice_conc_monthly_stdev
 
 
 def calc_cdr_melt_onset_day_monthly(
@@ -522,9 +522,9 @@ def make_intermediate_monthly_ds(
         ancillary_source=ancillary_source,
     )
 
-    # Create `cdr_seaice_conc_stdev_monthly`, the standard deviation of the
+    # Create `cdr_seaice_conc_monthly_stdev`, the standard deviation of the
     # sea ice concentration.
-    cdr_seaice_conc_stdev_monthly = calc_cdr_seaice_conc_stdev_monthly(
+    cdr_seaice_conc_monthly_stdev = calc_cdr_seaice_conc_monthly_stdev(
         daily_cdr_seaice_conc=daily_ds_for_month.cdr_seaice_conc,
     )
 
@@ -540,7 +540,7 @@ def make_intermediate_monthly_ds(
 
     monthly_ds_data_vars = dict(
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
-        cdr_seaice_conc_stdev_monthly=cdr_seaice_conc_stdev_monthly,
+        cdr_seaice_conc_monthly_stdev=cdr_seaice_conc_monthly_stdev,
         cdr_seaice_conc_monthly_qa=cdr_seaice_conc_monthly_qa,
         surface_type_mask=surface_type_mask_monthly,
     )

@@ -20,7 +20,7 @@ from seaice_ecdr.intermediate_monthly import (
     calc_cdr_melt_onset_day_monthly,
     calc_cdr_seaice_conc_monthly,
     calc_cdr_seaice_conc_monthly_qa,
-    calc_cdr_seaice_conc_stdev_monthly,
+    calc_cdr_seaice_conc_monthly_stdev,
     calc_surface_type_mask_monthly,
     check_min_days_for_valid_month,
     make_intermediate_monthly_ds,
@@ -397,7 +397,7 @@ def test__calc_conc_monthly(monkeypatch):
     )
 
 
-def test_calc_cdr_seaice_conc_stdev_monthly():
+def test_calc_cdr_seaice_conc_monthly_stdev():
     # time ->
     pixel_one = np.array([0.12, 0.15, 0.23])
     pixel_two = np.array([0.46, 0.55, 0.54])
@@ -419,7 +419,7 @@ def test_calc_cdr_seaice_conc_stdev_monthly():
         ),
     )
 
-    actual = calc_cdr_seaice_conc_stdev_monthly(
+    actual = calc_cdr_seaice_conc_monthly_stdev(
         daily_cdr_seaice_conc=mock_daily_conc,
     )
 
@@ -521,7 +521,7 @@ def test_monthly_ds(monkeypatch, tmpdir):
     expected_vars = sorted(
         [
             "cdr_seaice_conc_monthly",
-            "cdr_seaice_conc_stdev_monthly",
+            "cdr_seaice_conc_monthly_stdev",
             "cdr_melt_onset_day_monthly",
             "cdr_seaice_conc_monthly_qa",
             "crs",
