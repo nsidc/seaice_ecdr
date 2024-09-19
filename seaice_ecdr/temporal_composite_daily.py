@@ -619,7 +619,7 @@ def temporal_interpolation(
     )
 
     # Add the temporal interp flags to the dataset
-    tie_ds["cdr_seaice_conc_interp_temporal"] = (
+    tie_ds["cdr_seaice_conc_interp_temporal_flag"] = (
         ("time", "y", "x"),
         np.expand_dims(ti_flags, axis=0),
         {
