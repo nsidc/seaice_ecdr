@@ -260,6 +260,7 @@ def make_daily_aggregate_netcdf_for_year(
     "-r",
     "--resolution",
     required=True,
+    default="25",
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
 @click.option(
