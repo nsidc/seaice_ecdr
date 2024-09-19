@@ -354,7 +354,7 @@ def reproject_ideds_25to12(
     # Block-replace (=nearest-neighbor interp)
     #   then extrapolate to no-value ocean grid cells
     block_regrid_vars = (
-        "cdr_seaice_conc_interp_spatial",
+        "cdr_seaice_conc_interp_spatial_flag",
         "invalid_ice_mask",
         "invalid_tb_mask",
         "bt_weather_mask",
@@ -384,7 +384,7 @@ def reproject_ideds_25to12(
         "raw_bt_seaice_conc",
         "raw_nt_seaice_conc",
         "conc",
-        "cdr_seaice_conc_qa",
+        "cdr_seaice_conc_qa_flag",
     )
 
     for var_name in bilinear_regrid_vars:

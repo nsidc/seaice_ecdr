@@ -116,13 +116,13 @@ def test_seaice_idecdr_has_necessary_fields(
         "y",
         "y",
         "conc",
-        "cdr_seaice_conc_qa",
+        "cdr_seaice_conc_qa_flag",
         "raw_bt_seaice_conc",
         "raw_nt_seaice_conc",
         "bt_weather_mask",
         "nt_weather_mask",
         "invalid_ice_mask",
-        "cdr_seaice_conc_interp_spatial",
+        "cdr_seaice_conc_interp_spatial_flag",
     )
     for field_name in expected_fields:
         assert field_name in sample_idecdr_dataset_nh.variables.keys()
@@ -203,13 +203,13 @@ def test_seaice_idecdr_has_tyx_data_vars(
     """Test that idecdr netcdf has (time, y, x) dims for data fields."""
     expected_tyx_fields = (
         "conc",
-        "cdr_seaice_conc_qa",
+        "cdr_seaice_conc_qa_flag",
         "raw_bt_seaice_conc",
         "raw_nt_seaice_conc",
         "bt_weather_mask",
         "nt_weather_mask",
         "invalid_ice_mask",
-        "cdr_seaice_conc_interp_spatial",
+        "cdr_seaice_conc_interp_spatial_flag",
     )
     for field_name in expected_tyx_fields:
         nh_data_shape = sample_idecdr_dataset_nh[field_name].shape
