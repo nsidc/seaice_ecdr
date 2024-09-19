@@ -19,6 +19,7 @@ from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
 from seaice_ecdr.publish_monthly import get_complete_monthly_dir
 from seaice_ecdr.util import (
+    find_standard_monthly_netcdf_files,
     get_complete_output_dir,
     platform_id_from_filename,
     standard_monthly_aggregate_filename,
@@ -35,16 +36,16 @@ def _get_monthly_complete_filepaths(
         complete_output_dir=complete_output_dir,
     )
 
-    # TODO: the monthly filenames are encoded in the
-    # `util.standard_monthly_filename` func. Can we adapt that to use wildcards
-    # and return a glob-able string?
-    # North Monthly files: sic_psn12.5_{YYYYMM}_{platform_id}_v05r00.nc
-    # South Monthly files: sic_pss12.5_{YYYYMM}_{platform_id}_v05r00.nc
-    filename_pattern = f"sic_ps{hemisphere[0]}{resolution}_*.nc"
+    monthly_filepaths = find_standard_monthly_netcdf_files(
+        search_dir=monthly_dir,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        platform_id="*",
+        year="*",
+        month="*",
+    )
 
-    monthly_files = list(sorted(monthly_dir.glob(filename_pattern)))
-
-    return monthly_files
+    return monthly_filepaths
 
 
 def get_monthly_aggregate_filepath(

@@ -150,7 +150,7 @@ def find_standard_monthly_netcdf_files(
     )
 
     results = search_dir.glob(fn_glob)
-    return list(results)
+    return list(sorted(results))
 
 
 def standard_monthly_aggregate_filename(
