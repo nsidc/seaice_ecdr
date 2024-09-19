@@ -1,4 +1,11 @@
 """Code to produce daily aggregate files from daily complete data.
+
+
+TODO: The daily-aggregate processing is very parallelizable because
+      each year is indendent of every other year.  It could be
+      implemented with multi-processing to speed up production
+      on a multi-core machine.  Perhaps as a cmdline arg to this
+      CLI API?
 """
 
 import datetime as dt
