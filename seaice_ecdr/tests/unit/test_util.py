@@ -140,7 +140,7 @@ def test_monthly_platform_id_from_filename():
     assert expected_platform_id == actual_platform_id
 
 
-def test_find_standard_monthly_netcdf_files(fs):
+def test_find_standard_monthly_netcdf_files_platform_wildcard(fs):
     monthly_output_dir = Path("/path/to/data/dir/monthly")
     fs.create_dir(monthly_output_dir)
     platform_ids: list[SUPPORTED_PLATFORM_ID] = ["am2", "F17"]
@@ -162,6 +162,32 @@ def test_find_standard_monthly_netcdf_files(fs):
         platform_id="*",
         year=2021,
         month=1,
+    )
+
+    assert len(found_files_wildcard_platform_id) == 2
+
+
+def test_find_standard_monthly_netcdf_files_yearmonth_wildcard(fs):
+    monthly_output_dir = Path("/path/to/data/dir/monthly")
+    fs.create_dir(monthly_output_dir)
+    for year, month in [(2022, 1), (2022, 2)]:
+        fake_monthly_filename = standard_monthly_filename(
+            hemisphere=NORTH,
+            resolution="25",
+            platform_id="F17",
+            year=year,
+            month=month,
+        )
+        fake_monthly_filepath = monthly_output_dir / fake_monthly_filename
+        fs.create_file(fake_monthly_filepath)
+
+    found_files_wildcard_platform_id = find_standard_monthly_netcdf_files(
+        search_dir=monthly_output_dir,
+        hemisphere=NORTH,
+        resolution="25",
+        platform_id="F17",
+        year="*",
+        month="*",
     )
 
     assert len(found_files_wildcard_platform_id) == 2

@@ -29,7 +29,6 @@ cli.add_command(tiecdr_cli)
 cli.add_command(nrt_cli)
 cli.add_command(intermediate_daily_cli)
 cli.add_command(intermediate_monthly_cli)
-cli.add_command(monthly_aggregate_cli)
 cli.add_command(validation_cli)
 cli.add_command(multiprocess_intermediate_daily_cli)
 cli.add_command(publish_daily_cli)
@@ -41,6 +40,8 @@ cli.add_command(daily_cli)
 cli.add_command(daily_aggregate_cli)
 # Generate standard monthly files ready for publication:
 cli.add_command(monthly_cli)
+# Generate monthly aggregate file (one per hemisphere)
+cli.add_command(monthly_aggregate_cli)
 
 if __name__ == "__main__":
     cli()

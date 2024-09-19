@@ -3,22 +3,23 @@
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import get_args
+from typing import Final, get_args
 
 import click
+import datatree
 import pandas as pd
-import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import get_ancillary_ds
+from seaice_ecdr.ancillary import ANCILLARY_SOURCES, get_ancillary_ds
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import concatenate_nc_files
 from seaice_ecdr.publish_monthly import get_complete_monthly_dir
 from seaice_ecdr.util import (
+    find_standard_monthly_netcdf_files,
     get_complete_output_dir,
     platform_id_from_filename,
     standard_monthly_aggregate_filename,
@@ -35,16 +36,16 @@ def _get_monthly_complete_filepaths(
         complete_output_dir=complete_output_dir,
     )
 
-    # TODO: the monthly filenames are encoded in the
-    # `util.standard_monthly_filename` func. Can we adapt that to use wildcards
-    # and return a glob-able string?
-    # North Monthly files: sic_psn12.5_{YYYYMM}_{platform_id}_v05r00.nc
-    # South Monthly files: sic_pss12.5_{YYYYMM}_{platform_id}_v05r00.nc
-    filename_pattern = f"sic_ps{hemisphere[0]}{resolution}_*.nc"
+    monthly_filepaths = find_standard_monthly_netcdf_files(
+        search_dir=monthly_dir,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        platform_id="*",
+        year="*",
+        month="*",
+    )
 
-    monthly_files = list(sorted(monthly_dir.glob(filename_pattern)))
-
-    return monthly_files
+    return monthly_filepaths
 
 
 def get_monthly_aggregate_filepath(
@@ -74,20 +75,33 @@ def get_monthly_aggregate_filepath(
     return output_filepath
 
 
+# TODO: this is very similar to `daily_aggregate._update_ncrcat_daily_ds`. Can
+# it be de-duplicated?
 def _update_ncrcat_monthly_ds(
     *,
-    agg_ds: xr.Dataset,
+    agg_ds: datatree.DataTree,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     monthly_filepaths: list[Path],
-) -> xr.Dataset:
+    ancillary_source: ANCILLARY_SOURCES,
+) -> datatree.DataTree:
     # Add latitude and longitude fields
     surf_geo_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
-    agg_ds["latitude"] = surf_geo_ds.latitude
-    agg_ds["longitude"] = surf_geo_ds.longitude
+
+    # Lat and lon fields are placed under the "cdr_supplementary" group.
+    for sup_var in ("latitude", "longitude"):
+        agg_ds["cdr_supplementary"][sup_var] = surf_geo_ds[sup_var]
+        # Add in the `coordinates` attr to lat and lon.
+        agg_ds["cdr_supplementary"][sup_var].attrs["coordinates"] = "y x"
+
+    # lat and lon fields have x and y coordinate variables associated with them
+    # and get added automatically when adding those fields above. This drops
+    # those unnecessary vars that will be inherited from the root group.
+    agg_ds["cdr_supplementary"] = agg_ds["cdr_supplementary"].drop_vars(["x", "y"])
 
     agg_ds["cdr_seaice_conc_monthly"].attrs = {
         k: v
@@ -95,8 +109,8 @@ def _update_ncrcat_monthly_ds(
         if k != "number_of_missing_pixels"
     }
 
-    # setup global attrs
-    # Set global attributes
+    # Set global attributes. Only updates to the root group are necessary. The
+    # `prototype_{platform_id}` and `cdr_supplementary` groups will keep its attrs unchanged.
     monthly_aggregate_ds_global_attrs = get_global_attrs(
         time=agg_ds.time,
         temporality="monthly",
@@ -105,7 +119,7 @@ def _update_ncrcat_monthly_ds(
         platform_ids=[platform_id_from_filename(fp.name) for fp in monthly_filepaths],
         resolution=resolution,
     )
-    agg_ds.attrs = monthly_aggregate_ds_global_attrs
+    agg_ds.attrs = monthly_aggregate_ds_global_attrs  # type: ignore[assignment]
 
     return agg_ds
 
@@ -141,6 +155,7 @@ def _update_ncrcat_monthly_ds(
     "--resolution",
     required=True,
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
+    default="25",
 )
 def cli(
     *,
@@ -148,6 +163,9 @@ def cli(
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> None:
+    # TODO: consider extracting this to CLI option.
+    ANCILLARY_SOURCE: Final = "CDRv4"
+
     try:
         complete_output_dir = get_complete_output_dir(
             base_output_dir=base_output_dir,
@@ -176,12 +194,13 @@ def cli(
                 input_filepaths=monthly_filepaths,
                 output_filepath=tmp_output_fp,
             )
-            ds = xr.open_dataset(tmp_output_fp, chunks=dict(time=1))
+            ds = datatree.open_datatree(tmp_output_fp, chunks=dict(time=1))
             ds = _update_ncrcat_monthly_ds(
                 agg_ds=ds,
                 hemisphere=hemisphere,
                 resolution=resolution,
                 monthly_filepaths=monthly_filepaths,
+                ancillary_source=ANCILLARY_SOURCE,
             )
 
             start_date = pd.Timestamp(ds.time.min().values).date()
@@ -196,11 +215,11 @@ def cli(
                 end_month=end_date.month,
                 complete_output_dir=complete_output_dir,
             )
+            # The monthly ds should already be set to handle `time` as an
+            # unlimited dim.
+            assert ds.encoding["unlimited_dims"] == {"time"}
             ds.to_netcdf(
                 output_filepath,
-                unlimited_dims=[
-                    "time",
-                ],
             )
 
         logger.success(f"Wrote monthly aggregate file to {output_filepath}")
