@@ -569,7 +569,9 @@ def compute_initial_daily_ecdr_dataset(
             "zlib": True,
         },
     )
-    logger.debug("Initialized cdr_seaice_conc_interp_spatial with TB fill locations")
+    logger.debug(
+        "Initialized cdr_seaice_conc_interp_spatial_flag with TB fill locations"
+    )
 
     platform = PLATFORM_CONFIG.get_platform_by_date(date)
     if platform.id == "am2":
@@ -1105,7 +1107,7 @@ def compute_initial_daily_ecdr_dataset(
     ] += 32
     qa_bitmask[non_ocean_mask] = 0
 
-    ecdr_ide_ds["cdr_seaice_conc_qa"] = (
+    ecdr_ide_ds["cdr_seaice_conc_qa_flag"] = (
         ("time", "y", "x"),
         np.expand_dims(qa_bitmask, axis=0),
         {
