@@ -85,9 +85,9 @@ def _standard_monthly_filename(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    platform_id: str,
-    year: int | str,
-    month: int | str,
+    platform_id: SUPPORTED_PLATFORM_ID | Literal["*"],
+    year: int | Literal["*"],
+    month: int | Literal["*"],
 ) -> str:
     """Function that has looser typing for wild-cardable (in a glob) kwargs than
     `standard_monthly_filename`.
@@ -100,7 +100,16 @@ def _standard_monthly_filename(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    fn = f"sic_{grid_id}_{year}{month:02}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc"
+    if isinstance(month, int):
+        month_str = f"{month:02}"
+    else:
+        month_str = month
+
+    year_month = f"{year}{month_str}"
+    # de-duplicate "**" if year and month are both a wildcard.
+
+    year_month = year_month.replace("**", "*")
+    fn = f"sic_{grid_id}_{year_month}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc"
 
     return fn
 
@@ -132,9 +141,9 @@ def find_standard_monthly_netcdf_files(
     search_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    platform_id: ECDR_SUPPORTED_RESOLUTIONS | str,
-    year: int | str,
-    month: int | str,
+    platform_id: SUPPORTED_PLATFORM_ID | Literal["*"],
+    year: int | Literal["*"],
+    month: int | Literal["*"],
 ) -> list[Path]:
     """Find standard monthly nc files matching the given params.
 
