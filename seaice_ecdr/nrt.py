@@ -12,6 +12,7 @@ from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.nsidc_0080 import get_nsidc_0080_tbs_from_disk
 
 from seaice_ecdr.ancillary import ANCILLARY_SOURCES
+from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
@@ -274,7 +275,12 @@ def nrt_ecdr_for_day(
             daily_ds.to_netcdf(nrt_output_filepath)
             logger.success(f"Wrote complete daily NRT NC file: {nrt_output_filepath}")
 
-            # TODO: write checksum file for NRTs?
+            # write checksum file for NRTs
+            checksums_dir = nrt_output_filepath.parent / "checksums"
+            write_checksum_file(
+                input_filepath=nrt_output_filepath,
+                output_dir=checksums_dir,
+            )
         except Exception as e:
             logger.exception(f"Failed to create NRT ECDR for {date=} {hemisphere=}")
             raise e
