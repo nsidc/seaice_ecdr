@@ -22,9 +22,6 @@ NSIDC_NFS_SHARE_DIR = Path("/share/apps/G02202_V5")
 if not NSIDC_NFS_SHARE_DIR.is_dir():
     raise RuntimeError(f"Expected {NSIDC_NFS_SHARE_DIR} to exist, but it does not.")
 
-# Logs from running the ECDR code are saved here.
-LOGS_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_logs"
-
 
 # environment-specific directories for outputs
 def _get_env_subdir_str() -> str:
@@ -58,10 +55,15 @@ def _get_env_subdir_str() -> str:
 
 # Outputs from the `seaice_ecdr` go to these locations by default. The CLI
 # provides the option to change this.
+_env_subdir = _get_env_subdir_str()
 DEFAULT_BASE_OUTPUT_DIR = (
-    NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_outputs" / _get_env_subdir_str()
+    NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_outputs" / _env_subdir
 )
 DEFAULT_BASE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+# Logs from running the ECDR code are saved here.
+LOGS_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_logs" / _env_subdir
+LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Location of LANCE AMSR2 NRT data files:
 # TODO: nest the subdir under an `ecdr_inputs` or similar?
