@@ -53,6 +53,18 @@ AME_PLATFORM = Platform(
     ),
 )
 
+
+F18_PLATFORM = Platform(
+    name="DMSP 5D-3/F18 > Defense Meteorological Satellite Program-F18",
+    sensor="SSMIS > Special Sensor Microwave Imager/Sounder",
+    id="F18",
+    date_range=DateRange(
+        # TODO: is this accurate? This value from NSIDC-0001 docs.
+        first_date=dt.date(2017, 1, 1),
+        last_date=None,
+    ),
+)
+
 F17_PLATFORM = Platform(
     name="DMSP 5D-3/F17 > Defense Meteorological Satellite Program-F17",
     sensor="SSMIS > Special Sensor Microwave Imager/Sounder",
@@ -105,6 +117,7 @@ SUPPORTED_PLATFORMS = [
     AM2_PLATFORM,
     AME_PLATFORM,
     F17_PLATFORM,
+    F18_PLATFORM,
     F13_PLATFORM,
     F11_PLATFORM,
     F08_PLATFORM,

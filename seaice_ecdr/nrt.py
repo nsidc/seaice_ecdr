@@ -9,14 +9,11 @@ import click
 import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
-from pm_tb_data.fetch.amsr.lance_amsr2 import (
-    access_local_lance_data,
-    download_latest_lance_files,
-)
+from pm_tb_data.fetch.nsidc_0080 import get_nsidc_0080_tbs_from_disk
 
 from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR, LANCE_NRT_DATA_DIR
+from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
     compute_initial_daily_ecdr_dataset,
     get_idecdr_filepath,
@@ -42,7 +39,8 @@ from seaice_ecdr.util import (
     get_intermediate_output_dir,
 )
 
-LANCE_RESOLUTION: Final = "12.5"
+NRT_RESOLUTION: Final = "25"
+NRT_PLATFORM_ID: Final = "F18"
 
 
 def compute_nrt_initial_daily_ecdr_dataset(
@@ -51,43 +49,43 @@ def compute_nrt_initial_daily_ecdr_dataset(
     hemisphere: Hemisphere,
     ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ):
-    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
-    # TODO: handle missing data case.
-    xr_tbs = access_local_lance_data(
+    """Create an initial daily ECDR NetCDF using NRT data"""
+    # TODO: consider extracting the fetch-related code here to `tb_data` module.
+    xr_tbs = get_nsidc_0080_tbs_from_disk(
         date=date,
         hemisphere=hemisphere,
-        data_dir=LANCE_NRT_DATA_DIR,
+        resolution=NRT_RESOLUTION,
+        platform_id=NRT_PLATFORM_ID,
     )
-    data_source: Final = "LANCE AU_SI12"
-    platform_id: Final = "am2"
+    data_source: Final = "NSIDC-0080"
 
     ecdr_tbs = map_tbs_to_ecdr_channels(
-        # TODO/Note: this mapping is the same as used for `am2`.
         mapping=dict(
-            v19="v18",
-            h19="h18",
-            v22="v23",
-            v37="v36",
-            h37="h36",
+            v19="v19",
+            h19="h19",
+            v22="v22",
+            v37="v37",
+            h37="h37",
         ),
         xr_tbs=xr_tbs,
         hemisphere=hemisphere,
-        resolution=LANCE_RESOLUTION,
+        resolution=NRT_RESOLUTION,
         date=date,
         data_source=data_source,
     )
 
     tb_data = EcdrTbData(
         tbs=ecdr_tbs,
-        resolution=LANCE_RESOLUTION,
+        resolution="25",
         data_source=data_source,
-        platform_id=platform_id,
+        platform_id=NRT_PLATFORM_ID,
     )
 
     nrt_initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         tb_data=tb_data,
+        # TODO: this needs to be updated.
         land_spillover_alg="NT2",
         ancillary_source=ancillary_source,
     )
@@ -108,8 +106,7 @@ def read_or_create_and_read_nrt_idecdr_ds(
         date=date,
         platform_id=platform.id,
         intermediate_output_dir=intermediate_output_dir,
-        # TODO: we want to support 25km NRT.
-        resolution="12.5",
+        resolution=NRT_RESOLUTION,
     )
 
     if overwrite or not idecdr_filepath.is_file():
@@ -172,7 +169,7 @@ def temporally_interpolated_nrt_ecdr_dataset(
     temporally_interpolated_ds = temporal_interpolation(
         date=date,
         hemisphere=hemisphere,
-        resolution=LANCE_RESOLUTION,
+        resolution=NRT_RESOLUTION,
         data_stack=data_stack,
         interp_range=days_to_look_previously,
         one_sided_limit=days_to_look_previously,
@@ -188,12 +185,14 @@ def read_or_create_and_read_nrt_tiecdr_ds(
     date: dt.date,
     intermediate_output_dir: Path,
     overwrite: bool,
+    # TODO: is it 4 or 5 days? Here we use 4, but the default for the temporal
+    # interpolation itself is 5.
     days_to_look_previously: int = 4,
 ) -> xr.Dataset:
     tie_filepath = get_tie_filepath(
         date=date,
         hemisphere=hemisphere,
-        resolution=LANCE_RESOLUTION,
+        resolution=NRT_RESOLUTION,
         intermediate_output_dir=intermediate_output_dir,
     )
 
@@ -233,7 +232,7 @@ def nrt_ecdr_for_day(
     cde_filepath = get_ecdr_filepath(
         date=date,
         hemisphere=hemisphere,
-        resolution=LANCE_RESOLUTION,
+        resolution=NRT_RESOLUTION,
         intermediate_output_dir=complete_output_dir,
         platform_id=platform.id,
         is_nrt=True,
@@ -261,7 +260,7 @@ def nrt_ecdr_for_day(
                 tie_ds=tiecdr_ds,
                 date=date,
                 hemisphere=hemisphere,
-                resolution=LANCE_RESOLUTION,
+                resolution=NRT_RESOLUTION,
                 intermediate_output_dir=intermediate_output_dir,
                 is_nrt=True,
                 ancillary_source=ancillary_source,
@@ -273,46 +272,10 @@ def nrt_ecdr_for_day(
                 intermediate_output_dir=complete_output_dir,
                 hemisphere=hemisphere,
             )
-            # TODO: still need to "publish" to the complete location
             logger.success(f"Wrote complete daily ncfile: {written_cde_ncfile}")
         except Exception as e:
             logger.exception(f"Failed to create NRT ECDR for {date=} {hemisphere=}")
             raise e
-
-
-@click.command(name="download-latest-nrt-data")
-@click.option(
-    "-o",
-    "--output-dir",
-    required=True,
-    type=click.Path(
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        writable=True,
-        resolve_path=True,
-        path_type=Path,
-    ),
-    show_default=True,
-    default=LANCE_NRT_DATA_DIR,
-    help="Directory in which LANCE AMSR2 NRT files will be downloaded to.",
-)
-@click.option(
-    "--overwrite",
-    is_flag=True,
-    show_default=True,
-    default=False,
-    help="Overwrite existing LANCE files.",
-)
-def download_latest_nrt_data(*, output_dir: Path, overwrite: bool) -> None:
-    """Download the latest NRT LANCE AMSR2 data to the specified output directory.
-
-    Files are only downloaded if they are considered 'complete' and ready for
-    NRT processing for the ECDR product. This means that the latest available
-    date of data is never downloaded, as it is considered provisional/subject to
-    change until a new day's worth of data is available.
-    """
-    download_latest_lance_files(output_dir=output_dir, overwrite=overwrite)
 
 
 @click.command(name="daily-nrt")
@@ -400,5 +363,4 @@ def nrt_cli():
     ...
 
 
-nrt_cli.add_command(download_latest_nrt_data)
 nrt_cli.add_command(nrt_ecdr_for_dates)

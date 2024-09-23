@@ -254,7 +254,7 @@ def _get_nsidc_0001_tbs(
         tbs=ecdr_tbs,
         resolution=tb_resolution,
         data_source=data_source,
-        platform_id=platform_id,  # type: ignore[arg-type]
+        platform_id=platform_id,
     )
 
     return ecdr_tb_data
