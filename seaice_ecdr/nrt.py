@@ -44,6 +44,9 @@ from seaice_ecdr.util import (
 
 NRT_RESOLUTION: Final = "25"
 NRT_PLATFORM_ID: Final = "F18"
+# Number of days to look previously for temporal interpolation (forward
+# gap-filling)
+NRT_DAYS_TO_LOOK_PREVIOUSLY: Final = 5
 
 
 def compute_nrt_initial_daily_ecdr_dataset(
@@ -152,12 +155,11 @@ def temporally_interpolated_nrt_ecdr_dataset(
     date: dt.date,
     intermediate_output_dir: Path,
     overwrite: bool,
-    days_to_look_previously: int = 5,
     ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ) -> xr.Dataset:
     init_datasets = []
     for date in date_range(
-        start_date=date - dt.timedelta(days=days_to_look_previously), end_date=date
+        start_date=date - dt.timedelta(days=NRT_DAYS_TO_LOOK_PREVIOUSLY), end_date=date
     ):
         init_dataset = read_or_create_and_read_nrt_idecdr_ds(
             date=date,
@@ -174,8 +176,8 @@ def temporally_interpolated_nrt_ecdr_dataset(
         hemisphere=hemisphere,
         resolution=NRT_RESOLUTION,
         data_stack=data_stack,
-        interp_range=days_to_look_previously,
-        one_sided_limit=days_to_look_previously,
+        interp_range=NRT_DAYS_TO_LOOK_PREVIOUSLY,
+        one_sided_limit=NRT_DAYS_TO_LOOK_PREVIOUSLY,
         ancillary_source=ancillary_source,
     )
 
@@ -188,9 +190,6 @@ def read_or_create_and_read_nrt_tiecdr_ds(
     date: dt.date,
     intermediate_output_dir: Path,
     overwrite: bool,
-    # TODO: is it 4 or 5 days? Here we use 4, but the default for the temporal
-    # interpolation itself is 5.
-    days_to_look_previously: int = 4,
 ) -> xr.Dataset:
     tie_filepath = get_tie_filepath(
         date=date,
@@ -205,7 +204,6 @@ def read_or_create_and_read_nrt_tiecdr_ds(
             date=date,
             intermediate_output_dir=intermediate_output_dir,
             overwrite=overwrite,
-            days_to_look_previously=days_to_look_previously,
         )
 
         write_tie_netcdf(
