@@ -224,7 +224,7 @@ def nrt_ecdr_for_day(
     overwrite: bool,
     ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ):
-    """Create an initial daily ECDR NetCDF using NRT LANCE AMSR2 data."""
+    """Create an initial daily ECDR NetCDF using NRT NSIDC-0080 F18 data."""
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
@@ -330,13 +330,7 @@ def nrt_ecdr_for_day(
 @click.option(
     "--overwrite",
     is_flag=True,
-    help=(
-        "Overwrite intermediate and final outputs. CAUTION: because lance data is temporary,"
-        " this action could be destructive in a permenant way. E.g,. if input data for a"
-        " day that this CLI is being run for was previously generated with available"
-        " lance data, but that data no longer exists, the resulting file may be empty or"
-        " have significant data gaps. Use this primarily in a development environment."
-    ),
+    help=("Overwrite intermediate and final outputs."),
 )
 def nrt_ecdr_for_dates(
     *,
