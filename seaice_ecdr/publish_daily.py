@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import get_args
 
 import click
+import xarray as xr
 from datatree import DataTree
 from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
@@ -26,6 +27,11 @@ from seaice_ecdr.util import (
     nrt_daily_filename,
     standard_daily_filename,
 )
+
+# TODO: consider extracting to config or a kwarg of this function for more
+# flexible use with other platforms in the future.
+PROTOTYPE_PLATFORM_ID: SUPPORTED_PLATFORM_ID = "am2"
+PROTOTYPE_PLATFORM_DATA_GROUP_NAME = f"prototype_{PROTOTYPE_PLATFORM_ID}"
 
 
 # TODO: this and `get_complete_daily_filepath` are identical (aside from var
@@ -82,6 +88,54 @@ def get_complete_daily_filepath(
     return ecdr_filepath
 
 
+def make_publication_ready_ds(
+    intermediate_daily_ds: xr.Dataset,
+    hemisphere: Hemisphere,
+) -> DataTree:
+    """Take an intermediate daily dataset and prepare for publication.
+
+    * Moves supplementary fields into "cdr_supplementary" group
+    * Removes `valid_range` attr from coordinate vars
+    * Adds `coverage_content_type: coordinate` attr to coordinate vars
+    * Adds  `coordinates` attr to data variables
+    """
+    # publication-ready daily data are grouped using `DataTree`.
+    # Create a `cdr_supplementary` group for "supplemntary" fields
+    cdr_supplementary_fields = [
+        "raw_bt_seaice_conc",
+        "raw_nt_seaice_conc",
+        "surface_type_mask",
+    ]
+    # Melt onset only occurs in the NH.
+    if hemisphere == NORTH:
+        cdr_supplementary_fields.append("cdr_melt_onset_day")
+
+    # Drop x, y, time coordinate variables. These will be inherited from the
+    # root group.
+    cdr_supplementary_group = intermediate_daily_ds[cdr_supplementary_fields].drop_vars(
+        ["x", "y", "time"]
+    )
+    # remove attrs from supplementary group. These will be inherted from the
+    # root group.
+    cdr_supplementary_group.attrs = {}
+
+    complete_daily_ds: DataTree = DataTree.from_dict(
+        {
+            "/": intermediate_daily_ds[
+                [k for k in intermediate_daily_ds if k not in cdr_supplementary_fields]
+            ],
+            "cdr_supplementary": cdr_supplementary_group,
+        }
+    )
+
+    # Remove `valid_range` from coordinate attrs
+    remove_valid_range_from_coordinate_vars(complete_daily_ds)
+    add_coordinate_coverage_content_type(complete_daily_ds)
+    add_coordinates_attr(complete_daily_ds)
+
+    return complete_daily_ds
+
+
 # TODO: consider a better name. `publish` implies this function might actually
 # publish it to a publicly accessible archive. That's something ops will do
 # separately. This just generates the publication-ready nc file to it's expected
@@ -100,10 +154,6 @@ def publish_daily_nc(
     output NC file's root-group variables are all taken from the default
     platforms given by the platform start date configuration.
     """
-    # TODO: consider extracting to config or a kwarg of this function for more
-    # flexible use with other platforms in the future.
-    PROTOTYPE_PLATFORM_ID: SUPPORTED_PLATFORM_ID = "am2"
-    PROTOTYPE_PLATFORM_DATA_GROUP_NAME = f"prototype_{PROTOTYPE_PLATFORM_ID}"
 
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir,
@@ -120,35 +170,13 @@ def publish_daily_nc(
         is_nrt=False,
     )
 
-    # publication-ready daily data are grouped using `DataTree`.
-    # Create a `cdr_supplementary` group for "supplemntary" fields
-    cdr_supplementary_fields = [
-        "raw_bt_seaice_conc",
-        "raw_nt_seaice_conc",
-        "surface_type_mask",
-    ]
-    # Melt onset only occurs in the NH.
-    if hemisphere == NORTH:
-        cdr_supplementary_fields.append("cdr_melt_onset_day")
-
-    # Drop x, y, time coordinate variables. These will be inherited from the
-    # root group.
-    cdr_supplementary_group = default_daily_ds[cdr_supplementary_fields].drop_vars(
-        ["x", "y", "time"]
-    )
-    # remove attrs from supplementary group. These will be inherted from the
-    # root group.
-    cdr_supplementary_group.attrs = {}
-
-    complete_daily_ds: DataTree = DataTree.from_dict(
-        {
-            "/": default_daily_ds[
-                [k for k in default_daily_ds if k not in cdr_supplementary_fields]
-            ],
-            "cdr_supplementary": cdr_supplementary_group,
-        }
+    # Prepare a dataset that's ready for publication.
+    complete_daily_ds = make_publication_ready_ds(
+        intermediate_daily_ds=default_daily_ds,
+        hemisphere=hemisphere,
     )
 
+    # Add the prototype group if there's data.
     if PLATFORM_CONFIG.platform_available_for_date(
         platform_id=PROTOTYPE_PLATFORM_ID,
         date=date,
@@ -199,11 +227,6 @@ def publish_daily_nc(
             logger.warning(
                 f"Failed to find prototype daily file for {date=} {PROTOTYPE_PLATFORM_ID=}"
             )
-
-    # Remove `valid_range` from coordinate attrs
-    remove_valid_range_from_coordinate_vars(complete_daily_ds)
-    add_coordinate_coverage_content_type(complete_daily_ds)
-    add_coordinates_attr(complete_daily_ds)
 
     # write out finalized nc file.
     complete_output_dir = get_complete_output_dir(

@@ -21,11 +21,13 @@ from seaice_ecdr.initial_daily_ecdr import (
 )
 from seaice_ecdr.intermediate_daily import (
     complete_daily_ecdr_ds,
-    get_ecdr_filepath,
-    write_cde_netcdf,
 )
 from seaice_ecdr.platforms import (
     PLATFORM_CONFIG,
+)
+from seaice_ecdr.publish_daily import (
+    get_complete_daily_filepath,
+    make_publication_ready_ds,
 )
 from seaice_ecdr.tb_data import EcdrTbData, map_tbs_to_ecdr_channels
 from seaice_ecdr.temporal_composite_daily import (
@@ -228,21 +230,19 @@ def nrt_ecdr_for_day(
         hemisphere=hemisphere,
         is_nrt=True,
     )
-    platform = PLATFORM_CONFIG.get_platform_by_date(date)
-    cde_filepath = get_ecdr_filepath(
+    nrt_output_filepath = get_complete_daily_filepath(
         date=date,
         hemisphere=hemisphere,
         resolution=NRT_RESOLUTION,
-        intermediate_output_dir=complete_output_dir,
-        platform_id=platform.id,
+        complete_output_dir=complete_output_dir,
         is_nrt=True,
     )
 
-    if cde_filepath.is_file() and not overwrite:
-        logger.info(f"File for {date=} already exists ({cde_filepath}).")
+    if nrt_output_filepath.is_file() and not overwrite:
+        logger.info(f"File for {date=} already exists ({nrt_output_filepath}).")
         return
 
-    if not cde_filepath.is_file() or overwrite:
+    if not nrt_output_filepath.is_file() or overwrite:
         intermediate_output_dir = get_intermediate_output_dir(
             base_output_dir=base_output_dir,
             hemisphere=hemisphere,
@@ -265,14 +265,15 @@ def nrt_ecdr_for_day(
                 is_nrt=True,
                 ancillary_source=ancillary_source,
             )
-
-            written_cde_ncfile = write_cde_netcdf(
-                cde_ds=cde_ds,
-                output_filepath=cde_filepath,
-                intermediate_output_dir=complete_output_dir,
+            daily_ds = make_publication_ready_ds(
+                intermediate_daily_ds=cde_ds,
                 hemisphere=hemisphere,
             )
-            logger.success(f"Wrote complete daily ncfile: {written_cde_ncfile}")
+
+            daily_ds.to_netcdf(nrt_output_filepath)
+            logger.success(f"Wrote complete daily NRT NC file: {nrt_output_filepath}")
+
+            # TODO: write checksum file for NRTs?
         except Exception as e:
             logger.exception(f"Failed to create NRT ECDR for {date=} {hemisphere=}")
             raise e
