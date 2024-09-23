@@ -60,20 +60,20 @@ def get_complete_daily_filepath(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     complete_output_dir: Path,
     is_nrt: bool,
+    platform_id: SUPPORTED_PLATFORM_ID,
 ):
-    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     if is_nrt:
         ecdr_filename = nrt_daily_filename(
             hemisphere=hemisphere,
             date=date,
-            platform_id=platform.id,
+            platform_id=platform_id,
             resolution=resolution,
         )
     else:
         ecdr_filename = standard_daily_filename(
             hemisphere=hemisphere,
             date=date,
-            platform_id=platform.id,
+            platform_id=platform_id,
             resolution=resolution,
         )
 
@@ -234,12 +234,14 @@ def publish_daily_nc(
         hemisphere=hemisphere,
         is_nrt=False,
     )
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     complete_daily_filepath = get_complete_daily_filepath(
         date=date,
         resolution=resolution,
         complete_output_dir=complete_output_dir,
         hemisphere=hemisphere,
         is_nrt=False,
+        platform_id=platform.id,
     )
     complete_daily_ds.to_netcdf(complete_daily_filepath)
     logger.success(f"Staged NC file for publication: {complete_daily_filepath}")

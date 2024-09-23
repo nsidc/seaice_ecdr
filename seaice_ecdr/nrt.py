@@ -235,6 +235,7 @@ def nrt_ecdr_for_day(
         hemisphere=hemisphere,
         resolution=NRT_RESOLUTION,
         complete_output_dir=complete_output_dir,
+        platform_id=NRT_PLATFORM_ID,
         is_nrt=True,
     )
 
