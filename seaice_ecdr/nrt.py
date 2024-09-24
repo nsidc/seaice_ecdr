@@ -43,6 +43,13 @@ from seaice_ecdr.util import (
 )
 
 NRT_RESOLUTION: Final = "25"
+# NOTE/TODO: note that the NRT_PLATFORM_ID is used but not the exclusive source
+# of platform information. The program must be run with the environment variable
+# `PLATFORM_START_DATES_CONFIG_FILEPATH` set to the NRT config file
+# (`nrt_platform_start_dates.yml`) for the code to run properly. Ideally in the
+# future we can refactor the code to support configuring the platform start
+# dates at any point rather than needing an at-import-time setup as we currently
+# do.
 NRT_PLATFORM_ID: Final = "F18"
 # Number of days to look previously for temporal interpolation (forward
 # gap-filling)
