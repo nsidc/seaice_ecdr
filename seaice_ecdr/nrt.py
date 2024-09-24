@@ -47,6 +47,7 @@ NRT_PLATFORM_ID: Final = "F18"
 # Number of days to look previously for temporal interpolation (forward
 # gap-filling)
 NRT_DAYS_TO_LOOK_PREVIOUSLY: Final = 5
+NRT_LAND_SPILLOVER_ALG: Final = "NT2_BT"
 
 
 def compute_nrt_initial_daily_ecdr_dataset(
@@ -91,8 +92,7 @@ def compute_nrt_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
         tb_data=tb_data,
-        # TODO: this needs to be updated.
-        land_spillover_alg="NT2",
+        land_spillover_alg=NRT_LAND_SPILLOVER_ALG,
         ancillary_source=ancillary_source,
     )
 
