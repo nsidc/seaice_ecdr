@@ -84,6 +84,9 @@ LOGS_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_logs" / _env_subdir
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Location of surface mask & geo-information files.
+# TODO: we should consider moving the ancillary files to a different
+# location. Currently, ancillary files are stored in the G02202 V5 specific dir,
+# but the NRT product is G10016 and it uses the same ancillary data.
 CDR_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_ancillary"
 CDRv4_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / "cdrv4_equiv_ancillary"
 
