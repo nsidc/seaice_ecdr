@@ -30,7 +30,7 @@ from seaice_ecdr.publish_daily import (
     get_complete_daily_filepath,
     make_publication_ready_ds,
 )
-from seaice_ecdr.tb_data import EcdrTbData, map_tbs_to_ecdr_channels
+from seaice_ecdr.tb_data import EcdrTbData, get_null_ecdr_tbs, map_tbs_to_ecdr_channels
 from seaice_ecdr.temporal_composite_daily import (
     get_tie_filepath,
     temporal_interpolation,
@@ -58,28 +58,36 @@ def compute_nrt_initial_daily_ecdr_dataset(
 ):
     """Create an initial daily ECDR NetCDF using NRT data"""
     # TODO: consider extracting the fetch-related code here to `tb_data` module.
-    xr_tbs = get_nsidc_0080_tbs_from_disk(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=NRT_RESOLUTION,
-        platform_id=NRT_PLATFORM_ID,
-    )
     data_source: Final = "NSIDC-0080"
+    try:
+        xr_tbs = get_nsidc_0080_tbs_from_disk(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=NRT_RESOLUTION,
+            platform_id=NRT_PLATFORM_ID,
+        )
 
-    ecdr_tbs = map_tbs_to_ecdr_channels(
-        mapping=dict(
-            v19="v19",
-            h19="h19",
-            v22="v22",
-            v37="v37",
-            h37="h37",
-        ),
-        xr_tbs=xr_tbs,
-        hemisphere=hemisphere,
-        resolution=NRT_RESOLUTION,
-        date=date,
-        data_source=data_source,
-    )
+        ecdr_tbs = map_tbs_to_ecdr_channels(
+            mapping=dict(
+                v19="v19",
+                h19="h19",
+                v22="v22",
+                v37="v37",
+                h37="h37",
+            ),
+            xr_tbs=xr_tbs,
+            hemisphere=hemisphere,
+            resolution=NRT_RESOLUTION,
+            date=date,
+            data_source=data_source,
+        )
+    except FileNotFoundError:
+        ecdr_tbs = get_null_ecdr_tbs(hemisphere=hemisphere, resolution=NRT_RESOLUTION)
+        logger.warning(
+            f"Using all-null TBS for date={date},"
+            f" hemisphere={hemisphere},"
+            f" resolution={NRT_RESOLUTION}"
+        )
 
     tb_data = EcdrTbData(
         tbs=ecdr_tbs,
@@ -161,8 +169,6 @@ def temporally_interpolated_nrt_ecdr_dataset(
     for date in date_range(
         start_date=date - dt.timedelta(days=NRT_DAYS_TO_LOOK_PREVIOUSLY), end_date=date
     ):
-        # TODO: support missing data periods (e.g., running for 2024-09-22 does
-        # not work atm).
         init_dataset = read_or_create_and_read_nrt_idecdr_ds(
             date=date,
             hemisphere=hemisphere,
