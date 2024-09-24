@@ -10,7 +10,7 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import ANCILLARY_SOURCES, get_ocean_mask
-from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
+from seaice_ecdr.constants import ECDR_NRT_PRODUCT_VERSION, ECDR_PRODUCT_VERSION
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
 
@@ -54,6 +54,9 @@ def nrt_daily_filename(
     fn_base = standard_fn_path.stem
     ext = standard_fn_path.suffix
     nrt_fn = fn_base + "_P" + ext
+
+    # Replace the standard G02202 version number with the NRT version.
+    nrt_fn = nrt_fn.replace(ECDR_PRODUCT_VERSION, ECDR_NRT_PRODUCT_VERSION)
 
     return nrt_fn
 

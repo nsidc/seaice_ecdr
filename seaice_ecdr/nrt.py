@@ -14,7 +14,7 @@ from pm_tb_data.fetch.nsidc_0080 import get_nsidc_0080_tbs_from_disk
 from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import DEFAULT_BASE_NRT_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
     compute_initial_daily_ecdr_dataset,
     get_idecdr_filepath,
@@ -161,6 +161,7 @@ def temporally_interpolated_nrt_ecdr_dataset(
     for date in date_range(
         start_date=date - dt.timedelta(days=NRT_DAYS_TO_LOOK_PREVIOUSLY), end_date=date
     ):
+        # TODO: support missing data periods.
         init_dataset = read_or_create_and_read_nrt_idecdr_ds(
             date=date,
             hemisphere=hemisphere,
@@ -215,15 +216,9 @@ def read_or_create_and_read_nrt_tiecdr_ds(
     return tie_ds
 
 
-def nrt_ecdr_for_day(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    base_output_dir: Path,
-    overwrite: bool,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
-):
-    """Create an initial daily ECDR NetCDF using NRT NSIDC-0080 F18 data."""
+def get_nrt_complete_daily_filepath(
+    *, base_output_dir: Path, hemisphere: Hemisphere, date: dt.date
+) -> Path:
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
@@ -238,6 +233,23 @@ def nrt_ecdr_for_day(
         is_nrt=True,
     )
 
+    return nrt_output_filepath
+
+
+def nrt_ecdr_for_day(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    base_output_dir: Path,
+    overwrite: bool,
+    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
+):
+    """Create an initial daily ECDR NetCDF using NRT NSIDC-0080 F18 data."""
+    nrt_output_filepath = get_nrt_complete_daily_filepath(
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        date=date,
+    )
     if nrt_output_filepath.is_file() and not overwrite:
         logger.info(f"File for {date=} already exists ({nrt_output_filepath}).")
         return
@@ -324,7 +336,7 @@ def nrt_ecdr_for_day(
         resolve_path=True,
         path_type=Path,
     ),
-    default=DEFAULT_BASE_OUTPUT_DIR,
+    default=DEFAULT_BASE_NRT_OUTPUT_DIR,
     help=(
         "Base output directory for NRT ECDR outputs."
         " Subdirectories are created for outputs of"
