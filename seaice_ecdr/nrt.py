@@ -114,6 +114,7 @@ def read_or_create_and_read_nrt_idecdr_ds(
     intermediate_output_dir: Path,
     overwrite: bool,
 ):
+    # TODO: this isn't correct. We always use F18
     platform = PLATFORM_CONFIG.get_platform_by_date(date)
     idecdr_filepath = get_idecdr_filepath(
         hemisphere=hemisphere,
@@ -317,7 +318,7 @@ def nrt_ecdr_for_day(
             raise e
 
 
-@click.command(name="daily-nrt")
+@click.command(name="nrt")
 @click.option(
     "-d",
     "--date",
@@ -388,12 +389,3 @@ def nrt_ecdr_for_dates(
             base_output_dir=base_output_dir,
             overwrite=overwrite,
         )
-
-
-@click.group(name="nrt")
-def nrt_cli():
-    """Run NRT Sea Ice ECDR."""
-    ...
-
-
-nrt_cli.add_command(nrt_ecdr_for_dates)

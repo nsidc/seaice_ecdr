@@ -417,12 +417,11 @@ def compute_initial_daily_ecdr_dataset(
             # The CDRv4 calculation causes TB to be zero/missing where
             # no sea ice can occur because of invalid region or land
             logger.debug(f"Applying invalid ice mask to TB field: {tb_si_varname}")
-            platform = PLATFORM_CONFIG.get_platform_by_date(date)
             invalid_ice_mask = get_invalid_ice_mask(
                 hemisphere=hemisphere,
                 date=date,
                 resolution=tb_data.resolution,
-                platform=platform,
+                platform=PLATFORM_CONFIG.platform_for_id(tb_data.platform_id),
                 ancillary_source=ancillary_source,
             )
 
@@ -573,7 +572,7 @@ def compute_initial_daily_ecdr_dataset(
         "Initialized cdr_seaice_conc_interp_spatial_flag with TB fill locations"
     )
 
-    platform = PLATFORM_CONFIG.get_platform_by_date(date)
+    platform = PLATFORM_CONFIG.platform_for_id(tb_data.platform_id)
     if platform.id == "am2":
         bt_coefs_init = pmi_bt_params_amsr2.get_ausi_amsr2_bootstrap_params(
             date=date,
@@ -586,6 +585,11 @@ def compute_initial_daily_ecdr_dataset(
             satellite="amsre",
             gridid=ecdr_ide_ds.grid_id,
         )
+    # F18 is used in NRT processing.
+    elif platform.id == "F18":
+        raise NotImplementedError("TODO")
+    # Note: F18 is included in NSIDC0001, but we're getting data from NSIDC0080
+    # for NRT.
     elif platform.id in get_args(NSIDC_0001_SATS):
         bt_coefs_init = pmi_bt_params_0001.get_nsidc0001_bootstrap_params(
             date=date,
@@ -1298,11 +1302,11 @@ def make_idecdr_netcdf(
     land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
     overwrite_ide: bool = False,
+    platform_id: SUPPORTED_PLATFORM_ID,
 ) -> None:
-    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     output_path = get_idecdr_filepath(
         date=date,
-        platform_id=platform.id,
+        platform_id=platform_id,
         hemisphere=hemisphere,
         intermediate_output_dir=intermediate_output_dir,
         resolution=resolution,
@@ -1339,6 +1343,11 @@ def create_idecdr_for_date(
     land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
+    """Create a standard IDECDR file for the given date.
+
+    Uses the default platform start date config to determine the correct
+    platform to use.
+    """
     excluded_fields = []
     if not verbose_intermed_ncfile:
         excluded_fields = [
@@ -1361,6 +1370,7 @@ def create_idecdr_for_date(
             "missing_tb_mask",
         ]
     try:
+        platform = PLATFORM_CONFIG.get_platform_by_date(date)
         make_idecdr_netcdf(
             date=date,
             hemisphere=hemisphere,
@@ -1370,6 +1380,7 @@ def create_idecdr_for_date(
             overwrite_ide=overwrite_ide,
             land_spillover_alg=land_spillover_alg,
             ancillary_source=ancillary_source,
+            platform_id=platform.id,
         )
 
     except Exception as e:
