@@ -56,7 +56,9 @@ def nrt_daily_filename(
     nrt_fn = fn_base + "_P" + ext
 
     # Replace the standard G02202 version number with the NRT version.
-    nrt_fn = nrt_fn.replace(ECDR_PRODUCT_VERSION, ECDR_NRT_PRODUCT_VERSION)
+    nrt_fn = nrt_fn.replace(
+        ECDR_PRODUCT_VERSION.version_str, ECDR_NRT_PRODUCT_VERSION.version_str
+    )
 
     return nrt_fn
 

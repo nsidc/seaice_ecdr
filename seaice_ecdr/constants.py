@@ -14,8 +14,26 @@ import os
 import subprocess
 from pathlib import Path
 
+from pydantic import BaseModel
+
+
+class ProductVersion(BaseModel):
+    major_version_number: int
+    revision_number: int
+
+    @property
+    def version_str(self) -> str:
+        return f"v{self.major_version_number:02}r{self.revision_number:02}"
+
+    def __str__(self) -> str:
+        return self.version_str
+
+
 # This is the version string for the ECDR product.
-ECDR_PRODUCT_VERSION = "v05r00"
+ECDR_PRODUCT_VERSION = ProductVersion(
+    major_version_number=5,
+    revision_number=0,
+)
 
 # NSIDC infrastructure-specific paths:
 NSIDC_NFS_SHARE_DIR = Path("/share/apps/G02202_V5")
@@ -70,11 +88,14 @@ CDR_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_ancillary"
 CDRv4_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / "cdrv4_equiv_ancillary"
 
 # NRT outputs
-ECDR_NRT_PRODUCT_VERSION = "v03r00"
+ECDR_NRT_PRODUCT_VERSION = ProductVersion(
+    major_version_number=3,
+    revision_number=0,
+)
 NSIDC_NFS_NRT_SHARE_DIR = Path("/share/apps/G10016_V3")
 if not NSIDC_NFS_SHARE_DIR.is_dir():
     raise RuntimeError(f"Expected {NSIDC_NFS_NRT_SHARE_DIR} to exist, but it does not.")
 DEFAULT_BASE_NRT_OUTPUT_DIR = (
-    NSIDC_NFS_NRT_SHARE_DIR / ECDR_NRT_PRODUCT_VERSION / _env_subdir
+    NSIDC_NFS_NRT_SHARE_DIR / ECDR_NRT_PRODUCT_VERSION.version_str / _env_subdir
 )
 DEFAULT_BASE_NRT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

@@ -167,12 +167,12 @@ def get_global_attrs(
         **time_coverage_attrs,
         title=(
             "NOAA-NSIDC Climate Data Record of Passive Microwave"
-            " Sea Ice Concentration Version 5"
+            f" Sea Ice Concentration Version {ECDR_PRODUCT_VERSION.major_version_number}"
         ),
         program="NOAA Climate Data Record Program",
         software_version_id=_get_software_version_id(),
-        metadata_link="https://nsidc.org/data/g02202/versions/5",
-        product_version=ECDR_PRODUCT_VERSION,
+        metadata_link=f"https://nsidc.org/data/g02202/versions/{ECDR_PRODUCT_VERSION.major_version_number}",
+        product_version=ECDR_PRODUCT_VERSION.version_str,
         spatial_resolution=f"{resolution}km",
         standard_name_vocabulary="CF Standard Name Table (v83, 17 October 2023)",
         id="https://doi.org/10.7265/rjzb-pf78",

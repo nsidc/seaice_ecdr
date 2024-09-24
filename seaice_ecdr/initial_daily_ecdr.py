@@ -335,7 +335,7 @@ def get_flagmask(
     if ancillary_source == "CDRv4":
         version_string = "v04r00"
     elif ancillary_source == "CDRv5":
-        version_string = ECDR_PRODUCT_VERSION
+        version_string = ECDR_PRODUCT_VERSION.version_str
 
     flagmask_fn = CDR_ANCILLARY_DIR / f"flagmask_{gridid}_{version_string}.dat"
     try:

@@ -14,7 +14,7 @@ from pm_tb_data.fetch.nsidc_0080 import get_nsidc_0080_tbs_from_disk
 from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.cli.util import datetime_to_date
-from seaice_ecdr.constants import DEFAULT_BASE_NRT_OUTPUT_DIR
+from seaice_ecdr.constants import DEFAULT_BASE_NRT_OUTPUT_DIR, ECDR_NRT_PRODUCT_VERSION
 from seaice_ecdr.initial_daily_ecdr import (
     compute_initial_daily_ecdr_dataset,
     get_idecdr_filepath,
@@ -161,7 +161,8 @@ def temporally_interpolated_nrt_ecdr_dataset(
     for date in date_range(
         start_date=date - dt.timedelta(days=NRT_DAYS_TO_LOOK_PREVIOUSLY), end_date=date
     ):
-        # TODO: support missing data periods.
+        # TODO: support missing data periods (e.g., running for 2024-09-22 does
+        # not work atm).
         init_dataset = read_or_create_and_read_nrt_idecdr_ds(
             date=date,
             hemisphere=hemisphere,
@@ -281,6 +282,17 @@ def nrt_ecdr_for_day(
                 intermediate_daily_ds=cde_ds,
                 hemisphere=hemisphere,
             )
+
+            # Update global attrs to reflect G10016 instead of G02202:
+            daily_ds.attrs["id"] = "https://doi.org/10.7265/j0z0-4h87"
+            daily_ds.attrs["metadata_link"] = (
+                f"https://nsidc.org/data/g10016/versions/{ECDR_NRT_PRODUCT_VERSION.major_version_number}"
+            )
+            daily_ds.attrs["title"] = (
+                "Near-Real-Time NOAA-NSIDC Climate Data Record of Passive Microwave"
+                f" Sea Ice Concentration Version {ECDR_NRT_PRODUCT_VERSION.major_version_number}"
+            )
+            daily_ds.attrs["product_version"] = ECDR_NRT_PRODUCT_VERSION.version_str
 
             daily_ds.to_netcdf(nrt_output_filepath)
             logger.success(f"Wrote complete daily NRT NC file: {nrt_output_filepath}")
