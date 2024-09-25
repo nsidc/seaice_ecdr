@@ -585,11 +585,8 @@ def compute_initial_daily_ecdr_dataset(
             satellite="amsre",
             gridid=ecdr_ide_ds.grid_id,
         )
-    # F18 is used in NRT processing.
-    elif platform.id == "F18":
-        raise NotImplementedError("TODO")
-    # Note: F18 is included in NSIDC0001, but we're getting data from NSIDC0080
-    # for NRT.
+    # NOTE/TODO: we get F18 data from NSIDC-0080 for NRT processing, but we are
+    # using the NSIDC-0001 specific BT params for F18.
     elif platform.id in get_args(NSIDC_0001_SATS):
         bt_coefs_init = pmi_bt_params_0001.get_nsidc0001_bootstrap_params(
             date=date,
