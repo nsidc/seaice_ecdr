@@ -22,6 +22,7 @@ from seaice_ecdr.initial_daily_ecdr import (
 )
 from seaice_ecdr.intermediate_daily import (
     complete_daily_ecdr_ds,
+    get_ecdr_filepath,
 )
 from seaice_ecdr.publish_daily import (
     get_complete_daily_filepath,
@@ -291,6 +292,21 @@ def nrt_ecdr_for_day(
                 is_nrt=True,
                 ancillary_source=ancillary_source,
             )
+            # Write the daily intermediate file. This is used by the monthly NRT
+            # processing to produce the monthly fields.
+            cde_ds_filepath = get_ecdr_filepath(
+                date=date,
+                hemisphere=hemisphere,
+                resolution=NRT_RESOLUTION,
+                intermediate_output_dir=intermediate_output_dir,
+                platform_id=NRT_PLATFORM_ID,
+                is_nrt=True,
+            )
+            cde_ds.to_netcdf(
+                cde_ds_filepath,
+            )
+
+            # Prepare the ds for publication
             daily_ds = make_publication_ready_ds(
                 intermediate_daily_ds=cde_ds,
                 hemisphere=hemisphere,

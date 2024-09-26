@@ -16,6 +16,7 @@ def test_publish_monthly_nc(base_output_dir_test_path):  # noqa
         resolution="25",
         year=2022,
         month=3,
+        is_nrt=False,
     )
 
     assert output_path.is_file()

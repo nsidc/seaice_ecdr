@@ -75,6 +75,7 @@ def test__get_daily_complete_filepaths_for_month(fs):
         intermediate_output_dir=intermediate_output_dir / NORTH,
         resolution="12.5",
         hemisphere=NORTH,
+        is_nrt=False,
     )
 
     assert sorted(_fake_files_for_test_year_month_and_hemisphere) == sorted(actual)

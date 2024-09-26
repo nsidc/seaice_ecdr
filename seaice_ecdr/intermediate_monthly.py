@@ -76,6 +76,7 @@ def _get_daily_complete_filepaths_for_month(
     intermediate_output_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    is_nrt: bool,
 ) -> list[Path]:
     """Return a list of paths to ECDR daily complete filepaths for the given year and month."""
     data_list = []
@@ -93,7 +94,7 @@ def _get_daily_complete_filepaths_for_month(
             resolution=resolution,
             intermediate_output_dir=intermediate_output_dir,
             platform_id=platform.id,
-            is_nrt=False,
+            is_nrt=is_nrt,
         )
         if expected_fp.is_file():
             data_list.append(expected_fp)
@@ -135,6 +136,7 @@ def get_daily_ds_for_month(
     intermediate_output_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    is_nrt: bool,
 ) -> xr.Dataset:
     """Create an xr.Dataset wtih ECDR complete daily data for a given year and month.
 
@@ -148,6 +150,7 @@ def get_daily_ds_for_month(
         intermediate_output_dir=intermediate_output_dir,
         hemisphere=hemisphere,
         resolution=resolution,
+        is_nrt=is_nrt,
     )
     # Read all of the complete daily data for the given year and month.
     ds = xr.open_mfdataset(data_list)
@@ -636,6 +639,7 @@ def make_intermediate_monthly_nc(
     intermediate_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ancillary_source: ANCILLARY_SOURCES,
+    is_nrt: bool,
 ) -> Path:
     daily_ds_for_month = get_daily_ds_for_month(
         year=year,
@@ -643,6 +647,7 @@ def make_intermediate_monthly_nc(
         intermediate_output_dir=intermediate_output_dir,
         hemisphere=hemisphere,
         resolution=resolution,
+        is_nrt=is_nrt,
     )
 
     platform_id = daily_ds_for_month.platform_id
@@ -745,6 +750,12 @@ def make_intermediate_monthly_nc(
     required=True,
     type=click.Choice(get_args(ANCILLARY_SOURCES)),
 )
+@click.option(
+    "--is-nrt",
+    required=False,
+    is_flag=True,
+    help=("Create intermediate monthly file in NRT mode (uses NRT-stype filename)."),
+)
 def cli(
     *,
     year: int,
@@ -755,6 +766,7 @@ def cli(
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ancillary_source: ANCILLARY_SOURCES,
+    is_nrt: bool,
 ):
     if end_year is None:
         end_year = year
@@ -779,6 +791,7 @@ def cli(
                 hemisphere=hemisphere,
                 resolution=resolution,
                 ancillary_source=ancillary_source,
+                is_nrt=is_nrt,
             )
         except Exception:
             error_periods.append(period)

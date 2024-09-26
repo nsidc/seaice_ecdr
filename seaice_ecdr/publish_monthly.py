@@ -21,6 +21,7 @@ from seaice_ecdr.util import (
     find_standard_monthly_netcdf_files,
     get_complete_output_dir,
     get_intermediate_output_dir,
+    nrt_monthly_filename,
     platform_id_from_filename,
     standard_monthly_filename,
 )
@@ -41,18 +42,28 @@ def get_complete_monthly_filepath(
     year: int,
     month: int,
     complete_output_dir: Path,
+    is_nrt: bool,
 ) -> Path:
     output_dir = get_complete_monthly_dir(
         complete_output_dir=complete_output_dir,
     )
 
-    output_fn = standard_monthly_filename(
-        hemisphere=hemisphere,
-        resolution=resolution,
-        platform_id=platform_id,
-        year=year,
-        month=month,
-    )
+    if is_nrt:
+        output_fn = nrt_monthly_filename(
+            hemisphere=hemisphere,
+            resolution=resolution,
+            platform_id=platform_id,
+            year=year,
+            month=month,
+        )
+    else:
+        output_fn = standard_monthly_filename(
+            hemisphere=hemisphere,
+            resolution=resolution,
+            platform_id=platform_id,
+            year=year,
+            month=month,
+        )
 
     output_path = output_dir / output_fn
 
@@ -66,6 +77,7 @@ def prepare_monthly_nc_for_publication(
     month: int,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    is_nrt: bool,
 ):
     """Prepare a monthly NetCDF file for publication.
 
@@ -218,6 +230,7 @@ def prepare_monthly_nc_for_publication(
         year=year,
         month=month,
         complete_output_dir=complete_output_dir,
+        is_nrt=is_nrt,
     )
     complete_monthly_ds.to_netcdf(complete_monthly_filepath)
     logger.success(f"Staged NC file for publication: {complete_monthly_filepath}")
