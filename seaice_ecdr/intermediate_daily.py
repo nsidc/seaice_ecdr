@@ -554,7 +554,6 @@ def make_standard_cdecdr_netcdf(
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
-        is_nrt=False,
     )
     platform = PLATFORM_CONFIG.get_platform_by_date(date)
     cde_filepath = get_ecdr_filepath(
@@ -578,7 +577,6 @@ def make_standard_cdecdr_netcdf(
         intermediate_output_dir = get_intermediate_output_dir(
             base_output_dir=base_output_dir,
             hemisphere=hemisphere,
-            is_nrt=False,
         )
         tie_ds = read_or_create_and_read_standard_tiecdr_ds(
             date=date,

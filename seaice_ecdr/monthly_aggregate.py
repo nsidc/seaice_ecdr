@@ -170,7 +170,6 @@ def cli(
         complete_output_dir = get_complete_output_dir(
             base_output_dir=base_output_dir,
             hemisphere=hemisphere,
-            is_nrt=False,
         )
         monthly_filepaths = _get_monthly_complete_filepaths(
             hemisphere=hemisphere,

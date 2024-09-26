@@ -280,12 +280,9 @@ def _get_output_dir(
     *,
     base_output_dir: Path,
     hemisphere: Hemisphere,
-    is_nrt: bool,
     data_type: Literal["intermediate", "complete"],
 ) -> Path:
     out_dir = base_output_dir / data_type / hemisphere
-    if is_nrt:
-        out_dir = out_dir / "nrt"
 
     out_dir.mkdir(exist_ok=True, parents=True)
 
@@ -296,12 +293,10 @@ def get_intermediate_output_dir(
     *,
     base_output_dir: Path,
     hemisphere: Hemisphere,
-    is_nrt: bool,
 ) -> Path:
     intermediate_dir = _get_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
-        is_nrt=is_nrt,
         data_type="intermediate",
     )
 
@@ -312,12 +307,10 @@ def get_complete_output_dir(
     *,
     base_output_dir: Path,
     hemisphere: Hemisphere,
-    is_nrt: bool,
 ) -> Path:
     complete_dir = _get_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
-        is_nrt=is_nrt,
         data_type="complete",
     )
 

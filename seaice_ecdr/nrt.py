@@ -238,7 +238,6 @@ def get_nrt_complete_daily_filepath(
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
-        is_nrt=True,
     )
     nrt_output_filepath = get_complete_daily_filepath(
         date=date,
@@ -274,7 +273,6 @@ def nrt_ecdr_for_day(
         intermediate_output_dir = get_intermediate_output_dir(
             base_output_dir=base_output_dir,
             hemisphere=hemisphere,
-            is_nrt=True,
         )
         try:
             tiecdr_ds = read_or_create_and_read_nrt_tiecdr_ds(
@@ -316,7 +314,15 @@ def nrt_ecdr_for_day(
             logger.success(f"Wrote complete daily NRT NC file: {nrt_output_filepath}")
 
             # write checksum file for NRTs
-            checksums_dir = nrt_output_filepath.parent / "checksums"
+            complete_output_dir = get_complete_output_dir(
+                base_output_dir=base_output_dir,
+                hemisphere=hemisphere,
+            )
+            checksums_dir = (
+                complete_output_dir
+                / nrt_output_filepath.relative_to(complete_output_dir).parent
+                / "checksums"
+            )
             write_checksum_file(
                 input_filepath=nrt_output_filepath,
                 output_dir=checksums_dir,

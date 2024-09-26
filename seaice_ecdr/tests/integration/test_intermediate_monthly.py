@@ -25,7 +25,6 @@ def test_make_intermediate_monthly_nc(base_output_dir_test_path, monkeypatch):  
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir_test_path,
         hemisphere=NORTH,
-        is_nrt=False,
     )
 
     output_path = intermediate_monthly.make_intermediate_monthly_nc(

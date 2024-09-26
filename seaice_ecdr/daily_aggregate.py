@@ -286,7 +286,6 @@ def cli(
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
-        is_nrt=False,
     )
     failed_years = []
     for year_to_process in range(year, end_year + 1):
