@@ -20,7 +20,7 @@ $ ecdr --help
 ## G10016 NRT Processing
 
 NRT data will be written to
-`/share/apps/G10016_V3/v03r00/production/complete/`. The contents of this
+`/share/apps/G10016_V3/v03r00_outputs/production/complete/`. The contents of this
 directory should be rsync-ed to `/disks/sidads_ftp/pub/DATASETS/NOAA/G10016_V3`
 after successful completion of each G10016 procesing job.
 
@@ -43,7 +43,7 @@ data gap is filled a few days late.
 ## G02202 "final" Processing
 
 Final data will be written to
-`/share/apps/G02202_V5/v05r00/production/complete/`. The contents of this
+`/share/apps/G02202_V5/v05r00_outputs/production/complete/`. The contents of this
 directory should be rsync-ed to `/disks/sidads_ftp/pub/DATASETS/NOAA/G02202_V5`
 after successful completion of each G02202 procesing job.
 
@@ -103,6 +103,6 @@ validate-outputs --hemisphere {north|south} --start-date YYYY-MM-DD --end-date Y
 ```
 
 This produces log files in
-`/share/apps/G02202_V5/v05r00_outputs/production/validation/` that should be
-published to the production location. TODO: confirm this is accurate. Does not
-look like v4 does this.
+`/share/apps/G02202_V5/v05r00_outputs/production/validation/`. These data should
+**NOT** be rsynced to production. Ann will review these and email to NCEI after
+processing is complete.
