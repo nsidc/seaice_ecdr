@@ -222,7 +222,23 @@ def _get_nsidc_0001_tbs(
             resolution=nsidc0001_resolution,
             sat=platform_id,
         )
-
+    except Exception:
+        # This would be a `FileNotFoundError` if a data files is completely
+        # missing. Currently, an OSError may also be raised if the data file exists
+        # but is missing the data variable we expect. Other errors may also be
+        # possible. In any of these cases, we want to proceed by using null Tbs that
+        # can be temporally interpolated.
+        ecdr_tbs = get_null_ecdr_tbs(
+            hemisphere=hemisphere, resolution=nsidc0001_resolution
+        )
+        logger.warning(
+            "Encountered a problem fetching NSIDC-0001 TBs from disk."
+            f" Used all-null TBS for date={date},"
+            f" hemisphere={hemisphere},"
+            f" resolution={tb_resolution}"
+            f" platform_id={platform_id}"
+        )
+    else:
         ecdr_tbs = map_tbs_to_ecdr_channels(
             mapping=dict(
                 v19="v19",
@@ -236,16 +252,6 @@ def _get_nsidc_0001_tbs(
             resolution=tb_resolution,
             date=date,
             data_source=data_source,
-        )
-    except FileNotFoundError:
-        ecdr_tbs = get_null_ecdr_tbs(
-            hemisphere=hemisphere, resolution=nsidc0001_resolution
-        )
-        logger.warning(
-            f"Used all-null TBS for date={date},"
-            f" hemisphere={hemisphere},"
-            f" resolution={tb_resolution}"
-            f" platform_id={platform_id}"
         )
 
     # TODO: For debugging TBs, consider a print/log statement such as this:
