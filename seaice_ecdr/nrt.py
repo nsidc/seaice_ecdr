@@ -23,9 +23,6 @@ from seaice_ecdr.initial_daily_ecdr import (
 from seaice_ecdr.intermediate_daily import (
     complete_daily_ecdr_ds,
 )
-from seaice_ecdr.platforms import (
-    PLATFORM_CONFIG,
-)
 from seaice_ecdr.publish_daily import (
     get_complete_daily_filepath,
     make_publication_ready_ds,
@@ -50,7 +47,7 @@ NRT_RESOLUTION: Final = "25"
 # future we can refactor the code to support configuring the platform start
 # dates at any point rather than needing an at-import-time setup as we currently
 # do.
-NRT_PLATFORM_ID: Final = "F18"
+NRT_PLATFORM_ID: Final = "F17"
 # Number of days to look previously for temporal interpolation (forward
 # gap-filling)
 NRT_DAYS_TO_LOOK_PREVIOUSLY: Final = 5
@@ -121,12 +118,10 @@ def read_or_create_and_read_nrt_idecdr_ds(
     intermediate_output_dir: Path,
     overwrite: bool,
 ):
-    # TODO: this isn't correct. We always use F18
-    platform = PLATFORM_CONFIG.get_platform_by_date(date)
     idecdr_filepath = get_idecdr_filepath(
         hemisphere=hemisphere,
         date=date,
-        platform_id=platform.id,
+        platform_id=NRT_PLATFORM_ID,
         intermediate_output_dir=intermediate_output_dir,
         resolution=NRT_RESOLUTION,
     )
@@ -259,7 +254,7 @@ def nrt_ecdr_for_day(
     overwrite: bool,
     ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ):
-    """Create an initial daily ECDR NetCDF using NRT NSIDC-0080 F18 data."""
+    """Create an initial daily ECDR NetCDF using NRT NSIDC-0080 F17 data."""
     nrt_output_filepath = get_nrt_complete_daily_filepath(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
@@ -308,7 +303,7 @@ def nrt_ecdr_for_day(
             )
             daily_ds.attrs["product_version"] = ECDR_NRT_PRODUCT_VERSION.version_str
             daily_ds.attrs["summary"] = (
-                f"This data set provides a near-real-time (NRT) passive microwave sea ice concentration climate data record (CDR) based on gridded brightness temperatures (TBs) from the Defense Meteorological Satellite Program (DMSP) passive microwave radiometer: the Special Sensor Microwave Imager/Sounder (SSMIS) F18. The sea ice concentration CDR is an estimate of sea ice concentration that is produced by combining concentration estimates from two algorithms developed at the NASA Goddard Space Flight Center (GSFC): the NASA Team algorithm and the Bootstrap algorithm. The individual algorithms are used to process and combine brightness temperature data at NSIDC. This product is designed to provide an NRT time series of sea ice concentrations (the fraction, or percentage, of ocean area covered by sea ice). The data are gridded on the NSIDC polar stereographic grid with {NRT_RESOLUTION} x {NRT_RESOLUTION} km grid cells and are available in NetCDF file format. Each file contains a variable with the CDR concentration values as well as variables that hold the NASA Team and Bootstrap processed concentrations for reference. Variables containing standard deviation, quality flags, and projection information are also included."
+                f"This data set provides a near-real-time (NRT) passive microwave sea ice concentration climate data record (CDR) based on gridded brightness temperatures (TBs) from the Defense Meteorological Satellite Program (DMSP) passive microwave radiometer: the Special Sensor Microwave Imager/Sounder (SSMIS) F17. The sea ice concentration CDR is an estimate of sea ice concentration that is produced by combining concentration estimates from two algorithms developed at the NASA Goddard Space Flight Center (GSFC): the NASA Team algorithm and the Bootstrap algorithm. The individual algorithms are used to process and combine brightness temperature data at NSIDC. This product is designed to provide an NRT time series of sea ice concentrations (the fraction, or percentage, of ocean area covered by sea ice). The data are gridded on the NSIDC polar stereographic grid with {NRT_RESOLUTION} x {NRT_RESOLUTION} km grid cells and are available in NetCDF file format. Each file contains a variable with the CDR concentration values as well as variables that hold the NASA Team and Bootstrap processed concentrations for reference. Variables containing standard deviation, quality flags, and projection information are also included."
             )
 
             daily_ds.to_netcdf(nrt_output_filepath)
