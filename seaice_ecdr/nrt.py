@@ -70,7 +70,20 @@ def compute_nrt_initial_daily_ecdr_dataset(
             resolution=NRT_RESOLUTION,
             platform_id=NRT_PLATFORM_ID,
         )
-
+    except Exception:
+        # This would be a `FileNotFoundError` if a data files is completely
+        # missing. Currently, an OSError may also be raised if the data file exists
+        # but is missing the data variable we expect. Other errors may also be
+        # possible. In any of these cases, we want to proceed by using null Tbs that
+        # can be temporally interpolated.
+        ecdr_tbs = get_null_ecdr_tbs(hemisphere=hemisphere, resolution=NRT_RESOLUTION)
+        logger.warning(
+            "Encountered a problem fetching NSIDC-0080 TBs from disk."
+            f" Using all-null TBS for date={date},"
+            f" hemisphere={hemisphere},"
+            f" resolution={NRT_RESOLUTION}"
+        )
+    else:
         ecdr_tbs = map_tbs_to_ecdr_channels(
             mapping=dict(
                 v19="v19",
@@ -84,13 +97,6 @@ def compute_nrt_initial_daily_ecdr_dataset(
             resolution=NRT_RESOLUTION,
             date=date,
             data_source=data_source,
-        )
-    except FileNotFoundError:
-        ecdr_tbs = get_null_ecdr_tbs(hemisphere=hemisphere, resolution=NRT_RESOLUTION)
-        logger.warning(
-            f"Using all-null TBS for date={date},"
-            f" hemisphere={hemisphere},"
-            f" resolution={NRT_RESOLUTION}"
         )
 
     tb_data = EcdrTbData(
