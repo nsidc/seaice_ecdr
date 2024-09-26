@@ -62,7 +62,6 @@ F18_PLATFORM = Platform(
     sensor="SSMIS > Special Sensor Microwave Imager/Sounder",
     id="F18",
     date_range=DateRange(
-        # TODO: is this accurate? This value from NSIDC-0001 docs.
         first_date=dt.date(2017, 1, 1),
         last_date=None,
     ),
