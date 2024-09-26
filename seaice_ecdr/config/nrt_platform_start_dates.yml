@@ -1,4 +1,4 @@
 cdr_platform_start_dates:
   # We only use F17 for NRT.
   - platform_id: "F17"
-    start_date: "2011-10-04"
+    start_date: "2008-01-01"
