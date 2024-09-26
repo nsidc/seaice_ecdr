@@ -320,8 +320,8 @@ def nrt_ecdr_for_day(
             )
             checksums_dir = (
                 complete_output_dir
-                / nrt_output_filepath.relative_to(complete_output_dir).parent
                 / "checksums"
+                / nrt_output_filepath.relative_to(complete_output_dir).parent
             )
             write_checksum_file(
                 input_filepath=nrt_output_filepath,
