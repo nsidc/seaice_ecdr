@@ -11,7 +11,7 @@ import copy
 import datetime as dt
 from functools import cache
 from pathlib import Path
-from typing import Iterable, cast, get_args
+from typing import Iterable, get_args
 
 import click
 import numpy as np
@@ -474,6 +474,7 @@ def complete_daily_ecdr_ds(
     - a Dataset containing
       - The melt onset field
       - All appropriate QA and QC fields
+      - sets variable encoding for writting data to NetCDF.
     """
     # Initialize the complete daily ECDR dataset (cde) using the temporally
     # interpolated ECDR (tie) dataset provided to this function.
@@ -505,60 +506,29 @@ def complete_daily_ecdr_ds(
         cde_ds, hemisphere, resolution, ancillary_source=ancillary_source
     )
 
-    # TODO: Need to ensure that the cdr_seaice_conc field does not have values
-    #       where seaice cannot occur, eg over land or lakes
-
-    return cde_ds
-
-
-def write_cde_netcdf(
-    *,
-    cde_ds: xr.Dataset,
-    output_filepath: Path,
-    intermediate_output_dir: Path,
-    hemisphere: Hemisphere,
-    uncompressed_fields: Iterable[str] = ("crs", "time", "y", "x"),
-    excluded_fields: Iterable[str] = [],
+    # Set nc encoding for variables
     conc_fields: Iterable[str] = [
         "raw_bt_seaice_conc",
         "raw_nt_seaice_conc",
         "cdr_seaice_conc",
-    ],
-) -> Path:
-    """Write the complete, temporally interpolated ECDR to a netCDF file.
+    ]
+    for conc_varname in conc_fields:
+        cde_ds[conc_varname].encoding = {
+            "zlib": True,
+            "dtype": "uint8",
+            "scale_factor": 0.01,
+            "add_offset": 0.0,
+            "_FillValue": 255,
+        }
+    for coord_var_name in ("crs", "time", "y", "x"):
+        cde_ds[coord_var_name].encoding = {"zlib": True}
 
-    This function also creates a checksum file for the complete daily netcdf.
-    """
-    logger.info(
-        f"Writing netCDF of complete, temporally interpolated eCDR file to: {output_filepath}"
-    )
-    for excluded_field in excluded_fields:
-        if excluded_field in cde_ds.variables.keys():
-            cde_ds = cde_ds.drop_vars(excluded_field)
+    cde_ds.encoding = {"unlimited_dims": "time"}
 
-    nc_encoding = {}
-    for varname in cde_ds.variables.keys():
-        varname = cast(str, varname)
-        if varname in conc_fields:
-            nc_encoding[varname] = {
-                "zlib": True,
-                "dtype": "uint8",
-                "scale_factor": 0.01,
-                "add_offset": 0.0,
-                "_FillValue": 255,
-            }
-        elif varname not in uncompressed_fields:
-            nc_encoding[varname] = {"zlib": True}
+    # TODO: Need to ensure that the cdr_seaice_conc field does not have values
+    #       where seaice cannot occur, eg over land or lakes
 
-    cde_ds.to_netcdf(
-        output_filepath,
-        encoding=nc_encoding,
-        unlimited_dims=[
-            "time",
-        ],
-    )
-
-    return output_filepath
+    return cde_ds
 
 
 def make_standard_cdecdr_netcdf(
@@ -648,13 +618,10 @@ def make_standard_cdecdr_netcdf(
             ancillary_source=ancillary_source,
         )
 
-        written_cde_ncfile = write_cde_netcdf(
-            cde_ds=cde_ds,
-            output_filepath=cde_filepath,
-            intermediate_output_dir=intermediate_output_dir,
-            hemisphere=hemisphere,
+        cde_ds.to_netcdf(
+            cde_filepath,
         )
-        logger.success(f"Wrote complete daily ncfile: {written_cde_ncfile}")
+        logger.success(f"Wrote complete daily ncfile: {cde_filepath}")
     except Exception as e:
         logger.exception(
             "Failed to create complete daily NetCDF for"

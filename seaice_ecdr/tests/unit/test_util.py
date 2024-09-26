@@ -8,7 +8,7 @@ import xarray as xr
 from pm_tb_data._types import NORTH, SOUTH
 
 from seaice_ecdr import util
-from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
+from seaice_ecdr.constants import ECDR_NRT_PRODUCT_VERSION, ECDR_PRODUCT_VERSION
 from seaice_ecdr.multiprocess_intermediate_daily import get_dates_by_year
 from seaice_ecdr.platforms.models import SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import (
@@ -46,7 +46,7 @@ def test_daily_filename_south():
 
 
 def test_nrt_daily_filename():
-    expected = f"sic_psn12.5_20210101_am2_{ECDR_PRODUCT_VERSION}_P.nc"
+    expected = f"sic_psn12.5_20210101_am2_{ECDR_NRT_PRODUCT_VERSION}_P.nc"
 
     actual = nrt_daily_filename(
         hemisphere=NORTH, resolution="12.5", platform_id="am2", date=dt.date(2021, 1, 1)

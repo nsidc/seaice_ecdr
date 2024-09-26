@@ -1,0 +1,5 @@
+cdr_platform_start_dates:
+  # We only use F18 for NRT.
+  - platform_id: "F18"
+    # This appears to be the first date of data in NSIDC0080.
+    start_date: "2021-11-01"

@@ -31,6 +31,9 @@ DEFAULT_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
 PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
     _this_dir / "../config/prototype_platform_start_dates.yml"
 ).resolve()
+NRT_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
+    _this_dir / "../config/nrt_platform_start_dates.yml"
+).resolve()
 
 
 AM2_PLATFORM = Platform(
@@ -50,6 +53,17 @@ AME_PLATFORM = Platform(
     date_range=DateRange(
         first_date=dt.date(2002, 6, 1),
         last_date=dt.date(2011, 10, 3),
+    ),
+)
+
+
+F18_PLATFORM = Platform(
+    name="DMSP 5D-3/F18 > Defense Meteorological Satellite Program-F18",
+    sensor="SSMIS > Special Sensor Microwave Imager/Sounder",
+    id="F18",
+    date_range=DateRange(
+        first_date=dt.date(2017, 1, 1),
+        last_date=None,
     ),
 )
 
@@ -105,6 +119,7 @@ SUPPORTED_PLATFORMS = [
     AM2_PLATFORM,
     AME_PLATFORM,
     F17_PLATFORM,
+    F18_PLATFORM,
     F13_PLATFORM,
     F11_PLATFORM,
     F08_PLATFORM,

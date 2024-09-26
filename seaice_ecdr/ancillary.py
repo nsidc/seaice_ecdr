@@ -112,7 +112,12 @@ def get_surfacetype_da(
     if "polehole_bitmask" in ancillary_ds.data_vars.keys():
         polehole_bitmask = ancillary_ds.polehole_bitmask
         platform = PLATFORM_CONFIG.get_platform_by_date(date)
-        polehole_bitlabel = f"{platform.id}_polemask"
+        platform_id = platform.id
+        # TODO: Use F17 polemask if F18 is being used. There is currently no F18
+        # polemask defined in the ancilary file
+        if platform.id == "F18":
+            platform_id = "F17"
+        polehole_bitlabel = f"{platform_id}_polemask"
         polehole_bitvalue = bitmask_value_for_meaning(
             var=polehole_bitmask,
             meaning=polehole_bitlabel,
@@ -192,7 +197,12 @@ def nh_polehole_mask(
             date=date,
         )
 
-    polehole_bitlabel = f"{platform.id}_polemask"
+    platform_id = platform.id
+    # TODO: Use F17 polemask if F18 is being used. There is currently no F18
+    # polemask defined in the ancilary file
+    if platform.id == "F18":
+        platform_id = "F17"
+    polehole_bitlabel = f"{platform_id}_polemask"
     polehole_bitvalue = bitmask_value_for_meaning(
         var=polehole_bitmask,
         meaning=polehole_bitlabel,

@@ -48,12 +48,14 @@ def _get_daily_complete_filepaths_for_year(
         dt.date(year, 1, 1), PLATFORM_CONFIG.get_first_platform_start_date()
     )
     for period in pd.period_range(start=start_date, end=dt.date(year, 12, 31)):
+        platform = PLATFORM_CONFIG.get_platform_by_date(period.to_timestamp().date())
         expected_fp = get_complete_daily_filepath(
             date=period.to_timestamp().date(),
             hemisphere=hemisphere,
             resolution=resolution,
             complete_output_dir=complete_output_dir,
             is_nrt=False,
+            platform_id=platform.id,
         )
         if expected_fp.is_file():
             data_list.append(expected_fp)

@@ -15,6 +15,7 @@ from pydantic import BaseModel, root_validator, validator
 SUPPORTED_PLATFORM_ID = Literal[
     "am2",  # AMSR2
     "ame",  # AMSRE
+    "F18",  # SSMIS F18 (NRT)
     "F17",  # SSMIS F17
     "F13",  # SSMI F13
     "F11",  # SSMI F11
