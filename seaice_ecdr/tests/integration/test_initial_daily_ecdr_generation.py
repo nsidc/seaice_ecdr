@@ -146,6 +146,7 @@ def test_cli_idecdr_ncfile_creation(tmpdir):
         excluded_fields=[],
         land_spillover_alg="NT2",
         ancillary_source=ancillary_source,
+        platform_id=test_platform_id,
     )
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,
@@ -181,6 +182,7 @@ def test_can_drop_fields_from_idecdr_netcdf(
         excluded_fields=(cdr_conc_fieldname,),
         land_spillover_alg="NT2",
         ancillary_source=ancillary_source,
+        platform_id=test_platform_id,
     )
     output_path = get_idecdr_filepath(
         hemisphere=test_hemisphere,
