@@ -7,7 +7,7 @@ easier to configure the platform start dates.
 import copy
 import datetime as dt
 from pathlib import Path
-from typing import get_args
+from typing import Literal, get_args
 
 import click
 from loguru import logger
@@ -54,7 +54,7 @@ from seaice_ecdr.platforms.config import NRT_PLATFORM_START_DATES_CONFIG_FILEPAT
     "-h",
     "--hemisphere",
     required=True,
-    type=click.Choice(get_args(Hemisphere)),
+    type=click.Choice([*get_args(Hemisphere), "both"]),
 )
 @click.option(
     "--base-output-dir",
@@ -85,7 +85,7 @@ def cli(
     date: dt.date | None,
     end_date: dt.date | None,
     last_n_days: int | None,
-    hemisphere: Hemisphere,
+    hemisphere: Hemisphere | Literal["both"],
     base_output_dir: Path,
     overwrite: bool,
 ):
@@ -108,11 +108,17 @@ def cli(
 
     overwrite_str = " --overwrite" if overwrite else ""
 
-    run_cmd(
-        f"export PLATFORM_START_DATES_CONFIG_FILEPATH={NRT_PLATFORM_START_DATES_CONFIG_FILEPATH} &&"
-        f"{CLI_EXE_PATH} nrt"
-        f" --hemisphere {hemisphere}"
-        f" --base-output-dir {base_output_dir}"
-        f" --date {date:%Y-%m-%d}"
-        f" --end-date {end_date:%Y-%m-%d}" + overwrite_str
-    )
+    if hemisphere == "both":
+        hemispheres = ["north", "south"]
+    else:
+        hemispheres = [hemisphere]
+
+    for hemi in hemispheres:
+        run_cmd(
+            f"export PLATFORM_START_DATES_CONFIG_FILEPATH={NRT_PLATFORM_START_DATES_CONFIG_FILEPATH} &&"
+            f"{CLI_EXE_PATH} nrt"
+            f" --hemisphere {hemi}"
+            f" --base-output-dir {base_output_dir}"
+            f" --date {date:%Y-%m-%d}"
+            f" --end-date {end_date:%Y-%m-%d}" + overwrite_str
+        )
