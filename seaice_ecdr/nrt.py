@@ -340,7 +340,8 @@ def nrt_ecdr_for_day(
 
             # Update global attrs to reflect G10016 instead of G02202:
             daily_ds = override_attrs_for_nrt(
-                publication_ready_ds=daily_ds, resolution=NRT_RESOLUTION
+                publication_ready_ds=daily_ds,
+                resolution=NRT_RESOLUTION,
             )
 
             daily_ds.to_netcdf(nrt_output_filepath)
