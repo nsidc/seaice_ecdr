@@ -44,7 +44,7 @@ cli.add_command(daily_aggregate_cli)
 cli.add_command(monthly_cli)
 # Generate monthly aggregate file (one per hemisphere)
 cli.add_command(monthly_aggregate_cli)
-# Wraps the `nrt_ecdr_for_dates` CLI with the correct platform start date
+# Wraps the NRT CLIs with the correct platform start date
 # configuration chosen.
 cli.add_command(nrt_cli)
 cli.add_command(monthly_nrt_cli)
