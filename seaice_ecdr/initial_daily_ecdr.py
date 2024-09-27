@@ -492,21 +492,26 @@ def compute_initial_daily_ecdr_dataset(
 
         tb_si_varname = f"{tb_day_name}_si"
 
-        if ancillary_source == "CDRv5":
-            # The CDRv5 spatint requires min of two adj grid cells
-            #   and allows corner grid cells with weighting of 0.707
-            tb_si_data = spatial_interp_tbs(
-                ecdr_ide_ds[tb_day_name].data[0, :, :],
-            )
-        elif ancillary_source == "CDRv4":
-            # The CDRv4 calculation does not use diagonal grid cells
-            #   and requires a min of 3 adjacent grid cells
-            tb_si_data = spatial_interp_tbs(
-                ecdr_ide_ds[tb_day_name].data[0, :, :],
-                corner_weight=0,
-                min_weightsum=3,
-                image_shift_mode="grid-wrap",  # CDRv4 wraps tb field for interp
-            )
+        # TODO: Remove the old (CDRv4) spatial interp method with v5 publishing
+        # if ancillary_source == "CDRv5":
+        #    # The CDRv5 spatint requires min of two adj grid cells
+        #    #   and allows corner grid cells with weighting of 0.707
+        #    tb_si_data = spatial_interp_tbs(
+        #        ecdr_ide_ds[tb_day_name].data[0, :, :],
+        #    )
+        # elif ancillary_source == "CDRv4":
+        #    # The CDRv4 calculation does not use diagonal grid cells
+        #    #   and requires a min of 3 adjacent grid cells
+        #    tb_si_data = spatial_interp_tbs(
+        #        ecdr_ide_ds[tb_day_name].data[0, :, :],
+        #        corner_weight=0,
+        #        min_weightsum=3,
+        #        image_shift_mode="grid-wrap",  # CDRv4 wraps tb field for interp
+        #    )
+
+        tb_si_data = spatial_interp_tbs(
+            ecdr_ide_ds[tb_day_name].data[0, :, :],
+        )
 
         tb_si_longname = f"Spatially interpolated {ecdr_ide_ds[tb_day_name].long_name}"
         tb_units = "K"
