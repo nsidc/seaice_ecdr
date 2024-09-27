@@ -21,7 +21,6 @@ def test_daily_aggregate_matches_daily_data(tmpdir):
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
-        is_nrt=False,
     )
 
     year = 2022

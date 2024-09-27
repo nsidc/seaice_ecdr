@@ -17,7 +17,6 @@ def test_no_melt_onset_for_southern_hemisphere(tmpdir):
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=Path(tmpdir),
         hemisphere=SOUTH,
-        is_nrt=False,
     )
     for date in (dt.date(2020, 2, 1), dt.date(2021, 6, 2), dt.date(2020, 10, 3)):
         with pytest.raises(RuntimeError):
@@ -38,7 +37,6 @@ def test_melt_onset_field_outside_melt_season(tmpdir):
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=Path(tmpdir),
         hemisphere=hemisphere,
-        is_nrt=False,
     )
     for date in (dt.date(2020, 2, 1), dt.date(2020, 10, 3)):
         melt_onset_field = cdecdr.create_melt_onset_field(

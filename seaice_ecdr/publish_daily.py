@@ -40,15 +40,8 @@ def get_complete_daily_dir(
     *,
     complete_output_dir: Path,
     year: int,
-    # TODO: extract nrt handling and make responsiblity for defining the output
-    # dir a higher-level concern.
-    is_nrt: bool,
 ) -> Path:
-    if is_nrt:
-        # NRT daily data just lives under the complete output dir.
-        ecdr_dir = complete_output_dir
-    else:
-        ecdr_dir = complete_output_dir / "daily" / str(year)
+    ecdr_dir = complete_output_dir / "daily" / str(year)
     ecdr_dir.mkdir(parents=True, exist_ok=True)
 
     return ecdr_dir
@@ -80,7 +73,6 @@ def get_complete_daily_filepath(
     ecdr_dir = get_complete_daily_dir(
         complete_output_dir=complete_output_dir,
         year=date.year,
-        is_nrt=is_nrt,
     )
 
     ecdr_filepath = ecdr_dir / ecdr_filename
@@ -158,7 +150,6 @@ def publish_daily_nc(
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
-        is_nrt=False,
     )
     default_platform = PLATFORM_CONFIG.get_platform_by_date(date)
     default_daily_ds = read_cdecdr_ds(
@@ -232,7 +223,6 @@ def publish_daily_nc(
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
-        is_nrt=False,
     )
     platform = PLATFORM_CONFIG.get_platform_by_date(date)
     complete_daily_filepath = get_complete_daily_filepath(

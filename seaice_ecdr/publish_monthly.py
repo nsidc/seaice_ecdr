@@ -84,7 +84,8 @@ def prepare_monthly_nc_for_publication(
 
     # Get the intermediate monthly data
     intermediate_output_dir = get_intermediate_output_dir(
-        base_output_dir=base_output_dir, hemisphere=hemisphere, is_nrt=False
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
     )
     intermediate_monthly_dir = get_intermediate_monthly_dir(
         intermediate_output_dir=intermediate_output_dir,
@@ -208,7 +209,6 @@ def prepare_monthly_nc_for_publication(
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
-        is_nrt=False,
     )
 
     complete_monthly_filepath = get_complete_monthly_filepath(
