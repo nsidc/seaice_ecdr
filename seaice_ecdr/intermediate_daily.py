@@ -243,8 +243,13 @@ def update_melt_onset_for_day(
     # Apply non-ocean mask
     is_melted_today[0, non_ocean_mask] = False
 
+    # Note: zero counts as a prior value
     have_prior_melt_values = prior_melt_onset_field != MELT_ONSET_FILL_VALUE
-    is_missing_prior = prior_melt_onset_field == MELT_ONSET_FILL_VALUE
+
+    # Note: zero is also a "missing prior" day that can be updated
+    is_missing_prior = (prior_melt_onset_field == MELT_ONSET_FILL_VALUE) | (
+        prior_melt_onset_field == 0
+    )
     has_new_melt = is_missing_prior & is_melted_today
 
     melt_onset_field = np.zeros(prior_melt_onset_field.shape, dtype=np.uint8)
@@ -253,6 +258,7 @@ def update_melt_onset_for_day(
         have_prior_melt_values
     ]
 
+    # Note: this can replace zeros with a value
     day_of_year = int(date.strftime("%j"))
     melt_onset_field[has_new_melt] = day_of_year
 
@@ -305,13 +311,13 @@ def create_melt_onset_field(
 
     is_first_day_of_melt = day_of_year == MELT_SEASON_FIRST_DOY
     if is_first_day_of_melt:
-        # The first day of the melt seasion should start with an empty melt
-        # onset field.
+        # The first day of the melt seasion should have a prior_melt field
+        # with fill value where there is siconc and zeros in non-siconc ocean
+        # The fill values are set here.  The zeros are set later in this routine
         prior_melt_onset_field = _empty_melt_onset_field(
             hemisphere=hemisphere,
             resolution=resolution,
         )
-        logger.debug(f"using empty melt_onset_field for prior for {day_of_year}")
     else:
         # During the melt season, try to read the previous day's input as a
         # starting point. Use an empty melt onset field if no data for the
@@ -356,6 +362,19 @@ def create_melt_onset_field(
         non_ocean_mask=non_ocean_mask.data,
         date=date,
     )
+
+    # On first day of melt, set to 0 if siconc < 50% and didn't melt today
+    # Note: values of 0 can be replaced later if they melt in the melt season
+    if is_first_day_of_melt:
+        is_nosiconc_ti = (
+            np.isfinite(cdr_conc_ti)
+            & (cdr_conc_ti < 0.5)
+            & (updated_melt_onset[0, :, :] == MELT_ONSET_FILL_VALUE)
+        )
+        updated_melt_onset[0, is_nosiconc_ti] = 0
+        logger.debug(
+            f"using zeros and fill values in ocean for first melt_onset field on day {day_of_year}"
+        )
 
     return updated_melt_onset
 
