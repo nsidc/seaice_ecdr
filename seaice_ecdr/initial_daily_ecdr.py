@@ -511,6 +511,7 @@ def compute_initial_daily_ecdr_dataset(
         tb_si_longname = f"Spatially interpolated {ecdr_ide_ds[tb_day_name].long_name}"
         tb_units = "K"
 
+        """
         if ancillary_source == "CDRv4":
             # The CDRv4 calculation causes TB to be zero/missing where
             # no sea ice can occur because of invalid region or land
@@ -526,6 +527,7 @@ def compute_initial_daily_ecdr_dataset(
             # Set the TB values to zero at (monthly?) invalid ice mask
             # TODO: Only set TB values to zero over the *non-ocean* grid cells
             tb_si_data[invalid_ice_mask] = 0
+        """
 
         ecdr_ide_ds[tb_si_varname] = (
             ("time", "y", "x"),
@@ -1079,8 +1081,9 @@ def compute_initial_daily_ecdr_dataset(
             fix_goddard_bt_error=True,
         )
 
-    spillover_applied = np.full((ydim, xdim), False, dtype=bool)
-    spillover_applied[cdr_conc_pre_spillover != cdr_conc.data] = True
+    had_spillover_applied = (cdr_conc_pre_spillover != cdr_conc.data) & np.isfinite(
+        cdr_conc.data
+    )
 
     # Set missing TBs to NaN
     cdr_conc[ecdr_ide_ds["missing_tb_mask"].data[0, :, :]] = np.nan
@@ -1180,12 +1183,17 @@ def compute_initial_daily_ecdr_dataset(
     qa_bitmask = np.zeros((ydim, xdim), dtype=np.uint8)
     qa_bitmask[ecdr_ide_ds["bt_weather_mask"].data[0, :, :]] += 1
     qa_bitmask[ecdr_ide_ds["nt_weather_mask"].data[0, :, :]] += 2
-    qa_bitmask[spillover_applied] += 4
+    qa_bitmask[had_spillover_applied] += 4
     qa_bitmask[invalid_tb_mask & ~ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 8
-    qa_bitmask[ecdr_ide_ds["invalid_ice_mask"].data[0, :, :]] += 16
     qa_bitmask[
         ecdr_ide_ds["cdr_seaice_conc_interp_spatial_flag"].data[0, :, :] != 0
     ] += 32
+
+    # Explicitly set climatologically masked ocean cells to 16
+    invalid_ice_ocean_mask = invalid_ice_mask.data & ~non_ocean_mask.data
+    qa_bitmask[invalid_ice_ocean_mask] = 16
+
+    # Explicitly set land to zero
     qa_bitmask[non_ocean_mask] = 0
 
     ecdr_ide_ds["cdr_seaice_conc_qa_flag"] = (
