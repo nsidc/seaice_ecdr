@@ -316,7 +316,7 @@ def finalize_cdecdr_ds(
             "coverage_content_type": "image",
             "units": "1",
             "long_name": (
-                "Bootstrap sea ice concntration;"
+                "Bootstrap sea ice concentration;"
                 " raw field with no masking or filtering"
             ),
             "grid_mapping": "crs",
@@ -337,7 +337,7 @@ def finalize_cdecdr_ds(
             "coverage_content_type": "image",
             "units": "1",
             "long_name": (
-                "NASA Team sea ice concntration;"
+                "NASA Team sea ice concentration;"
                 " raw field with no masking or filtering"
             ),
             "grid_mapping": "crs",
