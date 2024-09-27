@@ -394,19 +394,29 @@ def calc_cdr_seaice_conc_monthly_stdev(
     daily_cdr_seaice_conc: xr.DataArray,
 ) -> xr.DataArray:
     """Create the `cdr_seaice_conc_monthly_stdev` variable."""
-    cdr_seaice_conc_monthly_stdev = daily_cdr_seaice_conc.std(
-        dim="time",
+    # Using np.std() instead of DataArray.std() eliminates
+    # a div by zero warning from but means that the DataArray
+    # must be set up explicitly.
+    cdr_seaice_conc_monthly_stdev_np = np.std(
+        np.array(daily_cdr_seaice_conc),
+        axis=0,
         ddof=1,
     )
-    cdr_seaice_conc_monthly_stdev.name = "cdr_seaice_conc_monthly_stdev"
-
-    cdr_seaice_conc_monthly_stdev = cdr_seaice_conc_monthly_stdev.assign_attrs(
-        long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
-        valid_range=(np.float32(0.0), np.float32(1.0)),
-        grid_mapping="crs",
-        units="1",
+    cdr_seaice_conc_monthly_stdev = xr.DataArray(
+        data=cdr_seaice_conc_monthly_stdev_np,
+        name="cdr_seaice_conc_monthly_stdev",
+        coords=[
+            daily_cdr_seaice_conc.y,
+            daily_cdr_seaice_conc.x,
+        ],
+        dims=["y", "x"],
+        attrs=dict(
+            long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
+            valid_range=(np.float32(0.0), np.float32(1.0)),
+            grid_mapping="crs",
+            units="1",
+        ),
     )
-
     cdr_seaice_conc_monthly_stdev.encoding = dict(
         _FillValue=-1,
         zlib=True,
@@ -556,7 +566,6 @@ def make_intermediate_monthly_ds(
         cdr_seaice_conc_monthly_qa_flag=cdr_seaice_conc_monthly_qa_flag,
         surface_type_mask=surface_type_mask_monthly,
     )
-
     # Add monthly melt onset if the hemisphere is north. We don't detect melt in
     # the southern hemisphere.
     if hemisphere == NORTH:
