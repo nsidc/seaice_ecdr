@@ -139,6 +139,10 @@ def finalize_cdecdr_ds(
     )
 
     # Note: this is NH only, hence the try/except block
+    # Note: valid range allows values:
+    #        0: conc < 50% at start of melt season
+    #   60-244: day-of-year melt detected during melt season
+    #      255: no melt detected during melt season
     try:
         ds["cdr_melt_onset_day"] = (
             ("time", "y", "x"),
@@ -148,12 +152,13 @@ def finalize_cdecdr_ds(
                 "long_name": "Day Of Year of NH Snow Melt Onset On Sea Ice",
                 "units": "1",
                 "grid_mapping": "crs",
-                "valid_range": np.array((60, 255), dtype=np.uint8),
+                "valid_range": np.array((0, 255), dtype=np.uint8),
                 "comment": (
-                    "Value of 255 means no melt detected yet or the date"
-                    " is outside the melt season.  Other values indicate"
-                    " the day of year when melt was first detected at"
-                    " this location."
+                    "Value of 0 indicates sea ice concentration less than 50%"
+                    " at start of melt season; values of 60-244 indicate day"
+                    " of year of snow melt onset on sea ice detected during"
+                    " melt season; value of 255 indicates no melt detected"
+                    " during melt season, including non-ocean grid cells."
                 ),
             },
             {

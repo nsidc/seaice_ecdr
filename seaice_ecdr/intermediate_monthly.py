@@ -393,10 +393,18 @@ def calc_cdr_seaice_conc_monthly_stdev(
     *,
     daily_cdr_seaice_conc: xr.DataArray,
 ) -> xr.DataArray:
-    """Create the `cdr_seaice_conc_monthly_stdev` variable."""
-    # Using np.std() instead of DataArray.std() eliminates
-    # a div by zero warning from but means that the DataArray
-    # must be set up explicitly.
+    """
+    Create the `cdr_seaice_conc_monthly_stdev` variable.
+
+    Note: Using np.std() instead of DataArray.std() eliminates
+          a div by zero warning from but means that the DataArray
+          must be set up explicitly instead of resulting from
+          the DataArray.std() operation.  Attributes and encoding
+          are explicitly specified here just as they need to be
+          when using functions on a DataArray.
+    Note: In numpy array terms, "axis=0" refers to the time axis
+          because the dimensions of the DataArray are ("time", "y", "x").
+    """
     cdr_seaice_conc_monthly_stdev_np = np.std(
         np.array(daily_cdr_seaice_conc),
         axis=0,
@@ -441,8 +449,13 @@ def calc_cdr_melt_onset_day_monthly(
     cdr_melt_onset_day_monthly = cdr_melt_onset_day_monthly.assign_attrs(
         long_name="Monthly Day of Snow Melt Onset Over Sea Ice",
         units="1",
-        valid_range=(np.ubyte(60), np.ubyte(255)),
+        valid_range=(np.ubyte(0), np.ubyte(255)),
         grid_mapping="crs",
+        comment="Value of 0 indicates sea ice concentration less than 50%"
+        " at start of melt season; values of 60-244 indicate day"
+        " of year of snow melt onset on sea ice detected during"
+        " melt season; value of 255 indicates no melt detected"
+        " during melt season, including non-ocean grid cells.",
     )
     cdr_melt_onset_day_monthly.encoding = dict(
         _FillValue=None,
