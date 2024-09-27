@@ -294,16 +294,23 @@ def land_spillover(
         )
 
         spillover_applied_nt2_bt = coastal_fix(
-            conc=spillover_applied_nt2,
+            conc=spillover_applied_nt2.copy(),
             missing_flag_value=np.nan,
             land_mask=land_mask,
             minic=10,
             fix_goddard_bt_error=fix_goddard_bt_error,
         )
 
+        # Return NaN for missing and for land
+        spillover_applied_nt2_bt[non_ocean_mask] = np.nan
+
         spillover_applied = spillover_applied_nt2_bt
 
     elif algorithm == "BT_NT":
+        # TODO: This algorithm is complicated by the NT algorithm
+        #       and should not be supported.  It remains here...
+        #       because otherwise it is hard to understand how it
+        #       was implemented.
         non_ocean_mask = get_non_ocean_mask(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
