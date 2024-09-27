@@ -303,7 +303,7 @@ def get_nasateam_weather_mask(
         ecdr_ide_ds["v19_day_si"].data[0, :, :],
     )
     # Round off for better match with CDRv4 results
-    nt_gr_3719 = np.round(nt_gr_3719, 4)
+    # nt_gr_3719 = np.round(nt_gr_3719, 4)
 
     nt_3719_weather_mask = nt_gr_3719 > nt_coefs["nt_gradient_thresholds"]["3719"]
 
@@ -317,7 +317,7 @@ def get_nasateam_weather_mask(
         ecdr_ide_ds["v19_day_si"].data[0, :, :],
     )
     # Round off for better match with CDRv4 results
-    nt_gr_2219 = np.round(nt_gr_2219, 4)
+    # nt_gr_2219 = np.round(nt_gr_2219, 4)
 
     nt_2219_weather_mask = nt_gr_2219 > nt_coefs["nt_gradient_thresholds"]["2219"]
     weather_mask = nt_3719_weather_mask | nt_2219_weather_mask
@@ -611,21 +611,22 @@ def compute_initial_daily_ecdr_dataset(
     #  See: https://docs.scipy.org/doc//numpy-1.9.0/reference/generated/numpy.around.html#numpy.around
     # In order to reproduce the v4 rounding values, need to first round to
     # two decimal places, then round to 1
-    ecdr_ide_ds["v37_day_si"].data = np.round(
-        np.round(ecdr_ide_ds["v37_day_si"].data, 2), 1
-    )
-    ecdr_ide_ds["h37_day_si"].data = np.round(
-        np.round(ecdr_ide_ds["h37_day_si"].data, 2), 1
-    )
-    ecdr_ide_ds["v19_day_si"].data = np.round(
-        np.round(ecdr_ide_ds["v19_day_si"].data, 2), 1
-    )
-    ecdr_ide_ds["h19_day_si"].data = np.round(
-        np.round(ecdr_ide_ds["h19_day_si"].data, 2), 1
-    )
-    ecdr_ide_ds["v22_day_si"].data = np.round(
-        np.round(ecdr_ide_ds["v22_day_si"].data, 2), 1
-    )
+    ## NOTE: Remove these once we are ready to add CDRv5 integration tests
+    # ecdr_ide_ds["v37_day_si"].data = np.round(
+    #    np.round(ecdr_ide_ds["v37_day_si"].data, 2), 1
+    # )
+    # ecdr_ide_ds["h37_day_si"].data = np.round(
+    #    np.round(ecdr_ide_ds["h37_day_si"].data, 2), 1
+    # )
+    # ecdr_ide_ds["v19_day_si"].data = np.round(
+    #    np.round(ecdr_ide_ds["v19_day_si"].data, 2), 1
+    # )
+    # ecdr_ide_ds["h19_day_si"].data = np.round(
+    #    np.round(ecdr_ide_ds["h19_day_si"].data, 2), 1
+    # )
+    # ecdr_ide_ds["v22_day_si"].data = np.round(
+    #    np.round(ecdr_ide_ds["v22_day_si"].data, 2), 1
+    # )
 
     # Set a missing data mask using 19V TB field
     # Note: this will not include missing TBs in the day's invalid_ice field
