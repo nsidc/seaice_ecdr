@@ -359,6 +359,12 @@ def calc_cdr_seaice_conc_monthly(
     daily_conc_for_month = daily_ds_for_month.cdr_seaice_conc
     conc_monthly = daily_conc_for_month.mean(dim="time")
 
+    # NOTE: Clamp lower bound to 10% minic
+    conc_monthly = conc_monthly.where(
+        np.isnan(conc_monthly) | (conc_monthly >= 0.1),
+        other=0,
+    )
+
     num_missing_conc_pixels = get_num_missing_pixels(
         seaice_conc_var=conc_monthly,
         hemisphere=hemisphere,
