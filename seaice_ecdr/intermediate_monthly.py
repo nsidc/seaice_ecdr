@@ -405,19 +405,26 @@ def calc_cdr_seaice_conc_monthly_stdev(
     Note: In numpy array terms, "axis=0" refers to the time axis
           because the dimensions of the DataArray are ("time", "y", "x").
     """
-    cdr_seaice_conc_monthly_stdev_np = np.std(
+    cdr_seaice_conc_monthly_stdev_np = np.nanstd(
         np.array(daily_cdr_seaice_conc),
-        axis=0,
+        axis=daily_cdr_seaice_conc.get_axis_num("time"),
         ddof=1,
     )
+
+    # Extract non-'time' dims (and coords) from DataArray
+    dims = [dim for dim in daily_cdr_seaice_conc.dims if dim != "time"]
+
+    # Note: list comprehension does not work using iterator as key
+    coords = []
+    for dim in dims:
+        if dim != "time":
+            coords.append(daily_cdr_seaice_conc[dim])
+
     cdr_seaice_conc_monthly_stdev = xr.DataArray(
         data=cdr_seaice_conc_monthly_stdev_np,
         name="cdr_seaice_conc_monthly_stdev",
-        coords=[
-            daily_cdr_seaice_conc.y,
-            daily_cdr_seaice_conc.x,
-        ],
-        dims=["y", "x"],
+        coords=coords,
+        dims=dims,
         attrs=dict(
             long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
             valid_range=(np.float32(0.0), np.float32(1.0)),
