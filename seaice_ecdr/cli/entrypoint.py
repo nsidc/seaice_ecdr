@@ -4,6 +4,7 @@ import click
 
 from seaice_ecdr.cli.daily import cli as daily_cli
 from seaice_ecdr.cli.monthly import cli as monthly_cli
+from seaice_ecdr.cli.monthly_nrt import cli as monthly_nrt_cli
 from seaice_ecdr.cli.nrt import cli as nrt_cli
 from seaice_ecdr.daily_aggregate import cli as daily_aggregate_cli
 from seaice_ecdr.initial_daily_ecdr import cli as ecdr_cli
@@ -43,9 +44,10 @@ cli.add_command(daily_aggregate_cli)
 cli.add_command(monthly_cli)
 # Generate monthly aggregate file (one per hemisphere)
 cli.add_command(monthly_aggregate_cli)
-# Wraps the `nrt_ecdr_for_dates` CLI with the correct platform start date
+# Wraps the NRT CLIs with the correct platform start date
 # configuration chosen.
 cli.add_command(nrt_cli)
+cli.add_command(monthly_nrt_cli)
 
 if __name__ == "__main__":
     cli()

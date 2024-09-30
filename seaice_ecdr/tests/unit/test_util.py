@@ -16,6 +16,7 @@ from seaice_ecdr.util import (
     find_standard_monthly_netcdf_files,
     get_num_missing_pixels,
     nrt_daily_filename,
+    nrt_monthly_filename,
     platform_id_from_filename,
     raise_error_for_dates,
     standard_daily_aggregate_filename,
@@ -50,6 +51,20 @@ def test_nrt_daily_filename():
 
     actual = nrt_daily_filename(
         hemisphere=NORTH, resolution="12.5", platform_id="am2", date=dt.date(2021, 1, 1)
+    )
+
+    assert actual == expected
+
+
+def test_nrt_monthly_filename():
+    expected = f"sic_psn25_202409_F17_{ECDR_NRT_PRODUCT_VERSION}_P.nc"
+
+    actual = nrt_monthly_filename(
+        hemisphere=NORTH,
+        resolution="25",
+        platform_id="F17",
+        year=2024,
+        month=9,
     )
 
     assert actual == expected
@@ -133,6 +148,35 @@ def test_monthly_platform_id_from_filename():
         platform_id=expected_platform_id,
         year=2021,
         month=1,
+    )
+
+    actual_platform_id = platform_id_from_filename(fn)
+
+    assert expected_platform_id == actual_platform_id
+
+
+def test_daily_platform_id_from_daily_nrt_filename():
+    expected_platform_id: Final = "F17"
+    fn = nrt_daily_filename(
+        hemisphere=SOUTH,
+        resolution="25",
+        platform_id=expected_platform_id,
+        date=dt.date(2021, 1, 1),
+    )
+
+    actual_platform_id = platform_id_from_filename(fn)
+
+    assert expected_platform_id == actual_platform_id
+
+
+def test_daily_platform_id_from_monthly_nrt_filename():
+    expected_platform_id: Final = "F17"
+    fn = nrt_monthly_filename(
+        hemisphere=SOUTH,
+        resolution="25",
+        platform_id=expected_platform_id,
+        year=2024,
+        month=9,
     )
 
     actual_platform_id = platform_id_from_filename(fn)

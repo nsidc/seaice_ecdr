@@ -1,4 +1,5 @@
 import datetime as dt
+from functools import cache
 from pathlib import Path
 
 import datatree
@@ -16,14 +17,24 @@ from seaice_ecdr.nc_util import (
     add_coordinates_attr,
     remove_valid_range_from_coordinate_vars,
 )
+from seaice_ecdr.nrt import override_attrs_for_nrt
 from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import (
     find_standard_monthly_netcdf_files,
     get_complete_output_dir,
     get_intermediate_output_dir,
+    nrt_monthly_filename,
     platform_id_from_filename,
     standard_monthly_filename,
 )
+
+# TODO: consider extracting to config or a kwarg of this function for more
+# flexible use with other platforms in the future.
+PROTOTYPE_PLATFORM_ID: SUPPORTED_PLATFORM_ID = "am2"
+PROTOTYPE_PLATFORM_DATA_GROUP_NAME = f"prototype_{PROTOTYPE_PLATFORM_ID}"
+# TODO: this should be extracted from e.g., the platform start date
+# configuration instead of hard-coding it here.
+PROTOTYPE_PLATFORM_START_DATE = dt.date(2013, 1, 1)
 
 
 def get_complete_monthly_dir(complete_output_dir: Path) -> Path:
@@ -41,48 +52,44 @@ def get_complete_monthly_filepath(
     year: int,
     month: int,
     complete_output_dir: Path,
+    is_nrt: bool,
 ) -> Path:
     output_dir = get_complete_monthly_dir(
         complete_output_dir=complete_output_dir,
     )
 
-    output_fn = standard_monthly_filename(
-        hemisphere=hemisphere,
-        resolution=resolution,
-        platform_id=platform_id,
-        year=year,
-        month=month,
-    )
+    if is_nrt:
+        output_fn = nrt_monthly_filename(
+            hemisphere=hemisphere,
+            resolution=resolution,
+            platform_id=platform_id,
+            year=year,
+            month=month,
+        )
+    else:
+        output_fn = standard_monthly_filename(
+            hemisphere=hemisphere,
+            resolution=resolution,
+            platform_id=platform_id,
+            year=year,
+            month=month,
+        )
 
     output_path = output_dir / output_fn
 
     return output_path
 
 
-def prepare_monthly_nc_for_publication(
+@cache
+def _get_all_intermediate_monthly_fps(
     *,
     base_output_dir: Path,
     year: int,
     month: int,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-):
-    """Prepare a monthly NetCDF file for publication.
-
-    If monthly data for a prototype platform is available for the given month,
-    this function adds that data to a prototype group in the output NetCDF
-    file. The output NC file's root-group variables are all taken from the
-    default platforms given by the platofrm start date configuration.
-    """
-    # TODO: consider extracting to config or a kwarg of this function for more
-    # flexible use with other platforms in the future.
-    PROTOTYPE_PLATFORM_ID: SUPPORTED_PLATFORM_ID = "am2"
-    PROTOTYPE_PLATFORM_DATA_GROUP_NAME = f"prototype_{PROTOTYPE_PLATFORM_ID}"
-    # TODO: this should be extracted from e.g., the platform start date
-    # configuration instead of hard-coding it here.
-    PROTOTYPE_PLATFORM_START_DATE = dt.date(2013, 1, 1)
-
-    # Get the intermediate monthly data
+) -> list[Path]:
+    """Get a list of all intermediate monthly filepaths for the given params."""
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
@@ -99,19 +106,81 @@ def prepare_monthly_nc_for_publication(
         month=month,
         platform_id="*",
     )
-    default_monthly_fps = [
+    return all_intermediate_monthly_fps
+
+
+def _get_intermediate_monthly_fp(
+    *,
+    base_output_dir: Path,
+    year: int,
+    month: int,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> Path:
+    all_intermediate_monthly_fps = _get_all_intermediate_monthly_fps(
+        base_output_dir=base_output_dir,
+        year=year,
+        month=month,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    intermediate_monthly_fps = [
         fp
         for fp in all_intermediate_monthly_fps
         if f"_{PROTOTYPE_PLATFORM_ID}_" not in fp.name
     ]
-    if len(default_monthly_fps) != 1:
-        raise RuntimeError(
-            f"Failed to find an intermediate monthly file for {year=}, {month=}, {hemisphere} in {intermediate_monthly_dir}"
+    if len(intermediate_monthly_fps) != 1:
+        raise FileNotFoundError(
+            f"Failed to find an intermediate monthly file for {year=}, {month=}, {hemisphere}"
         )
-    default_intermediate_monthly_ds = xr.open_dataset(default_monthly_fps[0])
 
-    # get the platform Id from the filename default filename.
-    platform_id = platform_id_from_filename(default_monthly_fps[0].name)
+    monthly_filepath = intermediate_monthly_fps[0]
+
+    return monthly_filepath
+
+
+def _get_prototype_monthly_fp(
+    *,
+    year: int,
+    month: int,
+    hemisphere: Hemisphere,
+    base_output_dir: Path,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> Path | None:
+    all_intermediate_monthly_fps = _get_all_intermediate_monthly_fps(
+        base_output_dir=base_output_dir,
+        year=year,
+        month=month,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    prototype_monthly_fps = [
+        fp
+        for fp in all_intermediate_monthly_fps
+        if f"_{PROTOTYPE_PLATFORM_ID}_" in fp.name
+    ]
+
+    if (prototype_len := len(prototype_monthly_fps)) > 0:
+        if prototype_len > 1:
+            raise RuntimeError(
+                f"Something went wrong: found multiple intermediate prototype monthly files, but found {prototype_len}: {prototype_monthly_fps}."
+            )
+
+        return prototype_monthly_fps[0]
+    else:
+        return None
+
+
+def prepare_monthly_ds_for_publication(
+    *,
+    year: int,
+    month: int,
+    hemisphere: Hemisphere,
+    intermediate_monthly_fp: Path,
+    prototype_monthly_fp: Path | None,
+) -> datatree.DataTree:
+    # Get the intermediate monthly data
+    default_intermediate_monthly_ds = xr.open_dataset(intermediate_monthly_fp)
 
     # TODO: a lot of the below (e.g., where the supplementary group is
     # constructed and a DataTree) is made is very similar to how it's done in
@@ -147,19 +216,9 @@ def prepare_monthly_nc_for_publication(
         }
     )
 
-    # Now get the prototype filepath, if it exists, and add it to the new monthly ds.
-    prototype_monthly_fps = [
-        fp
-        for fp in all_intermediate_monthly_fps
-        if f"_{PROTOTYPE_PLATFORM_ID}_" in fp.name
-    ]
-    if (prototype_len := len(prototype_monthly_fps)) > 0:
-        if prototype_len > 1:
-            raise RuntimeError(
-                f"Something went wrong: found multiple intermediate prototype monthly files, but found {prototype_len}: {prototype_monthly_fps}."
-            )
-
-        prototype_monthly_ds = xr.open_dataset(prototype_monthly_fps[0])
+    # Add the prototype group if a prototype file is passed in.
+    if prototype_monthly_fp:
+        prototype_monthly_ds = xr.open_dataset(prototype_monthly_fp)
         cdr_var_fieldnames = [
             "cdr_seaice_conc_monthly",
             "cdr_seaice_conc_monthly_qa_flag",
@@ -205,6 +264,19 @@ def prepare_monthly_nc_for_publication(
     add_coordinate_coverage_content_type(complete_monthly_ds)
     add_coordinates_attr(complete_monthly_ds)
 
+    return complete_monthly_ds
+
+
+def _write_publication_ready_nc_and_checksum(
+    publication_ready_monthly_ds: datatree.DataTree,
+    base_output_dir: Path,
+    year: int,
+    month: int,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    is_nrt: bool,
+    platform_id: SUPPORTED_PLATFORM_ID,
+) -> Path:
     # Write out finalized nc file.
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
@@ -218,14 +290,79 @@ def prepare_monthly_nc_for_publication(
         year=year,
         month=month,
         complete_output_dir=complete_output_dir,
+        is_nrt=is_nrt,
     )
-    complete_monthly_ds.to_netcdf(complete_monthly_filepath)
+    publication_ready_monthly_ds.to_netcdf(complete_monthly_filepath)
     logger.success(f"Staged NC file for publication: {complete_monthly_filepath}")
 
     # Write checksum file for the complete daily output.
     write_checksum_file(
         input_filepath=complete_monthly_filepath,
         output_dir=complete_output_dir / "checksums" / "monthly",
+    )
+
+    return complete_monthly_filepath
+
+
+def prepare_monthly_nc_for_publication(
+    *,
+    base_output_dir: Path,
+    year: int,
+    month: int,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    is_nrt: bool,
+):
+    """Prepare a monthly NetCDF file for publication.
+
+    If monthly data for a prototype platform is available for the given month,
+    this function adds that data to a prototype group in the output NetCDF
+    file. The output NC file's root-group variables are all taken from the
+    default platforms given by the platofrm start date configuration.
+    """
+    intermediate_monthly_fp = _get_intermediate_monthly_fp(
+        base_output_dir=base_output_dir,
+        year=year,
+        month=month,
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    # Now get the prototype filepath, if it exists, and add it to the new
+    # monthly ds.
+    prototype_monthly_fp = _get_prototype_monthly_fp(
+        year=year,
+        month=month,
+        hemisphere=hemisphere,
+        base_output_dir=base_output_dir,
+        resolution=resolution,
+    )
+    complete_monthly_ds = prepare_monthly_ds_for_publication(
+        year=year,
+        month=month,
+        hemisphere=hemisphere,
+        intermediate_monthly_fp=intermediate_monthly_fp,
+        prototype_monthly_fp=prototype_monthly_fp,
+    )
+
+    # Override attrs for nrt
+    if is_nrt:
+        complete_monthly_ds = override_attrs_for_nrt(
+            publication_ready_ds=complete_monthly_ds, resolution=resolution
+        )
+
+    # get the platform Id from the filename default filename.
+    platform_id = platform_id_from_filename(intermediate_monthly_fp.name)
+    # Write the publication-ready monthly ds
+    complete_monthly_filepath = _write_publication_ready_nc_and_checksum(
+        publication_ready_monthly_ds=complete_monthly_ds,
+        year=year,
+        month=month,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        base_output_dir=base_output_dir,
+        platform_id=platform_id,
+        is_nrt=is_nrt,
     )
 
     return complete_monthly_filepath

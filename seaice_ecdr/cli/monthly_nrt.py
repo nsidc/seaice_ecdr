@@ -1,4 +1,3 @@
-import datetime as dt
 from pathlib import Path
 from typing import Final, get_args
 
@@ -7,10 +6,9 @@ import pandas as pd
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.cli.util import CLI_EXE_PATH, run_cmd
-from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import DEFAULT_BASE_NRT_OUTPUT_DIR
 from seaice_ecdr.platforms.config import (
-    DEFAULT_PLATFORM_START_DATES_CONFIG_FILEPATH,
-    PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH,
+    NRT_PLATFORM_START_DATES_CONFIG_FILEPATH,
 )
 from seaice_ecdr.publish_monthly import prepare_monthly_nc_for_publication
 
@@ -30,13 +28,12 @@ def make_monthly_25km_ecdr(
 
     # TODO: consider extracting these to CLI options that default to these values.
     RESOLUTION: Final = "25"
-    ANCILLARY_SOURCE: Final = "CDRv4"
+    ANCILLARY_SOURCE: Final = "CDRv5"
     # TODO: the amsr2 start date should ideally be read from the platform start
     # date config.
-    PROTOTYPE_PLATFORM_START_DATE = dt.date(2013, 1, 1)
     # Use the default platform dates, which excldues AMSR2
     run_cmd(
-        f"export PLATFORM_START_DATES_CONFIG_FILEPATH={DEFAULT_PLATFORM_START_DATES_CONFIG_FILEPATH} &&"
+        f"export PLATFORM_START_DATES_CONFIG_FILEPATH={NRT_PLATFORM_START_DATES_CONFIG_FILEPATH} &&"
         f" {CLI_EXE_PATH} intermediate-monthly"
         f" --year {year} --month {month}"
         f" --end-year {end_year} --end-month {end_month}"
@@ -44,21 +41,8 @@ def make_monthly_25km_ecdr(
         f" --base-output-dir {base_output_dir}"
         f" --resolution {RESOLUTION}"
         f" --ancillary-source {ANCILLARY_SOURCE}"
+        " --is-nrt"
     )
-
-    # If the given start & end date intersect with the AMSR2 period, run that
-    # separately:
-    if dt.date(year, month, 1) >= PROTOTYPE_PLATFORM_START_DATE:
-        run_cmd(
-            f"export PLATFORM_START_DATES_CONFIG_FILEPATH={PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH} &&"
-            f"{CLI_EXE_PATH} intermediate-monthly"
-            f" --year {year} --month {month}"
-            f" --end-year {end_year} --end-month {end_month}"
-            f" --hemisphere {hemisphere}"
-            f" --base-output-dir {base_output_dir}"
-            f" --resolution {RESOLUTION}"
-            f" --ancillary-source {ANCILLARY_SOURCE}"
-        )
 
     # Prepare the monthly data for publication
     for period in pd.period_range(
@@ -72,11 +56,11 @@ def make_monthly_25km_ecdr(
             base_output_dir=base_output_dir,
             hemisphere=hemisphere,
             resolution=RESOLUTION,
-            is_nrt=False,
+            is_nrt=True,
         )
 
 
-@click.command(name="monthly")
+@click.command(name="monthly-nrt")
 @click.option(
     "--year",
     required=True,
@@ -120,9 +104,9 @@ def make_monthly_25km_ecdr(
         resolve_path=True,
         path_type=Path,
     ),
-    default=DEFAULT_BASE_OUTPUT_DIR,
+    default=DEFAULT_BASE_NRT_OUTPUT_DIR,
     help=(
-        "Base output directory for standard ECDR outputs."
+        "Base output directory for NRT ECDR outputs."
         " Subdirectories are created for outputs of"
         " different stages of processing."
     ),

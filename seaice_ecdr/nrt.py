@@ -6,11 +6,13 @@ from pathlib import Path
 from typing import Final, get_args
 
 import click
+import datatree
 import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.nsidc_0080 import get_nsidc_0080_tbs_from_disk
 
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.cli.util import datetime_to_date
@@ -22,6 +24,7 @@ from seaice_ecdr.initial_daily_ecdr import (
 )
 from seaice_ecdr.intermediate_daily import (
     complete_daily_ecdr_ds,
+    get_ecdr_filepath,
 )
 from seaice_ecdr.publish_daily import (
     get_complete_daily_filepath,
@@ -251,6 +254,32 @@ def get_nrt_complete_daily_filepath(
     return nrt_output_filepath
 
 
+def override_attrs_for_nrt(
+    *,
+    publication_ready_ds: datatree.DataTree,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> datatree.DataTree:
+    override_for_nrt = publication_ready_ds.copy()
+    override_for_nrt.attrs["summary"] = (
+        f"This data set provides a near-real-time (NRT) passive microwave sea ice concentration climate data record (CDR) based on gridded brightness temperatures (TBs) from the Defense Meteorological Satellite Program (DMSP) passive microwave radiometer: the Special Sensor Microwave Imager/Sounder (SSMIS) F17. The sea ice concentration CDR is an estimate of sea ice concentration that is produced by combining concentration estimates from two algorithms developed at the NASA Goddard Space Flight Center (GSFC): the NASA Team algorithm and the Bootstrap algorithm. The individual algorithms are used to process and combine brightness temperature data at NSIDC. This product is designed to provide an NRT time series of sea ice concentrations (the fraction, or percentage, of ocean area covered by sea ice). The data are gridded on the NSIDC polar stereographic grid with {resolution} x {resolution} km grid cells and are available in NetCDF file format. Each file contains a variable with the CDR concentration values as well as variables that hold the NASA Team and Bootstrap processed concentrations for reference. Variables containing standard deviation, quality flags, and projection information are also included."
+    )
+
+    # NOTE: this NRT summary is specific to SSMIS F17.
+    assert NRT_PLATFORM_ID in override_for_nrt.attrs["summary"]
+
+    override_for_nrt.attrs["id"] = "https://doi.org/10.7265/j0z0-4h87"
+    override_for_nrt.attrs["metadata_link"] = (
+        f"https://nsidc.org/data/g10016/versions/{ECDR_NRT_PRODUCT_VERSION.major_version_number}"
+    )
+    override_for_nrt.attrs["title"] = (
+        "Near-Real-Time NOAA-NSIDC Climate Data Record of Passive Microwave"
+        f" Sea Ice Concentration Version {ECDR_NRT_PRODUCT_VERSION.major_version_number}"
+    )
+    override_for_nrt.attrs["product_version"] = ECDR_NRT_PRODUCT_VERSION.version_str
+
+    return override_for_nrt
+
+
 def nrt_ecdr_for_day(
     *,
     date: dt.date,
@@ -291,23 +320,30 @@ def nrt_ecdr_for_day(
                 is_nrt=True,
                 ancillary_source=ancillary_source,
             )
+            # Write the daily intermediate file. This is used by the monthly NRT
+            # processing to produce the monthly fields.
+            cde_ds_filepath = get_ecdr_filepath(
+                date=date,
+                hemisphere=hemisphere,
+                resolution=NRT_RESOLUTION,
+                intermediate_output_dir=intermediate_output_dir,
+                platform_id=NRT_PLATFORM_ID,
+                is_nrt=True,
+            )
+            cde_ds.to_netcdf(
+                cde_ds_filepath,
+            )
+
+            # Prepare the ds for publication
             daily_ds = make_publication_ready_ds(
                 intermediate_daily_ds=cde_ds,
                 hemisphere=hemisphere,
             )
 
             # Update global attrs to reflect G10016 instead of G02202:
-            daily_ds.attrs["id"] = "https://doi.org/10.7265/j0z0-4h87"
-            daily_ds.attrs["metadata_link"] = (
-                f"https://nsidc.org/data/g10016/versions/{ECDR_NRT_PRODUCT_VERSION.major_version_number}"
-            )
-            daily_ds.attrs["title"] = (
-                "Near-Real-Time NOAA-NSIDC Climate Data Record of Passive Microwave"
-                f" Sea Ice Concentration Version {ECDR_NRT_PRODUCT_VERSION.major_version_number}"
-            )
-            daily_ds.attrs["product_version"] = ECDR_NRT_PRODUCT_VERSION.version_str
-            daily_ds.attrs["summary"] = (
-                f"This data set provides a near-real-time (NRT) passive microwave sea ice concentration climate data record (CDR) based on gridded brightness temperatures (TBs) from the Defense Meteorological Satellite Program (DMSP) passive microwave radiometer: the Special Sensor Microwave Imager/Sounder (SSMIS) F17. The sea ice concentration CDR is an estimate of sea ice concentration that is produced by combining concentration estimates from two algorithms developed at the NASA Goddard Space Flight Center (GSFC): the NASA Team algorithm and the Bootstrap algorithm. The individual algorithms are used to process and combine brightness temperature data at NSIDC. This product is designed to provide an NRT time series of sea ice concentrations (the fraction, or percentage, of ocean area covered by sea ice). The data are gridded on the NSIDC polar stereographic grid with {NRT_RESOLUTION} x {NRT_RESOLUTION} km grid cells and are available in NetCDF file format. Each file contains a variable with the CDR concentration values as well as variables that hold the NASA Team and Bootstrap processed concentrations for reference. Variables containing standard deviation, quality flags, and projection information are also included."
+            daily_ds = override_attrs_for_nrt(
+                publication_ready_ds=daily_ds,
+                resolution=NRT_RESOLUTION,
             )
 
             daily_ds.to_netcdf(nrt_output_filepath)

@@ -34,6 +34,7 @@ def test_make_intermediate_monthly_nc(base_output_dir_test_path, monkeypatch):  
         resolution="25",
         intermediate_output_dir=intermediate_output_dir,
         ancillary_source=ancillary_source,
+        is_nrt=False,
     )
 
     assert output_path.is_file()

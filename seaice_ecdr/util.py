@@ -36,6 +36,21 @@ def standard_daily_filename(
     return fn
 
 
+def _standard_fn_to_nrt(*, standard_fn: str) -> str:
+    standard_fn_path = Path(standard_fn)
+
+    fn_base = standard_fn_path.stem
+    ext = standard_fn_path.suffix
+    nrt_fn = fn_base + "_P" + ext
+
+    # Replace the standard G02202 version number with the NRT version.
+    nrt_fn = nrt_fn.replace(
+        ECDR_PRODUCT_VERSION.version_str, ECDR_NRT_PRODUCT_VERSION.version_str
+    )
+
+    return nrt_fn
+
+
 def nrt_daily_filename(
     *,
     hemisphere: Hemisphere,
@@ -49,15 +64,32 @@ def nrt_daily_filename(
         platform_id=platform_id,
         date=date,
     )
-    standard_fn_path = Path(standard_fn)
 
-    fn_base = standard_fn_path.stem
-    ext = standard_fn_path.suffix
-    nrt_fn = fn_base + "_P" + ext
+    nrt_fn = _standard_fn_to_nrt(
+        standard_fn=standard_fn,
+    )
 
-    # Replace the standard G02202 version number with the NRT version.
-    nrt_fn = nrt_fn.replace(
-        ECDR_PRODUCT_VERSION.version_str, ECDR_NRT_PRODUCT_VERSION.version_str
+    return nrt_fn
+
+
+def nrt_monthly_filename(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    platform_id: SUPPORTED_PLATFORM_ID,
+    year: int,
+    month: int,
+) -> str:
+    standard_fn = standard_monthly_filename(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        platform_id=platform_id,
+        year=year,
+        month=month,
+    )
+
+    nrt_fn = _standard_fn_to_nrt(
+        standard_fn=standard_fn,
     )
 
     return nrt_fn
@@ -194,7 +226,18 @@ def standard_monthly_aggregate_filename(
 
 
 # This regex works for both daily and monthly filenames.
-STANDARD_FN_REGEX = re.compile(r"sic_ps.*_.*_(?P<platform_id>.*)_.*.nc")
+STANDARD_FN_REGEX = re.compile(
+    # Grid ID is e.g., "pss25" for polar stereo southern hemisphere 25km.
+    r"sic_(?P<grid_id>ps[sn]\d+(\.\d+)?)"
+    # Date is 6 digits for monthly (YYYYMM) and 8 digits for daily (YYYYMMDD)
+    r"_(?P<date_str>\d{6}|\d{8})"
+    # Platform ID is e.g., "F17"
+    r"_(?P<platform_id>.*)"
+    # Version string is e.g., "v05r00"
+    r"_(?P<version_str>v\d{2}r\d{2})"
+    # optional `_P` for nrt files.
+    r"(_P)?.nc"
+)
 
 
 def platform_id_from_filename(filename: str) -> SUPPORTED_PLATFORM_ID:
