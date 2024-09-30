@@ -2,6 +2,7 @@ import datetime as dt
 from functools import cache
 from pathlib import Path
 
+import click
 import datatree
 import xarray as xr
 from loguru import logger
@@ -345,14 +346,17 @@ def prepare_monthly_nc_for_publication(
         prototype_monthly_fp=prototype_monthly_fp,
     )
 
+    # get the platform Id from the filename default filename.
+    platform_id = platform_id_from_filename(intermediate_monthly_fp.name)
+
     # Override attrs for nrt
     if is_nrt:
         complete_monthly_ds = override_attrs_for_nrt(
-            publication_ready_ds=complete_monthly_ds, resolution=resolution
+            publication_ready_ds=complete_monthly_ds,
+            resolution=resolution,
+            platform_id=platform_id,
         )
 
-    # get the platform Id from the filename default filename.
-    platform_id = platform_id_from_filename(intermediate_monthly_fp.name)
     # Write the publication-ready monthly ds
     complete_monthly_filepath = _write_publication_ready_nc_and_checksum(
         publication_ready_monthly_ds=complete_monthly_ds,
@@ -366,3 +370,13 @@ def prepare_monthly_nc_for_publication(
     )
 
     return complete_monthly_filepath
+
+
+@click.command()
+def cli():
+    """CLI for preparing publication-ready monthly files.
+
+    TODO! This is necessary so that the platform start dates config can be
+    correctly set via the CLI envvar `PLATFORM_START_DATES_CONFIG_FILEPATH`.
+    """
+    ...
