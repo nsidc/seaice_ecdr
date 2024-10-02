@@ -244,11 +244,9 @@ def temporally_composite_dataarray(
         raise RuntimeError(f" the target_date was not in the dataarray: {target_date}")
 
     temp_comp_2d = np.squeeze(temp_comp_da.data)
-    try:
-        assert temp_comp_2d.shape == (ydim, xdim)
-    except AssertionError as e:
+    if temp_comp_2d.shape != (ydim, xdim):
         raise RuntimeError(
-            f"Error asserting that squeezed data array is two dimensional with shape ({ydim}, {xdim}); got {temp_comp_2d.shape} instead; Assertion error was {e}"
+            f"Error asserting that squeezed data array is two dimensional; shape is {temp_comp_2d.shape} instead of ({ydim}, {xdim})"
         )
 
     if daily_climatology_mask is not None:

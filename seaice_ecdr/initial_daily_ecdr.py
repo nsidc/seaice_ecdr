@@ -86,10 +86,11 @@ def cdr_bootstrap_raw(
     itp_37h = bt_coefs["bt_itp_h37"]
     itp_19v = bt_coefs["bt_itp_v19"]
 
-    # Preserve bt_conc values up to 200% siconc
-    # NOTE: Don't want to get close to 250+ which tend to be flag values
-    #       in original Goddard code
-    bt_coefs["maxic"] = 2.0
+    # Preserve bt_conc values up to 254% siconc.
+    # We need a value here because the pm_icecon function requires it.
+    # But we are only setting this particular value so that any calculated
+    # conc value can be represented by an unsigned byte (non-flag 255) value
+    bt_coefs["maxic"] = 2.54
 
     bt_conc = bt.calc_bootstrap_conc(
         tb_v37=tb_v37,
@@ -177,7 +178,6 @@ def calc_cdr_conc(
     nt_conc: npt.NDArray,
     cdr_conc_min_fraction: float,
     cdr_conc_max_fraction: float,
-    max_valid_siconc=200.0,
 ) -> npt.NDArray:
     """
     Run the CDR algorithm
@@ -185,17 +185,15 @@ def calc_cdr_conc(
           though the upper range of values might be great than 100%.
           This is permitted for the bt_conc and nt_conc fields, but
           not for the cdr_conc field.
+    Note: bt_conc and nt_conc values are expected to be >= 0.0 or np.nan
     Note: range of output values will be 0 to 100.0 and np.nan (=missing)
     """
     cdr_conc_min_percent = cdr_conc_min_fraction * 100.0
     cdr_conc_max_percent = cdr_conc_max_fraction * 100.0
 
-    # It's possible that conc fields might have
-    # flagged values > max_valid_siconc
-    # so check for that here.
-    is_bt_seaice = (bt_conc > cdr_conc_min_percent) & (bt_conc <= max_valid_siconc)
+    is_bt_seaice = (bt_conc > cdr_conc_min_percent) & np.isfinite(bt_conc)
     is_cdr_seaice = is_bt_seaice
-    is_nt_seaice = (nt_conc > cdr_conc_min_percent) & (nt_conc <= max_valid_siconc)
+    is_nt_seaice = (nt_conc > cdr_conc_min_percent) & np.isfinite(nt_conc)
 
     use_nt_values = is_nt_seaice & is_bt_seaice & (nt_conc > bt_conc)
 
@@ -207,11 +205,7 @@ def calc_cdr_conc(
     is_low_siconc = is_cdr_seaice & (cdr_conc < cdr_conc_min_percent)
     cdr_conc[is_low_siconc] = 0
 
-    is_high_siconc = (
-        is_cdr_seaice
-        & (cdr_conc > cdr_conc_max_percent)
-        & (cdr_conc <= max_valid_siconc)
-    )
+    is_high_siconc = is_cdr_seaice & (cdr_conc > cdr_conc_max_percent)
     cdr_conc[is_high_siconc] = cdr_conc_max_percent
 
     return cdr_conc

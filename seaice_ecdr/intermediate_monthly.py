@@ -417,20 +417,17 @@ def calc_cdr_seaice_conc_monthly_stdev(
         ddof=1,
     )
 
-    # Extract non-'time' dims (and coords) from DataArray
-    dims = [dim for dim in daily_cdr_seaice_conc.dims if dim != "time"]
-
-    # Note: list comprehension does not work using iterator as key
-    coords = []
-    for dim in dims:
-        if dim != "time":
-            coords.append(daily_cdr_seaice_conc[dim])
+    # Extract non-'time' dims and coords from DataArray
+    dims_without_time = [dim for dim in daily_cdr_seaice_conc.dims if dim != "time"]
+    coords_without_time = [
+        daily_cdr_seaice_conc[dim] for dim in dims_without_time if dim != "time"
+    ]
 
     cdr_seaice_conc_monthly_stdev = xr.DataArray(
         data=cdr_seaice_conc_monthly_stdev_np,
         name="cdr_seaice_conc_monthly_stdev",
-        coords=coords,
-        dims=dims,
+        coords=coords_without_time,
+        dims=dims_without_time,
         attrs=dict(
             long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
             valid_range=(np.float32(0.0), np.float32(1.0)),

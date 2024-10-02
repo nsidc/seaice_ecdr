@@ -312,7 +312,9 @@ def finalize_cdecdr_ds(
     # TODO: conversion to ubyte should be done with DataArray encoding dict
     # NOTE: We are overwriting the attrs of the original conc field
     # TODO: scale_factor and add_offset might get set during encoding
-    # NOTE: We allow raw siconc up to 200% for potential validation measures
+    # NOTE: We allow raw siconc up to 254% because (1) that is the maximum
+    #       representable value for a non-negative conc with a _FlagValue
+    #       for missing of 255, and (2) for potential validation measures.
     ds["raw_bt_seaice_conc"] = (
         ("time", "y", "x"),
         ds["raw_bt_seaice_conc"].data,
@@ -325,7 +327,7 @@ def finalize_cdecdr_ds(
                 " raw field with no masking or filtering"
             ),
             "grid_mapping": "crs",
-            "valid_range": np.array((0, 200), dtype=np.uint8),
+            "valid_range": np.array((0, 254), dtype=np.uint8),
         },
     )
 
@@ -333,7 +335,9 @@ def finalize_cdecdr_ds(
     # TODO: adding time dimension should probably happen earlier
     # TODO: conversion to ubyte should be done with DataArray encoding dict
     # TODO: scale_factor and add_offset might get set during encoding
-    # NOTE: We allow raw siconc up to 200% for potential validation measures
+    # NOTE: We allow raw siconc up to 254% because (1) that is the maximum
+    #       representable value for a non-negative conc with a _FlagValue
+    #       for missing of 255, and (2) for potential validation measures.
     ds["raw_nt_seaice_conc"] = (
         ("time", "y", "x"),
         ds["raw_nt_seaice_conc"].data,
@@ -346,7 +350,7 @@ def finalize_cdecdr_ds(
                 " raw field with no masking or filtering"
             ),
             "grid_mapping": "crs",
-            "valid_range": np.array((0, 200), dtype=np.uint8),
+            "valid_range": np.array((0, 254), dtype=np.uint8),
         },
     )
 
