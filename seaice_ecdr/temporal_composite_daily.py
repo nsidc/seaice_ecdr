@@ -347,6 +347,10 @@ def temporally_composite_dataarray(
     # temporal_flags[have_only_next] = pdist[have_only_next]  # CDRv04r00 error
     temporal_flags[have_only_next] = ndist[have_only_next]  # Correct
 
+    # Ensure that no conc values are between 0 and 10% after temporal interp
+    is_conc_too_low = (temp_comp_2d > 0) & (temp_comp_2d < 0.1)
+    temp_comp_2d[is_conc_too_low] = 0
+
     # Ensure flag values do not occur over land
     temporal_flags[non_ocean_mask.data] = 0
 
