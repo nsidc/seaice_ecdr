@@ -16,18 +16,20 @@ from loguru import logger
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_tb_data._types import NORTH, Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
-from seaice_ecdr.ancillary import get_non_ocean_mask, nh_polehole_mask
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
+    get_non_ocean_mask,
+    nh_polehole_mask,
+)
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
     create_idecdr_for_date,
     get_idecdr_filepath,
 )
-from seaice_ecdr.platforms import (
-    get_first_platform_start_date,
-    get_platform_by_date,
-)
+from seaice_ecdr.platforms import PLATFORM_CONFIG
+from seaice_ecdr.spillover import LAND_SPILL_ALGS
 from seaice_ecdr.util import (
     date_range,
     get_intermediate_output_dir,
@@ -131,13 +133,13 @@ def get_tie_filepath(
 ) -> Path:
     """Return the complete daily tie file path."""
 
-    platform = get_platform_by_date(date)
-    sat = cast(SUPPORTED_SAT, platform)
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
+    platform_id = platform.id
 
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         date=date,
-        sat=sat,
+        platform_id=platform_id,
         resolution=resolution,
     )
     # Add `tiecdr` to the beginning of the standard name to distinguish it as a
@@ -170,7 +172,7 @@ def iter_dates_near_date(
     near-real-time use, because data from "the future" are not available.
     """
     earliest_date = target_date - dt.timedelta(days=day_range)
-    beginning_of_platform_coverage = get_first_platform_start_date()
+    beginning_of_platform_coverage = PLATFORM_CONFIG.get_first_platform_start_date()
     if earliest_date < beginning_of_platform_coverage:
         logger.warning(
             f"Resetting temporal interpolation earliest date from {earliest_date} to {beginning_of_platform_coverage}"
@@ -205,6 +207,7 @@ def temporally_composite_dataarray(
     one_sided_limit: int = 3,
     still_missing_flag: int = 255,
     non_ocean_mask: xr.DataArray,
+    daily_climatology_mask: None | npt.NDArray = None,
 ) -> tuple[xr.DataArray, npt.NDArray]:
     """Temporally composite a DataArray referenced to given reference date
     up to interp_range days.
@@ -220,6 +223,7 @@ def temporally_composite_dataarray(
     logger.debug(f"Temporally compositing {da.name} dataarray around {target_date}")
     # Our flag system requires that the value be expressible by no more than
     # nine days in either direction
+
     if interp_range > 9:
         interp_range_error_message = (
             f"interp_range in {__name__} is > 9: {interp_range}."
@@ -240,7 +244,13 @@ def temporally_composite_dataarray(
         raise RuntimeError(f" the target_date was not in the dataarray: {target_date}")
 
     temp_comp_2d = np.squeeze(temp_comp_da.data)
-    assert temp_comp_2d.shape == (ydim, xdim)
+    if temp_comp_2d.shape != (ydim, xdim):
+        raise RuntimeError(
+            f"Error asserting that squeezed data array is two dimensional; shape is {temp_comp_2d.shape} instead of ({ydim}, {xdim})"
+        )
+
+    if daily_climatology_mask is not None:
+        temp_comp_2d[daily_climatology_mask] = 0
 
     # Initialize arrays
     initial_missing_locs = np.isnan(temp_comp_2d.data)
@@ -257,7 +267,9 @@ def temporally_composite_dataarray(
     pconc[need_values] = 0
     pdist[need_values] = 0
     nconc[need_values] = 0
-    ndist[need_values] = 0
+    # DONE: Fixed this for v5 release (implemented to match v04f00)
+    # pdist[need_values] = 0  # Error as CDRv04r00 error
+    ndist[need_values] = 0  # Correct
 
     for time_offset in range(1, interp_range + 1):
         if n_missing == 0:
@@ -268,6 +280,9 @@ def temporally_composite_dataarray(
 
         prior_field = np.squeeze(da.isel(time=da.time.dt.date == prior_date).to_numpy())
         next_field = np.squeeze(da.isel(time=da.time.dt.date == next_date).to_numpy())
+        if daily_climatology_mask is not None:
+            prior_field[daily_climatology_mask] = 0
+            next_field[daily_climatology_mask] = 0
 
         # update prior arrays
         n_prior = prior_field.size
@@ -323,10 +338,18 @@ def temporally_composite_dataarray(
     # Update the temporal interp flag value
     temporal_flags[have_only_prior] = 10 * pdist[have_only_prior]
 
-    temp_comp_2d[have_only_next] = nconc[have_only_next]
+    # DONE: Corrected CDRv04r00 error
+    # temp_comp_2d[have_only_next] = pconc[have_only_next]  # CDRv04r00 error
+    temp_comp_2d[have_only_next] = nconc[have_only_next]  # Correct
 
     # Update the temporal interp flag value
-    temporal_flags[have_only_next] = ndist[have_only_next]
+    # DONE: Corrected CDRv04r00 error
+    # temporal_flags[have_only_next] = pdist[have_only_next]  # CDRv04r00 error
+    temporal_flags[have_only_next] = ndist[have_only_next]  # Correct
+
+    # Ensure that no conc values are between 0 and 10% after temporal interp
+    is_conc_too_low = (temp_comp_2d > 0) & (temp_comp_2d < 0.1)
+    temp_comp_2d[is_conc_too_low] = 0
 
     # Ensure flag values do not occur over land
     temporal_flags[non_ocean_mask.data] = 0
@@ -343,16 +366,18 @@ def read_or_create_and_read_idecdr_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
     overwrite_ide: bool = False,
 ) -> xr.Dataset:
     """Read an idecdr netCDF file, creating it if it doesn't exist."""
-    platform = get_platform_by_date(
+    platform = PLATFORM_CONFIG.get_platform_by_date(
         date,
     )
 
     ide_filepath = get_idecdr_filepath(
         date=date,
-        platform=platform,
+        platform_id=platform.id,
         hemisphere=hemisphere,
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
@@ -363,6 +388,8 @@ def read_or_create_and_read_idecdr_ds(
             hemisphere=hemisphere,
             resolution=resolution,
             intermediate_output_dir=intermediate_output_dir,
+            land_spillover_alg=land_spillover_alg,
+            ancillary_source=ancillary_source,
         )
     logger.debug(f"Reading ideCDR file from: {ide_filepath}")
     ide_ds = xr.load_dataset(ide_filepath)
@@ -465,6 +492,77 @@ def filter_field_via_bitmask(
     return output_da
 
 
+def get_daily_climatology_mask(
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+) -> None | npt.NDArray:
+    """
+    Given the date and ancillary source, return a mask where True values
+    indicate that the sea ice conc values should be set to zero
+
+    NOTE: The date range for this is hard-coded to correspond to SMMR.
+          This should probably be an argument somehow?
+
+    Because the day-of-year climatology includes the land mask as part of
+    the invalid ice mask, we get the non_ocean_mask to dis-convolve that.
+    (We don't necessarily want to set the land to sea-ice-conc=0.)
+    """
+    from netCDF4 import Dataset
+
+    # This date comes from PLATFORM_AVAILABILITY in platforms.py
+    # TODO: This should be refactored to have less hard-coding!
+    if date > dt.date(1987, 7, 9):
+        return None
+
+    non_ocean_mask = get_non_ocean_mask(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
+
+    daily_ds = None
+
+    if hemisphere == "north" and resolution == "25":
+        # TODO: here and below, replace the hard-coded string with use of `CDR_ANCILLARY_DIR`
+        # New mask.  Valid/invalid extends into landmask
+        # daily_ds = Dataset(
+        #    "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-dailyclim.nc"
+        # )
+
+        # Mask used in v04r00.  Includes landmask and may have mismatches
+        # between landmask and ocean, especially in Southern Hemisphere
+        daily_ds = Dataset(
+            "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-smmr-invalid-ice-v04r00.nc"
+        )
+    elif hemisphere == "south" and resolution == "25":
+        # New mask.  Valid/invalid extends into landmask
+        # daily_ds = Dataset(
+        #    "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-pss25-dailyclim.nc"
+        # )
+
+        # Mask used in v04r00.  Includes landmask and may have mismatches
+        # between landmask and ocean, especially in Southern Hemisphere
+        daily_ds = Dataset(
+            "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-pss25-smmr-invalid-ice-v04r00.nc"
+        )
+
+    if daily_ds is None:
+        raise RuntimeError(
+            f"Could not load daily_climatology mask for {date=} {hemisphere=} {resolution=} {ancillary_source=}"
+        )
+
+    # day-of-year index is doy - 1
+    doy_index = int(date.strftime("%j")) - 1
+    doy_mask_invalid = np.array(daily_ds.variables["invalid_ice_mask"])[doy_index, :, :]
+
+    # Return mask of invalid seaice, excluding land
+    mask = (doy_mask_invalid != 0) & (~non_ocean_mask.data)
+
+    return mask
+
+
 # TODO: better function name and docstring. This is first pass at refactor.
 def temporal_interpolation(
     *,
@@ -472,6 +570,7 @@ def temporal_interpolation(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     data_stack: xr.Dataset,
+    ancillary_source: ANCILLARY_SOURCES,
     fill_the_pole_hole: bool = True,
     interp_range: int = 5,
     one_sided_limit: int = 3,
@@ -491,13 +590,25 @@ def temporal_interpolation(
     non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
+    # daily_climatology_mask is True where historically no sea ice.
+    #   It can be None if no daily_climatology mask is to be used
+    daily_climatology_mask = get_daily_climatology_mask(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
+
+    # Actually compute the cdr_conc temporal composite
     ti_var, ti_flags = temporally_composite_dataarray(
         target_date=date,
         da=data_stack.conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
         one_sided_limit=one_sided_limit,
+        daily_climatology_mask=daily_climatology_mask,
     )
 
     tie_ds["cdr_conc_ti"] = ti_var
@@ -506,13 +617,13 @@ def temporal_interpolation(
     is_temporally_interpolated = (ti_flags > 0) & (ti_flags <= 55)
     # TODO: this bit mask of 64 added to (equals bitwise "or")
     #       should be looked up from a map of flag mask values
-    tie_ds["qa_of_cdr_seaice_conc"] = tie_ds["qa_of_cdr_seaice_conc"].where(
+    tie_ds["cdr_seaice_conc_qa_flag"] = tie_ds["cdr_seaice_conc_qa_flag"].where(
         ~is_temporally_interpolated,
-        other=np.bitwise_or(tie_ds["qa_of_cdr_seaice_conc"].data, 64),
+        other=np.bitwise_or(tie_ds["cdr_seaice_conc_qa_flag"].data, 64),
     )
 
     # Add the temporal interp flags to the dataset
-    tie_ds["temporal_interpolation_flag"] = (
+    tie_ds["cdr_seaice_conc_interp_temporal_flag"] = (
         ("time", "y", "x"),
         np.expand_dims(ti_flags, axis=0),
         {
@@ -538,7 +649,7 @@ def temporal_interpolation(
 
     cdr_conc = np.squeeze(tie_ds["cdr_conc_ti"].data)
     # TODO: May want to rename this field.  Specifically, after this
-    #       operation, this will be both temporally interpoalted and
+    #       operation, this will be both temporally interpolated and
     #       polehole-filled (if appropriate).  For now, "cdr_conc" is okay
     tie_ds["cdr_conc"] = tie_ds["cdr_conc_ti"].copy()
 
@@ -546,9 +657,10 @@ def temporal_interpolation(
     #       grid is having its pole hole filled!
     if fill_the_pole_hole and hemisphere == NORTH:
         cdr_conc_pre_polefill = cdr_conc.copy()
-        platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
-            date=date, resolution=resolution, sat=platform
+            date=date,
+            resolution=resolution,
+            ancillary_source=ancillary_source,
         )
         cdr_conc_pole_filled = fill_pole_hole(
             conc=cdr_conc,
@@ -560,7 +672,7 @@ def temporal_interpolation(
             ~np.isnan(cdr_conc_pole_filled)
         )
 
-        if "spatial_interpolation_flag" not in tie_ds.variables.keys():
+        if "cdr_seaice_conc_interp_spatial_flag" not in tie_ds.variables.keys():
             raise RuntimeError("Spatial interpolation flag not found in tie_ds.")
 
         # TODO: These are constants for the eCDR runs.  They should
@@ -577,8 +689,8 @@ def temporal_interpolation(
             "h37": 16,
             "pole_filled": 32,
         }
-        tie_ds["spatial_interpolation_flag"] = tie_ds[
-            "spatial_interpolation_flag"
+        tie_ds["cdr_seaice_conc_interp_spatial_flag"] = tie_ds[
+            "cdr_seaice_conc_interp_spatial_flag"
         ].where(
             ~is_pole_filled,
             other=TB_SPATINT_BITMASK_MAP["pole_filled"],
@@ -592,6 +704,7 @@ def temporal_interpolation(
         #       distinguish it from the cdr_conc_ti field
         pass
 
+    # NOTE: the bt_conc array does not have daily_climatology applied
     bt_conc, _ = temporally_composite_dataarray(
         target_date=date,
         da=data_stack.raw_bt_seaice_conc,
@@ -600,9 +713,10 @@ def temporal_interpolation(
         one_sided_limit=one_sided_limit,
     )
 
+    # NOTE: the nt_conc array does not have daily_climatology applied
     nt_conc, _ = temporally_composite_dataarray(
         target_date=date,
-        da=data_stack.raw_bt_seaice_conc,
+        da=data_stack.raw_nt_seaice_conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
         one_sided_limit=one_sided_limit,
@@ -616,9 +730,10 @@ def temporal_interpolation(
 
         # Fill pole hole of BT
         bt_conc_pre_polefill = bt_conc_2d.copy()
-        platform = get_platform_by_date(date)
         near_pole_hole_mask = nh_polehole_mask(
-            date=date, resolution=resolution, sat=platform
+            date=date,
+            resolution=resolution,
+            ancillary_source=ancillary_source,
         )
         bt_conc_pole_filled = fill_pole_hole(
             conc=bt_conc_2d,
@@ -660,7 +775,7 @@ def temporal_interpolation(
     )
 
     # Set this to a data array
-    tie_ds["stdev_of_cdr_seaice_conc_raw"] = (
+    tie_ds["cdr_seaice_conc_stdev_raw"] = (
         ("time", "y", "x"),
         np.expand_dims(stddev_field.data, axis=0),
         {
@@ -686,8 +801,8 @@ def temporal_interpolation(
     ]
 
     stdev_field_filtered = filter_field_via_bitmask(
-        field_da=tie_ds["stdev_of_cdr_seaice_conc_raw"],
-        flag_da=tie_ds["qa_of_cdr_seaice_conc"],
+        field_da=tie_ds["cdr_seaice_conc_stdev_raw"],
+        flag_da=tie_ds["cdr_seaice_conc_qa_flag"],
         filter_ids=filter_flags_to_apply,
     )
 
@@ -700,7 +815,7 @@ def temporal_interpolation(
 
     # Re-set the stdev data array...
     # Note: probably need to set land values to -1 here?
-    tie_ds["stdev_of_cdr_seaice_conc"] = (
+    tie_ds["cdr_seaice_conc_stdev"] = (
         ("time", "y", "x"),
         stdev_field_filtered.data,
         {
@@ -718,7 +833,7 @@ def temporal_interpolation(
         },
     )
 
-    tie_ds = tie_ds.drop_vars("stdev_of_cdr_seaice_conc_raw")
+    tie_ds = tie_ds.drop_vars("cdr_seaice_conc_stdev_raw")
 
     return tie_ds
 
@@ -728,8 +843,10 @@ def temporally_interpolated_ecdr_dataset(
     date: dt.date,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    interp_range: int = 5,
     intermediate_output_dir: Path,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
+    interp_range: int = 5,
     fill_the_pole_hole: bool = True,
 ) -> xr.Dataset:
     """Create xr dataset containing the second pass of daily enhanced CDR.
@@ -747,6 +864,8 @@ def temporally_interpolated_ecdr_dataset(
             hemisphere=hemisphere,
             resolution=resolution,
             intermediate_output_dir=intermediate_output_dir,
+            land_spillover_alg=land_spillover_alg,
+            ancillary_source=ancillary_source,
         )
         init_datasets.append(init_dataset)
 
@@ -758,6 +877,7 @@ def temporally_interpolated_ecdr_dataset(
         date=date,
         data_stack=data_stack,
         fill_the_pole_hole=fill_the_pole_hole,
+        ancillary_source=ancillary_source,
     )
 
     return tie_ds
@@ -779,7 +899,9 @@ def write_tie_netcdf(
     ),
 ) -> Path:
     """Write the temporally interpolated ECDR to a netCDF file."""
-    logger.info(f"Writing netCDF of initial_daily eCDR file to: {output_filepath}")
+    logger.info(
+        f"Writing netCDF of temporally_interpolated eCDR file to: {output_filepath}"
+    )
 
     for excluded_field in excluded_fields:
         if excluded_field in tie_ds.variables.keys():
@@ -823,6 +945,8 @@ def make_tiecdr_netcdf(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
     overwrite_tie: bool = False,
@@ -844,6 +968,8 @@ def make_tiecdr_netcdf(
                 interp_range=interp_range,
                 intermediate_output_dir=intermediate_output_dir,
                 fill_the_pole_hole=fill_the_pole_hole,
+                land_spillover_alg=land_spillover_alg,
+                ancillary_source=ancillary_source,
             )
 
             written_tie_ncfile = write_tie_netcdf(
@@ -869,6 +995,8 @@ def create_tiecdr_for_date_range(
     end_date: dt.date,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
     overwrite_tie: bool,
 ) -> None:
     """Generate the temporally composited daily ecdr files for a range of dates."""
@@ -879,6 +1007,8 @@ def create_tiecdr_for_date_range(
             resolution=resolution,
             intermediate_output_dir=intermediate_output_dir,
             overwrite_tie=overwrite_tie,
+            land_spillover_alg=land_spillover_alg,
+            ancillary_source=ancillary_source,
         )
 
 
@@ -954,6 +1084,8 @@ def cli(
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     overwrite: bool,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.
 
@@ -970,7 +1102,6 @@ def cli(
     intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
-        is_nrt=False,
     )
 
     create_tiecdr_for_date_range(
@@ -980,4 +1111,6 @@ def cli(
         resolution=resolution,
         intermediate_output_dir=intermediate_output_dir,
         overwrite_tie=overwrite,
+        land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
