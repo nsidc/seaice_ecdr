@@ -139,6 +139,10 @@ def finalize_cdecdr_ds(
     )
 
     # Note: this is NH only, hence the try/except block
+    # Note: valid range allows values:
+    #        0: conc < 50% at start of melt season
+    #   60-244: day-of-year melt detected during melt season
+    #      255: no melt detected during melt season
     try:
         ds["cdr_melt_onset_day"] = (
             ("time", "y", "x"),
@@ -148,12 +152,13 @@ def finalize_cdecdr_ds(
                 "long_name": "Day Of Year of NH Snow Melt Onset On Sea Ice",
                 "units": "1",
                 "grid_mapping": "crs",
-                "valid_range": np.array((60, 255), dtype=np.uint8),
+                "valid_range": np.array((0, 255), dtype=np.uint8),
                 "comment": (
-                    "Value of 255 means no melt detected yet or the date"
-                    " is outside the melt season.  Other values indicate"
-                    " the day of year when melt was first detected at"
-                    " this location."
+                    "Value of 0 indicates sea ice concentration less than 50%"
+                    " at start of melt season; values of 60-244 indicate day"
+                    " of year of snow melt onset on sea ice detected during"
+                    " melt season; value of 255 indicates no melt detected"
+                    " during melt season, including non-ocean grid cells."
                 ),
             },
             {
@@ -307,6 +312,9 @@ def finalize_cdecdr_ds(
     # TODO: conversion to ubyte should be done with DataArray encoding dict
     # NOTE: We are overwriting the attrs of the original conc field
     # TODO: scale_factor and add_offset might get set during encoding
+    # NOTE: We allow raw siconc up to 254% because (1) that is the maximum
+    #       representable value for a non-negative conc with a _FlagValue
+    #       for missing of 255, and (2) for potential validation measures.
     ds["raw_bt_seaice_conc"] = (
         ("time", "y", "x"),
         ds["raw_bt_seaice_conc"].data,
@@ -315,11 +323,11 @@ def finalize_cdecdr_ds(
             "coverage_content_type": "image",
             "units": "1",
             "long_name": (
-                "Bootstrap sea ice concntration;"
+                "Bootstrap sea ice concentration;"
                 " raw field with no masking or filtering"
             ),
             "grid_mapping": "crs",
-            "valid_range": np.array((0, 100), dtype=np.uint8),
+            "valid_range": np.array((0, 254), dtype=np.uint8),
         },
     )
 
@@ -327,6 +335,9 @@ def finalize_cdecdr_ds(
     # TODO: adding time dimension should probably happen earlier
     # TODO: conversion to ubyte should be done with DataArray encoding dict
     # TODO: scale_factor and add_offset might get set during encoding
+    # NOTE: We allow raw siconc up to 254% because (1) that is the maximum
+    #       representable value for a non-negative conc with a _FlagValue
+    #       for missing of 255, and (2) for potential validation measures.
     ds["raw_nt_seaice_conc"] = (
         ("time", "y", "x"),
         ds["raw_nt_seaice_conc"].data,
@@ -335,13 +346,11 @@ def finalize_cdecdr_ds(
             "coverage_content_type": "image",
             "units": "1",
             "long_name": (
-                "NASA Team sea ice concntration;"
+                "NASA Team sea ice concentration;"
                 " raw field with no masking or filtering"
             ),
             "grid_mapping": "crs",
-            # We set a `valid_min` of 0 because we allow nasateam raw
-            # concentrations >100%. We do not set an upper limit.
-            "valid_min": 0,
+            "valid_range": np.array((0, 254), dtype=np.uint8),
         },
     )
 

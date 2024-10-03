@@ -8,11 +8,14 @@ from seaice_ecdr.constants import LOGS_DIR
 
 __version__ = "v0.2.0"
 
-DEFAULT_LOG_LEVEL = "INFO"
+# The standard loguru log levels, in increasing order of severity, are:
+# TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL
+DEFAULT_LOG_LEVEL = "SUCCESS"
+DEFAULT_DEV_LOG_LEVEL = "SUCCESS"
 
 # If we're in dev, DEBUG level logs are appropriate, otherwise use INFO.
 env = os.environ.get("ENVIRONMENT")
-_default_log_level = "DEBUG" if env == "dev" else DEFAULT_LOG_LEVEL
+_default_log_level = DEFAULT_DEV_LOG_LEVEL if env == "dev" else DEFAULT_LOG_LEVEL
 
 # Configure the default logger, which prints to stderr.
 logger.configure(

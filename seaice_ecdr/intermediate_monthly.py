@@ -362,6 +362,12 @@ def calc_cdr_seaice_conc_monthly(
     daily_conc_for_month = daily_ds_for_month.cdr_seaice_conc
     conc_monthly = daily_conc_for_month.mean(dim="time")
 
+    # NOTE: Clamp lower bound to 10% minic
+    conc_monthly = conc_monthly.where(
+        np.isnan(conc_monthly) | (conc_monthly >= 0.1),
+        other=0,
+    )
+
     num_missing_conc_pixels = get_num_missing_pixels(
         seaice_conc_var=conc_monthly,
         hemisphere=hemisphere,
@@ -396,20 +402,42 @@ def calc_cdr_seaice_conc_monthly_stdev(
     *,
     daily_cdr_seaice_conc: xr.DataArray,
 ) -> xr.DataArray:
-    """Create the `cdr_seaice_conc_monthly_stdev` variable."""
-    cdr_seaice_conc_monthly_stdev = daily_cdr_seaice_conc.std(
-        dim="time",
+    """
+    Create the `cdr_seaice_conc_monthly_stdev` variable.
+
+    Note: Using np.std() instead of DataArray.std() eliminates
+          a div by zero warning from but means that the DataArray
+          must be set up explicitly instead of resulting from
+          the DataArray.std() operation.  Attributes and encoding
+          are explicitly specified here just as they need to be
+          when using functions on a DataArray.
+    Note: In numpy array terms, "axis=0" refers to the time axis
+          because the dimensions of the DataArray are ("time", "y", "x").
+    """
+    cdr_seaice_conc_monthly_stdev_np = np.nanstd(
+        np.array(daily_cdr_seaice_conc),
+        axis=daily_cdr_seaice_conc.get_axis_num("time"),
         ddof=1,
     )
-    cdr_seaice_conc_monthly_stdev.name = "cdr_seaice_conc_monthly_stdev"
 
-    cdr_seaice_conc_monthly_stdev = cdr_seaice_conc_monthly_stdev.assign_attrs(
-        long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
-        valid_range=(np.float32(0.0), np.float32(1.0)),
-        grid_mapping="crs",
-        units="1",
+    # Extract non-'time' dims and coords from DataArray
+    dims_without_time = [dim for dim in daily_cdr_seaice_conc.dims if dim != "time"]
+    coords_without_time = [
+        daily_cdr_seaice_conc[dim] for dim in dims_without_time if dim != "time"
+    ]
+
+    cdr_seaice_conc_monthly_stdev = xr.DataArray(
+        data=cdr_seaice_conc_monthly_stdev_np,
+        name="cdr_seaice_conc_monthly_stdev",
+        coords=coords_without_time,
+        dims=dims_without_time,
+        attrs=dict(
+            long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
+            valid_range=(np.float32(0.0), np.float32(1.0)),
+            grid_mapping="crs",
+            units="1",
+        ),
     )
-
     cdr_seaice_conc_monthly_stdev.encoding = dict(
         _FillValue=-1,
         zlib=True,
@@ -434,8 +462,13 @@ def calc_cdr_melt_onset_day_monthly(
     cdr_melt_onset_day_monthly = cdr_melt_onset_day_monthly.assign_attrs(
         long_name="Monthly Day of Snow Melt Onset Over Sea Ice",
         units="1",
-        valid_range=(np.ubyte(60), np.ubyte(255)),
+        valid_range=(np.ubyte(0), np.ubyte(255)),
         grid_mapping="crs",
+        comment="Value of 0 indicates sea ice concentration less than 50%"
+        " at start of melt season; values of 60-244 indicate day"
+        " of year of snow melt onset on sea ice detected during"
+        " melt season; value of 255 indicates no melt detected"
+        " during melt season, including non-ocean grid cells.",
     )
     cdr_melt_onset_day_monthly.encoding = dict(
         _FillValue=None,
@@ -559,7 +592,6 @@ def make_intermediate_monthly_ds(
         cdr_seaice_conc_monthly_qa_flag=cdr_seaice_conc_monthly_qa_flag,
         surface_type_mask=surface_type_mask_monthly,
     )
-
     # Add monthly melt onset if the hemisphere is north. We don't detect melt in
     # the southern hemisphere.
     if hemisphere == NORTH:

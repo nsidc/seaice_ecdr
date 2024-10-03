@@ -244,13 +244,11 @@ def temporally_composite_dataarray(
         raise RuntimeError(f" the target_date was not in the dataarray: {target_date}")
 
     temp_comp_2d = np.squeeze(temp_comp_da.data)
-    assert temp_comp_2d.shape == (ydim, xdim)
+    if temp_comp_2d.shape != (ydim, xdim):
+        raise RuntimeError(
+            f"Error asserting that squeezed data array is two dimensional; shape is {temp_comp_2d.shape} instead of ({ydim}, {xdim})"
+        )
 
-    # TODO:  These lines are commented out in order to reproduce the
-    #        CDRv4 ERROR where the "home" smmr day does NOT have daily_clim
-    #        applied to it.
-    # TODO:  Putting these lines back in, because now I *am* seeing its effect
-    #        in the re-run CDRv4 fields(!)
     if daily_climatology_mask is not None:
         temp_comp_2d[daily_climatology_mask] = 0
 
@@ -269,9 +267,9 @@ def temporally_composite_dataarray(
     pconc[need_values] = 0
     pdist[need_values] = 0
     nconc[need_values] = 0
-    # TODO: Fix this for v5 release (implemented to match v04f00)
-    # ndist[need_values] = 0  # Correct
-    pdist[need_values] = 0  # Error as CDRv04r00 error
+    # DONE: Fixed this for v5 release (implemented to match v04f00)
+    # pdist[need_values] = 0  # Error as CDRv04r00 error
+    ndist[need_values] = 0  # Correct
 
     for time_offset in range(1, interp_range + 1):
         if n_missing == 0:
@@ -340,12 +338,18 @@ def temporally_composite_dataarray(
     # Update the temporal interp flag value
     temporal_flags[have_only_prior] = 10 * pdist[have_only_prior]
 
-    # temp_comp_2d[have_only_next] = nconc[have_only_next]  # Correct
-    temp_comp_2d[have_only_next] = pconc[have_only_next]  # Error as CDRv04r00
+    # DONE: Corrected CDRv04r00 error
+    # temp_comp_2d[have_only_next] = pconc[have_only_next]  # CDRv04r00 error
+    temp_comp_2d[have_only_next] = nconc[have_only_next]  # Correct
 
     # Update the temporal interp flag value
-    # temporal_flags[have_only_next] = ndist[have_only_next]  # Correct
-    temporal_flags[have_only_next] = pdist[have_only_next]  # Error as CDRv04r00
+    # DONE: Corrected CDRv04r00 error
+    # temporal_flags[have_only_next] = pdist[have_only_next]  # CDRv04r00 error
+    temporal_flags[have_only_next] = ndist[have_only_next]  # Correct
+
+    # Ensure that no conc values are between 0 and 10% after temporal interp
+    is_conc_too_low = (temp_comp_2d > 0) & (temp_comp_2d < 0.1)
+    temp_comp_2d[is_conc_too_low] = 0
 
     # Ensure flag values do not occur over land
     temporal_flags[non_ocean_mask.data] = 0
