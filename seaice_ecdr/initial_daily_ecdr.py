@@ -1184,7 +1184,7 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     if n_valid_tb_grid_cells == 0:
-        logger.warning(f"Skipped computations for empty idecdr on {date}")
+        logger.info(f"Skipped computations for empty idecdr on {date}")
 
     return ecdr_ide_ds
 
