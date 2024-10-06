@@ -6,13 +6,26 @@ from pm_tb_data._types import Hemisphere
 from seaice_ecdr.ancillary import get_smmr_invalid_ice_mask
 
 
-def test_get_smmr_invalid_ice_mask():
+def test_get_smmr_invalid_ice_mask_CDRv4():
     for hemisphere in get_args(Hemisphere):
         icemask = get_smmr_invalid_ice_mask(
             date=dt.date(2023, 1, 29),
             hemisphere=hemisphere,
             resolution="25",
             ancillary_source="CDRv4",
+        )
+
+        assert icemask.dtype == bool
+        assert icemask.any()
+
+
+def test_get_smmr_invalid_ice_mask_CDRv5():
+    for hemisphere in get_args(Hemisphere):
+        icemask = get_smmr_invalid_ice_mask(
+            date=dt.date(2023, 1, 29),
+            hemisphere=hemisphere,
+            resolution="25",
+            ancillary_source="CDRv5",
         )
 
         assert icemask.dtype == bool
