@@ -548,6 +548,16 @@ def compute_initial_daily_ecdr_dataset(
             ecdr_ide_ds[key].data[is_atleastone_zerotb] = 0
             ecdr_ide_ds[key].data[is_atleastone_nantb] = np.nan
 
+    # If there are no valid TBs in the ocean (non-non_ocean), then return empty
+    non_ocean_mask = get_non_ocean_mask(
+        hemisphere=hemisphere,
+        resolution=tb_data.resolution,
+        ancillary_source=ancillary_source,
+    )
+    is_ocean = ~non_ocean_mask.data
+    is_valid_tb = ~(is_atleastone_zerotb | is_atleastone_nantb)
+    n_valid_tb_grid_cells = np.sum(np.where(is_ocean & is_valid_tb, 1, 0))
+
     # Set up the spatial interpolation bitmask field where the various
     # TB fields were interpolated
     _, ydim, xdim = ecdr_ide_ds["h19_day_si"].data.shape
@@ -563,11 +573,6 @@ def compute_initial_daily_ecdr_dataset(
         "h37": 16,
         "pole_filled": 32,
     }
-    non_ocean_mask = get_non_ocean_mask(
-        hemisphere=hemisphere,
-        resolution=tb_data.resolution,
-        ancillary_source=ancillary_source,
-    )
     for tbname in EXPECTED_ECDR_TB_NAMES:
         tb_varname = f"{tbname}_day"
         si_varname = f"{tbname}_day_si"
@@ -691,6 +696,8 @@ def compute_initial_daily_ecdr_dataset(
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
 
+    # Even if there are no valid values, allow retrieval
+    # of nt_params and nt_coefs
     nt_params = get_cdr_nt_params(
         hemisphere=hemisphere,
         platform=platform.id,
@@ -767,22 +774,25 @@ def compute_initial_daily_ecdr_dataset(
     #       but I think that's because there are two parts to the
     #       BT weather filter
     # bt_weather_mask = bt.get_weather_mask(
-    bt_water_mask = bt.get_water_mask(
-        v37=bt_v37,
-        h37=bt_h37,
-        v22=bt_v22,
-        v19=bt_v19,
-        land_mask=ecdr_ide_ds["non_ocean_mask"].data,
-        tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
-        ln1=bt_coefs_init["vh37_lnline"],
-        date=date,
-        # TODO: in the future, we will want these to come
-        #       from a bt_coefs structure, not bt_coefs_init
-        wintrc=bt_coefs_init["wintrc"],
-        wslope=bt_coefs_init["wslope"],
-        wxlimt=bt_coefs_init["wxlimt"],
-        is_smmr=platform_is_smmr(platform.id),
-    )
+    if n_valid_tb_grid_cells == 0:
+        bt_water_mask = np.zeros(bt_v37.shape, dtype=np.bool_)
+    else:
+        bt_water_mask = bt.get_water_mask(
+            v37=bt_v37,
+            h37=bt_h37,
+            v22=bt_v22,
+            v19=bt_v19,
+            land_mask=ecdr_ide_ds["non_ocean_mask"].data,
+            tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
+            ln1=bt_coefs_init["vh37_lnline"],
+            date=date,
+            # TODO: in the future, we will want these to come
+            #       from a bt_coefs structure, not bt_coefs_init
+            wintrc=bt_coefs_init["wintrc"],
+            wslope=bt_coefs_init["wslope"],
+            wxlimt=bt_coefs_init["wxlimt"],
+            is_smmr=platform_is_smmr(platform.id),
+        )
 
     # Note:
     # Here, the "bt_weather_mask" is the almost "water_arr" variable in cdralgos
@@ -814,145 +824,152 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     # Update the Bootstrap coefficients...
-    bt_coefs_to_update = (
-        "line_37v37h",
-        "bt_wtp_v37",
-        "bt_wtp_h37",
-        "bt_wtp_v19",
-        "ad_line_offset",
-        "line_37v19v",
-    )
-
     bt_coefs = bt_coefs_init.copy()
-    for coef in bt_coefs_to_update:
-        bt_coefs.pop(coef, None)
 
-    """
-    This is the fortran function:
-        call ret_linfit1(
-     >    nc, nr, land, gdata, v37, h37, ln, lnchk, add1, water_arr,
-     >    vh37)
-    """
-    bt_coefs["vh37_iceline"] = bt.get_linfit(
-        land_mask=ecdr_ide_ds["non_ocean_mask"].data,
-        tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
-        tbx=bt_v37,  # Note: <-- not the ecdr_ide_ds key/value
-        tby=bt_h37,  # Note: <-- not the ecdr_ide_ds key/value
-        lnline=bt_coefs_init["vh37_lnline"],
-        add=bt_coefs["add1"],
-        water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],  # note: water
-    )
+    if n_valid_tb_grid_cells == 0:
+        bt_conc = np.zeros(bt_v37.shape, dtype=np.float32)
+        bt_conc[:] = np.nan
 
-    # TODO: Keeping commented-out weather_mask kwarg calls to highlight
-    #       the transition from weather_mask to water_mask in these function
-    #       calls
-    # TODO: Temporarily forcing skipping of water tiepoint calculation to examine
-    #       using skip_dynamic_BT_tiepoints kwarg
-    if skip_dynamic_BT_tiepoints:
-        logger.warning("SKIPPING calculation of water tiepoint to match CDRv4")
-        bt_coefs["bt_wtp_v37"] = bt_coefs_init["bt_wtp_v37"]
+        nt_conc = np.zeros(bt_v37.shape, dtype=np.float32)
+        nt_conc[:] = np.nan
+
+        cdr_conc_raw = np.zeros(bt_v37.shape, dtype=np.float32)
+        cdr_conc_raw[:] = np.nan
+
+        nt_weather_mask = np.zeros(bt_v37.shape, dtype=np.bool_)
+
     else:
-        bt_coefs["bt_wtp_v37"] = bt.calculate_water_tiepoint(
-            wtp_init=bt_coefs_init["bt_wtp_v37"],
-            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-            tb=bt_v37,
+        bt_coefs_to_update = (
+            "line_37v37h",
+            "bt_wtp_v37",
+            "bt_wtp_h37",
+            "bt_wtp_v19",
+            "ad_line_offset",
+            "line_37v19v",
         )
 
-    if skip_dynamic_BT_tiepoints:
-        logger.warning("SKIPPING calculation of water tiepoint to match CDRv4")
-        bt_coefs["bt_wtp_h37"] = bt_coefs_init["bt_wtp_h37"]
-    else:
-        bt_coefs["bt_wtp_h37"] = bt.calculate_water_tiepoint(
-            wtp_init=bt_coefs_init["bt_wtp_h37"],
-            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-            tb=bt_h37,
-        )
+        for coef in bt_coefs_to_update:
+            bt_coefs.pop(coef, None)
 
-    if skip_dynamic_BT_tiepoints:
-        logger.warning("SKIPPING calculation of water tiepoint to match CDRv4")
-        bt_coefs["bt_wtp_v19"] = bt_coefs_init["bt_wtp_v19"]
-    else:
-        bt_coefs["bt_wtp_v19"] = bt.calculate_water_tiepoint(
-            wtp_init=bt_coefs_init["bt_wtp_v19"],
-            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-            tb=bt_v19,
-        )
-
-    bt_coefs["ad_line_offset"] = bt.get_adj_ad_line_offset(
-        wtp_x=bt_coefs["bt_wtp_v37"],
-        wtp_y=bt_coefs["bt_wtp_h37"],
-        line_37v37h=bt_coefs["vh37_iceline"],
-    )
-
-    # NOTE: note that we are using bt_<vars> not <_day_si> vars...
-    #       The bt_vars have been adjusted to match F13 TB distributions
-
-    # NOTE: cdralgos uses ret_linfit1() for NH sets 1,2 and SH set2
-    #            and uses ret_linfit2() for NH set 2
-    if hemisphere == "south" and is_pre_AMSR_platform(platform.id):
-        bt_coefs["v1937_iceline"] = bt.get_linfit(
+        """
+        This is the fortran function:
+            call ret_linfit1(
+         >    nc, nr, land, gdata, v37, h37, ln, lnchk, add1, water_arr,
+         >    vh37)
+        """
+        bt_coefs["vh37_iceline"] = bt.get_linfit(
             land_mask=ecdr_ide_ds["non_ocean_mask"].data,
             tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
-            tbx=bt_v37,
-            tby=bt_v19,
-            lnline=bt_coefs_init["v1937_lnline"],
-            add=bt_coefs["add2"],
-            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-            # these default to None in bt.get_linfit()
-            #   this is equivalent to using "ret_linfit1(), not ret_linfit2()"
-            # tba=bt_h37,
-            # iceline=bt_coefs["vh37_iceline"],
-            # ad_line_offset=bt_coefs["ad_line_offset"],
-        )
-    else:
-        bt_coefs["v1937_iceline"] = bt.get_linfit(
-            land_mask=ecdr_ide_ds["non_ocean_mask"].data,
-            tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
-            tbx=bt_v37,
-            tby=bt_v19,
-            lnline=bt_coefs_init["v1937_lnline"],
-            add=bt_coefs["add2"],
-            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-            tba=bt_h37,
-            iceline=bt_coefs["vh37_iceline"],
-            ad_line_offset=bt_coefs["ad_line_offset"],
+            tbx=bt_v37,  # Note: <-- not the ecdr_ide_ds key/value
+            tby=bt_h37,  # Note: <-- not the ecdr_ide_ds key/value
+            lnline=bt_coefs_init["vh37_lnline"],
+            add=bt_coefs["add1"],
+            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],  # note: water
         )
 
-    bt_conc = cdr_bootstrap_raw(
-        tb_v37=bt_v37,
-        tb_h37=bt_h37,
-        tb_v19=bt_v19,
-        bt_coefs=bt_coefs,
-        platform=platform.id,
-    )
+        # TODO: Keeping commented-out weather_mask kwarg calls to highlight
+        #       the transition from weather_mask to water_mask in these function
+        #       calls
+        # TODO: Temporarily forcing skipping of water tiepoint calculation to examine
+        #       using skip_dynamic_BT_tiepoints kwarg
+        if skip_dynamic_BT_tiepoints:
+            logger.warning("SKIPPING calculation of water tiepoint to match CDRv4")
+            bt_coefs["bt_wtp_v37"] = bt_coefs_init["bt_wtp_v37"]
+        else:
+            bt_coefs["bt_wtp_v37"] = bt.calculate_water_tiepoint(
+                wtp_init=bt_coefs_init["bt_wtp_v37"],
+                water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+                tb=bt_v37,
+            )
 
-    # Set any bootstrap concentrations below 10% to 0.
-    # NOTE: This is probably necessary for land spillover algorithms
-    #       to properly work with "exactly 0% siconc" calculations
-    # TODO: This 10% cutoff should be a configuration value
+        if skip_dynamic_BT_tiepoints:
+            logger.warning("SKIPPING calculation of water tiepoint to match CDRv4")
+            bt_coefs["bt_wtp_h37"] = bt_coefs_init["bt_wtp_h37"]
+        else:
+            bt_coefs["bt_wtp_h37"] = bt.calculate_water_tiepoint(
+                wtp_init=bt_coefs_init["bt_wtp_h37"],
+                water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+                tb=bt_h37,
+            )
 
-    # Remove bt_conc flags (e.g., missing) and set to NaN
-    # NOTE: This...is probably not necessary now?
-    # bt_conc[bt_conc >= 250] = np.nan
+        if skip_dynamic_BT_tiepoints:
+            logger.warning("SKIPPING calculation of water tiepoint to match CDRv4")
+            bt_coefs["bt_wtp_v19"] = bt_coefs_init["bt_wtp_v19"]
+        else:
+            bt_coefs["bt_wtp_v19"] = bt.calculate_water_tiepoint(
+                wtp_init=bt_coefs_init["bt_wtp_v19"],
+                water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+                tb=bt_v19,
+            )
 
-    # Now, compute CDR version of NT estimate
-    nt_conc = cdr_nasateam(
-        tb_h19=ecdr_ide_ds["h19_day_si"].data[0, :, :],
-        tb_v37=ecdr_ide_ds["v37_day_si"].data[0, :, :],
-        tb_v19=ecdr_ide_ds["v19_day_si"].data[0, :, :],
-        nt_tiepoints=nt_coefs["nt_tiepoints"],
-    )
+        bt_coefs["ad_line_offset"] = bt.get_adj_ad_line_offset(
+            wtp_x=bt_coefs["bt_wtp_v37"],
+            wtp_y=bt_coefs["bt_wtp_h37"],
+            line_37v37h=bt_coefs["vh37_iceline"],
+        )
 
-    cdr_conc_raw = calc_cdr_conc(
-        bt_conc=bt_conc,
-        nt_conc=nt_conc,
-        cdr_conc_min_fraction=0.1,
-        cdr_conc_max_fraction=1.0,
-    )
+        # NOTE: note that we are using bt_<vars> not <_day_si> vars...
+        #       The bt_vars have been adjusted to match F13 TB distributions
 
-    nt_weather_mask = get_nasateam_weather_mask(
-        ecdr_ide_ds=ecdr_ide_ds, nt_coefs=nt_coefs
-    )
+        # NOTE: cdralgos uses ret_linfit1() for NH sets 1,2 and SH set2
+        #            and uses ret_linfit2() for NH set 2
+        if hemisphere == "south" and is_pre_AMSR_platform(platform.id):
+            bt_coefs["v1937_iceline"] = bt.get_linfit(
+                land_mask=ecdr_ide_ds["non_ocean_mask"].data,
+                tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
+                tbx=bt_v37,
+                tby=bt_v19,
+                lnline=bt_coefs_init["v1937_lnline"],
+                add=bt_coefs["add2"],
+                water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+                # these default to None in bt.get_linfit()
+                #   this is equivalent to using "ret_linfit1(), not ret_linfit2()"
+                # tba=bt_h37,
+                # iceline=bt_coefs["vh37_iceline"],
+                # ad_line_offset=bt_coefs["ad_line_offset"],
+            )
+        else:
+            bt_coefs["v1937_iceline"] = bt.get_linfit(
+                land_mask=ecdr_ide_ds["non_ocean_mask"].data,
+                tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
+                tbx=bt_v37,
+                tby=bt_v19,
+                lnline=bt_coefs_init["v1937_lnline"],
+                add=bt_coefs["add2"],
+                water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+                tba=bt_h37,
+                iceline=bt_coefs["vh37_iceline"],
+                ad_line_offset=bt_coefs["ad_line_offset"],
+            )
+
+        bt_conc = cdr_bootstrap_raw(
+            tb_v37=bt_v37,
+            tb_h37=bt_h37,
+            tb_v19=bt_v19,
+            bt_coefs=bt_coefs,
+            platform=platform.id,
+        )
+
+        # Now, compute CDR version of NT estimate
+        nt_conc = cdr_nasateam(
+            tb_h19=ecdr_ide_ds["h19_day_si"].data[0, :, :],
+            tb_v37=ecdr_ide_ds["v37_day_si"].data[0, :, :],
+            tb_v19=ecdr_ide_ds["v19_day_si"].data[0, :, :],
+            nt_tiepoints=nt_coefs["nt_tiepoints"],
+        )
+
+        cdr_conc_raw = calc_cdr_conc(
+            bt_conc=bt_conc,
+            nt_conc=nt_conc,
+            cdr_conc_min_fraction=0.1,
+            cdr_conc_max_fraction=1.0,
+        )
+
+        nt_weather_mask = get_nasateam_weather_mask(
+            ecdr_ide_ds=ecdr_ide_ds, nt_coefs=nt_coefs
+        )
+
+    # end of cdr array calculations
 
     ecdr_ide_ds["nt_weather_mask"] = (
         ("time", "y", "x"),
@@ -995,7 +1012,7 @@ def compute_initial_daily_ecdr_dataset(
     #       land_spillover algorithm should have to rely on this.
     cdr_conc_pre_spillover = cdr_conc.copy()
 
-    if land_spillover_alg == "BT_NT":
+    if land_spillover_alg == "BT_NT" and n_valid_tb_grid_cells != 0:
         # The BT_NT algorithm requires separate consideration of the
         # boostrap and NASATeam fields
         bt_asCDRv4_conc = compute_bt_asCDRv4_conc(
@@ -1024,7 +1041,7 @@ def compute_initial_daily_ecdr_dataset(
         is_ntwx_CDRv4 = (nt_conc > 0) & ecdr_ide_ds["nt_weather_mask"].data[0, :, :]
         cdr_conc[is_ntwx_CDRv4] = 0
 
-    else:
+    elif n_valid_tb_grid_cells != 0:
         # Not doing BT_NT
         cdr_conc = land_spillover(
             cdr_conc=cdr_conc,
@@ -1165,6 +1182,9 @@ def compute_initial_daily_ecdr_dataset(
             "zlib": True,
         },
     )
+
+    if n_valid_tb_grid_cells == 0:
+        logger.warning(f"Skipped computations for empty idecdr on {date}")
 
     return ecdr_ide_ds
 
