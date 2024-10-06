@@ -14,6 +14,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import xarray as xr
+from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
@@ -304,7 +305,7 @@ def get_invalid_ice_mask(
         # TODO: Daily (SMMR) mask is used at end for cleanup,
         #       but not for initial TB field generation
         # Skip the smmr invalid ice mask for now...
-        print("WARNING: Using non-SMMR invalid ice masks")
+        logger.info(f"Using non-SMMR invalid ice masks on {date=}")
         # return get_smmr_invalid_ice_mask(hemisphere=hemisphere, date=date)
     # All other platforms:
     ancillary_ds = get_ancillary_ds(
