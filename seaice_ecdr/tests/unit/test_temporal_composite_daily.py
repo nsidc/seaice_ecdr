@@ -157,9 +157,6 @@ def test_temporal_composite_da_oneday():
     assert np.array_equal(temporal_composite, initial_data_array, equal_nan=True)
 
 
-@pytest.mark.skip(
-    reason="Skipping because of intentionally-introduced temporal-interpolation error intended to reproduce CDRv4 results"
-)
 def test_temporal_composite_da_multiday():
     """Verify that temporal composite over multiple days.
 
