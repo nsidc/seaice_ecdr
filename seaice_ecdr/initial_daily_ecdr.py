@@ -380,11 +380,6 @@ def get_flagmask(
         print(f"Could not reshape to: {xdim}, {ydim}")
         raise e
 
-    # With ancillary_source constrained to CDRv4 and CDRv5, this is unreachable
-    # so these lines are commented out for mypy reasons
-    # if flagmask is None:
-    #     logger.warning(f"No flagmask found for {hemisphere=} {ancillary_source=}")
-
     return flagmask
 
 
@@ -466,6 +461,7 @@ def compute_initial_daily_ecdr_dataset(
     tb_data: EcdrTbData,
     land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
+    skip_dynamic_BT_tiepoints: bool = True,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -850,8 +846,10 @@ def compute_initial_daily_ecdr_dataset(
     # TODO: Keeping commented-out weather_mask kwarg calls to highlight
     #       the transition from weather_mask to water_mask in these function
     #       calls
-    if ancillary_source == "CDRv4":
-        logger.error("SKIPPING calculation of water tiepoint to match CDRv4")
+    # TODO: Temporarily forcing skipping of water tiepoint calculation to examine
+    #       using skip_dynamic_BT_tiepoints kwarg
+    if skip_dynamic_BT_tiepoints:
+        logger.warning("SKIPPING calculation of water tiepoint to match CDRv4")
         bt_coefs["bt_wtp_v37"] = bt_coefs_init["bt_wtp_v37"]
     else:
         bt_coefs["bt_wtp_v37"] = bt.calculate_water_tiepoint(
@@ -860,8 +858,8 @@ def compute_initial_daily_ecdr_dataset(
             tb=bt_v37,
         )
 
-    if ancillary_source == "CDRv4":
-        logger.error("SKIPPING calculation of water tiepoint to match CDRv4")
+    if skip_dynamic_BT_tiepoints:
+        logger.warning("SKIPPING calculation of water tiepoint to match CDRv4")
         bt_coefs["bt_wtp_h37"] = bt_coefs_init["bt_wtp_h37"]
     else:
         bt_coefs["bt_wtp_h37"] = bt.calculate_water_tiepoint(
@@ -870,8 +868,8 @@ def compute_initial_daily_ecdr_dataset(
             tb=bt_h37,
         )
 
-    if ancillary_source == "CDRv4":
-        logger.error("SKIPPING calculation of water tiepoint to match CDRv4")
+    if skip_dynamic_BT_tiepoints:
+        logger.warning("SKIPPING calculation of water tiepoint to match CDRv4")
         bt_coefs["bt_wtp_v19"] = bt_coefs_init["bt_wtp_v19"]
     else:
         bt_coefs["bt_wtp_v19"] = bt.calculate_water_tiepoint(
