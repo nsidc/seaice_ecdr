@@ -25,7 +25,7 @@ def make_25km_ecdr(
     RESOLUTION: Final = "25"
     LAND_SPILLOVER_ALG: Final = "NT2_BT"
 
-    ANCILLARY_SOURCE: Final = "CDRv4"
+    ANCILLARY_SOURCE: Final = "CDRv5"
     # TODO: the amsr2 start date should ideally be read from the platform start
     # date config.
     AM2_START_DATE = dt.date(2013, 1, 1)
