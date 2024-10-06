@@ -43,5 +43,4 @@ def test_validate_outputs(base_output_dir_test_path):  # noqa
                         assert row["error_code"] == "0"
                     except AssertionError as e:
                         print(f'nonzero error_code: {row["error_code"]}')
-                        breakpoint()
                         raise e
