@@ -461,7 +461,7 @@ def compute_initial_daily_ecdr_dataset(
     tb_data: EcdrTbData,
     land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
-    skip_dynamic_BT_tiepoints: bool = True,
+    skip_dynamic_BT_tiepoints: bool = False,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
