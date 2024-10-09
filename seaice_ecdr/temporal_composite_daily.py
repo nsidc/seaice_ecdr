@@ -25,8 +25,7 @@ from seaice_ecdr.ancillary import (
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import (
-    create_idecdr_for_date,
-    get_idecdr_filepath,
+    read_or_create_and_read_idecdr_ds,
 )
 from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.spillover import LAND_SPILL_ALGS
@@ -357,44 +356,6 @@ def temporally_composite_dataarray(
     temp_comp_da.data[0, :, :] = temp_comp_2d[:, :]
 
     return temp_comp_da, temporal_flags
-
-
-# TODO: this function also belongs in the intial daily ecdr module.
-def read_or_create_and_read_idecdr_ds(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    intermediate_output_dir: Path,
-    land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
-    overwrite_ide: bool = False,
-) -> xr.Dataset:
-    """Read an idecdr netCDF file, creating it if it doesn't exist."""
-    platform = PLATFORM_CONFIG.get_platform_by_date(
-        date,
-    )
-
-    ide_filepath = get_idecdr_filepath(
-        date=date,
-        platform_id=platform.id,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        intermediate_output_dir=intermediate_output_dir,
-    )
-    if overwrite_ide or not ide_filepath.is_file():
-        create_idecdr_for_date(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            intermediate_output_dir=intermediate_output_dir,
-            land_spillover_alg=land_spillover_alg,
-            ancillary_source=ancillary_source,
-        )
-    logger.debug(f"Reading ideCDR file from: {ide_filepath}")
-    ide_ds = xr.load_dataset(ide_filepath)
-
-    return ide_ds
 
 
 def calc_stddev_field(

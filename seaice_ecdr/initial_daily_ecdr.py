@@ -1391,6 +1391,43 @@ def make_idecdr_netcdf(
         logger.info(f"idecdr file exists and {overwrite_ide=}: {output_path=}")
 
 
+def read_or_create_and_read_idecdr_ds(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    intermediate_output_dir: Path,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
+    overwrite_ide: bool = False,
+) -> xr.Dataset:
+    """Read an idecdr netCDF file, creating it if it doesn't exist."""
+    platform = PLATFORM_CONFIG.get_platform_by_date(
+        date,
+    )
+
+    ide_filepath = get_idecdr_filepath(
+        date=date,
+        platform_id=platform.id,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        intermediate_output_dir=intermediate_output_dir,
+    )
+    if overwrite_ide or not ide_filepath.is_file():
+        create_idecdr_for_date(
+            date=date,
+            hemisphere=hemisphere,
+            resolution=resolution,
+            intermediate_output_dir=intermediate_output_dir,
+            land_spillover_alg=land_spillover_alg,
+            ancillary_source=ancillary_source,
+        )
+    logger.debug(f"Reading ideCDR file from: {ide_filepath}")
+    ide_ds = xr.load_dataset(ide_filepath)
+
+    return ide_ds
+
+
 def create_idecdr_for_date(
     date: dt.date,
     *,
