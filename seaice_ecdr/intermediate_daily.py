@@ -38,7 +38,10 @@ from seaice_ecdr.melt import (
 from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.set_daily_ncattrs import finalize_cdecdr_ds
 from seaice_ecdr.spillover import LAND_SPILL_ALGS
-from seaice_ecdr.temporal_composite_daily import get_tie_filepath, make_tiecdr_netcdf
+from seaice_ecdr.temporal_composite_daily import (
+    read_or_create_and_read_standard_tiecdr_ds,
+    read_tiecdr_ds,
+)
 from seaice_ecdr.util import (
     date_range,
     get_ecdr_grid_shape,
@@ -102,60 +105,6 @@ def get_ecdr_filepath(
     ecdr_filepath = ecdr_dir / ecdr_filename
 
     return ecdr_filepath
-
-
-# TODO: this should be in the temporal interpolation module.
-def read_tiecdr_ds(
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    intermediate_output_dir: Path,
-) -> xr.Dataset:
-    tie_filepath = get_tie_filepath(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        intermediate_output_dir=intermediate_output_dir,
-    )
-    logger.debug(f"Reading tieCDR file from: {tie_filepath}")
-    tie_ds = xr.load_dataset(tie_filepath)
-
-    return tie_ds
-
-
-# TODO: this should be in the temporal interpolation module.
-def read_or_create_and_read_standard_tiecdr_ds(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    intermediate_output_dir: Path,
-    land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
-    overwrite_tie: bool = False,
-) -> xr.Dataset:
-    """Read an tiecdr netCDF file, creating it if it doesn't exist.
-
-    Uses standard input sources (non-NRT).
-    """
-    make_tiecdr_netcdf(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        intermediate_output_dir=intermediate_output_dir,
-        overwrite_tie=overwrite_tie,
-        land_spillover_alg=land_spillover_alg,
-        ancillary_source=ancillary_source,
-    )
-
-    tie_ds = read_tiecdr_ds(
-        date=date,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        intermediate_output_dir=intermediate_output_dir,
-    )
-
-    return tie_ds
 
 
 def _empty_melt_onset_field(

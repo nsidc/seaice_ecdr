@@ -988,6 +988,58 @@ def make_tiecdr_netcdf(
     return output_path
 
 
+def read_tiecdr_ds(
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    intermediate_output_dir: Path,
+) -> xr.Dataset:
+    tie_filepath = get_tie_filepath(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        intermediate_output_dir=intermediate_output_dir,
+    )
+    logger.debug(f"Reading tieCDR file from: {tie_filepath}")
+    tie_ds = xr.load_dataset(tie_filepath)
+
+    return tie_ds
+
+
+def read_or_create_and_read_standard_tiecdr_ds(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    intermediate_output_dir: Path,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
+    overwrite_tie: bool = False,
+) -> xr.Dataset:
+    """Read an tiecdr netCDF file, creating it if it doesn't exist.
+
+    Uses standard input sources (non-NRT).
+    """
+    make_tiecdr_netcdf(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        intermediate_output_dir=intermediate_output_dir,
+        overwrite_tie=overwrite_tie,
+        land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
+    )
+
+    tie_ds = read_tiecdr_ds(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        intermediate_output_dir=intermediate_output_dir,
+    )
+
+    return tie_ds
+
+
 def create_tiecdr_for_date_range(
     *,
     hemisphere: Hemisphere,
