@@ -233,6 +233,11 @@ def publish_daily_nc(
         is_nrt=False,
         platform_id=platform.id,
     )
+
+    # Ensure consistency of time units
+    complete_daily_ds.time.encoding["units"] = "days since 1970-01-01"
+    complete_daily_ds.time.encoding["calendar"] = "standard"
+
     complete_daily_ds.to_netcdf(complete_daily_filepath)
     logger.success(f"Staged NC file for publication: {complete_daily_filepath}")
 

@@ -292,6 +292,11 @@ def _write_publication_ready_nc_and_checksum(
         complete_output_dir=complete_output_dir,
         is_nrt=is_nrt,
     )
+
+    # Ensure consistency of time units
+    publication_ready_monthly_ds.time.encoding["units"] = "days since 1970-01-01"
+    publication_ready_monthly_ds.time.encoding["calendar"] = "standard"
+
     publication_ready_monthly_ds.to_netcdf(complete_monthly_filepath)
     logger.success(f"Staged NC file for publication: {complete_monthly_filepath}")
 
