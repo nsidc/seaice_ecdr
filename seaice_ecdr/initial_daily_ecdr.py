@@ -1227,6 +1227,7 @@ def initial_daily_ecdr_dataset(
             date=date,
             platform_id=platform_id,
         )
+        logger.warning(f"Used all null TB data for {platform_id} on {date}")
     else:
         # TODO: if/else should be temporary.
         #       It's just a way to clearly divide how a

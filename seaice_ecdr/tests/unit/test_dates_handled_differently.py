@@ -16,12 +16,14 @@ def test_all_tbs_for_day_are_bad():
     # North
     assert day_has_all_bad_tbs("n07", NORTH, dt.date(1984, 7, 3))
     assert day_has_all_bad_tbs("n07", NORTH, dt.date(1986, 12, 5))
+    assert day_has_all_bad_tbs("am2", NORTH, dt.date(2018, 12, 16))
     assert not day_has_all_bad_tbs("F08", NORTH, dt.date(1988, 12, 5))
 
     # South
     assert day_has_all_bad_tbs("n07", SOUTH, dt.date(1986, 12, 5))
     assert day_has_all_bad_tbs("F17", SOUTH, dt.date(2008, 3, 24))
     assert day_has_all_bad_tbs("F17", SOUTH, dt.date(2015, 8, 6))
+    assert day_has_all_bad_tbs("am2", NORTH, dt.date(2018, 12, 16))
     assert not day_has_all_bad_tbs("F17", SOUTH, dt.date(2016, 8, 6))
 
 

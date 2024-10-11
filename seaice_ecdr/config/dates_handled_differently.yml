@@ -19,6 +19,13 @@ treat_tbs_as_missing:
       - ['2008-03-24', '2008-03-25']
       # Bad input data
       - ['2015-08-06', '2015-08-06']
+  am2:
+    north:
+      # Bad TB field(s)
+      - ['2018-12-16', '2018-12-16']
+    south:
+      # Bad TB field(s)
+      - ['2018-12-16', '2018-12-16']
 
 # Date ranges specified here have outputs that are all missing (255).
 treat_outputs_as_missing:
