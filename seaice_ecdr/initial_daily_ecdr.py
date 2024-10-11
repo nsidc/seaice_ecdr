@@ -45,6 +45,9 @@ from seaice_ecdr.constants import (
     DEFAULT_BASE_OUTPUT_DIR,
     ECDR_PRODUCT_VERSION,
 )
+from seaice_ecdr.days_treated_differently import (
+    day_has_all_bad_tbs,
+)
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
@@ -54,8 +57,12 @@ from seaice_ecdr.tb_data import (
     EcdrTbData,
     get_25km_ecdr_tb_data,
     get_ecdr_tb_data,
+    get_null_tb_data,
 )
-from seaice_ecdr.util import get_intermediate_output_dir, standard_daily_filename
+from seaice_ecdr.util import (
+    get_intermediate_output_dir,
+    standard_daily_filename,
+)
 
 
 def platform_is_smmr(platform_id: SUPPORTED_PLATFORM_ID):
@@ -211,7 +218,7 @@ def calc_cdr_conc(
     return cdr_conc
 
 
-def _setup_ecdr_ds(
+def setup_ecdr_ds(
     *,
     date: dt.date,
     tb_data: EcdrTbData,
@@ -472,7 +479,7 @@ def compute_initial_daily_ecdr_dataset(
     fields. Its difficult to understand what's in the resulting dataset without
     manually inspecting the result of running this code.
     """
-    ecdr_ide_ds = _setup_ecdr_ds(
+    ecdr_ide_ds = setup_ecdr_ds(
         date=date,
         tb_data=tb_data,
         hemisphere=hemisphere,
@@ -481,26 +488,11 @@ def compute_initial_daily_ecdr_dataset(
 
     # Spatially interpolate the brightness temperatures
     for tbname in EXPECTED_ECDR_TB_NAMES:
+        # TODO: Replace this TB assignment with
+        #       util.py's create_tb_dataarray()
         tb_day_name = f"{tbname}_day"
 
         tb_si_varname = f"{tb_day_name}_si"
-
-        # TODO: Remove the old (CDRv4) spatial interp method with v5 publishing
-        # if ancillary_source == "CDRv5":
-        #    # The CDRv5 spatint requires min of two adj grid cells
-        #    #   and allows corner grid cells with weighting of 0.707
-        #    tb_si_data = spatial_interp_tbs(
-        #        ecdr_ide_ds[tb_day_name].data[0, :, :],
-        #    )
-        # elif ancillary_source == "CDRv4":
-        #    # The CDRv4 calculation does not use diagonal grid cells
-        #    #   and requires a min of 3 adjacent grid cells
-        #    tb_si_data = spatial_interp_tbs(
-        #        ecdr_ide_ds[tb_day_name].data[0, :, :],
-        #        corner_weight=0,
-        #        min_weightsum=3,
-        #        image_shift_mode="grid-wrap",  # CDRv4 wraps tb field for interp
-        #    )
 
         tb_si_data = spatial_interp_tbs(
             ecdr_ide_ds[tb_day_name].data[0, :, :],
@@ -1223,21 +1215,35 @@ def initial_daily_ecdr_dataset(
     ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Create xr dataset containing the first pass of daily enhanced CDR."""
-    # TODO: if/else should be temporary. It's just a way to clearly divide how a
-    # requestion for 12.5km or 25km ECDR is handled.
-    if resolution == "12.5":
-        # In the 12.5km case, we try to get 12.5km Tbs, but sometimes we get
-        # 25km (older, non-AMSR platforms)
-        tb_data = get_ecdr_tb_data(
-            date=date,
+    platform_id = PLATFORM_CONFIG.get_platform_by_date(date).id
+    if day_has_all_bad_tbs(
+        platform_id,
+        hemisphere,
+        date,
+    ):
+        tb_data = get_null_tb_data(
             hemisphere=hemisphere,
+            resolution=resolution,
+            date=date,
+            platform_id=platform_id,
         )
     else:
-        # In the 25km case, we always expect 25km Tbs
-        tb_data = get_25km_ecdr_tb_data(
-            date=date,
-            hemisphere=hemisphere,
-        )
+        # TODO: if/else should be temporary.
+        #       It's just a way to clearly divide how a
+        #       request for 12.5km or 25km ECDR is handled.
+        if resolution == "12.5":
+            # In the 12.5km case, we try to get 12.5km Tbs, but sometimes we get
+            # 25km (older, non-AMSR platforms)
+            tb_data = get_ecdr_tb_data(
+                date=date,
+                hemisphere=hemisphere,
+            )
+        else:
+            # In the 25km case, we always expect 25km Tbs
+            tb_data = get_25km_ecdr_tb_data(
+                date=date,
+                hemisphere=hemisphere,
+            )
 
     initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,

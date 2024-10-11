@@ -63,7 +63,7 @@ def _missing_range_strs_to_dates(missing_ranges):
 
 
 def periods_with_missing_tbs(
-    platform: SUPPORTED_PLATFORM_ID,
+    platform_id: SUPPORTED_PLATFORM_ID,
     hemisphere: Hemisphere,
 ):
     """Returns a list of date ranges for which tbs should be considered
@@ -71,7 +71,9 @@ def periods_with_missing_tbs(
     """
     dates_treated_differently = _load_dates_treated_differently()
     try:
-        ranges = dates_treated_differently["treat_tbs_as_missing"][platform][hemisphere]
+        ranges = dates_treated_differently["treat_tbs_as_missing"][platform_id][
+            hemisphere
+        ]
     except KeyError:
         ranges = []
 
@@ -79,7 +81,7 @@ def periods_with_missing_tbs(
 
 
 def periods_of_cdr_missing_data(
-    platform: SUPPORTED_PLATFORM_ID,
+    platform_id: SUPPORTED_PLATFORM_ID,
     hemisphere: Hemisphere,
 ):
     """Returns a list of date ranges for which CDR's output should be
@@ -89,7 +91,7 @@ def periods_of_cdr_missing_data(
     # ranges = missing_ranges['treat_outputs_as_missing'][hemisphere_long]
     dates_treated_differently = _load_dates_treated_differently()
     try:
-        ranges = dates_treated_differently["treat_outputs_as_missing"][platform][
+        ranges = dates_treated_differently["treat_outputs_as_missing"][platform_id][
             hemisphere
         ]
     except KeyError:
@@ -111,24 +113,24 @@ def date_in_ranges(date, date_ranges):
 
 
 def day_has_all_bad_tbs(
-    platform: SUPPORTED_PLATFORM_ID,
+    platform_id: SUPPORTED_PLATFORM_ID,
     hemisphere: Hemisphere,
     date: dt.date,
 ) -> bool:
-    missing_tb_periods = periods_with_missing_tbs(platform, hemisphere)
+    missing_tb_periods = periods_with_missing_tbs(platform_id, hemisphere)
 
     return date_in_ranges(date, missing_tb_periods)
 
 
 def day_has_all_empty_fields(
-    platform: SUPPORTED_PLATFORM_ID,
+    platform_id: SUPPORTED_PLATFORM_ID,
     hemisphere: Hemisphere,
     date: dt.date,
 ) -> bool:
-    # TODO: Cause this to be related to defined platforms/dates?
+    # TODO: Cause this to be related to defined platform_id/dates?
     if date < dt.date(1978, 10, 25):
         return True
 
-    missing_tb_periods = periods_of_cdr_missing_data(platform, hemisphere)
+    missing_tb_periods = periods_of_cdr_missing_data(platform_id, hemisphere)
 
     return date_in_ranges(date, missing_tb_periods)
