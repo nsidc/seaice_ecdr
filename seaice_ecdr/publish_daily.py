@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import get_args
 
 import click
+import dateutil
+import numpy as np
 import xarray as xr
 from datatree import DataTree
 from loguru import logger
@@ -13,6 +15,7 @@ from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
+from seaice_ecdr.days_treated_differently import day_has_all_empty_fields
 from seaice_ecdr.intermediate_daily import read_cdecdr_ds
 from seaice_ecdr.nc_util import (
     add_coordinate_coverage_content_type,
@@ -20,6 +23,7 @@ from seaice_ecdr.nc_util import (
     remove_valid_range_from_coordinate_vars,
 )
 from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
+from seaice_ecdr.platforms.config import get_platform_id_from_name
 from seaice_ecdr.util import (
     date_range,
     get_complete_output_dir,
@@ -91,6 +95,23 @@ def make_publication_ready_ds(
     * Adds `coverage_content_type: coordinate` attr to coordinate vars
     * Adds  `coordinates` attr to data variables
     """
+    # For long data gaps, we explicitly require the CDR concentration field
+    # to be filled with no-data values.  However, we still want to allow
+    # other fields -- eg raw BT and NT fields and melt onset -- to get
+    # calculated.  For those reasons, it is easiest to post-apply the
+    # no-data values to the cdr_seaice_conc-related fields here.
+    date = dateutil.parser.parse(intermediate_daily_ds.time_coverage_start).date()
+    platform_id = get_platform_id_from_name(intermediate_daily_ds.platform)
+    if day_has_all_empty_fields(
+        platform_id=platform_id,
+        hemisphere=hemisphere,
+        date=date,
+    ):
+        intermediate_daily_ds["cdr_seaice_conc"].data[:] = np.nan
+        intermediate_daily_ds["cdr_seaice_conc_stdev"].data[:] = -1
+        intermediate_daily_ds["cdr_seaice_conc_qa_flag"].data[:] = 8
+        intermediate_daily_ds["cdr_seaice_conc_interp_spatial_flag"].data[:] = 0
+        intermediate_daily_ds["cdr_seaice_conc_interp_temporal_flag"].data[:] = 0
     # publication-ready daily data are grouped using `DataTree`.
     # Create a `cdr_supplementary` group for "supplemntary" fields
     cdr_supplementary_fields = [
