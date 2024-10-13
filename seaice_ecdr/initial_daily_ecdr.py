@@ -998,11 +998,69 @@ def compute_initial_daily_ecdr_dataset(
 
     cdr_conc = cdr_conc_raw.copy()
     cdr_conc[set_to_zero_sic] = 0
+    cdr_conc_pre_spillover = cdr_conc.copy()
 
+    """
+    # NOTE: This section was coded up so we could test whether or not we
+    #       want to use it.
+    # NOTE: Setting cdr_conc_raw to max of NT/BT and then applying
+    #       land spillover algorithm results in too much false siconc
+    #       near land.
+    #       So, we will calculate the BT spillover with NT2 and BT algs
+    #       and use that as a mask for cdr_seaice_conc
     # TODO: Some minimum thresholding already occurs for bt_conc
     #       for bt_conc (and nt_conc?).  I don't think the
     #       land_spillover algorithm should have to rely on this.
-    cdr_conc_pre_spillover = cdr_conc.copy()
+
+    # Apply NT2/BT to bt_conc
+    l90c = get_land90_conc_field(
+        hemisphere=hemisphere,
+        resolution=tb_data.resolution,
+        ancillary_source=ancillary_source,
+    )
+    adj123 = get_adj123_field(
+        hemisphere=hemisphere,
+        resolution=tb_data.resolution,
+        ancillary_source=ancillary_source,
+    )
+
+    # Apply the NT2 land spillover algorithm to the bt_conc field
+    bt_conc_filtered = bt_conc.copy()
+    bt_conc_filtered[set_to_zero_sic] = 0
+
+    bt_spillover_applied_nt2 = apply_nt2_land_spillover(
+        conc=bt_conc_filtered,
+        adj123=adj123.data,
+        l90c=l90c.data,
+        anchoring_siconc=0.0,
+        affect_dist3=False,
+    )
+
+    # Apply the BT land spillover algorithm to the bt_conc_NT2 field
+    bt_spillover_applied_nt2_bt = coastal_fix(
+        conc=bt_spillover_applied_nt2.copy(),
+        missing_flag_value=np.nan,
+        land_mask=non_ocean_mask.data,
+        minic=10,
+        fix_goddard_bt_error=True,
+    )
+
+    # Return NaN for missing and for land
+    bt_spillover_applied_nt2_bt[non_ocean_mask.data] = np.nan
+
+    nt_conc_spillovered = nt_conc.copy()
+    nt_conc_spillovered[adj123.data == 1] -= 60
+    nt_conc_spillovered[adj123.data == 2] -= 40
+    nt_conc_spillovered[adj123.data == 3] -= 20
+    nt_conc_spillovered[nt_conc_spillovered < 0] = 0
+
+    cdr_conc_raw_adj = calc_cdr_conc(
+        bt_conc=bt_spillover_applied_nt2_bt,
+        nt_conc=nt_conc_spillovered,
+        cdr_conc_min_fraction=0.1,
+        cdr_conc_max_fraction=1.0,
+    )
+    """
 
     if land_spillover_alg == "BT_NT" and n_valid_tb_grid_cells != 0:
         # The BT_NT algorithm requires separate consideration of the

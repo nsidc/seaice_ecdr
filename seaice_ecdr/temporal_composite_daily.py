@@ -19,6 +19,7 @@ from pm_tb_data._types import NORTH, Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
     ANCILLARY_SOURCES,
+    get_daily_climatology_mask,
     get_non_ocean_mask,
     nh_polehole_mask,
 )
@@ -451,77 +452,6 @@ def filter_field_via_bitmask(
         )
 
     return output_da
-
-
-def get_daily_climatology_mask(
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
-) -> None | npt.NDArray:
-    """
-    Given the date and ancillary source, return a mask where True values
-    indicate that the sea ice conc values should be set to zero
-
-    NOTE: The date range for this is hard-coded to correspond to SMMR.
-          This should probably be an argument somehow?
-
-    Because the day-of-year climatology includes the land mask as part of
-    the invalid ice mask, we get the non_ocean_mask to dis-convolve that.
-    (We don't necessarily want to set the land to sea-ice-conc=0.)
-    """
-    from netCDF4 import Dataset
-
-    # This date comes from PLATFORM_AVAILABILITY in platforms.py
-    # TODO: This should be refactored to have less hard-coding!
-    if date > dt.date(1987, 7, 9):
-        return None
-
-    non_ocean_mask = get_non_ocean_mask(
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ancillary_source=ancillary_source,
-    )
-
-    daily_ds = None
-
-    if hemisphere == "north" and resolution == "25":
-        # TODO: here and below, replace the hard-coded string with use of `CDR_ANCILLARY_DIR`
-        # New mask.  Valid/invalid extends into landmask
-        # daily_ds = Dataset(
-        #    "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-dailyclim.nc"
-        # )
-
-        # Mask used in v04r00.  Includes landmask and may have mismatches
-        # between landmask and ocean, especially in Southern Hemisphere
-        daily_ds = Dataset(
-            "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-smmr-invalid-ice-v04r00.nc"
-        )
-    elif hemisphere == "south" and resolution == "25":
-        # New mask.  Valid/invalid extends into landmask
-        # daily_ds = Dataset(
-        #    "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-pss25-dailyclim.nc"
-        # )
-
-        # Mask used in v04r00.  Includes landmask and may have mismatches
-        # between landmask and ocean, especially in Southern Hemisphere
-        daily_ds = Dataset(
-            "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-pss25-smmr-invalid-ice-v04r00.nc"
-        )
-
-    if daily_ds is None:
-        raise RuntimeError(
-            f"Could not load daily_climatology mask for {date=} {hemisphere=} {resolution=} {ancillary_source=}"
-        )
-
-    # day-of-year index is doy - 1
-    doy_index = int(date.strftime("%j")) - 1
-    doy_mask_invalid = np.array(daily_ds.variables["invalid_ice_mask"])[doy_index, :, :]
-
-    # Return mask of invalid seaice, excluding land
-    mask = (doy_mask_invalid != 0) & (~non_ocean_mask.data)
-
-    return mask
 
 
 # TODO: better function name and docstring. This is first pass at refactor.
