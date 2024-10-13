@@ -359,7 +359,7 @@ def temporally_composite_dataarray(
     return temp_comp_da, temporal_flags
 
 
-def calc_stddev_field(
+def calc_stdev_field(
     bt_conc,
     nt_conc,
     min_valid_value,
@@ -409,26 +409,26 @@ def calc_stddev_field(
             agg_count[~np.isnan(rolled_array)] += 1
             agg_idx += 1
 
-    stddev_raw = np.ma.filled(
+    stdev_raw = np.ma.filled(
         agg_array.std(axis=0, ddof=1).astype(np.float32),
         fill_value=-1,
     )
 
-    stddev = np.ma.empty_like(bt_conc_masked, dtype=np.float32)
-    stddev[:] = stddev_raw[:]
+    stdev = np.ma.empty_like(bt_conc_masked, dtype=np.float32)
+    stdev[:] = stdev_raw[:]
 
     # Mask any locations with insufficient count
-    stddev[(agg_count >= 0) & (agg_count < 6)] = fill_value
+    stdev[(agg_count >= 0) & (agg_count < 6)] = fill_value
 
     # Mask out any calculated missing values
-    stddev[stddev == -1] = fill_value
+    stdev[stdev == -1] = fill_value
 
-    stddev[0, :] = fill_value
-    stddev[-1, :] = fill_value
-    stddev[:, 0] = fill_value
-    stddev[:, -1] = fill_value
+    stdev[0, :] = fill_value
+    stdev[-1, :] = fill_value
+    stdev[:, 0] = fill_value
+    stdev[:, -1] = fill_value
 
-    return stddev
+    return stdev
 
 
 def filter_field_via_bitmask(
@@ -657,7 +657,7 @@ def temporal_interpolation(
             other=100,
         )
 
-    stddev_field = calc_stddev_field(
+    stdev_field = calc_stdev_field(
         bt_conc=bt_conc.data[0, :, :],
         nt_conc=nt_conc.data[0, :, :],
         min_valid_value=0,
@@ -668,7 +668,7 @@ def temporal_interpolation(
     # Set this to a data array
     tie_ds["cdr_seaice_conc_stdev_raw"] = (
         ("time", "y", "x"),
-        np.expand_dims(stddev_field.data, axis=0),
+        np.expand_dims(stdev_field.data, axis=0),
         {
             "_FillValue": -1,
             "long_name": (
