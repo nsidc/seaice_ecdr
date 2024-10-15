@@ -53,7 +53,3 @@ treat_outputs_as_missing:
     south:
       # Large missing data gap due to satellite issues
       - ['1987-12-03', '1988-01-13']
-  F17:
-    north:
-      # Missing data
-      - ['2008-03-24', '2008-03-25']
