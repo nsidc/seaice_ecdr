@@ -281,6 +281,20 @@ def temporally_composite_dataarray(
 
         prior_field = np.squeeze(da.isel(time=da.time.dt.date == prior_date).to_numpy())
         next_field = np.squeeze(da.isel(time=da.time.dt.date == next_date).to_numpy())
+        # The above operation can yield a result with an empty array
+        # with non-zero-shape -- actually 3 dimensional.  Not sure how
+        # an array can be both [] and shape=(0, 448, 304), but it is.
+        # Catch this and use an all-NaN field
+        if prior_field.ndim == 3:
+            logger.warning(f"Setting prior date array to all missing: {prior_date}")
+            prior_field = np.zeros((ydim, xdim), dtype=prior_field.dtype)
+            prior_field[:] = np.nan
+
+        if next_field.ndim == 3:
+            logger.warning(f"Setting next date array to all missing: {next_date}")
+            next_field = np.zeros((ydim, xdim), dtype=next_field.dtype)
+            next_field[:] = np.nan
+
         if daily_climatology_mask is not None:
             prior_field[daily_climatology_mask] = 0
             next_field[daily_climatology_mask] = 0
