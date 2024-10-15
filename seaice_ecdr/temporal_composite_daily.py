@@ -6,7 +6,7 @@ import copy
 import datetime as dt
 from functools import cache
 from pathlib import Path
-from typing import Iterable, cast, get_args
+from typing import Iterable, Tuple, cast, get_args
 
 import click
 import numpy as np
@@ -15,6 +15,7 @@ import xarray as xr
 from loguru import logger
 from pm_icecon.fill_polehole import fill_pole_hole
 from pm_tb_data._types import NORTH, Hemisphere
+from scipy.ndimage import shift
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
@@ -359,12 +360,99 @@ def temporally_composite_dataarray(
     return temp_comp_da, temporal_flags
 
 
+def verify_array_nominal_range(
+    array: npt.NDArray,
+    max_median_check_value: float = 2.0,
+) -> bool:
+    """Check array's "usual" range, allowing for possibility that values
+    might be higher.
+
+    For example, a check value of 2.0 should distinguish
+    between a range of values of 0 to 1 and 0 to 100"""
+
+    return np.nanmedian(array) < max_median_check_value
+
+
+def calc_stdev_inputs(
+    bt_conc: npt.NDArray,
+    nt_conc: npt.NDArray,
+    land_mask: npt.NDArray,
+    siconc_threshold_min: float = 0.0,
+    siconc_threshold_max: float = 1.5,
+    min_surround_count: int = 6,
+) -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
+    """Calculate the inputs to the standard deviation function:
+    concentration arrays need to be thresholded to valid values
+    a stdev_mask needs to be calculated from invalid values because:
+      - values over land are not computed
+      - nan siconc values are excluded
+      - values are not computed without at least 6 input values
+
+      - values outside the valid siconc range are thresholded
+    """
+    # Expect [bt|nt]_conc to be in range 0.0-1.0 (not 0-100)
+    try:
+        assert verify_array_nominal_range(bt_conc)
+    except AssertionError:
+        raise ValueError("bt_conc_median is not consistent with values 0-1")
+
+    try:
+        assert verify_array_nominal_range(nt_conc)
+    except AssertionError:
+        raise ValueError("nt_conc_median is not consistent with values 0-1")
+
+    # Set a mask for the application of standard deviation calculation
+    stdev_mask = np.zeros(bt_conc.shape, dtype=bool)
+    stdev_mask[:] = False
+
+    # nan array values should be masked out
+    stdev_mask[np.isnan(bt_conc)] = True
+    stdev_mask[np.isnan(nt_conc)] = True
+
+    # land values should be masked out
+    stdev_mask[land_mask] = True
+
+    # Locations with fewer than "min_surround_count" contributing values
+    # should be excluded
+    # Note: this calculation should come after the stdev_mask is otherwise set
+    not_enough_neighbors = np.zeros(stdev_mask.shape, dtype=bool)
+    not_enough_neighbors[:] = False
+    n_valid_neighbors = np.zeros(stdev_mask.shape, dtype=np.uint8)
+    for ishift in range(-1, 2):
+        for jshift in range(-1, 2):
+            shifted = shift(
+                stdev_mask, (jshift, ishift), order=0, mode="constant", cval=True
+            )
+            n_valid_neighbors[~shifted] += 1
+    not_enough_neighbors[n_valid_neighbors < min_surround_count] = True
+
+    # values outside value range should be thresholded
+    bt_conc_for_stdev = bt_conc.copy()
+    nt_conc_for_stdev = nt_conc.copy()
+
+    bt_conc_for_stdev[bt_conc < siconc_threshold_min] = siconc_threshold_min
+    bt_conc_for_stdev[bt_conc > siconc_threshold_max] = siconc_threshold_max
+
+    nt_conc_for_stdev[nt_conc < siconc_threshold_min] = siconc_threshold_min
+    nt_conc_for_stdev[nt_conc > siconc_threshold_max] = siconc_threshold_max
+
+    # Land values should be NaN over land
+    bt_conc_for_stdev[land_mask] = np.nan
+    nt_conc_for_stdev[land_mask] = np.nan
+
+    # Ensure nan consistency between both arrays
+    bt_conc_for_stdev[np.isnan(nt_conc)] = np.nan
+    nt_conc_for_stdev[np.isnan(bt_conc)] = np.nan
+
+    return (stdev_mask, bt_conc_for_stdev, nt_conc_for_stdev, not_enough_neighbors)
+
+
 def calc_stdev_field(
-    bt_conc,
-    nt_conc,
-    min_valid_value,
-    max_valid_value,
-    fill_value,
+    bt_conc: npt.NDArray,
+    nt_conc: npt.NDArray,
+    stdev_mask: npt.NDArray,
+    not_enough_neighbors: npt.NDArray,
+    fill_value=-1,
 ) -> xr.DataArray:
     """Compute std dev field for cdr_conc value using BT and NT fields.
 
@@ -378,35 +466,28 @@ def calc_stdev_field(
     TODO: This could be generalized to n-fields, instead of 2.
     """
 
-    bt_conc_masked = np.ma.masked_outside(
-        bt_conc,
-        min_valid_value,
-        max_valid_value,
-    )
-    nt_conc_masked = np.ma.masked_outside(
-        nt_conc,
-        min_valid_value,
-        max_valid_value,
-    )
+    bt_conc_masked = np.ma.masked_where(stdev_mask, bt_conc)
+    nt_conc_masked = np.ma.masked_where(stdev_mask, nt_conc)
 
     # Initialize the aggregation sum and count arrays
     ydim, xdim = bt_conc.shape
     agg_array = np.ma.empty((18, ydim, xdim), dtype=np.float64)
-    agg_count = np.ma.zeros((ydim, xdim), dtype=np.int64)
 
     # Use rolled arrays to add first bt, then nt to aggregation arrays
     agg_idx = 0
     for yoff in range(-1, 2):
         for xoff in range(-1, 2):
-            rolled_array = np.roll(bt_conc_masked, (yoff, xoff), (0, 1))
-            agg_array[agg_idx, :, :] = rolled_array[:, :]
-            agg_count[~np.isnan(rolled_array)] += 1
+            shifted_array = shift(
+                bt_conc_masked, (yoff, xoff), order=0, mode="constant", cval=np.nan
+            )
+            agg_array[agg_idx, :, :] = shifted_array[:, :]
             agg_idx += 1
     for yoff in range(-1, 2):
         for xoff in range(-1, 2):
-            rolled_array = np.roll(nt_conc_masked, (yoff, xoff), (0, 1))
-            agg_array[agg_idx, :, :] = rolled_array[:, :]
-            agg_count[~np.isnan(rolled_array)] += 1
+            shifted_array = shift(
+                nt_conc_masked, (yoff, xoff), order=0, mode="constant", cval=np.nan
+            )
+            agg_array[agg_idx, :, :] = shifted_array[:, :]
             agg_idx += 1
 
     stdev_raw = np.ma.filled(
@@ -418,11 +499,12 @@ def calc_stdev_field(
     stdev[:] = stdev_raw[:]
 
     # Mask any locations with insufficient count
-    stdev[(agg_count >= 0) & (agg_count < 6)] = fill_value
+    stdev[not_enough_neighbors] = fill_value
 
     # Mask out any calculated missing values
     stdev[stdev == -1] = fill_value
 
+    # Mask out edges of the grid
     stdev[0, :] = fill_value
     stdev[-1, :] = fill_value
     stdev[:, 0] = fill_value
@@ -657,11 +739,19 @@ def temporal_interpolation(
             other=100,
         )
 
+    (stdev_field_mask, bt_conc_thres, nt_conc_thres, not_enough_neighbors) = (
+        calc_stdev_inputs(
+            bt_conc=bt_conc.data[0, :, :],
+            nt_conc=nt_conc.data[0, :, :],
+            land_mask=non_ocean_mask.data,
+        )
+    )
+
     stdev_field = calc_stdev_field(
-        bt_conc=bt_conc.data[0, :, :],
-        nt_conc=nt_conc.data[0, :, :],
-        min_valid_value=0,
-        max_valid_value=100,
+        bt_conc=bt_conc_thres,
+        nt_conc=nt_conc_thres,
+        stdev_mask=stdev_field_mask,
+        not_enough_neighbors=not_enough_neighbors,
         fill_value=-1,
     )
 
