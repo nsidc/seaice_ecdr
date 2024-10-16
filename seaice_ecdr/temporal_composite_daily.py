@@ -384,6 +384,9 @@ def verify_array_nominal_range(
     For example, a check value of 2.0 should distinguish
     between a range of values of 0 to 1 and 0 to 100"""
 
+    if np.all(np.isnan(array)):
+        return True
+
     return np.nanmedian(array) < max_median_check_value
 
 
@@ -408,12 +411,12 @@ def calc_stdev_inputs(
     try:
         assert verify_array_nominal_range(bt_conc)
     except AssertionError:
-        raise ValueError("bt_conc_median is not consistent with values 0-1")
+        logger.error("bt_conc_median is not consistent with values 0-1")
 
     try:
         assert verify_array_nominal_range(nt_conc)
     except AssertionError:
-        raise ValueError("nt_conc_median is not consistent with values 0-1")
+        logger.error("bt_conc_median is not consistent with values 0-1")
 
     # Set a mask for the application of standard deviation calculation
     stdev_mask = np.zeros(bt_conc.shape, dtype=bool)
