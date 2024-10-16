@@ -1,7 +1,7 @@
 import datetime as dt
 
 import numpy as np
-import numpy.testing as npt
+import numpy.testing as nptesting  # Note: npt is numpy.typing
 
 from seaice_ecdr import melt
 
@@ -14,7 +14,7 @@ def test_with_melting_everywhere():
 
     actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
-    npt.assert_array_equal(expected, actual)
+    nptesting.assert_array_equal(expected, actual)
 
 
 def test_with_some_non_melting_due_to_large_tb_deltas():
@@ -25,7 +25,7 @@ def test_with_some_non_melting_due_to_large_tb_deltas():
 
     actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
-    npt.assert_array_equal(expected, actual)
+    nptesting.assert_array_equal(expected, actual)
 
 
 def test_that_tb_threshold_is_2_kelvin():
@@ -37,7 +37,7 @@ def test_that_tb_threshold_is_2_kelvin():
 
     actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
-    npt.assert_array_equal(expected, actual)
+    nptesting.assert_array_equal(expected, actual)
 
 
 def test_with_some_non_melting_due_to_low_concentrations():
@@ -48,7 +48,7 @@ def test_with_some_non_melting_due_to_low_concentrations():
 
     actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
-    npt.assert_array_equal(expected, actual)
+    nptesting.assert_array_equal(expected, actual)
 
 
 def test_that_50_percent_concentration_is_in_range():
@@ -59,7 +59,7 @@ def test_that_50_percent_concentration_is_in_range():
 
     actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
-    npt.assert_array_equal(expected, actual)
+    nptesting.assert_array_equal(expected, actual)
 
 
 def test_with_missing_tb19_values():
@@ -70,7 +70,7 @@ def test_with_missing_tb19_values():
 
     actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
-    npt.assert_array_equal(expected, actual)
+    nptesting.assert_array_equal(expected, actual)
 
 
 def test_with_missing_tb37_values():
@@ -81,7 +81,7 @@ def test_with_missing_tb37_values():
 
     actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
-    npt.assert_array_equal(expected, actual)
+    nptesting.assert_array_equal(expected, actual)
 
 
 def test_with_both_missing_values():
@@ -92,7 +92,7 @@ def test_with_both_missing_values():
 
     actual = melt.melting(concentrations=concentrations, tb_h19=tb19, tb_h37=tb37)
 
-    npt.assert_array_equal(expected, actual)
+    nptesting.assert_array_equal(expected, actual)
 
 
 def test_date_in_melt_season():
