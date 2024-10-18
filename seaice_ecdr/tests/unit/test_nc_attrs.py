@@ -5,8 +5,6 @@ import xarray as xr
 from seaice_ecdr.nc_attrs import (
     _get_software_version_id,
     _get_time_coverage_attrs,
-    get_platforms_for_sats,
-    get_sensors_for_sats,
 )
 
 
@@ -123,45 +121,3 @@ def test__get_software_version_id():
     # git@github.com:nsidc/seaice_ecdr.git@10fdd316452d0d69fbcf4e7915b66c227298b0ec
     assert "github" in software_ver_id
     assert "@" in software_ver_id
-
-
-def test_get_platforms_for_sat():
-    expected = [
-        "DMSP 5D-2/F13 > Defense Meteorological Satellite Program-F13",
-        "DMSP 5D-3/F17 > Defense Meteorological Satellite Program-F17",
-        "GCOM-W1 > Global Change Observation Mission 1st-Water",
-    ]
-
-    actual = get_platforms_for_sats(
-        [
-            "F13",
-            "F17",
-            "F17",
-            "am2",
-            "am2",
-            "am2",
-        ]
-    )
-
-    assert expected == actual
-
-
-def test_get_sensors_for_sats():
-    expected = [
-        "SSM/I > Special Sensor Microwave/Imager",
-        "SSMIS > Special Sensor Microwave Imager/Sounder",
-        "AMSR2 > Advanced Microwave Scanning Radiometer 2",
-    ]
-
-    actual = get_sensors_for_sats(
-        [
-            "F13",
-            "F17",
-            "F17",
-            "am2",
-            "am2",
-            "am2",
-        ]
-    )
-
-    assert expected == actual
