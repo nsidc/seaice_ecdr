@@ -224,6 +224,8 @@ def publish_daily_nc(
                     var.attrs["ancillary_variables"] = var.attrs[
                         "ancillary_variables"
                     ].replace("cdr_", f"{PROTOTYPE_PLATFORM_ID}_")
+                if var.dims == ("time", "y", "x"):
+                    var.attrs["coordinates"] = "time y x"
             # Drop x, y, and time coordinate variables. These will be inherited from the parent.
             prototype_subgroup = prototype_subgroup.drop_vars(["x", "y", "time"])
             # Retain only the group-specific global attrs
