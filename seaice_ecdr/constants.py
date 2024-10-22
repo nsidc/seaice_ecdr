@@ -90,6 +90,11 @@ LOGS_DIR.mkdir(parents=True, exist_ok=True)
 CDR_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_ancillary"
 CDRv4_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / "cdrv4_equiv_ancillary"
 
+# Defaults for CDR runs
+DEFAULT_CDR_RESOLUTION = "25"
+DEFAULT_ANCILLARY_SOURCE = "CDRv5"
+DEFAULT_SPILLOVER_ALG = "NT2_BT"
+
 # NRT outputs
 ECDR_NRT_PRODUCT_VERSION = ProductVersion(
     major_version_number=3,

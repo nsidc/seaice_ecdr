@@ -15,6 +15,7 @@ from seaice_ecdr.intermediate_monthly import (
 from seaice_ecdr.nc_util import (
     add_coordinate_coverage_content_type,
     add_coordinates_attr,
+    fix_monthly_ncattrs,
     remove_valid_range_from_coordinate_vars,
 )
 from seaice_ecdr.nrt import override_attrs_for_nrt
@@ -349,6 +350,9 @@ def prepare_monthly_nc_for_publication(
         intermediate_monthly_fp=intermediate_monthly_fp,
         prototype_monthly_fp=prototype_monthly_fp,
     )
+
+    # Fix monthly nc-attributes
+    fix_monthly_ncattrs(complete_monthly_ds)
 
     # Override attrs for nrt
     if is_nrt:

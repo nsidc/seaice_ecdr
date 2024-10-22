@@ -3,7 +3,7 @@
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Final, get_args
+from typing import get_args
 
 import click
 import datatree
@@ -14,9 +14,13 @@ from pm_tb_data._types import Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import ANCILLARY_SOURCES, get_ancillary_ds
 from seaice_ecdr.checksum import write_checksum_file
-from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import DEFAULT_ANCILLARY_SOURCE, DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
-from seaice_ecdr.nc_util import concatenate_nc_files
+from seaice_ecdr.nc_util import (
+    add_ncgroup,
+    concatenate_nc_files,
+    fix_monthly_aggregate_ncattrs,
+)
 from seaice_ecdr.publish_monthly import get_complete_monthly_dir
 from seaice_ecdr.util import (
     find_standard_monthly_netcdf_files,
@@ -157,15 +161,19 @@ def _update_ncrcat_monthly_ds(
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
     default="25",
 )
+@click.option(
+    "--ancillary-source",
+    required=True,
+    type=click.Choice(get_args(ANCILLARY_SOURCES)),
+    default=DEFAULT_ANCILLARY_SOURCE,
+)
 def cli(
     *,
     hemisphere: Hemisphere,
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
-    # TODO: consider extracting this to CLI option.
-    ANCILLARY_SOURCE: Final = "CDRv4"
-
     try:
         complete_output_dir = get_complete_output_dir(
             base_output_dir=base_output_dir,
@@ -189,6 +197,13 @@ def cli(
         # data in it's final location.
         with TemporaryDirectory() as tmpdir:
             tmp_output_fp = Path(tmpdir) / "temp.nc"
+
+            monthly_filepaths = add_ncgroup(
+                tmpdir=Path(tmpdir),
+                filepath_list=monthly_filepaths,
+                ncgroup_name="/prototype_am2",  # Note leading '/' for group label
+            )
+
             concatenate_nc_files(
                 input_filepaths=monthly_filepaths,
                 output_filepath=tmp_output_fp,
@@ -199,7 +214,7 @@ def cli(
                 hemisphere=hemisphere,
                 resolution=resolution,
                 monthly_filepaths=monthly_filepaths,
-                ancillary_source=ANCILLARY_SOURCE,
+                ancillary_source=ancillary_source,
             )
 
             start_date = pd.Timestamp(ds.time.min().values).date()
@@ -217,6 +232,10 @@ def cli(
             # The monthly ds should already be set to handle `time` as an
             # unlimited dim.
             assert ds.encoding["unlimited_dims"] == {"time"}
+
+            # After the ncrcat process, a few attributes need to be cleaned up
+            fix_monthly_aggregate_ncattrs(ds)
+
             ds.to_netcdf(
                 output_filepath,
             )

@@ -24,7 +24,7 @@ from seaice_ecdr.ancillary import ANCILLARY_SOURCES, get_ancillary_ds
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
-from seaice_ecdr.nc_util import concatenate_nc_files
+from seaice_ecdr.nc_util import concatenate_nc_files, fix_daily_aggregate_ncattrs
 from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.publish_daily import get_complete_daily_filepath
 from seaice_ecdr.util import (
@@ -207,6 +207,9 @@ def make_daily_aggregate_netcdf_for_year(
             # The daily ds should already be set to handle `time` as an
             # unlimited dim.
             assert daily_ds.encoding["unlimited_dims"] == {"time"}
+
+            # After concatenation, need to fix source, platform, sensor ncattrs
+            fix_daily_aggregate_ncattrs(daily_ds)
 
             # Write out the aggregate daily file.
             daily_ds.to_netcdf(
