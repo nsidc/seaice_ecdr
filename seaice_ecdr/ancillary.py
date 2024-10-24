@@ -18,7 +18,11 @@ from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.constants import CDR_ANCILLARY_DIR
+from seaice_ecdr.constants import (
+    CDR_ANCILLARY_DIR,
+    ECDR_PRODUCT_VERSION,
+    ProductVersion,
+)
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform
 from seaice_ecdr.platforms.config import N07_PLATFORM
@@ -31,18 +35,14 @@ def get_ancillary_filepath(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ancillary_source: ANCILLARY_SOURCES,
+    product_version: ProductVersion = ECDR_PRODUCT_VERSION,
 ) -> Path:
     grid_id = get_grid_id(
         hemisphere=hemisphere,
         resolution=resolution,
     )
 
-    if ancillary_source == "CDRv5":
-        filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}.nc"
-    elif ancillary_source == "CDRv4":
-        filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}-v04r00.nc"
-    else:
-        raise ValueError(f"Unknown ancillary source: {ancillary_source}")
+    filepath = CDR_ANCILLARY_DIR / f"G02202-ancillary-{grid_id}-{product_version}.nc"
 
     return filepath
 
@@ -77,18 +77,17 @@ def get_ancillary_daily_clim_filepath(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ancillary_source: ANCILLARY_SOURCES,
+    product_version: ProductVersion = ECDR_PRODUCT_VERSION,
 ) -> Path:
     grid_id = get_grid_id(
         hemisphere=hemisphere,
         resolution=resolution,
     )
 
-    if ancillary_source == "CDRv5":
-        filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}-dailyclim.nc"
-    elif ancillary_source == "CDRv4":
-        filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}-v04r00.nc"
-    else:
-        raise ValueError(f"Unknown ancillary source: {ancillary_source}")
+    filepath = (
+        CDR_ANCILLARY_DIR
+        / f"G02202-ancillary-{grid_id}-daily-invalid-ice-{product_version}.nc"
+    )
 
     return filepath
 
