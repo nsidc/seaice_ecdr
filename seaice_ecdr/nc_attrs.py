@@ -3,13 +3,14 @@ import datetime as dt
 import subprocess
 from collections import OrderedDict
 from functools import cache
-from typing import Any, Final, Literal, get_args
+from typing import Any, Literal, get_args
 
 import pandas as pd
 import xarray as xr
 
-from seaice_ecdr._types import SUPPORTED_SAT
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
+from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 
 # Datetime string format for date-related attributes.
 DATE_STR_FMT = "%Y-%m-%dT%H:%M:%SZ"
@@ -123,65 +124,6 @@ def _get_time_coverage_attrs(
     return time_coverage_attrs
 
 
-# Here’s what the GCMD platform long name should be based on sensor/platform short name:
-PLATFORMS_FOR_SATS: dict[SUPPORTED_SAT, str] = dict(
-    am2="GCOM-W1 > Global Change Observation Mission 1st-Water",
-    ame="Aqua > Earth Observing System, Aqua",
-    F17="DMSP 5D-3/F17 > Defense Meteorological Satellite Program-F17",
-    F13="DMSP 5D-2/F13 > Defense Meteorological Satellite Program-F13",
-    F11="DMSP 5D-2/F11 > Defense Meteorological Satellite Program-F11",
-    F08="DMSP 5D-2/F8 > Defense Meteorological Satellite Program-F8",
-    n07="Nimbus-7",
-)
-
-
-def _unique_sats(sats: list[SUPPORTED_SAT]) -> list[SUPPORTED_SAT]:
-    """Return the unique set of satellites.
-
-    Order is preserved.
-    """
-    # `set` is unordered. This gets the unique list of `sats`.
-    unique_sats = list(dict.fromkeys(sats))
-
-    return unique_sats
-
-
-def get_platforms_for_sats(sats: list[SUPPORTED_SAT]) -> list[str]:
-    """Get the unique set of platforms for the given list of sats.
-
-    Assumes `sats` is ordered from oldest->newest.
-    """
-    # `set` is unordered. This gets the unique list of `sats`.
-    unique_sats = _unique_sats(sats)
-    platforms_for_sat = [PLATFORMS_FOR_SATS[sat] for sat in unique_sats]
-
-    return platforms_for_sat
-
-
-# Here’s what the GCMD sensor name should be based on sensor short name:
-SENSORS_FOR_SATS: dict[SUPPORTED_SAT, str] = dict(
-    am2="AMSR2 > Advanced Microwave Scanning Radiometer 2",
-    ame="AMSR-E > Advanced Microwave Scanning Radiometer-EOS",
-    F17="SSMIS > Special Sensor Microwave Imager/Sounder",
-    # TODO: de-dup SSM/I text?
-    F13="SSM/I > Special Sensor Microwave/Imager",
-    F11="SSM/I > Special Sensor Microwave/Imager",
-    F08="SSM/I > Special Sensor Microwave/Imager",
-    n07="SMMR > Scanning Multichannel Microwave Radiometer",
-)
-
-
-def get_sensors_for_sats(sats: list[SUPPORTED_SAT]) -> list[str]:
-    """Get the unique set of sensors for the given list of sats.
-
-    Assumes `sats` is ordered from oldest->newest.
-    """
-    unique_sats = _unique_sats(sats)
-    sensors_for_sat = [SENSORS_FOR_SATS[sat] for sat in unique_sats]
-
-    return sensors_for_sat
-
-
 def get_global_attrs(
     *,
     time: xr.DataArray,
@@ -196,7 +138,8 @@ def get_global_attrs(
     # of source filenames.
     source: str,
     # List of satellites that provided data for the given netcdf file.
-    sats: list[SUPPORTED_SAT],
+    platform_ids: list[SUPPORTED_PLATFORM_ID],
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> dict[str, Any]:
     """Return a dictionary containing the global attributes for a standard ECDR NetCDF file.
 
@@ -204,11 +147,11 @@ def get_global_attrs(
     assumed the result of this function will be used to set the attributes of an
     xr.Dataset that will be promptly written to disk as a NetCDF file.
     """
-
-    # TODO: support different resolutions, platforms, and sensors!
-    resolution: Final = "12.5"
-    platform = ", ".join(get_platforms_for_sats(sats))
-    sensor = ", ".join(get_sensors_for_sats(sats))
+    platforms = [
+        PLATFORM_CONFIG.platform_for_id(platform_id) for platform_id in platform_ids
+    ]
+    platform = ", ".join([platform.name for platform in platforms])
+    sensor = ", ".join([platform.sensor for platform in platforms])
 
     time_coverage_attrs = _get_time_coverage_attrs(
         temporality=temporality,
@@ -224,18 +167,18 @@ def get_global_attrs(
         **time_coverage_attrs,
         title=(
             "NOAA-NSIDC Climate Data Record of Passive Microwave"
-            " Sea Ice Concentration Version 5"
+            f" Sea Ice Concentration Version {ECDR_PRODUCT_VERSION.major_version_number}"
         ),
         program="NOAA Climate Data Record Program",
         software_version_id=_get_software_version_id(),
-        metadata_link="https://nsidc.org/data/g02202/versions/5",
-        product_version=ECDR_PRODUCT_VERSION,
+        metadata_link=f"https://nsidc.org/data/g02202/versions/{ECDR_PRODUCT_VERSION.major_version_number}",
+        product_version=ECDR_PRODUCT_VERSION.version_str,
         spatial_resolution=f"{resolution}km",
         standard_name_vocabulary="CF Standard Name Table (v83, 17 October 2023)",
         id="https://doi.org/10.7265/rjzb-pf78",
         naming_authority="org.doi.dx",
         license="No constraints on data access or use",
-        summary="This data set provides a passive microwave sea ice concentration climate data record (CDR) based on gridded brightness temperatures from the Advanced Microwave Scanning Radiometer 2 (AMSR2) onboard the GCOM-W1 satellite, the Advanced Microwave Scanning Radiometer for EOS (AMSR-E) onboard the Aqua satellite, the Special Sensor Microwave Imager (SSM/I) and the Special Sensor Microwave Imager/Sounder (SSMIS) that are part of the Defense Meteorological Satellite Program (DMSP) series of passive microwave radiometers, and the Nimbus-7 Scanning Multichannel Microwave Radiometer (SMMR). The sea ice concentration CDR is an estimate of sea ice concentration that is produced by combining concentration estimates from two algorithms developed at the NASA Goddard Space Flight Center (GSFC): the NASA Team algorithm and the Bootstrap algorithm. The individual algorithms are used to process and combine brightness temperature data at NSIDC. This product is designed to provide a consistent time series of sea ice concentrations (the fraction, or percentage, of ocean area covered by sea ice) from November 1978 to the present, which spans the coverage of several passive microwave instruments. The data are gridded on the NSIDC polar stereographic grid with 12.5 km x 12.5 km grid cells and are available in NetCDF file format. Each file contains a variable with the CDR concentration values as well as variables that hold the raw NASA Team and Bootstrap processed concentrations for reference. Variables containing standard deviation, quality flags, and projection information are also included.",
+        summary=f"This data set provides a passive microwave sea ice concentration climate data record (CDR) based on gridded brightness temperatures (TBs) from the Nimbus-7 Scanning Multichannel Microwave Radiometer (SMMR) and the Defense Meteorological Satellite Program (DMSP) series of passive microwave radiometers: the Special Sensor Microwave Imager (SSM/I) and the Special Sensor Microwave Imager/Sounder (SSMIS). The sea ice concentration CDR is an estimate of sea ice concentration that is produced by combining concentration estimates from two algorithms developed at the NASA Goddard Space Flight Center (GSFC): the NASA Team (NT) algorithm and the Bootstrap (BT) algorithm. The individual algorithms are used to process and combine brightness temperature data at NSIDC. This product is designed to provide a consistent time series of sea ice concentrations (the fraction, or percentage, of ocean area covered by sea ice) from November 1978 to the present, which spans the coverage of several passive microwave instruments. The data are gridded on the NSIDC polar stereographic grid with {resolution} km x {resolution} km grid cells and are available in NetCDF file format. Each file contains a variable with the CDR concentration values as well as variables that hold the raw NT and BT processed concentrations for reference. Variables containing standard deviation, quality flags, and projection information are also included. Files that are from 2013 to the present also contain a prototype CDR sea ice concentration based on gridded TBs from the Advanced Microwave Scanning Radiometer 2 (AMSR2) onboard the GCOM-W1 satellite.",
         keywords="EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE CONCENTRATION, Continent > North America > Canada > Hudson Bay, Geographic Region > Arctic, Geographic Region > Polar, Geographic Region > Northern Hemisphere, Ocean > Arctic Ocean, Ocean > Arctic Ocean > Barents Sea, Ocean > Arctic Ocean > Beaufort Sea, Ocean > Arctic Ocean > Chukchi Sea, CONTINENT > NORTH AMERICA > CANADA > HUDSON BAY, Ocean > Atlantic Ocean > North Atlantic Ocean > Davis Straight, OCEAN > ATLANTIC OCEAN > NORTH ATLANTIC OCEAN > GULF OF ST LAWRENCE, Ocean > Atlantic Ocean > North Atlantic Ocean > North Sea, Ocean > Atlantic Ocean > North Atlantic Ocean > Norwegian Sea, OCEAN > ATLANTIC OCEAN > NORTH ATLANTIC OCEAN > SVALBARD AND JAN MAYEN, Ocean > Pacific Ocean, Ocean > Pacific Ocean > North Pacific Ocean > Bering Sea, Ocean > Pacific Ocean > North Pacific Ocean > Sea Of Okhotsk",
         keywords_vocabulary="NASA Global Change Master Directory (GCMD) Keywords, Version 17.1",
         cdm_data_type="Grid",

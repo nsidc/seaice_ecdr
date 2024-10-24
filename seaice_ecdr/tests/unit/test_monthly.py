@@ -2,76 +2,80 @@ import datetime as dt
 from pathlib import Path
 
 import numpy as np
-import numpy.testing as npt
+import numpy.testing as nptesting  # Note: npt is numpy.typing
 import pytest
 import xarray as xr
+from loguru import logger
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr import monthly, util
-from seaice_ecdr.complete_daily_ecdr import get_ecdr_dir
-from seaice_ecdr.monthly import (
-    QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS,
-    QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS,
+from seaice_ecdr import intermediate_monthly, util
+from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
+from seaice_ecdr.intermediate_daily import get_ecdr_dir
+from seaice_ecdr.intermediate_monthly import (
+    CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS,
+    CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS,
     _get_daily_complete_filepaths_for_month,
+    _platform_id_for_month,
     _qa_field_has_flag,
-    _sat_for_month,
+    calc_cdr_melt_onset_day_monthly,
     calc_cdr_seaice_conc_monthly,
-    calc_melt_onset_day_cdr_seaice_conc_monthly,
-    calc_qa_of_cdr_seaice_conc_monthly,
-    calc_stdv_of_cdr_seaice_conc_monthly,
+    calc_cdr_seaice_conc_monthly_qa_flag,
+    calc_cdr_seaice_conc_monthly_stdev,
     calc_surface_type_mask_monthly,
     check_min_days_for_valid_month,
-    make_monthly_ds,
+    make_intermediate_monthly_ds,
 )
 
 
 def test__get_daily_complete_filepaths_for_month(fs):
-    complete_output_dir = Path("/path/to/data/dir/complete")
-    fs.create_dir(complete_output_dir)
-    nh_complete_dir = get_ecdr_dir(
-        complete_output_dir=complete_output_dir / "north",
+    intermediate_output_dir = Path("/path/to/data/dir/intermediate")
+    fs.create_dir(intermediate_output_dir)
+    nh_intermediate_dir = get_ecdr_dir(
+        intermediate_output_dir=intermediate_output_dir / "north",
         year=2022,
         is_nrt=False,
     )
-    sh_complete_dir = get_ecdr_dir(
-        complete_output_dir=complete_output_dir / "south",
+    sh_intermediate_dir = get_ecdr_dir(
+        intermediate_output_dir=intermediate_output_dir / "south",
         year=2022,
         is_nrt=False,
     )
     year = 2022
     month = 3
     _fake_files_for_test_year_month_and_hemisphere = [
-        nh_complete_dir / "sic_psn12.5_20220301_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220302_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220303_am2_v05r01.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220301_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220302_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220303_F17_{ECDR_PRODUCT_VERSION}.nc",
     ]
     _fake_files = [
-        nh_complete_dir / "sic_psn12.5_20220201_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220201_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220202_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220202_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220203_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220203_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220301_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220302_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220303_am2_v05r01.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220201_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss12.5_20220201_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220202_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss12.5_20220202_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220203_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss12.5_20220203_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss12.5_20220301_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss12.5_20220302_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss12.5_20220303_F17_{ECDR_PRODUCT_VERSION}.nc",
         *_fake_files_for_test_year_month_and_hemisphere,
-        nh_complete_dir / "sic_psn12.5_20220401_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220401_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220402_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220402_am2_v05r01.nc",
-        nh_complete_dir / "sic_psn12.5_20220403_am2_v05r01.nc",
-        sh_complete_dir / "sic_pss12.5_20220403_am2_v05r01.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220401_F17_{ECDR_PRODUCT_VERSION}.nc",
+        sh_intermediate_dir / f"sic_pss12.5_20220401_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220402_F17_{ECDR_PRODUCT_VERSION}.nc",
+        sh_intermediate_dir / f"sic_pss12.5_20220402_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn12.5_20220403_F17_{ECDR_PRODUCT_VERSION}.nc",
+        sh_intermediate_dir / f"sic_pss12.5_20220403_F17_{ECDR_PRODUCT_VERSION}.nc",
     ]
     for _file in _fake_files:
+        logger.info(f"creating {_file=}")
         fs.create_file(_file)
 
     actual = _get_daily_complete_filepaths_for_month(
         year=year,
         month=month,
-        complete_output_dir=complete_output_dir / NORTH,
+        intermediate_output_dir=intermediate_output_dir / NORTH,
         resolution="12.5",
         hemisphere=NORTH,
+        is_nrt=False,
     )
 
     assert sorted(_fake_files_for_test_year_month_and_hemisphere) == sorted(actual)
@@ -86,27 +90,27 @@ def test_check_min_day_for_valid_month():
     # Check that no error is raised for AMSR2, full month's worth of data
     check_min_days_for_valid_month(
         daily_ds_for_month=_mock_daily_ds_for_month(31),
-        sat="am2",
+        platform_id="am2",
     )
 
     # Check that an error is raised for AMSR2, not a full month's worth of data
     with pytest.raises(RuntimeError):
         check_min_days_for_valid_month(
             daily_ds_for_month=_mock_daily_ds_for_month(19),
-            sat="am2",
+            platform_id="am2",
         )
 
     # Check that an error is not raised for n07, with modified min worth of data
     check_min_days_for_valid_month(
         daily_ds_for_month=_mock_daily_ds_for_month(10),
-        sat="n07",
+        platform_id="n07",
     )
 
     # Check that an error is raised for n07, not a full month's worth of data
     with pytest.raises(RuntimeError):
         check_min_days_for_valid_month(
             daily_ds_for_month=_mock_daily_ds_for_month(9),
-            sat="n07",
+            platform_id="n07",
         )
 
 
@@ -124,7 +128,7 @@ def test__qa_field_has_flag():
         qa_field=mock_qa_field,
         flag_value=flag_1,
     )
-    npt.assert_array_equal(expected, actual)
+    nptesting.assert_array_equal(expected, actual)
 
     # flag 2
     expected = xr.DataArray([False, True, True])
@@ -132,7 +136,7 @@ def test__qa_field_has_flag():
         qa_field=mock_qa_field,
         flag_value=flag_2,
     )
-    npt.assert_array_equal(expected, actual)
+    nptesting.assert_array_equal(expected, actual)
 
     # flag 3
     expected = xr.DataArray([False, False, True])
@@ -140,7 +144,7 @@ def test__qa_field_has_flag():
         qa_field=mock_qa_field,
         flag_value=flag_3,
     )
-    npt.assert_array_equal(expected, actual)
+    nptesting.assert_array_equal(expected, actual)
 
 
 def _mock_daily_ds_for_month():
@@ -199,13 +203,13 @@ def _mock_daily_ds_for_month():
         [np.nan, np.nan, np.nan],
         # invalid_ice_mask_applied
         [
-            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["invalid_ice_mask_applied"],
-            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["invalid_ice_mask_applied"],
-            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["invalid_ice_mask_applied"],
+            CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS["invalid_ice_mask_applied"],
+            CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS["invalid_ice_mask_applied"],
+            CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS["invalid_ice_mask_applied"],
         ],
         # at_least_one_day_during_month_has_spatial_interpolation
         [
-            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["spatial_interpolation_applied"],
+            CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS["spatial_interpolation_applied"],
             np.nan,
             np.nan,
         ],
@@ -213,12 +217,12 @@ def _mock_daily_ds_for_month():
         [
             np.nan,
             np.nan,
-            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["temporal_interpolation_applied"],
+            CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS["temporal_interpolation_applied"],
         ],
         # at_least_one_day_during_month_has_melt_detected
         [
             np.nan,
-            QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["start_of_melt_detected"],
+            CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS["start_of_melt_detected"],
             np.nan,
         ],
         # land flag.
@@ -254,8 +258,8 @@ def _mock_daily_ds_for_month():
             cdr_seaice_conc=(("x", "time"), _mock_data),
             raw_nt_seaice_conc=(("x", "time"), _mock_data),
             raw_bt_seaice_conc=(("x", "time"), _mock_data),
-            qa_of_cdr_seaice_conc=(("x", "time"), _mock_daily_qa_fields),
-            melt_onset_day_cdr_seaice_conc=(("x", "time"), _mock_daily_melt_onset),
+            cdr_seaice_conc_qa_flag=(("x", "time"), _mock_daily_qa_fields),
+            cdr_melt_onset_day=(("x", "time"), _mock_daily_melt_onset),
             surface_type_mask=(("x", "time"), _mock_surface_type_mask),
             filepaths=(
                 ("time",),
@@ -280,50 +284,54 @@ def _mock_daily_ds_for_month():
     return _mock_daily_ds
 
 
-def test_calc_qa_of_cdr_seaice_conc_monthly():
+def test_calc_cdr_seaice_conc_monthly_qa_flag():
     _mock_daily_ds = _mock_daily_ds_for_month()
     expected_flags = np.array(
         [
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["average_concentration_exceeds_0.15"]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+            CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
+                "average_concentration_exceeds_0.15"
+            ]
+            + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["average_concentration_exceeds_0.15"]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+            CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
+                "average_concentration_exceeds_0.15"
+            ]
+            + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+            + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
                 "average_concentration_exceeds_0.30"
             ]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+            + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30"
             ],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+            CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+            CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30"
             ]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+            + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
                 "average_concentration_exceeds_0.15"
             ]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+            + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
                 "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
             ],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["invalid_ice_mask_applied"],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+            CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS["invalid_ice_mask_applied"],
+            CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
                 "at_least_one_day_during_month_has_spatial_interpolation"
             ],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+            CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
                 "at_least_one_day_during_month_has_temporal_interpolation"
             ],
-            QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+            CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
                 "at_least_one_day_during_month_has_melt_detected"
             ]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+            + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
                 "average_concentration_exceeds_0.15"
             ]
-            + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+            + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
                 "average_concentration_exceeds_0.30"
             ],
             0,
@@ -331,12 +339,12 @@ def test_calc_qa_of_cdr_seaice_conc_monthly():
     )
 
     _mean_daily_conc = _mock_daily_ds.cdr_seaice_conc.mean(dim="time")
-    actual = calc_qa_of_cdr_seaice_conc_monthly(
+    actual = calc_cdr_seaice_conc_monthly_qa_flag(
         daily_ds_for_month=_mock_daily_ds,
         cdr_seaice_conc_monthly=_mean_daily_conc,
     )
 
-    npt.assert_array_equal(expected_flags, actual.values)
+    nptesting.assert_array_equal(expected_flags, actual.values)
 
 
 def test__calc_conc_monthly(monkeypatch):
@@ -386,9 +394,10 @@ def test__calc_conc_monthly(monkeypatch):
         daily_ds_for_month=mock_daily_ds,
         hemisphere="north",
         resolution="12.5",
+        ancillary_source="CDRv5",
     )
 
-    npt.assert_array_equal(
+    nptesting.assert_array_equal(
         actual.values,
         np.array(
             [
@@ -401,7 +410,7 @@ def test__calc_conc_monthly(monkeypatch):
     )
 
 
-def test_calc_stdv_of_cdr_seaice_conc_monthly():
+def test_calc_cdr_seaice_conc_monthly_stdev():
     # time ->
     pixel_one = np.array([0.12, 0.15, 0.23])
     pixel_two = np.array([0.46, 0.55, 0.54])
@@ -423,7 +432,7 @@ def test_calc_stdv_of_cdr_seaice_conc_monthly():
         ),
     )
 
-    actual = calc_stdv_of_cdr_seaice_conc_monthly(
+    actual = calc_cdr_seaice_conc_monthly_stdev(
         daily_cdr_seaice_conc=mock_daily_conc,
     )
 
@@ -432,7 +441,7 @@ def test_calc_stdv_of_cdr_seaice_conc_monthly():
         == "Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation"
     )
 
-    npt.assert_array_equal(
+    nptesting.assert_array_equal(
         actual.values,
         np.array(
             [
@@ -445,7 +454,7 @@ def test_calc_stdv_of_cdr_seaice_conc_monthly():
     )
 
 
-def test_calc_melt_onset_day_cdr_seaice_conc_monthly():
+def test_calc_cdr_melt_onset_day_monthly():
     # time ->
     pixel_one = np.array([60, 60, 60])
     pixel_two = np.array([np.nan, 200, 200])
@@ -469,12 +478,12 @@ def test_calc_melt_onset_day_cdr_seaice_conc_monthly():
         ),
     )
 
-    actual = calc_melt_onset_day_cdr_seaice_conc_monthly(
+    actual = calc_cdr_melt_onset_day_monthly(
         daily_melt_onset_for_month=mock_daily_melt,
     )
 
     assert actual.long_name == "Monthly Day of Snow Melt Onset Over Sea Ice"
-    npt.assert_array_equal(
+    nptesting.assert_array_equal(
         actual.values,
         np.array(
             [
@@ -495,7 +504,9 @@ def test_monthly_ds(monkeypatch, tmpdir):
     # data is just 3 days in size, so we need to mock the
     # "check_min_days_for_valid_month" function.
     monkeypatch.setattr(
-        monthly, "check_min_days_for_valid_month", lambda *_args, **_kwargs: True
+        intermediate_monthly,
+        "check_min_days_for_valid_month",
+        lambda *_args, **_kwargs: True,
     )
 
     _mock_oceanmask = xr.DataArray(
@@ -511,20 +522,21 @@ def test_monthly_ds(monkeypatch, tmpdir):
     monkeypatch.setattr(
         util, "get_ocean_mask", lambda *_args, **_kwargs: _mock_oceanmask
     )
-    actual = make_monthly_ds(
+    actual = make_intermediate_monthly_ds(
         daily_ds_for_month=_mock_daily_ds,
-        sat="am2",
+        platform_id="am2",
         hemisphere=NORTH,
         resolution="12.5",
+        ancillary_source="CDRv5",
     )
 
     # Test that the dataset only contains the variables we expect.
     expected_vars = sorted(
         [
             "cdr_seaice_conc_monthly",
-            "stdv_of_cdr_seaice_conc_monthly",
-            "melt_onset_day_cdr_seaice_conc_monthly",
-            "qa_of_cdr_seaice_conc_monthly",
+            "cdr_seaice_conc_monthly_stdev",
+            "cdr_melt_onset_day_monthly",
+            "cdr_seaice_conc_monthly_qa_flag",
             "crs",
             "surface_type_mask",
         ]
@@ -545,14 +557,14 @@ def test_monthly_ds(monkeypatch, tmpdir):
     xr.testing.assert_allclose(actual, after_write, atol=0.009)
 
 
-def test__sat_for_month():
-    assert "am2" == _sat_for_month(sats=["am2", "am2", "am2", "am2"])
+def test__platform_id_for_month():
+    assert "am2" == _platform_id_for_month(platform_ids=["am2", "am2", "am2", "am2"])
 
-    assert "am2" == _sat_for_month(sats=["F17", "F17", "am2", "am2"])
+    assert "am2" == _platform_id_for_month(platform_ids=["F17", "F17", "am2", "am2"])
 
-    assert "F17" == _sat_for_month(sats=["F13", "F13", "F13", "F17"])
+    assert "F17" == _platform_id_for_month(platform_ids=["F13", "F13", "F13", "F17"])
 
-    assert "am2" == _sat_for_month(sats=["F13", "F17", "am2"])
+    assert "am2" == _platform_id_for_month(platform_ids=["F13", "F17", "am2"])
 
 
 def test_calc_surface_mask_monthly():
