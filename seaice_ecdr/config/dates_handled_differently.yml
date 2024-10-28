@@ -48,8 +48,8 @@ treat_outputs_as_missing:
     north:
       # Large missing data gap due to satellite issues
       - ['1987-12-03', '1988-01-13']
-      # Missing data
-      - ['1990-12-26', '1990-12-27']
+      # Missing data -- but we think we have enough to temporally interpolate
+      # - ['1990-12-26', '1990-12-27']
     south:
       # Large missing data gap due to satellite issues
       - ['1987-12-03', '1988-01-13']
