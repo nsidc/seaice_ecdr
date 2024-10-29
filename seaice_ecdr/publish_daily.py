@@ -20,7 +20,7 @@ from seaice_ecdr.intermediate_daily import read_cdecdr_ds
 from seaice_ecdr.nc_util import (
     add_coordinate_coverage_content_type,
     add_coordinates_attr,
-    remove_valid_range_from_coordinate_vars,
+    remove_FillValue_from_coordinate_vars,
 )
 from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.platforms.config import get_platform_id_from_name
@@ -142,7 +142,8 @@ def make_publication_ready_ds(
     )
 
     # Remove `valid_range` from coordinate attrs
-    remove_valid_range_from_coordinate_vars(complete_daily_ds)
+    # remove_valid_range_from_coordinate_vars(complete_daily_ds)
+    remove_FillValue_from_coordinate_vars(complete_daily_ds)
     add_coordinate_coverage_content_type(complete_daily_ds)
     add_coordinates_attr(complete_daily_ds)
 
@@ -218,6 +219,9 @@ def publish_daily_nc(
             prototype_subgroup = prototype_daily_ds[cdr_var_fieldnames].rename_vars(
                 remap_names
             )
+            # TODO: Set the long_name of the prototype variables
+            #       to be "AMSR2 Prototype..."
+            #       instead of "NOAA/NSIDC CDR of..."
             # Rename ancillary variables.
             for var in prototype_subgroup.values():
                 if "ancillary_variables" in var.attrs:
@@ -261,6 +265,9 @@ def publish_daily_nc(
     complete_daily_ds.time.encoding["units"] = "days since 1970-01-01"
     complete_daily_ds.time.encoding["calendar"] = "standard"
 
+    # No _FillValue for x or y is a CF requirement
+    complete_daily_ds.variables["x"].encoding["_FillValue"] = None
+    complete_daily_ds.variables["y"].encoding["_FillValue"] = None
     complete_daily_ds.to_netcdf(complete_daily_filepath)
     logger.success(f"Staged NC file for publication: {complete_daily_filepath}")
 

@@ -122,6 +122,7 @@ def _update_ncrcat_monthly_ds(
         source=", ".join([fp.name for fp in monthly_filepaths]),
         platform_ids=[platform_id_from_filename(fp.name) for fp in monthly_filepaths],
         resolution=resolution,
+        hemisphere=hemisphere,
     )
     agg_ds.attrs = monthly_aggregate_ds_global_attrs  # type: ignore[assignment]
 

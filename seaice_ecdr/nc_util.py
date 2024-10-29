@@ -55,6 +55,31 @@ def remove_valid_range_from_coordinate_vars(ds: xr.Dataset | datatree.DataTree):
     ds.time.attrs = {k: v for k, v in ds.time.attrs.items() if k != "valid_range"}
 
 
+def remove_FillValue_from_coordinate_vars(ds: xr.Dataset | datatree.DataTree):
+    """removes `valid_range` attr from coordinate variables in-place.
+
+    TODO: this function should be unnecessary. We use this to cleanup a ds
+    before writing out as a netcdf file because e.g., ancillary files that we
+    get x/y from contain `valid_range` attrs, but we don't want those in our
+    outputs. Ideally, the ancillary files and the code that creates the `time`
+    dim should omit `valid_range`, and this function becomes unnecessary.
+    """
+    try:
+        del ds.x.encoding["_FillValue"]
+    except KeyError:
+        pass
+
+    try:
+        del ds.y.encoding["_FillValue"]
+    except KeyError:
+        pass
+
+    try:
+        del ds.time.encoding["_FillValue"]
+    except KeyError:
+        pass
+
+
 def add_coordinate_coverage_content_type(ds: xr.Dataset | datatree.DataTree):
     """Adds `coverage_content_type` to the provided dataset in-place.
 

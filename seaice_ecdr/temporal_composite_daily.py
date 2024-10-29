@@ -622,7 +622,7 @@ def temporal_interpolation(
             "valid_range": [np.uint8(0), np.uint8(255)],
             "comment": (
                 "Value of 0 indicates no temporal interpolation occurred."
-                "  Values greater than 0 and less than 100 are of the form"
+                "  Values greater than 0 and less than 55 are of the form"
                 ' "AB" where "A" indicates the number of days prior to the'
                 ' current day and "B" indicates the number of days after'
                 " the current day used to linearly interpolate the data."
@@ -779,11 +779,11 @@ def temporal_interpolation(
         {
             "_FillValue": -1,
             "long_name": (
-                "Passive Microwave Daily Sea Ice Concentration",
+                "NOAA/NSIDC CDR of Passive Microwave Daily Sea Ice Concentration",
                 " Source Estimated Standard Deviation",
             ),
             "grid_mapping": "crs",
-            "valid_range": np.array((0, 300), dtype=np.float32),
+            "valid_range": np.array((0, 100), dtype=np.float32),
             "units": 1,
         },
         {
@@ -819,11 +819,11 @@ def temporal_interpolation(
         {
             "_FillValue": -1,
             "long_name": (
-                "Passive Microwave Daily Sea Ice Concentration",
+                "NOAA/NSIDC CDR of Passive Microwave Daily Sea Ice Concentration",
                 " Source Estimated Standard Deviation",
             ),
             "grid_mapping": "crs",
-            "valid_range": np.array((0, 300), dtype=np.float32),
+            "valid_range": np.array((0, 100), dtype=np.float32),
             "units": 1,
         },
         {

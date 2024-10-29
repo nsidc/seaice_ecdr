@@ -113,6 +113,8 @@ def _update_ncrcat_daily_ds(
         ds["cdr_supplementary"][sup_var] = surf_geo_ds[sup_var]
         # Add in the `coordinates` attr to lat and lon.
         ds["cdr_supplementary"][sup_var].attrs["coordinates"] = "y x"
+        # Perhaps these geolocation variables shouldn't have a fill value?
+        ds["cdr_supplementary"][sup_var].encoding["_FillValue"] = None
 
     # lat and lon fields have x and y coordinate variables associated with them
     # and get added automatically when adding those fields above. This drops
@@ -156,6 +158,7 @@ def _update_ncrcat_daily_ds(
         source=", ".join([fp.name for fp in daily_filepaths]),
         platform_ids=[platform_id_from_filename(fp.name) for fp in daily_filepaths],
         resolution=resolution,
+        hemisphere=hemisphere,
     )
     ds.attrs = daily_aggregate_ds_global_attrs  # type: ignore[assignment]
 

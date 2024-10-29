@@ -47,6 +47,23 @@ def get_ancillary_filepath(
     return filepath
 
 
+def fix_ds_attrs(ds):
+    """Correct potential errors in the ancillary datasets"""
+    # Remove fill values from x, if it exists
+    try:
+        del ds.variables["x"].encoding["_FillValue"]
+    except KeyError:
+        pass
+
+    # Remove fill values from y, if it exists
+    try:
+        del ds.variables["y"].encoding["_FillValue"]
+    except KeyError:
+        pass
+
+    return ds
+
+
 @cache
 def get_ancillary_ds(
     *,
@@ -68,6 +85,8 @@ def get_ancillary_ds(
         ancillary_source=ancillary_source,
     )
     ds = xr.load_dataset(filepath)
+
+    ds = fix_ds_attrs(ds)
 
     return ds
 

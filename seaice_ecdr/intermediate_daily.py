@@ -441,7 +441,7 @@ def complete_daily_ecdr_ds(
     This function returns
     - a Dataset containing
       - The melt onset field
-      - All appropriate QA and QC fields
+      - All appropriate QA fields
       - sets variable encoding for writting data to NetCDF.
     """
     # Initialize the complete daily ECDR dataset (cde) using the temporally

@@ -331,7 +331,7 @@ def calc_cdr_seaice_conc_monthly_qa_flag(
     )
 
     cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.assign_attrs(
-        long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QC flags",
+        long_name="NOAA/NSIDC CDR of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QA flags",
         standard_name="status_flag",
         flag_meanings=" ".join(
             k for k in CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS.keys()
@@ -377,7 +377,7 @@ def calc_cdr_seaice_conc_monthly(
 
     conc_monthly.name = "cdr_seaice_conc_monthly"
     conc_monthly = conc_monthly.assign_attrs(
-        long_name="NOAA/NSIDC Climate Data Record of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration",
+        long_name="NOAA/NSIDC CDR of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration",
         standard_name="sea_ice_area_fraction",
         coverage_content_type="image",
         units="1",
@@ -432,7 +432,7 @@ def calc_cdr_seaice_conc_monthly_stdev(
         coords=coords_without_time,
         dims=dims_without_time,
         attrs=dict(
-            long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
+            long_name="NOAA/NSIDC CDR of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
             valid_range=(np.float32(0.0), np.float32(1.0)),
             grid_mapping="crs",
             units="1",
@@ -460,7 +460,7 @@ def calc_cdr_melt_onset_day_monthly(
     cdr_melt_onset_day_monthly = cdr_melt_onset_day_monthly.drop_vars("time")
 
     cdr_melt_onset_day_monthly = cdr_melt_onset_day_monthly.assign_attrs(
-        long_name="Monthly Day of Snow Melt Onset Over Sea Ice",
+        long_name="NOAA/NSIDC CDR Monthly Day of Snow Melt Onset Over Sea Ice",
         units="1",
         valid_range=(np.ubyte(0), np.ubyte(255)),
         grid_mapping="crs",
@@ -624,6 +624,7 @@ def make_intermediate_monthly_ds(
         # really be?
         platform_ids=[platform_id],
         resolution=resolution,
+        hemisphere=hemisphere,
     )
     monthly_ds.attrs.update(monthly_ds_global_attrs)
 

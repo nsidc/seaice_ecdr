@@ -438,7 +438,7 @@ def test_calc_cdr_seaice_conc_monthly_stdev():
 
     assert (
         actual.attrs["long_name"]
-        == "Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation"
+        == "NOAA/NSIDC CDR of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation"
     )
 
     nptesting.assert_array_equal(
@@ -482,7 +482,9 @@ def test_calc_cdr_melt_onset_day_monthly():
         daily_melt_onset_for_month=mock_daily_melt,
     )
 
-    assert actual.long_name == "Monthly Day of Snow Melt Onset Over Sea Ice"
+    assert (
+        actual.long_name == "NOAA/NSIDC CDR Monthly Day of Snow Melt Onset Over Sea Ice"
+    )
     nptesting.assert_array_equal(
         actual.values,
         np.array(

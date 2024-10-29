@@ -603,7 +603,7 @@ def compute_initial_daily_ecdr_dataset(
         {
             "grid_mapping": "crs",
             "standard_name": "status_flag",
-            "long_name": "cdr_seaice_conc_interp_spatial_flag",
+            "long_name": "NOAA/NSIDC CDR of Passive Microwave Sea Ice Concentration spatial interpolation flags",
             "units": 1,
             "flag_masks": spat_int_flag_mask_values,
             "flag_meanings": (
@@ -1120,7 +1120,9 @@ def compute_initial_daily_ecdr_dataset(
         {
             "grid_mapping": "crs",
             "standard_name": "sea_ice_area_fraction",
-            "long_name": ("Bootstrap sea ice concentration, raw field with no masking"),
+            "long_name": (
+                "NOAA/NSIDC CDR of Bootstrap sea ice concentration, raw field with no masking"
+            ),
         },
         {
             "zlib": True,
@@ -1154,7 +1156,9 @@ def compute_initial_daily_ecdr_dataset(
         {
             "grid_mapping": "crs",
             "standard_name": "sea_ice_area_fraction",
-            "long_name": ("NASA Team sea ice concentration, raw field with no masking"),
+            "long_name": (
+                "NOAA/NSIDC CDR of NASA Team sea ice concentration, raw field with no masking"
+            ),
         },
         {
             "zlib": True,
@@ -1224,7 +1228,7 @@ def compute_initial_daily_ecdr_dataset(
         {
             "grid_mapping": "crs",
             "standard_name": "status_flag",
-            "long_name": "Sea Ice Concentration QC flags",
+            "long_name": "Sea Ice Concentration QA flags",
             "units": 1,
             "valid_range": [np.uint8(), np.uint8(255)],
         },
