@@ -16,7 +16,6 @@ from seaice_ecdr.nc_util import (
     add_coordinate_coverage_content_type,
     add_coordinates_attr,
     fix_monthly_ncattrs,
-    remove_valid_range_from_coordinate_vars,
 )
 from seaice_ecdr.nrt import override_attrs_for_nrt
 from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
@@ -261,7 +260,7 @@ def prepare_monthly_ds_for_publication(
 
     # Do final cleanup. This should be unnecessary (see the docstrings for the
     # associated fuctions for more).
-    remove_valid_range_from_coordinate_vars(complete_monthly_ds)
+    # remove_valid_range_from_coordinate_vars(complete_monthly_ds)
     add_coordinate_coverage_content_type(complete_monthly_ds)
     add_coordinates_attr(complete_monthly_ds)
 
@@ -298,6 +297,8 @@ def _write_publication_ready_nc_and_checksum(
     publication_ready_monthly_ds.time.encoding["units"] = "days since 1970-01-01"
     publication_ready_monthly_ds.time.encoding["calendar"] = "standard"
 
+    publication_ready_monthly_ds.variables["x"].encoding["_FillValue"] = None
+    publication_ready_monthly_ds.variables["y"].encoding["_FillValue"] = None
     publication_ready_monthly_ds.to_netcdf(complete_monthly_filepath)
     logger.success(f"Staged NC file for publication: {complete_monthly_filepath}")
 

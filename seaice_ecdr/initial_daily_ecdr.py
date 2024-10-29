@@ -1375,6 +1375,8 @@ def write_ide_netcdf(
                 "zlib": True,
             }
 
+    ide_ds.variables["x"].encoding["_FillValue"] = None
+    ide_ds.variables["y"].encoding["_FillValue"] = None
     ide_ds.to_netcdf(
         output_filepath,
         encoding=nc_encoding,

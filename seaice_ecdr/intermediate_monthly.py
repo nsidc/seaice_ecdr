@@ -706,7 +706,6 @@ def make_intermediate_monthly_nc(
     # seems to default to `np.nan` for variables without a FillValue.
     monthly_ds.x.encoding["_FillValue"] = None
     monthly_ds.y.encoding["_FillValue"] = None
-
     monthly_ds.to_netcdf(
         output_path,
         unlimited_dims=[

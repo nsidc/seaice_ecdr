@@ -169,6 +169,8 @@ def add_ncgroup(
     clean_ncgroup_name = ncgroup_name.replace("/", "")
     empty_datatree_fn = f"empty_datatree_{clean_ncgroup_name}.nc"
     empty_datatree_fp = Path(tmpdir, empty_datatree_fn)
+    empty_nc_datatree.variables["x"].encoding["_FillValue"] = None
+    empty_nc_datatree.variables["y"].encoding["_FillValue"] = None
     empty_nc_datatree.to_netcdf(empty_datatree_fp)
 
     new_file_list = []

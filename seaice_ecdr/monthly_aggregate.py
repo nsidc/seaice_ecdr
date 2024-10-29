@@ -237,6 +237,8 @@ def cli(
             # After the ncrcat process, a few attributes need to be cleaned up
             fix_monthly_aggregate_ncattrs(ds)
 
+            ds.variables["x"].encoding["_FillValue"] = None
+            ds.variables["y"].encoding["_FillValue"] = None
             ds.to_netcdf(
                 output_filepath,
             )

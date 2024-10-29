@@ -86,7 +86,7 @@ def finalize_cdecdr_ds(
             ),
             "units": "1",
             "grid_mapping": "crs",
-            "valid_range": np.array((0.0, 100.0), dtype=np.float32),
+            "valid_range": np.array((0.0, 1.0), dtype=np.float32),
         },
         {
             "zlib": True,
@@ -148,7 +148,7 @@ def finalize_cdecdr_ds(
             ds["cdr_melt_onset_day"].data,
             {
                 "standard_name": "status_flag",
-                "long_name": "NOAA/NSIDC CDR of Day Of Year of NH Snow Melt Onset On Sea Ice",
+                "long_name": "NOAA/NSIDC CDR Day Of Year of NH Snow Melt Onset On Sea Ice",
                 "units": "1",
                 "grid_mapping": "crs",
                 "valid_range": np.array((0, 255), dtype=np.uint8),
@@ -292,7 +292,7 @@ def finalize_cdecdr_ds(
             ),
             "comment": (
                 "Value of 0 indicates no temporal interpolation occurred. "
-                " Values greater than 0 and less than 55 are of the form"
+                " Values greater than 0 and less than or equal to 55 are of the form"
                 " 'AB' where 'A' indicates the number of days prior to the"
                 " current day and 'B' indicates the number of days after the"
                 " current day used to linearly interpolate the data.  If"

@@ -622,7 +622,7 @@ def temporal_interpolation(
             "valid_range": [np.uint8(0), np.uint8(255)],
             "comment": (
                 "Value of 0 indicates no temporal interpolation occurred."
-                "  Values greater than 0 and less than 55 are of the form"
+                "  Values greater than 0 and less than or equal to 55 are of the form"
                 ' "AB" where "A" indicates the number of days prior to the'
                 ' current day and "B" indicates the number of days after'
                 " the current day used to linearly interpolate the data."
@@ -783,7 +783,7 @@ def temporal_interpolation(
                 " Source Estimated Standard Deviation",
             ),
             "grid_mapping": "crs",
-            "valid_range": np.array((0, 100), dtype=np.float32),
+            "valid_range": np.array((0, 1), dtype=np.float32),
             "units": 1,
         },
         {
@@ -823,7 +823,7 @@ def temporal_interpolation(
                 " Source Estimated Standard Deviation",
             ),
             "grid_mapping": "crs",
-            "valid_range": np.array((0, 100), dtype=np.float32),
+            "valid_range": np.array((0, 1), dtype=np.float32),
             "units": 1,
         },
         {
@@ -930,6 +930,8 @@ def write_tie_netcdf(
         elif varname not in uncompressed_fields:
             nc_encoding[varname] = {"zlib": True}
 
+    tie_ds.variables["x"].encoding["_FillValue"] = None
+    tie_ds.variables["y"].encoding["_FillValue"] = None
     tie_ds.to_netcdf(
         output_filepath,
         encoding=nc_encoding,
