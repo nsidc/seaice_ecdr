@@ -833,6 +833,10 @@ def temporal_interpolation(
 
     tie_ds = tie_ds.drop_vars("cdr_seaice_conc_stdev_raw")
 
+    # As a global attr, the platform is copied from the first DataArray in the stack
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
+    tie_ds.attrs["platform"] = platform.id
+
     return tie_ds
 
 
