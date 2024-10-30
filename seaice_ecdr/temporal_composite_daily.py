@@ -13,7 +13,6 @@ import numpy as np
 import numpy.typing as npt
 import xarray as xr
 from loguru import logger
-from pm_icecon.fill_polehole import fill_pole_hole
 from pm_tb_data._types import NORTH, Hemisphere
 from scipy.ndimage import shift
 
@@ -26,6 +25,9 @@ from seaice_ecdr.ancillary import (
 )
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
+
+# from pm_icecon.fill_polehole import fill_pole_hole
+from seaice_ecdr.fill_polehole import fill_pole_hole
 from seaice_ecdr.initial_daily_ecdr import (
     read_or_create_and_read_idecdr_ds,
 )
@@ -416,7 +418,8 @@ def calc_stdev_inputs(
     try:
         assert verify_array_nominal_range(nt_conc)
     except AssertionError:
-        logger.error("bt_conc_median is not consistent with values 0-1")
+        breakpoint()
+        logger.error("nt_conc_median is not consistent with values 0-1")
 
     # Set a mask for the application of standard deviation calculation
     stdev_mask = np.zeros(bt_conc.shape, dtype=bool)
@@ -749,11 +752,10 @@ def temporal_interpolation(
         )
         nt_conc.data[0, :, :] = nt_conc_pole_filled[:, :]
 
-        # TODO: I noticed that NT raw conc here can be > 100 (!)
-        #       So for stdev calc, clamp to 100%
+        # TODO: Clamp nt_conc conc to 254%
         nt_conc = nt_conc.where(
-            nt_conc < 100,
-            other=100,
+            (nt_conc <= 2.54) | np.isnan(nt_conc),
+            other=2.54,
         )
 
     (stdev_field_mask, bt_conc_thres, nt_conc_thres, not_enough_neighbors) = (
