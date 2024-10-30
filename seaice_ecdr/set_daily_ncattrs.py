@@ -7,6 +7,7 @@ from pm_tb_data._types import NORTH, Hemisphere
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.nc_attrs import get_global_attrs
+from seaice_ecdr.tb_data import get_data_url_from_data_source
 from seaice_ecdr.util import get_num_missing_pixels
 
 CDECDR_FIELDS_TO_DROP = [
@@ -358,7 +359,7 @@ def finalize_cdecdr_ds(
         time=ds.time,
         temporality="daily",
         aggregate=False,
-        source=f"Generated from {ds_in.data_source}",
+        source=f"Generated from {get_data_url_from_data_source(data_source=ds_in.data_source)}",
         platform_ids=[ds_in.platform],
         resolution=resolution,
         hemisphere=hemisphere,

@@ -230,6 +230,16 @@ def publish_daily_nc(
                     ].replace("cdr_", f"{PROTOTYPE_PLATFORM_ID}_")
                 if var.dims == ("time", "y", "x"):
                     var.attrs["coordinates"] = "time y x"
+                if "long_name" in var.attrs:
+                    if PROTOTYPE_PLATFORM_ID == "am2":
+                        var.attrs["long_name"] = var.attrs["long_name"].replace(
+                            "NOAA/NSIDC CDR of Passive Microwave", "AMSR2 Prototype"
+                        )
+                    else:
+                        raise RuntimeError(
+                            f"Unknown platform ID for naming: {PROTOTYPE_PLATFORM_ID}"
+                        )
+
             # Drop x, y, and time coordinate variables. These will be inherited from the parent.
             prototype_subgroup = prototype_subgroup.drop_vars(["x", "y", "time"])
             # Retain only the group-specific global attrs

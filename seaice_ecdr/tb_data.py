@@ -406,3 +406,21 @@ def get_ecdr_tb_data(
         return _get_nsidc_0007_tbs(date=date, hemisphere=hemisphere)
     else:
         raise RuntimeError(f"Platform not supported: {platform}")
+
+
+def get_data_url_from_data_source(
+    *,
+    data_source: str,
+) -> str:
+    """Return the URL for this data_source"""
+    data_url = ""
+    if data_source == "NSIDC-0001":
+        data_url = "https://nsidc.org/data/nsidc-0001"
+    elif data_source == "NSIDC-0007":
+        data_url = "https://nsidc.org/data/nsidc-0007"
+    elif data_source == "AU_SI25":
+        data_url = "https://nsidc.org/data/au_si25"
+    elif data_source == "AU_SI12":
+        data_url = "https://nsidc.org/data/au_si12"
+
+    return data_url
