@@ -424,3 +424,13 @@ def get_data_url_from_data_source(
         data_url = "https://nsidc.org/data/au_si12"
 
     return data_url
+
+
+def get_hemisphere_from_crs_da(
+    crs: xr.DataArray,
+) -> Hemisphere:
+    """Note: This logic assumes hemisphere will either be 'north' or 'south'"""
+    if "NH" in crs.attrs["long_name"]:
+        return cast(Hemisphere, "north")
+    else:
+        return cast(Hemisphere, "south")

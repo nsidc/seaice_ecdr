@@ -84,7 +84,13 @@ def test__get_daily_complete_filepaths_for_month(fs):
 def test_check_min_day_for_valid_month():
     def _mock_daily_ds_for_month(num_days: int) -> xr.Dataset:
         return xr.Dataset(
-            data_vars=dict(time=[dt.date(2022, 3, x) for x in range(1, num_days + 1)])
+            data_vars=dict(
+                time=np.array(
+                    [dt.date(2022, 3, x) for x in range(1, num_days + 1)],
+                    dtype=np.datetime64,
+                )
+            ),
+            attrs={"platform_id": "F17"},
         )
 
     # Check that no error is raised for AMSR2, full month's worth of data
@@ -265,12 +271,21 @@ def _mock_daily_ds_for_month():
                 ("time",),
                 [Path("/tmp/foo.nc"), Path("/tmp/bar.nc"), Path("/tmp/baz.nc")],
             ),
-            crs=(("time"), ["a"] * 3),
+            crs=(
+                ("time"),
+                ["a"] * 3,
+                {
+                    "long_name": "fake_NH_crs",
+                },
+            ),
         ),
         coords=dict(
             x=list(range(9)),
-            # doy 60, 61, 62
-            time=[dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+            # doy 60, 61, 62; need to be datetime64 to mimic xarray time
+            time=np.array(
+                [dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+                dtype=np.datetime64,
+            ),
         ),
     )
 
@@ -280,6 +295,7 @@ def _mock_daily_ds_for_month():
         flag_values=np.array([50, 75, 100, 200, 250], dtype=np.byte),
         flag_meanings="ocean lake polehole_mask coast land",
     )
+    _mock_daily_ds.attrs["platform_id"] = "F17"
 
     return _mock_daily_ds
 
@@ -364,7 +380,10 @@ def test__calc_conc_monthly(monkeypatch):
         data=_mock_data,
         dims=["y", "time"],
         coords=dict(
-            time=[dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+            time=np.array(
+                [dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+                dtype=np.datetime64,
+            ),
             y=list(range(4)),
         ),
     )
@@ -372,7 +391,17 @@ def test__calc_conc_monthly(monkeypatch):
     mock_daily_ds = xr.Dataset(
         data_vars=dict(
             cdr_seaice_conc=mock_daily_conc,
-        )
+            crs=(
+                ("time"),
+                ["a"] * 3,
+                {
+                    "long_name": "fake_NH_crs",
+                },
+            ),
+        ),
+        attrs=dict(
+            platform_id="F17",
+        ),
     )
 
     # Mock the ocean mask used to determine if there are any missing pixels.
@@ -524,6 +553,7 @@ def test_monthly_ds(monkeypatch, tmpdir):
     monkeypatch.setattr(
         util, "get_ocean_mask", lambda *_args, **_kwargs: _mock_oceanmask
     )
+
     actual = make_intermediate_monthly_ds(
         daily_ds_for_month=_mock_daily_ds,
         platform_id="am2",

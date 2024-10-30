@@ -3,6 +3,7 @@ processing."""
 
 import datetime as dt
 import os
+from functools import cache
 from pathlib import Path
 
 import yaml
@@ -16,6 +17,7 @@ DEFAULT_MISSING_DATES_CONFIG_FILEPATH = Path(
 ).resolve()
 
 
+@cache
 def _load_dates_treated_differently():
     """The default configuration file can be overridden
     by using an environment variable:
@@ -42,13 +44,6 @@ def _load_dates_treated_differently():
 
     with open(missing_dates_filepath, "r") as f:
         return yaml.safe_load(f)
-
-
-# def _load_missing_ranges():
-#    configs_dir = os.path.join(cl.cdr_root_dir(), 'config')
-#    missing_periods_fp = os.path.join(configs_dir, 'missing_ranges.yml')
-#
-#    return cl.load_configuration(missing_periods_fp)
 
 
 def _missing_range_strs_to_dates(missing_ranges):
@@ -98,6 +93,36 @@ def periods_of_cdr_missing_data(
         ranges = []
 
     return _missing_range_strs_to_dates(ranges)
+
+
+def months_of_cdr_missing_data(
+    platform_id: SUPPORTED_PLATFORM_ID,
+    hemisphere: Hemisphere,
+):
+    """Returns a list of year-month strings
+    for which CDR's output should be all-missing.
+    """
+    dates_treated_differently = _load_dates_treated_differently()
+    try:
+        missing_year_months = dates_treated_differently["treat_months_as_missing"][
+            platform_id
+        ][hemisphere]
+    except KeyError:
+        missing_year_months = []
+
+    return missing_year_months
+
+
+def year_month_is_all_empty(year_month, empty_year_months):
+    """
+    Given a list of date ranges (inclusive start/end),
+    return boolean if date intersects any range.
+    """
+    for empty_year_month in empty_year_months:
+        if year_month == empty_year_month:
+            return True
+
+    return False
 
 
 def date_in_ranges(date, date_ranges):
