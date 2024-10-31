@@ -616,6 +616,10 @@ def temporal_interpolation(
     )
 
     # Add the temporal interp flags to the dataset
+
+    # Ensure that non-ocean always has temporal-interpolation value of 255
+    ti_flags[non_ocean_mask.data] = 255
+
     tie_ds["cdr_seaice_conc_interp_temporal_flag"] = (
         ("time", "y", "x"),
         np.expand_dims(ti_flags, axis=0),

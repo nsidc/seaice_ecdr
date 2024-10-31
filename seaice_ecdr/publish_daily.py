@@ -111,7 +111,7 @@ def make_publication_ready_ds(
         intermediate_daily_ds["cdr_seaice_conc_stdev"].data[:] = -1
         intermediate_daily_ds["cdr_seaice_conc_qa_flag"].data[:] = 8
         intermediate_daily_ds["cdr_seaice_conc_interp_spatial_flag"].data[:] = 0
-        intermediate_daily_ds["cdr_seaice_conc_interp_temporal_flag"].data[:] = 0
+        intermediate_daily_ds["cdr_seaice_conc_interp_temporal_flag"].data[:] = 255
     # publication-ready daily data are grouped using `DataTree`.
     # Create a `cdr_supplementary` group for "supplemntary" fields
     cdr_supplementary_fields = [
