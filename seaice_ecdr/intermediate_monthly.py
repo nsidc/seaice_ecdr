@@ -748,10 +748,6 @@ def make_intermediate_monthly_nc(
         ancillary_source=ancillary_source,
     )
 
-    # Set `x` and `y` `_FillValue` to `None`. Although unset initially, `xarray`
-    # seems to default to `np.nan` for variables without a FillValue.
-    # monthly_ds.x.encoding["_FillValue"] = None
-    # monthly_ds.y.encoding["_FillValue"] = None
     monthly_ds = remove_FillValue_from_coordinate_vars(monthly_ds)
     monthly_ds.to_netcdf(
         output_path,

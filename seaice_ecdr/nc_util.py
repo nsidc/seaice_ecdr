@@ -64,36 +64,11 @@ def remove_FillValue_from_coordinate_vars(ds: xr.Dataset | datatree.DataTree):
     outputs. Ideally, the ancillary files and the code that creates the `time`
     dim should omit `valid_range`, and this function becomes unnecessary.
     """
-    # I this might *actually* work to remove the _FillValue for xarray
     for coord_var in ("x", "y", "time"):
         try:
             ds.variables["coord_var"].encoding["_FillValue"] = None
         except KeyError:
             pass
-
-    # this should be a simplified verison of the orig version of this routine
-
-    # for coord_var in ('x', 'y', 'time'):
-    #    try:
-    #        del ds.variables['coord_var'].encoding['_FillValue']
-    #    except KeyError:
-    #        pass
-
-    # This was the original contents of this routine
-    # try:
-    #    del ds.x.encoding["_FillValue"]
-    # except KeyError:
-    #    pass
-
-    # try:
-    #    del ds.y.encoding["_FillValue"]
-    # except KeyError:
-    #    pass
-
-    # try:
-    #    del ds.time.encoding["_FillValue"]
-    # except KeyError:
-    #    pass
 
     return ds
 
@@ -187,15 +162,6 @@ def add_ncgroup(
     empty_datatree_fn = f"empty_datatree_{clean_ncgroup_name}.nc"
     empty_datatree_fp = Path(tmpdir, empty_datatree_fn)
     empty_nc_datatree = remove_FillValue_from_coordinate_vars(empty_nc_datatree)
-    # try:
-    #    empty_nc_datatree.variables["x"].encoding["_FillValue"] = None
-    # except KeyError:
-    #    pass
-
-    # try:
-    #    empty_nc_datatree.variables["y"].encoding["_FillValue"] = None
-    # except KeyError:
-    #    pass
 
     empty_nc_datatree.to_netcdf(empty_datatree_fp)
 

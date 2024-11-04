@@ -220,8 +220,6 @@ def make_daily_aggregate_netcdf_for_year(
             fix_daily_aggregate_ncattrs(daily_ds)
 
             # Write out the aggregate daily file.
-            # daily_ds.variables["x"].encoding["_FillValue"] = None
-            # daily_ds.variables["y"].encoding["_FillValue"] = None
             daily_ds = remove_FillValue_from_coordinate_vars(daily_ds)
             daily_ds.to_netcdf(
                 output_path,

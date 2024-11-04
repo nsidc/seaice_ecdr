@@ -26,8 +26,6 @@ from seaice_ecdr.ancillary import (
 )
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
-
-# from pm_icecon.fill_polehole import fill_pole_hole
 from seaice_ecdr.fill_polehole import fill_pole_hole
 from seaice_ecdr.initial_daily_ecdr import (
     read_or_create_and_read_idecdr_ds,
@@ -936,8 +934,6 @@ def write_tie_netcdf(
         elif varname not in uncompressed_fields:
             nc_encoding[varname] = {"zlib": True}
 
-    # tie_ds.variables["x"].encoding["_FillValue"] = None
-    # tie_ds.variables["y"].encoding["_FillValue"] = None
     tie_ds = remove_FillValue_from_coordinate_vars(tie_ds)
     tie_ds.to_netcdf(
         output_filepath,

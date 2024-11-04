@@ -299,8 +299,6 @@ def _write_publication_ready_nc_and_checksum(
     publication_ready_monthly_ds.time.encoding["units"] = "days since 1970-01-01"
     publication_ready_monthly_ds.time.encoding["calendar"] = "standard"
 
-    # publication_ready_monthly_ds.variables["x"].encoding["_FillValue"] = None
-    # publication_ready_monthly_ds.variables["y"].encoding["_FillValue"] = None
     publication_ready_monthly_ds = remove_FillValue_from_coordinate_vars(
         publication_ready_monthly_ds
     )

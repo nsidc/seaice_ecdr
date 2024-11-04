@@ -488,8 +488,6 @@ def compute_initial_daily_ecdr_dataset(
 
     # Spatially interpolate the brightness temperatures
     for tbname in EXPECTED_ECDR_TB_NAMES:
-        # TODO: WIP:  Replace this TB assignment with
-        #       util.py's create_tb_dataarray()
         tb_day_name = f"{tbname}_day"
 
         tb_si_varname = f"{tb_day_name}_si"
@@ -512,7 +510,6 @@ def compute_initial_daily_ecdr_dataset(
                 "valid_range": [np.float64(10.0), np.float64(350.0)],
             },
             {
-                # TODO: this can be packed as uint16
                 "zlib": True,
             },
         )
@@ -1258,8 +1255,6 @@ def write_ide_netcdf(
                 "zlib": True,
             }
 
-    # ide_ds.variables["x"].encoding["_FillValue"] = None
-    # ide_ds.variables["y"].encoding["_FillValue"] = None
     ide_ds = remove_FillValue_from_coordinate_vars(ide_ds)
     ide_ds.to_netcdf(
         output_filepath,
