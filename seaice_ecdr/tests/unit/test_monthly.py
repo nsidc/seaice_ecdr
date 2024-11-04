@@ -43,27 +43,27 @@ def test__get_daily_complete_filepaths_for_month(fs):
     year = 2022
     month = 3
     _fake_files_for_test_year_month_and_hemisphere = [
-        nh_intermediate_dir / f"sic_psn12.5_20220301_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_psn12.5_20220302_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_psn12.5_20220303_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220301_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220302_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220303_F17_{ECDR_PRODUCT_VERSION}.nc",
     ]
     _fake_files = [
-        nh_intermediate_dir / f"sic_psn12.5_20220201_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_pss12.5_20220201_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_psn12.5_20220202_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_pss12.5_20220202_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_psn12.5_20220203_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_pss12.5_20220203_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_pss12.5_20220301_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_pss12.5_20220302_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_pss12.5_20220303_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220201_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss25_20220201_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220202_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss25_20220202_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220203_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss25_20220203_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss25_20220301_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss25_20220302_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss25_20220303_F17_{ECDR_PRODUCT_VERSION}.nc",
         *_fake_files_for_test_year_month_and_hemisphere,
-        nh_intermediate_dir / f"sic_psn12.5_20220401_F17_{ECDR_PRODUCT_VERSION}.nc",
-        sh_intermediate_dir / f"sic_pss12.5_20220401_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_psn12.5_20220402_F17_{ECDR_PRODUCT_VERSION}.nc",
-        sh_intermediate_dir / f"sic_pss12.5_20220402_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_psn12.5_20220403_F17_{ECDR_PRODUCT_VERSION}.nc",
-        sh_intermediate_dir / f"sic_pss12.5_20220403_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220401_F17_{ECDR_PRODUCT_VERSION}.nc",
+        sh_intermediate_dir / f"sic_pss25_20220401_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220402_F17_{ECDR_PRODUCT_VERSION}.nc",
+        sh_intermediate_dir / f"sic_pss25_20220402_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220403_F17_{ECDR_PRODUCT_VERSION}.nc",
+        sh_intermediate_dir / f"sic_pss25_20220403_F17_{ECDR_PRODUCT_VERSION}.nc",
     ]
     for _file in _fake_files:
         logger.info(f"creating {_file=}")
@@ -73,7 +73,7 @@ def test__get_daily_complete_filepaths_for_month(fs):
         year=year,
         month=month,
         intermediate_output_dir=intermediate_output_dir / NORTH,
-        resolution="12.5",
+        resolution="25",
         hemisphere=NORTH,
         is_nrt=False,
     )
@@ -422,7 +422,7 @@ def test__calc_conc_monthly(monkeypatch):
     actual = calc_cdr_seaice_conc_monthly(
         daily_ds_for_month=mock_daily_ds,
         hemisphere="north",
-        resolution="12.5",
+        resolution="25",
         ancillary_source="CDRv5",
     )
 
@@ -558,7 +558,7 @@ def test_monthly_ds(monkeypatch, tmpdir):
         daily_ds_for_month=_mock_daily_ds,
         platform_id="am2",
         hemisphere=NORTH,
-        resolution="12.5",
+        resolution="25",
         ancillary_source="CDRv5",
     )
 
