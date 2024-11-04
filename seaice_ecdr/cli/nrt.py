@@ -86,6 +86,7 @@ from seaice_ecdr.platforms.config import (
 @click.option(
     "--nrt-platform-id",
     type=click.Choice(["F17", "am2"]),
+    required=True,
 )
 def cli(
     *,

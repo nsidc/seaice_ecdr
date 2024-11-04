@@ -333,14 +333,29 @@ def override_attrs_for_nrt(
     assert platform_id in override_for_nrt.attrs["summary"]
 
     override_for_nrt.attrs["id"] = "https://doi.org/10.7265/j0z0-4h87"
-    override_for_nrt.attrs["metadata_link"] = (
-        f"https://nsidc.org/data/g10016/versions/{ECDR_NRT_PRODUCT_VERSION.major_version_number}"
-    )
+    link_to_dataproduct = f"https://nsidc.org/data/g10016/versions/{ECDR_NRT_PRODUCT_VERSION.major_version_number}"
+    override_for_nrt.attrs["metadata_link"] = link_to_dataproduct
     override_for_nrt.attrs["title"] = (
         "Near-Real-Time NOAA-NSIDC Climate Data Record of Passive Microwave"
         f" Sea Ice Concentration Version {ECDR_NRT_PRODUCT_VERSION.major_version_number}"
     )
     override_for_nrt.attrs["product_version"] = ECDR_NRT_PRODUCT_VERSION.version_str
+
+    # Override the reference attr for the cdr variable
+    if "cdr_seaice_conc" in override_for_nrt:
+        override_for_nrt["cdr_seaice_conc"].attrs["reference"] = link_to_dataproduct
+    if "cdr_seaice_conc_monthly" in override_for_nrt:
+        override_for_nrt["cdr_seaice_conc_monthly"].attrs[
+            "reference"
+        ] = link_to_dataproduct
+
+    # AM2 data available and we need to override the "reference" for the monthly cdr variable.
+    # TODO: this assumes the prototype group will always contain AM2 data, which
+    # may not be the case in the future.
+    if "prototype_am2" in override_for_nrt:
+        override_for_nrt["prototype_am2"]["am2_seaice_conc_monthly"].attrs[
+            "reference"
+        ] = link_to_dataproduct
 
     return override_for_nrt
 
