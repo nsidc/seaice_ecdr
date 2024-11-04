@@ -1,4 +1,12 @@
 """Code related to interacting with NetCDF files.
+
+Note/TODO: some of these functions (e.g., those prefaced with `fix_`) are hacks
+to accomplish overriding attributes that are originally set in other parts of
+the code. These functions are used to ensure our final outputs have the
+attributes we want without needing to track down the source of where all of
+these attributes get set in intermediate files. Eventually we should set
+attributes as desired at creation time instead of "fixing" them at the end of
+processing.
 """
 
 import datetime as dt
@@ -139,7 +147,13 @@ def add_ncgroup(
     ncgroup_name: str,
 ) -> list[Path]:
     """If the specified group name is in any of the listed filepaths,
-    Add an "empty" version to all of them."""
+    Add an "empty" version to all of them.
+
+    In practice, this is used to create empty `prototype_am2` groups when we are
+    aggregating files that do (during the AMSR2 period) and do not contain
+    (pre-AMSR2) the `prototype_am2` group. This occurs when e.g., aggregating
+    daily data over a period that intersects the start date for AMSR2.
+    """
     add_groupname = False
     for nc_filename in reversed(filepath_list):
         ds = datatree.open_datatree(nc_filename)
@@ -209,7 +223,13 @@ def adjust_monthly_aggregate_ncattrs(fp):
 def fix_monthly_ncattrs(
     ds: xr.Dataset | datatree.datatree.DataTree,
 ) -> xr.Dataset | datatree.datatree.DataTree:
-    """Fix the attributes of the monthly CDR files"""
+    """Hack to fix the attributes of the monthly CDR files
+
+    Attrs get set in other parts of the code, but we made a decision to change
+    these in the final published output. This should be considered a temporary
+    hack until we can track down and make updates to the code where these
+    attributes are originally set.
+    """
     # TODO: Have these fixes pull information from proper config files
     start_of_month_str = ds.attrs["time_coverage_start"]
     start_of_month = parse(start_of_month_str).date()
@@ -262,7 +282,13 @@ def get_unique_comma_separated_items(item_string):
 def fix_monthly_aggregate_ncattrs(
     ds: xr.Dataset | datatree.datatree.DataTree,
 ) -> xr.Dataset | datatree.datatree.DataTree:
-    """Fix the attributes of the monthly-aggregated (all months) CDR files"""
+    """Hack to fix the attributes of the monthly-aggregated (all months) CDR files
+
+    Attrs get set in other parts of the code, but we made a decision to change
+    these in the final published output. This should be considered a temporary
+    hack until we can track down and make updates to the code where these
+    attributes are originally set.
+    """
     # NOTE: No need to fix prototype_am2 attrs
 
     # Fixes for "normal" monthly-aggregate product -- i.e. non-prototype
@@ -281,7 +307,13 @@ def fix_monthly_aggregate_ncattrs(
 def fix_daily_aggregate_ncattrs(
     ds: xr.Dataset | datatree.datatree.DataTree,
 ) -> xr.Dataset | datatree.datatree.DataTree:
-    """Fix the attributes of the daily-aggregated (annual) CDR files"""
+    """Hack to fix the attributes of the daily-aggregated (annual) CDR files
+
+    Attrs get set in other parts of the code, but we made a decision to change
+    these in the final published output. This should be considered a temporary
+    hack until we can track down and make updates to the code where these
+    attributes are originally set.
+    """
     # Note: No fixes are needed for the prototype_am2 group
     # TODO: Have these fixes pull information from proper config files
     start_of_year_str = ds.attrs["time_coverage_start"]
