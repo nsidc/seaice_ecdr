@@ -178,9 +178,8 @@ def multiprocess_intermediate_daily(
 @click.option(
     "--land-spillover-alg",
     required=False,
-    # type=click.Choice(["BT_NT", "NT2", "ILS"]),
     type=click.Choice(get_args(LAND_SPILL_ALGS)),
-    default="BT_NT",
+    default="NT2_BT",
 )
 @click.option(
     "--ancillary-source",

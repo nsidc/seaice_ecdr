@@ -721,7 +721,6 @@ def create_standard_ecdr_for_dates(
 @click.option(
     "--land-spillover-alg",
     required=True,
-    # type=click.Choice(("BT_NT", "NT2", "ILS")),
     type=click.Choice(get_args(LAND_SPILL_ALGS)),
 )
 @click.option(
