@@ -27,11 +27,10 @@ def test_publish_monthly_nc(base_output_dir_test_path):  # noqa
     # but the integration tests do not currently run with the AMSR2 platform
     # config, so the `prototype_am2` group is not present.
     # assert "prototype_am2" in ds.groups
+
     assert "/cdr_supplementary" in ds.groups
 
     assert "valid_range" not in ds.time.attrs.keys()
-    assert "valid_range" not in ds.x.attrs.keys()
-    assert "valid_range" not in ds.y.attrs.keys()
 
     # Assert that the checksums exist where we expect them to be.
     checksum_filepath = (

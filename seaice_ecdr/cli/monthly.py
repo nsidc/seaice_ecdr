@@ -1,40 +1,49 @@
 import datetime as dt
 from pathlib import Path
-from typing import Final, get_args
+from typing import get_args
 
 import click
 import pandas as pd
 from pm_tb_data._types import Hemisphere
 
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.cli.util import CLI_EXE_PATH, run_cmd
-from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import (
+    DEFAULT_ANCILLARY_SOURCE,
+    DEFAULT_BASE_OUTPUT_DIR,
+    DEFAULT_CDR_RESOLUTION,
+    DEFAULT_SPILLOVER_ALG,
+)
 from seaice_ecdr.platforms.config import (
     DEFAULT_PLATFORM_START_DATES_CONFIG_FILEPATH,
     PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH,
 )
 from seaice_ecdr.publish_monthly import prepare_monthly_nc_for_publication
+from seaice_ecdr.spillover import LAND_SPILL_ALGS
 
 
 def make_monthly_25km_ecdr(
     year: int,
     month: int,
-    end_year: int | None,
-    end_month: int | None,
+    end_year: int,
+    end_month: int,
     hemisphere: Hemisphere,
     base_output_dir: Path,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
 ):
-    if end_year is None:
-        end_year = year
-    if end_month is None:
-        end_month = month
-
-    # TODO: consider extracting these to CLI options that default to these values.
-    RESOLUTION: Final = "25"
-    ANCILLARY_SOURCE: Final = "CDRv4"
     # TODO: the amsr2 start date should ideally be read from the platform start
     # date config.
-    PROTOTYPE_PLATFORM_START_DATE = dt.date(2013, 1, 1)
-    # Use the default platform dates, which excldues AMSR2
+    PROTOTYPE_PLATFORM_START_YEAR = 2013
+    PROTOTYPE_PLATFORM_START_MONTH = 1
+
+    PROTOTYPE_PLATFORM_START_DATE = dt.date(
+        PROTOTYPE_PLATFORM_START_YEAR, PROTOTYPE_PLATFORM_START_MONTH, 1
+    )
+
+    # Use the default platform dates, which excludes AMSR2
     run_cmd(
         f"export PLATFORM_START_DATES_CONFIG_FILEPATH={DEFAULT_PLATFORM_START_DATES_CONFIG_FILEPATH} &&"
         f" {CLI_EXE_PATH} intermediate-monthly"
@@ -42,22 +51,28 @@ def make_monthly_25km_ecdr(
         f" --end-year {end_year} --end-month {end_month}"
         f" --hemisphere {hemisphere}"
         f" --base-output-dir {base_output_dir}"
-        f" --resolution {RESOLUTION}"
-        f" --ancillary-source {ANCILLARY_SOURCE}"
+        f" --resolution {resolution}"
+        f" --ancillary-source {ancillary_source}"
     )
 
-    # If the given start & end date intersect with the AMSR2 period, run that
-    # separately:
-    if dt.date(year, month, 1) >= PROTOTYPE_PLATFORM_START_DATE:
+    # If the given start & end date intersect with the AMSR2 period,
+    # run that separately:
+    if dt.date(end_year, end_month, 1) >= PROTOTYPE_PLATFORM_START_DATE:
+        proto_year = year
+        proto_month = month
+        if dt.date(year, month, 1) < PROTOTYPE_PLATFORM_START_DATE:
+            proto_year = PROTOTYPE_PLATFORM_START_YEAR
+            proto_month = PROTOTYPE_PLATFORM_START_MONTH
+
         run_cmd(
             f"export PLATFORM_START_DATES_CONFIG_FILEPATH={PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH} &&"
             f"{CLI_EXE_PATH} intermediate-monthly"
-            f" --year {year} --month {month}"
+            f" --year {proto_year} --month {proto_month}"
             f" --end-year {end_year} --end-month {end_month}"
             f" --hemisphere {hemisphere}"
             f" --base-output-dir {base_output_dir}"
-            f" --resolution {RESOLUTION}"
-            f" --ancillary-source {ANCILLARY_SOURCE}"
+            f" --resolution {resolution}"
+            f" --ancillary-source {ancillary_source}"
         )
 
     # Prepare the monthly data for publication
@@ -71,7 +86,7 @@ def make_monthly_25km_ecdr(
             month=period.month,
             base_output_dir=base_output_dir,
             hemisphere=hemisphere,
-            resolution=RESOLUTION,
+            resolution=resolution,
             is_nrt=False,
         )
 
@@ -128,6 +143,24 @@ def make_monthly_25km_ecdr(
     ),
     show_default=True,
 )
+@click.option(
+    "--resolution",
+    required=True,
+    type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
+    default=DEFAULT_CDR_RESOLUTION,
+)
+@click.option(
+    "--land-spillover-alg",
+    required=True,
+    type=click.Choice(get_args(LAND_SPILL_ALGS)),
+    default=DEFAULT_SPILLOVER_ALG,
+)
+@click.option(
+    "--ancillary-source",
+    required=True,
+    type=click.Choice(get_args(ANCILLARY_SOURCES)),
+    default=DEFAULT_ANCILLARY_SOURCE,
+)
 def cli(
     *,
     year: int,
@@ -136,7 +169,17 @@ def cli(
     end_month: int | None,
     hemisphere: Hemisphere,
     base_output_dir: Path,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
+    # Note: It appears that click cannot set one argument based on another.
+    #       For clarity, we handle the "None" arg condition here for end_<vars>
+    if end_year is None:
+        end_year = year
+    if end_month is None:
+        end_month = month
+
     make_monthly_25km_ecdr(
         year=year,
         month=month,
@@ -144,6 +187,9 @@ def cli(
         end_month=end_month,
         hemisphere=hemisphere,
         base_output_dir=base_output_dir,
+        resolution=resolution,
+        land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
 
 

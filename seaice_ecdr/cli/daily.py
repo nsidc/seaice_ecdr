@@ -1,15 +1,23 @@
 import copy
 import datetime as dt
 from pathlib import Path
-from typing import Final, get_args
+from typing import get_args
 
 import click
 from pm_tb_data._types import Hemisphere
 
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.cli.util import CLI_EXE_PATH, datetime_to_date, run_cmd
-from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import (
+    DEFAULT_ANCILLARY_SOURCE,
+    DEFAULT_BASE_OUTPUT_DIR,
+    DEFAULT_CDR_RESOLUTION,
+    DEFAULT_SPILLOVER_ALG,
+)
 from seaice_ecdr.platforms.config import PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH
 from seaice_ecdr.publish_daily import publish_daily_nc_for_dates
+from seaice_ecdr.spillover import LAND_SPILL_ALGS
 
 _THIS_DIR = Path(__file__).parent
 
@@ -20,16 +28,14 @@ def make_25km_ecdr(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     no_multiprocessing: bool,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
 ):
-    # TODO: consider extracting these to CLI options that default to these values.
-    RESOLUTION: Final = "25"
-    LAND_SPILLOVER_ALG: Final = "NT2_BT"
-
-    ANCILLARY_SOURCE: Final = "CDRv4"
     # TODO: the amsr2 start date should ideally be read from the platform start
     # date config.
     AM2_START_DATE = dt.date(2013, 1, 1)
-    # Use the default platform dates, which excldues AMSR2
+    # Use the default platform dates, which excludes AMSR2
     if no_multiprocessing:
         daily_intermediate_cmd = "intermediate-daily"
     else:
@@ -39,23 +45,27 @@ def make_25km_ecdr(
         f" --start-date {start_date:%Y-%m-%d} --end-date {end_date:%Y-%m-%d}"
         f" --hemisphere {hemisphere}"
         f" --base-output-dir {base_output_dir}"
-        f" --land-spillover-alg {LAND_SPILLOVER_ALG}"
-        f" --resolution {RESOLUTION}"
-        f" --ancillary-source {ANCILLARY_SOURCE}"
+        f" --land-spillover-alg {land_spillover_alg}"
+        f" --resolution {resolution}"
+        f" --ancillary-source {ancillary_source}"
     )
 
     # If the given start & end date intersect with the AMSR2 period, run that
     # separately:
-    if start_date >= AM2_START_DATE:
+    amsr2_start_date = start_date
+    if end_date >= AM2_START_DATE:
+        amsr2_start_date = max(start_date, AM2_START_DATE)
+
+    if amsr2_start_date >= AM2_START_DATE:
         run_cmd(
             f"export PLATFORM_START_DATES_CONFIG_FILEPATH={PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH} &&"
             f" {CLI_EXE_PATH} {daily_intermediate_cmd}"
-            f" --start-date {start_date:%Y-%m-%d} --end-date {end_date:%Y-%m-%d}"
+            f" --start-date {amsr2_start_date:%Y-%m-%d} --end-date {end_date:%Y-%m-%d}"
             f" --hemisphere {hemisphere}"
             f" --base-output-dir {base_output_dir}"
-            f" --land-spillover-alg {LAND_SPILLOVER_ALG}"
-            f" --resolution {RESOLUTION}"
-            f" --ancillary-source {ANCILLARY_SOURCE}"
+            f" --land-spillover-alg {land_spillover_alg}"
+            f" --resolution {resolution}"
+            f" --ancillary-source {ancillary_source}"
         )
 
     # Prepare the daily data for publication
@@ -64,7 +74,7 @@ def make_25km_ecdr(
         start_date=start_date,
         end_date=end_date,
         hemisphere=hemisphere,
-        resolution=RESOLUTION,
+        resolution=resolution,
     )
 
 
@@ -129,6 +139,24 @@ def make_25km_ecdr(
     is_flag=True,
     default=False,
 )
+@click.option(
+    "--resolution",
+    required=True,
+    type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
+    default=DEFAULT_CDR_RESOLUTION,
+)
+@click.option(
+    "--land-spillover-alg",
+    required=True,
+    type=click.Choice(get_args(LAND_SPILL_ALGS)),
+    default=DEFAULT_SPILLOVER_ALG,
+)
+@click.option(
+    "--ancillary-source",
+    required=True,
+    type=click.Choice(get_args(ANCILLARY_SOURCES)),
+    default=DEFAULT_ANCILLARY_SOURCE,
+)
 def cli(
     *,
     date: dt.date,
@@ -136,15 +164,22 @@ def cli(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     no_multiprocessing: bool,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
 ):
     if end_date is None:
         end_date = copy.copy(date)
+
     make_25km_ecdr(
         start_date=date,
         end_date=end_date,
         hemisphere=hemisphere,
         base_output_dir=base_output_dir,
         no_multiprocessing=no_multiprocessing,
+        resolution=resolution,
+        land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
     )
 
 

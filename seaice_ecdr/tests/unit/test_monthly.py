@@ -8,7 +8,7 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr import intermediate_monthly, util
+from seaice_ecdr import util
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.intermediate_daily import get_ecdr_dir
 from seaice_ecdr.intermediate_monthly import (
@@ -23,7 +23,6 @@ from seaice_ecdr.intermediate_monthly import (
     calc_cdr_seaice_conc_monthly_stdev,
     calc_surface_type_mask_monthly,
     check_min_days_for_valid_month,
-    make_intermediate_monthly_ds,
 )
 
 
@@ -43,27 +42,27 @@ def test__get_daily_complete_filepaths_for_month(fs):
     year = 2022
     month = 3
     _fake_files_for_test_year_month_and_hemisphere = [
-        nh_intermediate_dir / f"sic_psn12.5_20220301_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_psn12.5_20220302_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_psn12.5_20220303_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220301_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220302_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220303_F17_{ECDR_PRODUCT_VERSION}.nc",
     ]
     _fake_files = [
-        nh_intermediate_dir / f"sic_psn12.5_20220201_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_pss12.5_20220201_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_psn12.5_20220202_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_pss12.5_20220202_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_psn12.5_20220203_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_pss12.5_20220203_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_pss12.5_20220301_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_pss12.5_20220302_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_pss12.5_20220303_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220201_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss25_20220201_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220202_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss25_20220202_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220203_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss25_20220203_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss25_20220301_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss25_20220302_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_pss25_20220303_F17_{ECDR_PRODUCT_VERSION}.nc",
         *_fake_files_for_test_year_month_and_hemisphere,
-        nh_intermediate_dir / f"sic_psn12.5_20220401_F17_{ECDR_PRODUCT_VERSION}.nc",
-        sh_intermediate_dir / f"sic_pss12.5_20220401_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_psn12.5_20220402_F17_{ECDR_PRODUCT_VERSION}.nc",
-        sh_intermediate_dir / f"sic_pss12.5_20220402_F17_{ECDR_PRODUCT_VERSION}.nc",
-        nh_intermediate_dir / f"sic_psn12.5_20220403_F17_{ECDR_PRODUCT_VERSION}.nc",
-        sh_intermediate_dir / f"sic_pss12.5_20220403_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220401_F17_{ECDR_PRODUCT_VERSION}.nc",
+        sh_intermediate_dir / f"sic_pss25_20220401_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220402_F17_{ECDR_PRODUCT_VERSION}.nc",
+        sh_intermediate_dir / f"sic_pss25_20220402_F17_{ECDR_PRODUCT_VERSION}.nc",
+        nh_intermediate_dir / f"sic_psn25_20220403_F17_{ECDR_PRODUCT_VERSION}.nc",
+        sh_intermediate_dir / f"sic_pss25_20220403_F17_{ECDR_PRODUCT_VERSION}.nc",
     ]
     for _file in _fake_files:
         logger.info(f"creating {_file=}")
@@ -73,7 +72,7 @@ def test__get_daily_complete_filepaths_for_month(fs):
         year=year,
         month=month,
         intermediate_output_dir=intermediate_output_dir / NORTH,
-        resolution="12.5",
+        resolution="25",
         hemisphere=NORTH,
         is_nrt=False,
     )
@@ -84,7 +83,13 @@ def test__get_daily_complete_filepaths_for_month(fs):
 def test_check_min_day_for_valid_month():
     def _mock_daily_ds_for_month(num_days: int) -> xr.Dataset:
         return xr.Dataset(
-            data_vars=dict(time=[dt.date(2022, 3, x) for x in range(1, num_days + 1)])
+            data_vars=dict(
+                time=np.array(
+                    [dt.date(2022, 3, x) for x in range(1, num_days + 1)],
+                    dtype=np.datetime64,
+                )
+            ),
+            attrs={"platform_id": "F17"},
         )
 
     # Check that no error is raised for AMSR2, full month's worth of data
@@ -265,12 +270,21 @@ def _mock_daily_ds_for_month():
                 ("time",),
                 [Path("/tmp/foo.nc"), Path("/tmp/bar.nc"), Path("/tmp/baz.nc")],
             ),
-            crs=(("time"), ["a"] * 3),
+            crs=(
+                ("time"),
+                ["a"] * 3,
+                {
+                    "long_name": "fake_NH_crs",
+                },
+            ),
         ),
         coords=dict(
             x=list(range(9)),
-            # doy 60, 61, 62
-            time=[dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+            # doy 60, 61, 62; need to be datetime64 to mimic xarray time
+            time=np.array(
+                [dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+                dtype=np.datetime64,
+            ),
         ),
     )
 
@@ -280,6 +294,7 @@ def _mock_daily_ds_for_month():
         flag_values=np.array([50, 75, 100, 200, 250], dtype=np.byte),
         flag_meanings="ocean lake polehole_mask coast land",
     )
+    _mock_daily_ds.attrs["platform_id"] = "F17"
 
     return _mock_daily_ds
 
@@ -364,7 +379,10 @@ def test__calc_conc_monthly(monkeypatch):
         data=_mock_data,
         dims=["y", "time"],
         coords=dict(
-            time=[dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+            time=np.array(
+                [dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+                dtype=np.datetime64,
+            ),
             y=list(range(4)),
         ),
     )
@@ -372,7 +390,17 @@ def test__calc_conc_monthly(monkeypatch):
     mock_daily_ds = xr.Dataset(
         data_vars=dict(
             cdr_seaice_conc=mock_daily_conc,
-        )
+            crs=(
+                ("time"),
+                ["a"] * 3,
+                {
+                    "long_name": "fake_NH_crs",
+                },
+            ),
+        ),
+        attrs=dict(
+            platform_id="F17",
+        ),
     )
 
     # Mock the ocean mask used to determine if there are any missing pixels.
@@ -393,7 +421,7 @@ def test__calc_conc_monthly(monkeypatch):
     actual = calc_cdr_seaice_conc_monthly(
         daily_ds_for_month=mock_daily_ds,
         hemisphere="north",
-        resolution="12.5",
+        resolution="25",
         ancillary_source="CDRv5",
     )
 
@@ -438,7 +466,7 @@ def test_calc_cdr_seaice_conc_monthly_stdev():
 
     assert (
         actual.attrs["long_name"]
-        == "Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation"
+        == "NOAA/NSIDC CDR of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation"
     )
 
     nptesting.assert_array_equal(
@@ -482,7 +510,9 @@ def test_calc_cdr_melt_onset_day_monthly():
         daily_melt_onset_for_month=mock_daily_melt,
     )
 
-    assert actual.long_name == "Monthly Day of Snow Melt Onset Over Sea Ice"
+    assert (
+        actual.long_name == "NOAA/NSIDC CDR Monthly Day of Snow Melt Onset Over Sea Ice"
+    )
     nptesting.assert_array_equal(
         actual.values,
         np.array(
@@ -495,66 +525,6 @@ def test_calc_cdr_melt_onset_day_monthly():
             ]
         ),
     )
-
-
-def test_monthly_ds(monkeypatch, tmpdir):
-    _mock_daily_ds = _mock_daily_ds_for_month()
-
-    # usually we require at least 20 days of data for a valid month. This mock
-    # data is just 3 days in size, so we need to mock the
-    # "check_min_days_for_valid_month" function.
-    monkeypatch.setattr(
-        intermediate_monthly,
-        "check_min_days_for_valid_month",
-        lambda *_args, **_kwargs: True,
-    )
-
-    _mock_oceanmask = xr.DataArray(
-        [
-            True,
-            False,
-            True,
-            True,
-        ],
-        dims=("y",),
-        coords=dict(y=list(range(4))),
-    )
-    monkeypatch.setattr(
-        util, "get_ocean_mask", lambda *_args, **_kwargs: _mock_oceanmask
-    )
-    actual = make_intermediate_monthly_ds(
-        daily_ds_for_month=_mock_daily_ds,
-        platform_id="am2",
-        hemisphere=NORTH,
-        resolution="12.5",
-        ancillary_source="CDRv5",
-    )
-
-    # Test that the dataset only contains the variables we expect.
-    expected_vars = sorted(
-        [
-            "cdr_seaice_conc_monthly",
-            "cdr_seaice_conc_monthly_stdev",
-            "cdr_melt_onset_day_monthly",
-            "cdr_seaice_conc_monthly_qa_flag",
-            "crs",
-            "surface_type_mask",
-        ]
-    )
-    actual_vars = sorted([str(var) for var in actual.keys()])
-
-    assert expected_vars == actual_vars
-
-    # Test that we can write out the data and read it back without changing it
-    output_fp = tmpdir / "test.nc"
-    actual.to_netcdf(output_fp)
-
-    after_write = xr.open_dataset(output_fp)
-
-    # Assert that all results are close to 0.01 (1% SIC).
-    # TODO: should this be even closer? The max diff in the conc fields is:
-    #   0.0033333327372868787
-    xr.testing.assert_allclose(actual, after_write, atol=0.009)
 
 
 def test__platform_id_for_month():

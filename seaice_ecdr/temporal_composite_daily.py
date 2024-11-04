@@ -6,27 +6,29 @@ import copy
 import datetime as dt
 from functools import cache
 from pathlib import Path
-from typing import Iterable, cast, get_args
+from typing import Iterable, Tuple, cast, get_args
 
 import click
 import numpy as np
 import numpy.typing as npt
 import xarray as xr
 from loguru import logger
-from pm_icecon.fill_polehole import fill_pole_hole
 from pm_tb_data._types import NORTH, Hemisphere
+from scipy.ndimage import shift
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
     ANCILLARY_SOURCES,
+    get_daily_climatology_mask,
     get_non_ocean_mask,
     nh_polehole_mask,
+    remove_FillValue_from_coordinate_vars,
 )
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
+from seaice_ecdr.fill_polehole import fill_pole_hole
 from seaice_ecdr.initial_daily_ecdr import (
-    create_idecdr_for_date,
-    get_idecdr_filepath,
+    read_or_create_and_read_idecdr_ds,
 )
 from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.spillover import LAND_SPILL_ALGS
@@ -280,6 +282,20 @@ def temporally_composite_dataarray(
 
         prior_field = np.squeeze(da.isel(time=da.time.dt.date == prior_date).to_numpy())
         next_field = np.squeeze(da.isel(time=da.time.dt.date == next_date).to_numpy())
+        # The above operation can yield a result with an empty array
+        # with non-zero-shape -- actually 3 dimensional.  Not sure how
+        # an array can be both [] and shape=(0, 448, 304), but it is.
+        # Catch this and use an all-NaN field
+        if prior_field.ndim == 3:
+            logger.warning(f"Setting prior date array to all missing: {prior_date}")
+            prior_field = np.zeros((ydim, xdim), dtype=prior_field.dtype)
+            prior_field[:] = np.nan
+
+        if next_field.ndim == 3:
+            logger.warning(f"Setting next date array to all missing: {next_date}")
+            next_field = np.zeros((ydim, xdim), dtype=next_field.dtype)
+            next_field[:] = np.nan
+
         if daily_climatology_mask is not None:
             prior_field[daily_climatology_mask] = 0
             next_field[daily_climatology_mask] = 0
@@ -359,50 +375,102 @@ def temporally_composite_dataarray(
     return temp_comp_da, temporal_flags
 
 
-# TODO: this function also belongs in the intial daily ecdr module.
-def read_or_create_and_read_idecdr_ds(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    intermediate_output_dir: Path,
-    land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
-    overwrite_ide: bool = False,
-) -> xr.Dataset:
-    """Read an idecdr netCDF file, creating it if it doesn't exist."""
-    platform = PLATFORM_CONFIG.get_platform_by_date(
-        date,
-    )
+def verify_array_nominal_range(
+    array: npt.NDArray,
+    max_median_check_value: float = 2.0,
+) -> bool:
+    """Check array's "usual" range, allowing for possibility that values
+    might be higher.
 
-    ide_filepath = get_idecdr_filepath(
-        date=date,
-        platform_id=platform.id,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        intermediate_output_dir=intermediate_output_dir,
-    )
-    if overwrite_ide or not ide_filepath.is_file():
-        create_idecdr_for_date(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=resolution,
-            intermediate_output_dir=intermediate_output_dir,
-            land_spillover_alg=land_spillover_alg,
-            ancillary_source=ancillary_source,
-        )
-    logger.debug(f"Reading ideCDR file from: {ide_filepath}")
-    ide_ds = xr.load_dataset(ide_filepath)
+    For example, a check value of 2.0 should distinguish
+    between a range of values of 0 to 1 and 0 to 100"""
 
-    return ide_ds
+    if np.all(np.isnan(array)):
+        return True
+
+    return np.nanmedian(array) < max_median_check_value
 
 
-def calc_stddev_field(
-    bt_conc,
-    nt_conc,
-    min_valid_value,
-    max_valid_value,
-    fill_value,
+def calc_stdev_inputs(
+    bt_conc: npt.NDArray,
+    nt_conc: npt.NDArray,
+    land_mask: npt.NDArray,
+    siconc_threshold_min: float = 0.0,
+    siconc_threshold_max: float = 1.5,
+    min_surround_count: int = 6,
+) -> Tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
+    """Calculate the inputs to the standard deviation function:
+    concentration arrays need to be thresholded to valid values
+    a stdev_mask needs to be calculated from invalid values because:
+      - values over land are not computed
+      - nan siconc values are excluded
+      - values are not computed without at least 6 input values
+
+      - values outside the valid siconc range are thresholded
+    """
+    # Expect [bt|nt]_conc to be in range 0.0-1.0 (not 0-100)
+    try:
+        assert verify_array_nominal_range(bt_conc)
+    except AssertionError:
+        logger.error("bt_conc_median is not consistent with values 0-1")
+
+    try:
+        assert verify_array_nominal_range(nt_conc)
+    except AssertionError:
+        logger.error("nt_conc_median is not consistent with values 0-1")
+
+    # Set a mask for the application of standard deviation calculation
+    stdev_mask = np.zeros(bt_conc.shape, dtype=bool)
+    stdev_mask[:] = False
+
+    # nan array values should be masked out
+    stdev_mask[np.isnan(bt_conc)] = True
+    stdev_mask[np.isnan(nt_conc)] = True
+
+    # land values should be masked out
+    stdev_mask[land_mask] = True
+
+    # Locations with fewer than "min_surround_count" contributing values
+    # should be excluded
+    # Note: this calculation should come after the stdev_mask is otherwise set
+    not_enough_neighbors = np.zeros(stdev_mask.shape, dtype=bool)
+    not_enough_neighbors[:] = False
+    n_valid_neighbors = np.zeros(stdev_mask.shape, dtype=np.uint8)
+    for ishift in range(-1, 2):
+        for jshift in range(-1, 2):
+            shifted = shift(
+                stdev_mask, (jshift, ishift), order=0, mode="constant", cval=True
+            )
+            n_valid_neighbors[~shifted] += 1
+    not_enough_neighbors[n_valid_neighbors < min_surround_count] = True
+
+    # values outside value range should be thresholded
+    bt_conc_for_stdev = bt_conc.copy()
+    nt_conc_for_stdev = nt_conc.copy()
+
+    bt_conc_for_stdev[bt_conc < siconc_threshold_min] = siconc_threshold_min
+    bt_conc_for_stdev[bt_conc > siconc_threshold_max] = siconc_threshold_max
+
+    nt_conc_for_stdev[nt_conc < siconc_threshold_min] = siconc_threshold_min
+    nt_conc_for_stdev[nt_conc > siconc_threshold_max] = siconc_threshold_max
+
+    # Land values should be NaN over land
+    bt_conc_for_stdev[land_mask] = np.nan
+    nt_conc_for_stdev[land_mask] = np.nan
+
+    # Ensure nan consistency between both arrays
+    bt_conc_for_stdev[np.isnan(nt_conc)] = np.nan
+    nt_conc_for_stdev[np.isnan(bt_conc)] = np.nan
+
+    return (stdev_mask, bt_conc_for_stdev, nt_conc_for_stdev, not_enough_neighbors)
+
+
+def calc_stdev_field(
+    bt_conc: npt.NDArray,
+    nt_conc: npt.NDArray,
+    stdev_mask: npt.NDArray,
+    not_enough_neighbors: npt.NDArray,
+    fill_value=-1,
 ) -> xr.DataArray:
     """Compute std dev field for cdr_conc value using BT and NT fields.
 
@@ -416,57 +484,51 @@ def calc_stddev_field(
     TODO: This could be generalized to n-fields, instead of 2.
     """
 
-    bt_conc_masked = np.ma.masked_outside(
-        bt_conc,
-        min_valid_value,
-        max_valid_value,
-    )
-    nt_conc_masked = np.ma.masked_outside(
-        nt_conc,
-        min_valid_value,
-        max_valid_value,
-    )
+    bt_conc_masked = np.ma.masked_where(stdev_mask, bt_conc)
+    nt_conc_masked = np.ma.masked_where(stdev_mask, nt_conc)
 
     # Initialize the aggregation sum and count arrays
     ydim, xdim = bt_conc.shape
     agg_array = np.ma.empty((18, ydim, xdim), dtype=np.float64)
-    agg_count = np.ma.zeros((ydim, xdim), dtype=np.int64)
 
     # Use rolled arrays to add first bt, then nt to aggregation arrays
     agg_idx = 0
     for yoff in range(-1, 2):
         for xoff in range(-1, 2):
-            rolled_array = np.roll(bt_conc_masked, (yoff, xoff), (0, 1))
-            agg_array[agg_idx, :, :] = rolled_array[:, :]
-            agg_count[~np.isnan(rolled_array)] += 1
+            shifted_array = shift(
+                bt_conc_masked, (yoff, xoff), order=0, mode="constant", cval=np.nan
+            )
+            agg_array[agg_idx, :, :] = shifted_array[:, :]
             agg_idx += 1
     for yoff in range(-1, 2):
         for xoff in range(-1, 2):
-            rolled_array = np.roll(nt_conc_masked, (yoff, xoff), (0, 1))
-            agg_array[agg_idx, :, :] = rolled_array[:, :]
-            agg_count[~np.isnan(rolled_array)] += 1
+            shifted_array = shift(
+                nt_conc_masked, (yoff, xoff), order=0, mode="constant", cval=np.nan
+            )
+            agg_array[agg_idx, :, :] = shifted_array[:, :]
             agg_idx += 1
 
-    stddev_raw = np.ma.filled(
+    stdev_raw = np.ma.filled(
         agg_array.std(axis=0, ddof=1).astype(np.float32),
         fill_value=-1,
     )
 
-    stddev = np.ma.empty_like(bt_conc_masked, dtype=np.float32)
-    stddev[:] = stddev_raw[:]
+    stdev = np.ma.empty_like(bt_conc_masked, dtype=np.float32)
+    stdev[:] = stdev_raw[:]
 
     # Mask any locations with insufficient count
-    stddev[(agg_count >= 0) & (agg_count < 6)] = fill_value
+    stdev[not_enough_neighbors] = fill_value
 
     # Mask out any calculated missing values
-    stddev[stddev == -1] = fill_value
+    stdev[stdev == -1] = fill_value
 
-    stddev[0, :] = fill_value
-    stddev[-1, :] = fill_value
-    stddev[:, 0] = fill_value
-    stddev[:, -1] = fill_value
+    # Mask out edges of the grid
+    stdev[0, :] = fill_value
+    stdev[-1, :] = fill_value
+    stdev[:, 0] = fill_value
+    stdev[:, -1] = fill_value
 
-    return stddev
+    return stdev
 
 
 def filter_field_via_bitmask(
@@ -490,77 +552,6 @@ def filter_field_via_bitmask(
         )
 
     return output_da
-
-
-def get_daily_climatology_mask(
-    date: dt.date,
-    hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
-) -> None | npt.NDArray:
-    """
-    Given the date and ancillary source, return a mask where True values
-    indicate that the sea ice conc values should be set to zero
-
-    NOTE: The date range for this is hard-coded to correspond to SMMR.
-          This should probably be an argument somehow?
-
-    Because the day-of-year climatology includes the land mask as part of
-    the invalid ice mask, we get the non_ocean_mask to dis-convolve that.
-    (We don't necessarily want to set the land to sea-ice-conc=0.)
-    """
-    from netCDF4 import Dataset
-
-    # This date comes from PLATFORM_AVAILABILITY in platforms.py
-    # TODO: This should be refactored to have less hard-coding!
-    if date > dt.date(1987, 7, 9):
-        return None
-
-    non_ocean_mask = get_non_ocean_mask(
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ancillary_source=ancillary_source,
-    )
-
-    daily_ds = None
-
-    if hemisphere == "north" and resolution == "25":
-        # TODO: here and below, replace the hard-coded string with use of `CDR_ANCILLARY_DIR`
-        # New mask.  Valid/invalid extends into landmask
-        # daily_ds = Dataset(
-        #    "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-dailyclim.nc"
-        # )
-
-        # Mask used in v04r00.  Includes landmask and may have mismatches
-        # between landmask and ocean, especially in Southern Hemisphere
-        daily_ds = Dataset(
-            "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-psn25-smmr-invalid-ice-v04r00.nc"
-        )
-    elif hemisphere == "south" and resolution == "25":
-        # New mask.  Valid/invalid extends into landmask
-        # daily_ds = Dataset(
-        #    "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-pss25-dailyclim.nc"
-        # )
-
-        # Mask used in v04r00.  Includes landmask and may have mismatches
-        # between landmask and ocean, especially in Southern Hemisphere
-        daily_ds = Dataset(
-            "/share/apps/G02202_V5/v05r01_ancillary/ecdr-ancillary-pss25-smmr-invalid-ice-v04r00.nc"
-        )
-
-    if daily_ds is None:
-        raise RuntimeError(
-            f"Could not load daily_climatology mask for {date=} {hemisphere=} {resolution=} {ancillary_source=}"
-        )
-
-    # day-of-year index is doy - 1
-    doy_index = int(date.strftime("%j")) - 1
-    doy_mask_invalid = np.array(daily_ds.variables["invalid_ice_mask"])[doy_index, :, :]
-
-    # Return mask of invalid seaice, excluding land
-    mask = (doy_mask_invalid != 0) & (~non_ocean_mask.data)
-
-    return mask
 
 
 # TODO: better function name and docstring. This is first pass at refactor.
@@ -623,6 +614,10 @@ def temporal_interpolation(
     )
 
     # Add the temporal interp flags to the dataset
+
+    # Ensure that non-ocean always has temporal-interpolation value of 255
+    ti_flags[non_ocean_mask.data] = 255
+
     tie_ds["cdr_seaice_conc_interp_temporal_flag"] = (
         ("time", "y", "x"),
         np.expand_dims(ti_flags, axis=0),
@@ -632,7 +627,7 @@ def temporal_interpolation(
             "valid_range": [np.uint8(0), np.uint8(255)],
             "comment": (
                 "Value of 0 indicates no temporal interpolation occurred."
-                "  Values greater than 0 and less than 100 are of the form"
+                "  Values greater than 0 and less than or equal to 55 are of the form"
                 ' "AB" where "A" indicates the number of days prior to the'
                 ' current day and "B" indicates the number of days after'
                 " the current day used to linearly interpolate the data."
@@ -759,33 +754,40 @@ def temporal_interpolation(
         )
         nt_conc.data[0, :, :] = nt_conc_pole_filled[:, :]
 
-        # TODO: I noticed that NT raw conc here can be > 100 (!)
-        #       So for stdev calc, clamp to 100%
+        # TODO: Clamp nt_conc conc to 254%
         nt_conc = nt_conc.where(
-            nt_conc < 100,
-            other=100,
+            (nt_conc <= 2.54) | np.isnan(nt_conc),
+            other=2.54,
         )
 
-    stddev_field = calc_stddev_field(
-        bt_conc=bt_conc.data[0, :, :],
-        nt_conc=nt_conc.data[0, :, :],
-        min_valid_value=0,
-        max_valid_value=100,
+    (stdev_field_mask, bt_conc_thres, nt_conc_thres, not_enough_neighbors) = (
+        calc_stdev_inputs(
+            bt_conc=bt_conc.data[0, :, :],
+            nt_conc=nt_conc.data[0, :, :],
+            land_mask=non_ocean_mask.data,
+        )
+    )
+
+    stdev_field = calc_stdev_field(
+        bt_conc=bt_conc_thres,
+        nt_conc=nt_conc_thres,
+        stdev_mask=stdev_field_mask,
+        not_enough_neighbors=not_enough_neighbors,
         fill_value=-1,
     )
 
     # Set this to a data array
     tie_ds["cdr_seaice_conc_stdev_raw"] = (
         ("time", "y", "x"),
-        np.expand_dims(stddev_field.data, axis=0),
+        np.expand_dims(stdev_field.data, axis=0),
         {
             "_FillValue": -1,
             "long_name": (
-                "Passive Microwave Daily Sea Ice Concentration",
+                "NOAA/NSIDC CDR of Passive Microwave Daily Sea Ice Concentration",
                 " Source Estimated Standard Deviation",
             ),
             "grid_mapping": "crs",
-            "valid_range": np.array((0, 300), dtype=np.float32),
+            "valid_range": np.array((0, 1), dtype=np.float32),
             "units": 1,
         },
         {
@@ -821,11 +823,11 @@ def temporal_interpolation(
         {
             "_FillValue": -1,
             "long_name": (
-                "Passive Microwave Daily Sea Ice Concentration",
+                "NOAA/NSIDC CDR of Passive Microwave Daily Sea Ice Concentration",
                 " Source Estimated Standard Deviation",
             ),
             "grid_mapping": "crs",
-            "valid_range": np.array((0, 300), dtype=np.float32),
+            "valid_range": np.array((0, 1), dtype=np.float32),
             "units": 1,
         },
         {
@@ -834,6 +836,10 @@ def temporal_interpolation(
     )
 
     tie_ds = tie_ds.drop_vars("cdr_seaice_conc_stdev_raw")
+
+    # As a global attr, the platform is copied from the first DataArray in the stack
+    platform = PLATFORM_CONFIG.get_platform_by_date(date)
+    tie_ds.attrs["platform"] = platform.id
 
     return tie_ds
 
@@ -928,6 +934,7 @@ def write_tie_netcdf(
         elif varname not in uncompressed_fields:
             nc_encoding[varname] = {"zlib": True}
 
+    tie_ds = remove_FillValue_from_coordinate_vars(tie_ds)
     tie_ds.to_netcdf(
         output_filepath,
         encoding=nc_encoding,
@@ -986,6 +993,58 @@ def make_tiecdr_netcdf(
             raise e
 
     return output_path
+
+
+def read_tiecdr_ds(
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    intermediate_output_dir: Path,
+) -> xr.Dataset:
+    tie_filepath = get_tie_filepath(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        intermediate_output_dir=intermediate_output_dir,
+    )
+    logger.debug(f"Reading tieCDR file from: {tie_filepath}")
+    tie_ds = xr.load_dataset(tie_filepath)
+
+    return tie_ds
+
+
+def read_or_create_and_read_standard_tiecdr_ds(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    intermediate_output_dir: Path,
+    land_spillover_alg: LAND_SPILL_ALGS,
+    ancillary_source: ANCILLARY_SOURCES,
+    overwrite_tie: bool = False,
+) -> xr.Dataset:
+    """Read an tiecdr netCDF file, creating it if it doesn't exist.
+
+    Uses standard input sources (non-NRT).
+    """
+    make_tiecdr_netcdf(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        intermediate_output_dir=intermediate_output_dir,
+        overwrite_tie=overwrite_tie,
+        land_spillover_alg=land_spillover_alg,
+        ancillary_source=ancillary_source,
+    )
+
+    tie_ds = read_tiecdr_ds(
+        date=date,
+        hemisphere=hemisphere,
+        resolution=resolution,
+        intermediate_output_dir=intermediate_output_dir,
+    )
+
+    return tie_ds
 
 
 def create_tiecdr_for_date_range(

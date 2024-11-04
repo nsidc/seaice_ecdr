@@ -307,6 +307,52 @@ def _get_nsidc_0007_tbs(*, hemisphere: Hemisphere, date: dt.date) -> EcdrTbData:
     return ecdr_tb_data
 
 
+def get_null_tb_data(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    date: dt.date,
+    platform_id: SUPPORTED_PLATFORM_ID,
+) -> EcdrTbData:
+
+    null_ecdr_tbs = get_null_ecdr_tbs(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+    data_source = get_data_source_by_platform_id(
+        platform_id=platform_id,
+        resolution=resolution,
+    )
+    null_ecdr_tb_data = EcdrTbData(
+        tbs=null_ecdr_tbs,
+        resolution=resolution,
+        data_source=data_source,
+        platform_id=platform_id,
+    )
+
+    return null_ecdr_tb_data
+
+
+def get_data_source_by_platform_id(
+    platform_id: SUPPORTED_PLATFORM_ID,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+) -> str:
+    """Return the data_source for this platform"""
+    if platform_id == "am2":
+        data_source1: Final = f"AU_SI{resolution}"
+        return data_source1
+    elif platform_id in get_args(NSIDC_0001_SATS):
+        data_source2: Final = "NSIDC-0001"
+        return data_source2
+    elif platform_id == "n07":
+        data_source3: Final = "NSIDC-0007"
+        return data_source3
+    else:
+        raise NotImplementedError(
+            f"{platform_id} is not yet supported at {resolution} resolution"
+        )
+
+
 # TODO: dedupe this function with `get_ecdr_tb_data`
 def get_25km_ecdr_tb_data(
     *,
@@ -360,3 +406,24 @@ def get_ecdr_tb_data(
         return _get_nsidc_0007_tbs(date=date, hemisphere=hemisphere)
     else:
         raise RuntimeError(f"Platform not supported: {platform}")
+
+
+def get_data_url_from_data_source(
+    *,
+    data_source: str,
+) -> str:
+    """Return the URL for this data_source"""
+
+    data_url = f"https://nsidc.org/data/{data_source.lower()}"
+
+    return data_url
+
+
+def get_hemisphere_from_crs_da(
+    crs: xr.DataArray,
+) -> Hemisphere:
+    """Note: This logic assumes hemisphere will either be 'north' or 'south'"""
+    if "NH" in crs.attrs["long_name"]:
+        return cast(Hemisphere, "north")
+    else:
+        return cast(Hemisphere, "south")

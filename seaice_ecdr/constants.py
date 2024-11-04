@@ -13,6 +13,7 @@ import getpass
 import os
 import subprocess
 from pathlib import Path
+from typing import Final
 
 from pydantic import BaseModel
 
@@ -89,6 +90,11 @@ LOGS_DIR.mkdir(parents=True, exist_ok=True)
 # but the NRT product is G10016 and it uses the same ancillary data.
 CDR_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / f"{ECDR_PRODUCT_VERSION}_ancillary"
 CDRv4_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / "cdrv4_equiv_ancillary"
+
+# Defaults for CDR runs
+DEFAULT_CDR_RESOLUTION: Final = "25"
+DEFAULT_ANCILLARY_SOURCE: Final = "CDRv5"
+DEFAULT_SPILLOVER_ALG: Final = "NT2_BT"
 
 # NRT outputs
 ECDR_NRT_PRODUCT_VERSION = ProductVersion(

@@ -5,8 +5,12 @@ import xarray as xr
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES
+from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
+    remove_FillValue_from_coordinate_vars,
+)
 from seaice_ecdr.nc_attrs import get_global_attrs
+from seaice_ecdr.tb_data import get_data_url_from_data_source
 from seaice_ecdr.util import get_num_missing_pixels
 
 CDECDR_FIELDS_TO_DROP = [
@@ -63,8 +67,7 @@ def finalize_cdecdr_ds(
             "coverage_content_type": "image",
             "units": "1",
             "long_name": (
-                "NOAA/NSIDC Climate Data Record of Passive Microwave"
-                " Sea Ice Concentration"
+                "NOAA/NSIDC CDR of Passive Microwave" " Sea Ice Concentration"
             ),
             "grid_mapping": "crs",
             "reference": "https://nsidc.org/data/g02202/versions/5",
@@ -82,12 +85,12 @@ def finalize_cdecdr_ds(
         {
             "_FillValue": -1,
             "long_name": (
-                "Passive Microwave Sea Ice"
+                "NOAA/NSIDC CDR of Passive Microwave Sea Ice"
                 " Concentration Source Estimated Standard Deviation"
             ),
             "units": "1",
             "grid_mapping": "crs",
-            "valid_range": np.array((0.0, 300.0), dtype=np.float32),
+            "valid_range": np.array((0.0, 1.0), dtype=np.float32),
         },
         {
             "zlib": True,
@@ -126,7 +129,7 @@ def finalize_cdecdr_ds(
         ds["cdr_seaice_conc_qa_flag"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
-            "long_name": "Passive Microwave Sea Ice Concentration QC flags",
+            "long_name": "NOAA/NSIDC CDR of Passive Microwave Sea Ice Concentration QA flags",
             "units": "1",
             "grid_mapping": "crs",
             "flag_masks": np.array(qa_flag_masks, dtype=np.uint8),
@@ -149,7 +152,7 @@ def finalize_cdecdr_ds(
             ds["cdr_melt_onset_day"].data,
             {
                 "standard_name": "status_flag",
-                "long_name": "Day Of Year of NH Snow Melt Onset On Sea Ice",
+                "long_name": "NOAA/NSIDC CDR Day Of Year of NH Snow Melt Onset On Sea Ice",
                 "units": "1",
                 "grid_mapping": "crs",
                 "valid_range": np.array((0, 255), dtype=np.uint8),
@@ -195,7 +198,7 @@ def finalize_cdecdr_ds(
         ds["cdr_seaice_conc_interp_spatial_flag"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
-            "long_name": "Passive Microwave Sea Ice Concentration spatial interpolation flags",
+            "long_name": "NOAA/NSIDC CDR of Passive Microwave Sea Ice Concentration spatial interpolation flags",
             "units": "1",
             "grid_mapping": "crs",
             "flag_masks": np.array(spatial_interp_flag_masks, dtype=np.uint8),
@@ -217,7 +220,7 @@ def finalize_cdecdr_ds(
         ds["cdr_seaice_conc_interp_temporal_flag"].data.astype(np.uint8),
         {
             "standard_name": "status_flag",
-            "long_name": "Passive Microwave Sea Ice Concentration temporal interpolation flags",
+            "long_name": "NOAA/NSIDC CDR of Passive Microwave Sea Ice Concentration temporal interpolation flags",
             "units": "1",
             "grid_mapping": "crs",
             "flag_values": np.array(
@@ -293,7 +296,7 @@ def finalize_cdecdr_ds(
             ),
             "comment": (
                 "Value of 0 indicates no temporal interpolation occurred. "
-                " Values greater than 0 and less than 100 are of the form"
+                " Values greater than 0 and less than or equal to 55 are of the form"
                 " 'AB' where 'A' indicates the number of days prior to the"
                 " current day and 'B' indicates the number of days after the"
                 " current day used to linearly interpolate the data.  If"
@@ -323,7 +326,7 @@ def finalize_cdecdr_ds(
             "coverage_content_type": "image",
             "units": "1",
             "long_name": (
-                "Bootstrap sea ice concentration;"
+                "NOAA/NSIDC CDR of Bootstrap sea ice concentration;"
                 " raw field with no masking or filtering"
             ),
             "grid_mapping": "crs",
@@ -346,7 +349,7 @@ def finalize_cdecdr_ds(
             "coverage_content_type": "image",
             "units": "1",
             "long_name": (
-                "NASA Team sea ice concentration;"
+                "NOAA/NSIDC CDR of NASA Team sea ice concentration;"
                 " raw field with no masking or filtering"
             ),
             "grid_mapping": "crs",
@@ -359,15 +362,17 @@ def finalize_cdecdr_ds(
         time=ds.time,
         temporality="daily",
         aggregate=False,
-        source=f"Generated from {ds_in.data_source}",
+        source=f"Generated from {get_data_url_from_data_source(data_source=ds_in.data_source)}",
         platform_ids=[ds_in.platform],
         resolution=resolution,
+        hemisphere=hemisphere,
+        ancillary_source=ancillary_source,
     )
     ds.attrs = new_global_attrs
 
     # Coordinate values should not have _FillValue set
-    ds.time.encoding["_FillValue"] = None
-    ds.x.encoding["_FillValue"] = None
-    ds.y.encoding["_FillValue"] = None
+    ds = remove_FillValue_from_coordinate_vars(ds)
+
+    # Note: Here, the x and y coordinate variables *do* have valid_range set
 
     return ds

@@ -8,6 +8,9 @@ from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.ancillary import (
+    remove_FillValue_from_coordinate_vars,
+)
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.intermediate_monthly import (
     get_intermediate_monthly_dir,
@@ -15,7 +18,7 @@ from seaice_ecdr.intermediate_monthly import (
 from seaice_ecdr.nc_util import (
     add_coordinate_coverage_content_type,
     add_coordinates_attr,
-    remove_valid_range_from_coordinate_vars,
+    fix_monthly_ncattrs,
 )
 from seaice_ecdr.nrt import override_attrs_for_nrt
 from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
@@ -260,7 +263,6 @@ def prepare_monthly_ds_for_publication(
 
     # Do final cleanup. This should be unnecessary (see the docstrings for the
     # associated fuctions for more).
-    remove_valid_range_from_coordinate_vars(complete_monthly_ds)
     add_coordinate_coverage_content_type(complete_monthly_ds)
     add_coordinates_attr(complete_monthly_ds)
 
@@ -291,6 +293,14 @@ def _write_publication_ready_nc_and_checksum(
         month=month,
         complete_output_dir=complete_output_dir,
         is_nrt=is_nrt,
+    )
+
+    # Ensure consistency of time units
+    publication_ready_monthly_ds.time.encoding["units"] = "days since 1970-01-01"
+    publication_ready_monthly_ds.time.encoding["calendar"] = "standard"
+
+    publication_ready_monthly_ds = remove_FillValue_from_coordinate_vars(
+        publication_ready_monthly_ds
     )
     publication_ready_monthly_ds.to_netcdf(complete_monthly_filepath)
     logger.success(f"Staged NC file for publication: {complete_monthly_filepath}")
@@ -344,6 +354,9 @@ def prepare_monthly_nc_for_publication(
         intermediate_monthly_fp=intermediate_monthly_fp,
         prototype_monthly_fp=prototype_monthly_fp,
     )
+
+    # Fix monthly nc-attributes
+    fix_monthly_ncattrs(complete_monthly_ds)
 
     # Override attrs for nrt
     if is_nrt:

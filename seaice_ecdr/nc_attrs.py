@@ -7,8 +7,14 @@ from typing import Any, Literal, get_args
 
 import pandas as pd
 import xarray as xr
+from loguru import logger
+from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
+    get_ancillary_ds,
+)
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 
@@ -140,6 +146,8 @@ def get_global_attrs(
     # List of satellites that provided data for the given netcdf file.
     platform_ids: list[SUPPORTED_PLATFORM_ID],
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    hemisphere: Hemisphere,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> dict[str, Any]:
     """Return a dictionary containing the global attributes for a standard ECDR NetCDF file.
 
@@ -158,6 +166,11 @@ def get_global_attrs(
         aggregate=aggregate,
         time=time,
     )
+
+    if hemisphere == "north":
+        keywords = "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE CONCENTRATION, Continent > North America > Canada > Hudson Bay, Geographic Region > Arctic, Geographic Region > Polar, Geographic Region > Northern Hemisphere, Ocean > Arctic Ocean, Ocean > Arctic Ocean > Barents Sea, Ocean > Arctic Ocean > Beaufort Sea, Ocean > Arctic Ocean > Chukchi Sea, CONTINENT > NORTH AMERICA > CANADA > HUDSON BAY, Ocean > Atlantic Ocean > North Atlantic Ocean > Davis Straight, OCEAN > ATLANTIC OCEAN > NORTH ATLANTIC OCEAN > GULF OF ST LAWRENCE, Ocean > Atlantic Ocean > North Atlantic Ocean > North Sea, Ocean > Atlantic Ocean > North Atlantic Ocean > Norwegian Sea, OCEAN > ATLANTIC OCEAN > NORTH ATLANTIC OCEAN > SVALBARD AND JAN MAYEN, Ocean > Pacific Ocean, Ocean > Pacific Ocean > North Pacific Ocean > Bering Sea, Ocean > Pacific Ocean > North Pacific Ocean > Sea Of Okhotsk"
+    else:
+        keywords = "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE CONCENTRATION, Geographic Region > Polar, Geographic Region > Southern Hemisphere, Ocean > Southern Ocean, Ocean > Southern Ocean > Bellingshausen Sea, Ocean > Southern Ocean > Ross Sea, Ocean > Southern Ocean > Weddell Sea"
 
     new_global_attrs = OrderedDict(
         # We expect conventions to be the first item in the global attributes.
@@ -179,7 +192,7 @@ def get_global_attrs(
         naming_authority="org.doi.dx",
         license="No constraints on data access or use",
         summary=f"This data set provides a passive microwave sea ice concentration climate data record (CDR) based on gridded brightness temperatures (TBs) from the Nimbus-7 Scanning Multichannel Microwave Radiometer (SMMR) and the Defense Meteorological Satellite Program (DMSP) series of passive microwave radiometers: the Special Sensor Microwave Imager (SSM/I) and the Special Sensor Microwave Imager/Sounder (SSMIS). The sea ice concentration CDR is an estimate of sea ice concentration that is produced by combining concentration estimates from two algorithms developed at the NASA Goddard Space Flight Center (GSFC): the NASA Team (NT) algorithm and the Bootstrap (BT) algorithm. The individual algorithms are used to process and combine brightness temperature data at NSIDC. This product is designed to provide a consistent time series of sea ice concentrations (the fraction, or percentage, of ocean area covered by sea ice) from November 1978 to the present, which spans the coverage of several passive microwave instruments. The data are gridded on the NSIDC polar stereographic grid with {resolution} km x {resolution} km grid cells and are available in NetCDF file format. Each file contains a variable with the CDR concentration values as well as variables that hold the raw NT and BT processed concentrations for reference. Variables containing standard deviation, quality flags, and projection information are also included. Files that are from 2013 to the present also contain a prototype CDR sea ice concentration based on gridded TBs from the Advanced Microwave Scanning Radiometer 2 (AMSR2) onboard the GCOM-W1 satellite.",
-        keywords="EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE CONCENTRATION, Continent > North America > Canada > Hudson Bay, Geographic Region > Arctic, Geographic Region > Polar, Geographic Region > Northern Hemisphere, Ocean > Arctic Ocean, Ocean > Arctic Ocean > Barents Sea, Ocean > Arctic Ocean > Beaufort Sea, Ocean > Arctic Ocean > Chukchi Sea, CONTINENT > NORTH AMERICA > CANADA > HUDSON BAY, Ocean > Atlantic Ocean > North Atlantic Ocean > Davis Straight, OCEAN > ATLANTIC OCEAN > NORTH ATLANTIC OCEAN > GULF OF ST LAWRENCE, Ocean > Atlantic Ocean > North Atlantic Ocean > North Sea, Ocean > Atlantic Ocean > North Atlantic Ocean > Norwegian Sea, OCEAN > ATLANTIC OCEAN > NORTH ATLANTIC OCEAN > SVALBARD AND JAN MAYEN, Ocean > Pacific Ocean, Ocean > Pacific Ocean > North Pacific Ocean > Bering Sea, Ocean > Pacific Ocean > North Pacific Ocean > Sea Of Okhotsk",
+        keywords=keywords,
         keywords_vocabulary="NASA Global Change Master Directory (GCMD) Keywords, Version 17.1",
         cdm_data_type="Grid",
         project="NOAA/NSIDC passive microwave sea ice concentration climate data record",
@@ -195,14 +208,34 @@ def get_global_attrs(
         source=source,
         platform=platform,
         sensor=sensor,
-        # TODO: ideally, these would get dynamically set from the input data's
-        # grid definition...
-        geospatial_lat_min=31.35,
-        geospatial_lat_max=90.0,
-        geospatial_lat_units="degrees_north",
-        geospatial_lon_min=-180.0,
-        geospatial_lon_max=180.0,
-        geospatial_lon_units="degrees_east",
+        cdr_data_type="grid",
     )
+
+    # Set attributes pulled from a grid-based ancillary ds
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
+    attrs_from_ancillary = (
+        "geospatial_bounds",
+        "geospatial_bounds_crs",
+        "geospatial_x_units",
+        "geospatial_y_units",
+        "geospatial_x_resolution",
+        "geospatial_y_resolution",
+        "geospatial_lat_min",
+        "geospatial_lat_max",
+        "geospatial_lon_min",
+        "geospatial_lon_max",
+        "geospatial_lat_units",
+        "geospatial_lon_units",
+    )
+
+    for attr in attrs_from_ancillary:
+        try:
+            new_global_attrs[attr] = ancillary_ds.attrs[attr]
+        except KeyError:
+            logger.warning(f"No such global attr in ancillary file: {attr}")
 
     return new_global_attrs

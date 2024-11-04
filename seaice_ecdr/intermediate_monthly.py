@@ -36,11 +36,17 @@ from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES, flag_value_for_meaning
+from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
+    flag_value_for_meaning,
+    remove_FillValue_from_coordinate_vars,
+)
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
+from seaice_ecdr.days_treated_differently import months_of_cdr_missing_data
 from seaice_ecdr.intermediate_daily import get_ecdr_filepath
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
+from seaice_ecdr.tb_data import get_hemisphere_from_crs_da
 from seaice_ecdr.util import (
     get_intermediate_output_dir,
     get_num_missing_pixels,
@@ -331,7 +337,7 @@ def calc_cdr_seaice_conc_monthly_qa_flag(
     )
 
     cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.assign_attrs(
-        long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QC flags",
+        long_name="NOAA/NSIDC CDR of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QA flags",
         standard_name="status_flag",
         flag_meanings=" ".join(
             k for k in CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS.keys()
@@ -351,6 +357,18 @@ def calc_cdr_seaice_conc_monthly_qa_flag(
     return cdr_seaice_conc_monthly_qa_flag
 
 
+def is_empty_month(
+    platform_id: SUPPORTED_PLATFORM_ID,
+    hemisphere: Hemisphere,
+    day_in_month: dt.date,
+) -> bool:
+    """Determine if this is a month that should have
+    all of its values set to missing"""
+    year_month_str = f"{day_in_month.year:4d}-{day_in_month.month:02d}"
+    empty_year_months = months_of_cdr_missing_data(platform_id, hemisphere)
+    return year_month_str in empty_year_months
+
+
 def calc_cdr_seaice_conc_monthly(
     *,
     daily_ds_for_month: xr.Dataset,
@@ -360,7 +378,20 @@ def calc_cdr_seaice_conc_monthly(
 ) -> xr.DataArray:
     """Create the `cdr_seaice_conc_monthly` variable."""
     daily_conc_for_month = daily_ds_for_month.cdr_seaice_conc
-    conc_monthly = daily_conc_for_month.mean(dim="time")
+    conc_monthly = daily_conc_for_month.mean(dim="time", skipna=True)
+
+    # Fill with empty if this is an empty month
+    # NOTE: Need to do this here because num_missing_conc_pixels is in this function
+    platform_id = daily_ds_for_month.platform_id
+    hemisphere = get_hemisphere_from_crs_da(daily_ds_for_month.crs)
+    day_in_month = daily_ds_for_month.time[0].dt.date.data.tolist()
+
+    if is_empty_month(
+        platform_id=platform_id,
+        hemisphere=hemisphere,
+        day_in_month=day_in_month,
+    ):
+        conc_monthly.data[:] = np.nan
 
     # NOTE: Clamp lower bound to 10% minic
     conc_monthly = conc_monthly.where(
@@ -377,7 +408,7 @@ def calc_cdr_seaice_conc_monthly(
 
     conc_monthly.name = "cdr_seaice_conc_monthly"
     conc_monthly = conc_monthly.assign_attrs(
-        long_name="NOAA/NSIDC Climate Data Record of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration",
+        long_name="NOAA/NSIDC CDR of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration",
         standard_name="sea_ice_area_fraction",
         coverage_content_type="image",
         units="1",
@@ -432,12 +463,13 @@ def calc_cdr_seaice_conc_monthly_stdev(
         coords=coords_without_time,
         dims=dims_without_time,
         attrs=dict(
-            long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
+            long_name="NOAA/NSIDC CDR of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
             valid_range=(np.float32(0.0), np.float32(1.0)),
             grid_mapping="crs",
             units="1",
         ),
     )
+
     cdr_seaice_conc_monthly_stdev.encoding = dict(
         _FillValue=-1,
         zlib=True,
@@ -460,7 +492,7 @@ def calc_cdr_melt_onset_day_monthly(
     cdr_melt_onset_day_monthly = cdr_melt_onset_day_monthly.drop_vars("time")
 
     cdr_melt_onset_day_monthly = cdr_melt_onset_day_monthly.assign_attrs(
-        long_name="Monthly Day of Snow Melt Onset Over Sea Ice",
+        long_name="NOAA/NSIDC CDR Monthly Day of Snow Melt Onset Over Sea Ice",
         units="1",
         valid_range=(np.ubyte(0), np.ubyte(255)),
         grid_mapping="crs",
@@ -572,6 +604,7 @@ def make_intermediate_monthly_ds(
 
     # Create `cdr_seaice_conc_monthly_stdev`, the standard deviation of the
     # sea ice concentration.
+
     cdr_seaice_conc_monthly_stdev = calc_cdr_seaice_conc_monthly_stdev(
         daily_cdr_seaice_conc=daily_ds_for_month.cdr_seaice_conc,
     )
@@ -580,6 +613,18 @@ def make_intermediate_monthly_ds(
         daily_ds_for_month=daily_ds_for_month,
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
     )
+
+    # Set stdev to invalid and QA to all-missing if this is an empty month
+    platform_id = daily_ds_for_month.platform_id
+    hemisphere = get_hemisphere_from_crs_da(daily_ds_for_month.crs)
+    day_in_month = daily_ds_for_month.time[0].dt.date.data.tolist()
+    if is_empty_month(
+        platform_id=platform_id,
+        hemisphere=hemisphere,
+        day_in_month=day_in_month,
+    ):
+        cdr_seaice_conc_monthly_stdev.data[:] = -1.0
+        cdr_seaice_conc_monthly_qa_flag.data[:] = 0
 
     surface_type_mask_monthly = calc_surface_type_mask_monthly(
         daily_ds_for_month=daily_ds_for_month,
@@ -624,6 +669,8 @@ def make_intermediate_monthly_ds(
         # really be?
         platform_ids=[platform_id],
         resolution=resolution,
+        hemisphere=hemisphere,
+        ancillary_source=ancillary_source,
     )
     monthly_ds.attrs.update(monthly_ds_global_attrs)
 
@@ -701,11 +748,7 @@ def make_intermediate_monthly_nc(
         ancillary_source=ancillary_source,
     )
 
-    # Set `x` and `y` `_FillValue` to `None`. Although unset initially, `xarray`
-    # seems to default to `np.nan` for variables without a FillValue.
-    monthly_ds.x.encoding["_FillValue"] = None
-    monthly_ds.y.encoding["_FillValue"] = None
-
+    monthly_ds = remove_FillValue_from_coordinate_vars(monthly_ds)
     monthly_ds.to_netcdf(
         output_path,
         unlimited_dims=[

@@ -127,6 +127,17 @@ SUPPORTED_PLATFORMS = [
 ]
 
 
+def get_platform_id_from_name(platform_name):
+    for platform in SUPPORTED_PLATFORMS:
+        if platform.name == platform_name:
+            return platform.id
+    logger.error(
+        f"Could not determine platform ID for: {platform_name}, returning empty string"
+    )
+
+    return ""
+
+
 def _get_platform_config() -> PlatformConfig:
     """Gets the platform config given a start dates filepath.
 

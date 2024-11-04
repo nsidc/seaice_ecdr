@@ -14,11 +14,17 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import xarray as xr
+from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.constants import CDR_ANCILLARY_DIR
+from seaice_ecdr.constants import (
+    CDR_ANCILLARY_DIR,
+    ECDR_PRODUCT_VERSION,
+    ProductVersion,
+)
 from seaice_ecdr.grid_id import get_grid_id
+from seaice_ecdr.nc_util import remove_FillValue_from_coordinate_vars
 from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform
 from seaice_ecdr.platforms.config import N07_PLATFORM
 
@@ -30,18 +36,14 @@ def get_ancillary_filepath(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     ancillary_source: ANCILLARY_SOURCES,
+    product_version: ProductVersion = ECDR_PRODUCT_VERSION,
 ) -> Path:
     grid_id = get_grid_id(
         hemisphere=hemisphere,
         resolution=resolution,
     )
 
-    if ancillary_source == "CDRv5":
-        filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}.nc"
-    elif ancillary_source == "CDRv4":
-        filepath = CDR_ANCILLARY_DIR / f"ecdr-ancillary-{grid_id}-v04r00.nc"
-    else:
-        raise ValueError(f"Unknown ancillary source: {ancillary_source}")
+    filepath = CDR_ANCILLARY_DIR / f"G02202-ancillary-{grid_id}-{product_version}.nc"
 
     return filepath
 
@@ -68,7 +70,105 @@ def get_ancillary_ds(
     )
     ds = xr.load_dataset(filepath)
 
+    # ds = fix_ds_attrs(ds)
+    ds = remove_FillValue_from_coordinate_vars(ds)
+
     return ds
+
+
+def get_ancillary_daily_clim_filepath(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+    product_version: ProductVersion = ECDR_PRODUCT_VERSION,
+) -> Path:
+    grid_id = get_grid_id(
+        hemisphere=hemisphere,
+        resolution=resolution,
+    )
+
+    filepath = (
+        CDR_ANCILLARY_DIR
+        / f"G02202-ancillary-{grid_id}-daily-invalid-ice-{product_version}.nc"
+    )
+
+    return filepath
+
+
+@cache
+def get_ancillary_daily_clim_ds(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+) -> xr.Dataset:
+    """Return xr Dataset of ancillary data for this hemisphere/resolution."""
+    # TODO: This list could be determined from an examination of
+    #       the ancillary directory
+    if resolution not in get_args(ECDR_SUPPORTED_RESOLUTIONS):
+        raise NotImplementedError(
+            "ECDR currently only supports {get_args(ECDR_SUPPORTED_RESOLUTIONS)} resolutions."
+        )
+
+    filepath = get_ancillary_daily_clim_filepath(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
+    ds = xr.load_dataset(filepath)
+
+    return ds
+
+
+def get_daily_climatology_mask(
+    date: dt.date,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+    platform_id: None | str = None,
+    non_ocean_mask: None | xr.DataArray = None,
+) -> None | npt.NDArray:
+    """Return the daily climatology mask (originally for use with smmr)
+    Given the date and ancillary source, return a mask where True values
+    indicate that the sea ice conc values should be set to zero
+
+    NOTE: The date range for this is hard-coded to correspond to SMMR.
+          This should probably be an argument somehow?
+
+    Because the day-of-year climatology includes the land mask as part of
+    the invalid ice mask, we get the non_ocean_mask to dis-convolve that.
+    (We don't necessarily want to set the land to sea-ice-conc=0.)
+    """
+    if platform_id is None:
+        platform_id = PLATFORM_CONFIG.get_platform_by_date(date).id
+
+    if platform_id != "n07":
+        logger.info(f"Skipping daily_climatology mask for {platform_id=}")
+        return None
+    else:
+        logger.info(f"Reading standard daily_climatology for {platform_id=}")
+
+    daily_ds = get_ancillary_daily_clim_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
+
+    doy_index = int(date.strftime("%j")) - 1
+    doy_mask_invalid = np.array(daily_ds.variables["invalid_ice_mask"])[doy_index, :, :]
+
+    if non_ocean_mask is None:
+        non_ocean_mask = get_non_ocean_mask(
+            hemisphere=hemisphere,
+            resolution=resolution,
+            ancillary_source=ancillary_source,
+        )
+
+    # Return mask of invalid seaice, excluding land
+    mask = (doy_mask_invalid != 0) & (~non_ocean_mask.data)
+
+    return mask
 
 
 def bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
@@ -304,7 +404,7 @@ def get_invalid_ice_mask(
         # TODO: Daily (SMMR) mask is used at end for cleanup,
         #       but not for initial TB field generation
         # Skip the smmr invalid ice mask for now...
-        print("WARNING: Using non-SMMR invalid ice masks")
+        logger.info(f"Using non-SMMR invalid ice masks on {date=}")
         # return get_smmr_invalid_ice_mask(hemisphere=hemisphere, date=date)
     # All other platforms:
     ancillary_ds = get_ancillary_ds(

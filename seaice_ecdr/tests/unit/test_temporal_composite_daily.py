@@ -17,6 +17,7 @@ from seaice_ecdr.temporal_composite_daily import (
     iter_dates_near_date,
     temporally_composite_dataarray,
     temporally_interpolate_dataarray_using_flags,
+    verify_array_nominal_range,
     yield_dates_from_temporal_interpolation_flags,
 )
 
@@ -157,9 +158,6 @@ def test_temporal_composite_da_oneday():
     assert np.array_equal(temporal_composite, initial_data_array, equal_nan=True)
 
 
-@pytest.mark.skip(
-    reason="Skipping because of intentionally-introduced temporal-interpolation error intended to reproduce CDRv4 results"
-)
 def test_temporal_composite_da_multiday():
     """Verify that temporal composite over multiple days.
 
@@ -480,3 +478,11 @@ def test_fill_dataarray_with_tiflags():
     )
 
     assert np.array_equal(filled, expected_filled_data, equal_nan=True)
+
+
+def test_verify_all_missing_tb_passes_stdev_test():
+    """A field of all NaNs can occur because we assign all of the values on a day to Nan.  This should not cause the stdev calculation to fail"""
+    array = np.zeros((2, 2), dtype=np.float32)
+    array[:] = np.nan
+
+    assert verify_array_nominal_range(array)

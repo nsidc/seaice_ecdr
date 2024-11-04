@@ -20,11 +20,15 @@ from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES, get_ancillary_ds
+from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
+    get_ancillary_ds,
+    remove_FillValue_from_coordinate_vars,
+)
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
-from seaice_ecdr.nc_util import concatenate_nc_files
+from seaice_ecdr.nc_util import concatenate_nc_files, fix_daily_aggregate_ncattrs
 from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.publish_daily import get_complete_daily_filepath
 from seaice_ecdr.util import (
@@ -113,6 +117,8 @@ def _update_ncrcat_daily_ds(
         ds["cdr_supplementary"][sup_var] = surf_geo_ds[sup_var]
         # Add in the `coordinates` attr to lat and lon.
         ds["cdr_supplementary"][sup_var].attrs["coordinates"] = "y x"
+        # Perhaps these geolocation variables shouldn't have a fill value?
+        ds["cdr_supplementary"][sup_var].encoding["_FillValue"] = None
 
     # lat and lon fields have x and y coordinate variables associated with them
     # and get added automatically when adding those fields above. This drops
@@ -156,6 +162,8 @@ def _update_ncrcat_daily_ds(
         source=", ".join([fp.name for fp in daily_filepaths]),
         platform_ids=[platform_id_from_filename(fp.name) for fp in daily_filepaths],
         resolution=resolution,
+        hemisphere=hemisphere,
+        ancillary_source=ancillary_source,
     )
     ds.attrs = daily_aggregate_ds_global_attrs  # type: ignore[assignment]
 
@@ -208,7 +216,11 @@ def make_daily_aggregate_netcdf_for_year(
             # unlimited dim.
             assert daily_ds.encoding["unlimited_dims"] == {"time"}
 
+            # After concatenation, need to fix source, platform, sensor ncattrs
+            fix_daily_aggregate_ncattrs(daily_ds)
+
             # Write out the aggregate daily file.
+            daily_ds = remove_FillValue_from_coordinate_vars(daily_ds)
             daily_ds.to_netcdf(
                 output_path,
             )
