@@ -11,7 +11,6 @@ from loguru import logger
 from scipy.ndimage import binary_dilation
 
 
-# TODO: differentiate this from the function in `compute_bt_ic`
 def fill_pole_hole(
     *, conc: npt.NDArray, near_pole_hole_mask: npt.NDArray[np.bool_]
 ) -> npt.NDArray:
@@ -20,6 +19,8 @@ def fill_pole_hole(
     Assumes that some data is available in and adjacent to the masked area.
 
     Missing areas are given by `np.nan`.
+
+    If no nearby values are available the pole hole is unchanged.
     """
     extended_nearpole_mask = binary_dilation(near_pole_hole_mask)
 

@@ -219,9 +219,6 @@ def publish_daily_nc(
             prototype_subgroup = prototype_daily_ds[cdr_var_fieldnames].rename_vars(
                 remap_names
             )
-            # TODO: Set the long_name of the prototype variables
-            #       to be "AMSR2 Prototype..."
-            #       instead of "NOAA/NSIDC CDR of..."
             # Rename ancillary variables.
             for var in prototype_subgroup.values():
                 if "ancillary_variables" in var.attrs:
@@ -275,9 +272,9 @@ def publish_daily_nc(
     complete_daily_ds.time.encoding["units"] = "days since 1970-01-01"
     complete_daily_ds.time.encoding["calendar"] = "standard"
 
-    # No _FillValue for x or y is a CF requirement
-    complete_daily_ds.variables["x"].encoding["_FillValue"] = None
-    complete_daily_ds.variables["y"].encoding["_FillValue"] = None
+    # complete_daily_ds.variables["x"].encoding["_FillValue"] = None
+    # complete_daily_ds.variables["y"].encoding["_FillValue"] = None
+    complete_daily_ds = remove_FillValue_from_coordinate_vars(complete_daily_ds)
     complete_daily_ds.to_netcdf(complete_daily_filepath)
     logger.success(f"Staged NC file for publication: {complete_daily_filepath}")
 

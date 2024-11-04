@@ -82,8 +82,6 @@ def periods_of_cdr_missing_data(
     """Returns a list of date ranges for which CDR's output should be
     all-missing.
     """
-    # missing_ranges = _load_missing_ranges()
-    # ranges = missing_ranges['treat_outputs_as_missing'][hemisphere_long]
     dates_treated_differently = _load_dates_treated_differently()
     try:
         ranges = dates_treated_differently["treat_outputs_as_missing"][platform_id][

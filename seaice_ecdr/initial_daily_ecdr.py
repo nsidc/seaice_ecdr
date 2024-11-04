@@ -49,6 +49,7 @@ from seaice_ecdr.days_treated_differently import (
     day_has_all_bad_tbs,
 )
 from seaice_ecdr.grid_id import get_grid_id
+from seaice_ecdr.nc_util import remove_FillValue_from_coordinate_vars
 from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
 from seaice_ecdr.spillover import LAND_SPILL_ALGS, land_spillover
@@ -218,7 +219,7 @@ def calc_cdr_conc(
     return cdr_conc
 
 
-def setup_ecdr_ds(
+def _setup_ecdr_ds(
     *,
     date: dt.date,
     tb_data: EcdrTbData,
@@ -468,7 +469,6 @@ def compute_initial_daily_ecdr_dataset(
     tb_data: EcdrTbData,
     land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
-    skip_dynamic_BT_tiepoints: bool = False,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -479,7 +479,7 @@ def compute_initial_daily_ecdr_dataset(
     fields. Its difficult to understand what's in the resulting dataset without
     manually inspecting the result of running this code.
     """
-    ecdr_ide_ds = setup_ecdr_ds(
+    ecdr_ide_ds = _setup_ecdr_ds(
         date=date,
         tb_data=tb_data,
         hemisphere=hemisphere,
@@ -488,7 +488,7 @@ def compute_initial_daily_ecdr_dataset(
 
     # Spatially interpolate the brightness temperatures
     for tbname in EXPECTED_ECDR_TB_NAMES:
-        # TODO: Replace this TB assignment with
+        # TODO: WIP:  Replace this TB assignment with
         #       util.py's create_tb_dataarray()
         tb_day_name = f"{tbname}_day"
 
@@ -859,40 +859,23 @@ def compute_initial_daily_ecdr_dataset(
             water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],  # note: water
         )
 
-        # TODO: Keeping commented-out weather_mask kwarg calls to highlight
-        #       the transition from weather_mask to water_mask in these function
-        #       calls
-        # TODO: Temporarily forcing skipping of water tiepoint calculation to examine
-        #       using skip_dynamic_BT_tiepoints kwarg
-        if skip_dynamic_BT_tiepoints:
-            logger.warning("SKIPPING calculation of water tiepoint to match CDRv4")
-            bt_coefs["bt_wtp_v37"] = bt_coefs_init["bt_wtp_v37"]
-        else:
-            bt_coefs["bt_wtp_v37"] = bt.calculate_water_tiepoint(
-                wtp_init=bt_coefs_init["bt_wtp_v37"],
-                water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-                tb=bt_v37,
-            )
+        bt_coefs["bt_wtp_v37"] = bt.calculate_water_tiepoint(
+            wtp_init=bt_coefs_init["bt_wtp_v37"],
+            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            tb=bt_v37,
+        )
 
-        if skip_dynamic_BT_tiepoints:
-            logger.warning("SKIPPING calculation of water tiepoint to match CDRv4")
-            bt_coefs["bt_wtp_h37"] = bt_coefs_init["bt_wtp_h37"]
-        else:
-            bt_coefs["bt_wtp_h37"] = bt.calculate_water_tiepoint(
-                wtp_init=bt_coefs_init["bt_wtp_h37"],
-                water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-                tb=bt_h37,
-            )
+        bt_coefs["bt_wtp_h37"] = bt.calculate_water_tiepoint(
+            wtp_init=bt_coefs_init["bt_wtp_h37"],
+            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            tb=bt_h37,
+        )
 
-        if skip_dynamic_BT_tiepoints:
-            logger.warning("SKIPPING calculation of water tiepoint to match CDRv4")
-            bt_coefs["bt_wtp_v19"] = bt_coefs_init["bt_wtp_v19"]
-        else:
-            bt_coefs["bt_wtp_v19"] = bt.calculate_water_tiepoint(
-                wtp_init=bt_coefs_init["bt_wtp_v19"],
-                water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
-                tb=bt_v19,
-            )
+        bt_coefs["bt_wtp_v19"] = bt.calculate_water_tiepoint(
+            wtp_init=bt_coefs_init["bt_wtp_v19"],
+            water_mask=ecdr_ide_ds["bt_weather_mask"].data[0, :, :],
+            tb=bt_v19,
+        )
 
         bt_coefs["ad_line_offset"] = bt.get_adj_ad_line_offset(
             wtp_x=bt_coefs["bt_wtp_v37"],
@@ -1275,8 +1258,9 @@ def write_ide_netcdf(
                 "zlib": True,
             }
 
-    ide_ds.variables["x"].encoding["_FillValue"] = None
-    ide_ds.variables["y"].encoding["_FillValue"] = None
+    # ide_ds.variables["x"].encoding["_FillValue"] = None
+    # ide_ds.variables["y"].encoding["_FillValue"] = None
+    ide_ds = remove_FillValue_from_coordinate_vars(ide_ds)
     ide_ds.to_netcdf(
         output_filepath,
         encoding=nc_encoding,

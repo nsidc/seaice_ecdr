@@ -5,7 +5,10 @@ import xarray as xr
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES
+from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
+    remove_FillValue_from_coordinate_vars,
+)
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.tb_data import get_data_url_from_data_source
 from seaice_ecdr.util import get_num_missing_pixels
@@ -363,24 +366,12 @@ def finalize_cdecdr_ds(
         platform_ids=[ds_in.platform],
         resolution=resolution,
         hemisphere=hemisphere,
+        ancillary_source=ancillary_source,
     )
     ds.attrs = new_global_attrs
 
     # Coordinate values should not have _FillValue set
-    try:
-        del ds.time.encoding["_FillValue"]
-    except KeyError:
-        pass
-
-    try:
-        del ds.x.encoding["_FillValue"]
-    except KeyError:
-        pass
-
-    try:
-        del ds.y.encoding["_FillValue"]
-    except KeyError:
-        pass
+    ds = remove_FillValue_from_coordinate_vars(ds)
 
     # Note: Here, the x and y coordinate variables *do* have valid_range set
 

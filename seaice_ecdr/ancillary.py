@@ -24,6 +24,7 @@ from seaice_ecdr.constants import (
     ProductVersion,
 )
 from seaice_ecdr.grid_id import get_grid_id
+from seaice_ecdr.nc_util import remove_FillValue_from_coordinate_vars
 from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform
 from seaice_ecdr.platforms.config import N07_PLATFORM
 
@@ -47,21 +48,21 @@ def get_ancillary_filepath(
     return filepath
 
 
-def fix_ds_attrs(ds):
-    """Correct potential errors in the ancillary datasets"""
-    # Remove fill values from x, if it exists
-    try:
-        del ds.variables["x"].encoding["_FillValue"]
-    except KeyError:
-        pass
-
-    # Remove fill values from y, if it exists
-    try:
-        del ds.variables["y"].encoding["_FillValue"]
-    except KeyError:
-        pass
-
-    return ds
+# def fix_ds_attrs(ds):
+#    """Correct potential errors in the ancillary datasets"""
+#    # Remove fill values from x, if it exists
+#    try:
+#        del ds.variables["x"].encoding["_FillValue"]
+#    except KeyError:
+#        pass
+#
+#    # Remove fill values from y, if it exists
+#    try:
+#        del ds.variables["y"].encoding["_FillValue"]
+#    except KeyError:
+#        pass
+#
+#    return ds
 
 
 @cache
@@ -86,7 +87,8 @@ def get_ancillary_ds(
     )
     ds = xr.load_dataset(filepath)
 
-    ds = fix_ds_attrs(ds)
+    # ds = fix_ds_attrs(ds)
+    ds = remove_FillValue_from_coordinate_vars(ds)
 
     return ds
 

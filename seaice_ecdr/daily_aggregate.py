@@ -20,7 +20,11 @@ from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES, get_ancillary_ds
+from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
+    get_ancillary_ds,
+    remove_FillValue_from_coordinate_vars,
+)
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
@@ -159,6 +163,7 @@ def _update_ncrcat_daily_ds(
         platform_ids=[platform_id_from_filename(fp.name) for fp in daily_filepaths],
         resolution=resolution,
         hemisphere=hemisphere,
+        ancillary_source=ancillary_source,
     )
     ds.attrs = daily_aggregate_ds_global_attrs  # type: ignore[assignment]
 
@@ -215,8 +220,9 @@ def make_daily_aggregate_netcdf_for_year(
             fix_daily_aggregate_ncattrs(daily_ds)
 
             # Write out the aggregate daily file.
-            daily_ds.variables["x"].encoding["_FillValue"] = None
-            daily_ds.variables["y"].encoding["_FillValue"] = None
+            # daily_ds.variables["x"].encoding["_FillValue"] = None
+            # daily_ds.variables["y"].encoding["_FillValue"] = None
+            daily_ds = remove_FillValue_from_coordinate_vars(daily_ds)
             daily_ds.to_netcdf(
                 output_path,
             )

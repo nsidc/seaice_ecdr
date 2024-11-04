@@ -7,9 +7,14 @@ from typing import Any, Literal, get_args
 
 import pandas as pd
 import xarray as xr
+from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
+    get_ancillary_ds,
+)
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 
@@ -142,6 +147,7 @@ def get_global_attrs(
     platform_ids: list[SUPPORTED_PLATFORM_ID],
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     hemisphere: Hemisphere,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> dict[str, Any]:
     """Return a dictionary containing the global attributes for a standard ECDR NetCDF file.
 
@@ -161,36 +167,34 @@ def get_global_attrs(
         time=time,
     )
 
-    # TODO: These attributes should be pulled from a grid-based information source
-    #       E.g., this information is available in the ancillary file.
     if hemisphere == "north":
-        geospatial_bounds = "POLYGON ((-3850000 5850000, 3750000 5850000, 3750000 -5350000, -3850000 -5350000, -3850000 5850000))"
-        geospatial_bounds_crs = "EPSG:3411"
-        geospatial_x_units = "meters"
-        geospatial_y_units = "meters"
-        geospatial_x_resolution = "25000 meters"
-        geospatial_y_resolution = "25000 meters"
-        geospatial_lat_min = 30.980564
-        geospatial_lat_max = 90.0
-        geospatial_lon_min = -180.0
-        geospatial_lon_max = 180.0
-        geospatial_lat_units = "degrees_north"
-        geospatial_lon_units = "degrees_east"
+        # geospatial_bounds = "POLYGON ((-3850000 5850000, 3750000 5850000, 3750000 -5350000, -3850000 -5350000, -3850000 5850000))"
+        # geospatial_bounds_crs = "EPSG:3411"
+        # geospatial_x_units = "meters"
+        # geospatial_y_units = "meters"
+        # geospatial_x_resolution = "25000 meters"
+        # geospatial_y_resolution = "25000 meters"
+        # geospatial_lat_min = 30.980564
+        # geospatial_lat_max = 90.0
+        # geospatial_lon_min = -180.0
+        # geospatial_lon_max = 180.0
+        # geospatial_lat_units = "degrees_north"
+        # geospatial_lon_units = "degrees_east"
 
         keywords = "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE CONCENTRATION, Continent > North America > Canada > Hudson Bay, Geographic Region > Arctic, Geographic Region > Polar, Geographic Region > Northern Hemisphere, Ocean > Arctic Ocean, Ocean > Arctic Ocean > Barents Sea, Ocean > Arctic Ocean > Beaufort Sea, Ocean > Arctic Ocean > Chukchi Sea, CONTINENT > NORTH AMERICA > CANADA > HUDSON BAY, Ocean > Atlantic Ocean > North Atlantic Ocean > Davis Straight, OCEAN > ATLANTIC OCEAN > NORTH ATLANTIC OCEAN > GULF OF ST LAWRENCE, Ocean > Atlantic Ocean > North Atlantic Ocean > North Sea, Ocean > Atlantic Ocean > North Atlantic Ocean > Norwegian Sea, OCEAN > ATLANTIC OCEAN > NORTH ATLANTIC OCEAN > SVALBARD AND JAN MAYEN, Ocean > Pacific Ocean, Ocean > Pacific Ocean > North Pacific Ocean > Bering Sea, Ocean > Pacific Ocean > North Pacific Ocean > Sea Of Okhotsk"
     else:
-        geospatial_bounds = "POLYGON ((-3950000 4350000, 3950000 4350000, 3950000 -3950000, -3950000 -3950000, -3950000 4350000))"
-        geospatial_bounds_crs = "EPSG:3412"
-        geospatial_x_units = "meters"
-        geospatial_y_units = "meters"
-        geospatial_x_resolution = "25000 meters"
-        geospatial_y_resolution = "25000 meters"
-        geospatial_lat_min = -90.0
-        geospatial_lat_max = -39.23089
-        geospatial_lon_min = -180.0
-        geospatial_lon_max = 180.0
-        geospatial_lat_units = "degrees_north"
-        geospatial_lon_units = "degrees_east"
+        # geospatial_bounds = "POLYGON ((-3950000 4350000, 3950000 4350000, 3950000 -3950000, -3950000 -3950000, -3950000 4350000))"
+        # geospatial_bounds_crs = "EPSG:3412"
+        # geospatial_x_units = "meters"
+        # geospatial_y_units = "meters"
+        # geospatial_x_resolution = "25000 meters"
+        # geospatial_y_resolution = "25000 meters"
+        # geospatial_lat_min = -90.0
+        # geospatial_lat_max = -39.23089
+        # geospatial_lon_min = -180.0
+        # geospatial_lon_max = 180.0
+        # geospatial_lat_units = "degrees_north"
+        # geospatial_lon_units = "degrees_east"
 
         keywords = "EARTH SCIENCE > CRYOSPHERE > SEA ICE > SEA ICE CONCENTRATION, Geographic Region > Polar, Geographic Region > Southern Hemisphere, Ocean > Southern Ocean, Ocean > Southern Ocean > Bellingshausen Sea, Ocean > Southern Ocean > Ross Sea, Ocean > Southern Ocean > Weddell Sea"
 
@@ -233,18 +237,46 @@ def get_global_attrs(
         # TODO: ideally, these would get dynamically set from the input data's
         # grid definition...
         cdr_data_type="grid",
-        geospatial_bounds=geospatial_bounds,
-        geospatial_bounds_crs=geospatial_bounds_crs,
-        geospatial_x_units=geospatial_x_units,
-        geospatial_y_units=geospatial_y_units,
-        geospatial_x_resolution=geospatial_x_resolution,
-        geospatial_y_resolution=geospatial_y_resolution,
-        geospatial_lat_min=geospatial_lat_min,
-        geospatial_lat_max=geospatial_lat_max,
-        geospatial_lon_min=geospatial_lon_min,
-        geospatial_lon_max=geospatial_lon_max,
-        geospatial_lat_units=geospatial_lat_units,
-        geospatial_lon_units=geospatial_lon_units,
+        # geospatial_bounds=geospatial_bounds,
+        # geospatial_bounds_crs=geospatial_bounds_crs,
+        # geospatial_x_units=geospatial_x_units,
+        # geospatial_y_units=geospatial_y_units,
+        # geospatial_x_resolution=geospatial_x_resolution,
+        # geospatial_y_resolution=geospatial_y_resolution,
+        # geospatial_lat_min=geospatial_lat_min,
+        # geospatial_lat_max=geospatial_lat_max,
+        # geospatial_lon_min=geospatial_lon_min,
+        # geospatial_lon_max=geospatial_lon_max,
+        # geospatial_lat_units=geospatial_lat_units,
+        # geospatial_lon_units=geospatial_lon_units,
     )
+
+    # TODO: These attributes should be pulled from a grid-based information source
+    #       E.g., this information is available in the ancillary file.
+    ancillary_ds = get_ancillary_ds(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        ancillary_source=ancillary_source,
+    )
+    attrs_from_ancillary = (
+        "geospatial_bounds",
+        "geospatial_bounds_crs",
+        "geospatial_x_units",
+        "geospatial_y_units",
+        "geospatial_x_resolution",
+        "geospatial_y_resolution",
+        "geospatial_lat_min",
+        "geospatial_lat_max",
+        "geospatial_lon_min",
+        "geospatial_lon_max",
+        "geospatial_lat_units",
+        "geospatial_lon_units",
+    )
+
+    for attr in attrs_from_ancillary:
+        try:
+            new_global_attrs[attr] = ancillary_ds.attrs[attr]
+        except KeyError:
+            logger.warning(f"No such global attr in ancillary file: {attr}")
 
     return new_global_attrs

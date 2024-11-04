@@ -22,6 +22,7 @@ from seaice_ecdr.ancillary import (
     get_daily_climatology_mask,
     get_non_ocean_mask,
     nh_polehole_mask,
+    remove_FillValue_from_coordinate_vars,
 )
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
@@ -418,7 +419,6 @@ def calc_stdev_inputs(
     try:
         assert verify_array_nominal_range(nt_conc)
     except AssertionError:
-        breakpoint()
         logger.error("nt_conc_median is not consistent with values 0-1")
 
     # Set a mask for the application of standard deviation calculation
@@ -936,8 +936,9 @@ def write_tie_netcdf(
         elif varname not in uncompressed_fields:
             nc_encoding[varname] = {"zlib": True}
 
-    tie_ds.variables["x"].encoding["_FillValue"] = None
-    tie_ds.variables["y"].encoding["_FillValue"] = None
+    # tie_ds.variables["x"].encoding["_FillValue"] = None
+    # tie_ds.variables["y"].encoding["_FillValue"] = None
+    tie_ds = remove_FillValue_from_coordinate_vars(tie_ds)
     tie_ds.to_netcdf(
         output_filepath,
         encoding=nc_encoding,

@@ -36,7 +36,11 @@ from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES, flag_value_for_meaning
+from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
+    flag_value_for_meaning,
+    remove_FillValue_from_coordinate_vars,
+)
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.days_treated_differently import months_of_cdr_missing_data
 from seaice_ecdr.intermediate_daily import get_ecdr_filepath
@@ -666,6 +670,7 @@ def make_intermediate_monthly_ds(
         platform_ids=[platform_id],
         resolution=resolution,
         hemisphere=hemisphere,
+        ancillary_source=ancillary_source,
     )
     monthly_ds.attrs.update(monthly_ds_global_attrs)
 
@@ -745,8 +750,9 @@ def make_intermediate_monthly_nc(
 
     # Set `x` and `y` `_FillValue` to `None`. Although unset initially, `xarray`
     # seems to default to `np.nan` for variables without a FillValue.
-    monthly_ds.x.encoding["_FillValue"] = None
-    monthly_ds.y.encoding["_FillValue"] = None
+    # monthly_ds.x.encoding["_FillValue"] = None
+    # monthly_ds.y.encoding["_FillValue"] = None
+    monthly_ds = remove_FillValue_from_coordinate_vars(monthly_ds)
     monthly_ds.to_netcdf(
         output_path,
         unlimited_dims=[

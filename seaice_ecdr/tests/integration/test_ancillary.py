@@ -19,6 +19,7 @@ from seaice_ecdr.constants import (
     DEFAULT_ANCILLARY_SOURCE,
     DEFAULT_CDR_RESOLUTION,
     ECDR_PRODUCT_VERSION,
+    NSIDC_NFS_SHARE_DIR,
 )
 from seaice_ecdr.grid_id import get_grid_id
 
@@ -81,14 +82,13 @@ def test_adj123_does_not_overlap_land():
 def test_ancillary_filepaths():
     """test that the directory/names of the ancillary files
     for publication are as expected"""
-    # ancillary_source = DEFAULT_ANCILLARY_SOURCE
-    # resolution = DEFAULT_CDR_RESOLUTION
     ancillary_source = cast(ANCILLARY_SOURCES, DEFAULT_ANCILLARY_SOURCE)
     resolution = cast(ECDR_SUPPORTED_RESOLUTIONS, DEFAULT_CDR_RESOLUTION)
     hemispheres = get_args(Hemisphere)
     product_version = ECDR_PRODUCT_VERSION
 
-    expected_dir = Path(f"/share/apps/G02202_V5/{product_version}_ancillary")
+    # expected_dir = Path(f"/share/apps/G02202_V5/{product_version}_ancillary")
+    expected_dir = Path(f"{NSIDC_NFS_SHARE_DIR}/{product_version}_ancillary")
     assert expected_dir.is_dir()
 
     expected_fp_template = Template("G02202-ancillary-${grid_id}-${product_version}.nc")

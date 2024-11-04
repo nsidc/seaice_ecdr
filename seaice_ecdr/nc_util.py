@@ -64,20 +64,38 @@ def remove_FillValue_from_coordinate_vars(ds: xr.Dataset | datatree.DataTree):
     outputs. Ideally, the ancillary files and the code that creates the `time`
     dim should omit `valid_range`, and this function becomes unnecessary.
     """
-    try:
-        del ds.x.encoding["_FillValue"]
-    except KeyError:
-        pass
+    # I this might *actually* work to remove the _FillValue for xarray
+    for coord_var in ("x", "y", "time"):
+        try:
+            ds.variables["coord_var"].encoding["_FillValue"] = None
+        except KeyError:
+            pass
 
-    try:
-        del ds.y.encoding["_FillValue"]
-    except KeyError:
-        pass
+    # this should be a simplified verison of the orig version of this routine
 
-    try:
-        del ds.time.encoding["_FillValue"]
-    except KeyError:
-        pass
+    # for coord_var in ('x', 'y', 'time'):
+    #    try:
+    #        del ds.variables['coord_var'].encoding['_FillValue']
+    #    except KeyError:
+    #        pass
+
+    # This was the original contents of this routine
+    # try:
+    #    del ds.x.encoding["_FillValue"]
+    # except KeyError:
+    #    pass
+
+    # try:
+    #    del ds.y.encoding["_FillValue"]
+    # except KeyError:
+    #    pass
+
+    # try:
+    #    del ds.time.encoding["_FillValue"]
+    # except KeyError:
+    #    pass
+
+    return ds
 
 
 def add_coordinate_coverage_content_type(ds: xr.Dataset | datatree.DataTree):
@@ -120,7 +138,8 @@ def get_empty_group(ds, ncgroup_name):
         data_variable = ds_empty_group.data_vars[datavar]
         # NOTE: Getting the _FillValue via
         #   fillvalue = ds_empty_group.data_vars[datavar].encoding['_FillValue']
-        # ...did not work for packed data.  Falling back to a
+        # did not work for packed data.
+        # Setting the fillvalue explicitly based on data_variable attrs
         if "number_of_missing_pixels" in data_variable.attrs:
             data_variable.attrs["number_of_missing_pixels"] = data_variable.size
         dtype = data_variable.dtype
@@ -155,9 +174,7 @@ def add_ncgroup(
                 ds,
                 ncgroup_name,
             )
-            # ds = None  *** How do I close a datatree? ***
             break
-        # ds = None  *** How do I close a datatree? ***
 
     # If we don't need to add this nc_group, return the filename list unaltered
     if not add_groupname:
@@ -169,21 +186,22 @@ def add_ncgroup(
     clean_ncgroup_name = ncgroup_name.replace("/", "")
     empty_datatree_fn = f"empty_datatree_{clean_ncgroup_name}.nc"
     empty_datatree_fp = Path(tmpdir, empty_datatree_fn)
-    try:
-        empty_nc_datatree.variables["x"].encoding["_FillValue"] = None
-    except KeyError:
-        pass
+    empty_nc_datatree = remove_FillValue_from_coordinate_vars(empty_nc_datatree)
+    # try:
+    #    empty_nc_datatree.variables["x"].encoding["_FillValue"] = None
+    # except KeyError:
+    #    pass
 
-    try:
-        empty_nc_datatree.variables["y"].encoding["_FillValue"] = None
-    except KeyError:
-        pass
+    # try:
+    #    empty_nc_datatree.variables["y"].encoding["_FillValue"] = None
+    # except KeyError:
+    #    pass
 
     empty_nc_datatree.to_netcdf(empty_datatree_fp)
 
     new_file_list = []
     updated_file_count = 0
-    logger.success(
+    logger.info(
         f"Adding {clean_ncgroup_name} nc group to {len(filepath_list)} files as needed..."
     )
     for fp in filepath_list:
@@ -218,6 +236,7 @@ def add_ncgroup(
 def adjust_monthly_aggregate_ncattrs(fp):
     """Clean up source, platform, and sensor ncattrs"""
     print("SKIPPING adjust_monthly_aggregate_ncattrs")
+    print("  pending final decisions on monagg_attrs")
     pass
 
 

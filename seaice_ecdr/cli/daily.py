@@ -54,8 +54,7 @@ def make_25km_ecdr(
     # separately:
     amsr2_start_date = start_date
     if end_date >= AM2_START_DATE:
-        if start_date < AM2_START_DATE:
-            amsr2_start_date = AM2_START_DATE
+        amsr2_start_date = max(start_date, AM2_START_DATE)
 
     if amsr2_start_date >= AM2_START_DATE:
         run_cmd(
