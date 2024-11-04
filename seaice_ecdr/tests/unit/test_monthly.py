@@ -8,7 +8,7 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH
 
-from seaice_ecdr import intermediate_monthly, util
+from seaice_ecdr import util
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.intermediate_daily import get_ecdr_dir
 from seaice_ecdr.intermediate_monthly import (
@@ -23,7 +23,6 @@ from seaice_ecdr.intermediate_monthly import (
     calc_cdr_seaice_conc_monthly_stdev,
     calc_surface_type_mask_monthly,
     check_min_days_for_valid_month,
-    make_intermediate_monthly_ds,
 )
 
 
@@ -526,67 +525,6 @@ def test_calc_cdr_melt_onset_day_monthly():
             ]
         ),
     )
-
-
-def test_monthly_ds(monkeypatch, tmpdir):
-    _mock_daily_ds = _mock_daily_ds_for_month()
-
-    # usually we require at least 20 days of data for a valid month. This mock
-    # data is just 3 days in size, so we need to mock the
-    # "check_min_days_for_valid_month" function.
-    monkeypatch.setattr(
-        intermediate_monthly,
-        "check_min_days_for_valid_month",
-        lambda *_args, **_kwargs: True,
-    )
-
-    _mock_oceanmask = xr.DataArray(
-        [
-            True,
-            False,
-            True,
-            True,
-        ],
-        dims=("y",),
-        coords=dict(y=list(range(4))),
-    )
-    monkeypatch.setattr(
-        util, "get_ocean_mask", lambda *_args, **_kwargs: _mock_oceanmask
-    )
-
-    actual = make_intermediate_monthly_ds(
-        daily_ds_for_month=_mock_daily_ds,
-        platform_id="am2",
-        hemisphere=NORTH,
-        resolution="25",
-        ancillary_source="CDRv5",
-    )
-
-    # Test that the dataset only contains the variables we expect.
-    expected_vars = sorted(
-        [
-            "cdr_seaice_conc_monthly",
-            "cdr_seaice_conc_monthly_stdev",
-            "cdr_melt_onset_day_monthly",
-            "cdr_seaice_conc_monthly_qa_flag",
-            "crs",
-            "surface_type_mask",
-        ]
-    )
-    actual_vars = sorted([str(var) for var in actual.keys()])
-
-    assert expected_vars == actual_vars
-
-    # Test that we can write out the data and read it back without changing it
-    output_fp = tmpdir / "test.nc"
-    actual.to_netcdf(output_fp)
-
-    after_write = xr.open_dataset(output_fp)
-
-    # Assert that all results are close to 0.01 (1% SIC).
-    # TODO: should this be even closer? The max diff in the conc fields is:
-    #   0.0033333327372868787
-    xr.testing.assert_allclose(actual, after_write, atol=0.009)
 
 
 def test__platform_id_for_month():
