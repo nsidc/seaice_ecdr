@@ -1,8 +1,16 @@
-# v0.3.0
+# v1.0.0
+
+* First production release of 25km CDR
 
 * Add new `daily` cli that produces daily NC files ready for publication. During
   the AMSR2 period, a `prototype_am2` group is added to the final output files
   with AMSR2-derived fields.
+
+* Support daily and monthly NRT processing. Daily NRT processing supports
+  producing AMSR2 and F17 outputs. Monthly processing supports F17 output, but
+  not AMSR2.
+
+* Removes much of the code required to match CDR v4.
 
 # match-cdrv4 (commit 87271ec)
 
