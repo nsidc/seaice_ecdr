@@ -39,14 +39,17 @@ def standard_daily_filename(
 def _standard_fn_to_nrt(*, standard_fn: str) -> str:
     standard_fn_path = Path(standard_fn)
 
-    fn_base = standard_fn_path.stem
-    ext = standard_fn_path.suffix
-    nrt_fn = fn_base + "_P" + ext
+    standard_fn = standard_fn_path.name
 
     # Replace the standard G02202 version number with the NRT version.
-    nrt_fn = nrt_fn.replace(
+    nrt_fn = standard_fn.replace(
         ECDR_PRODUCT_VERSION.version_str, ECDR_NRT_PRODUCT_VERSION.version_str
     )
+
+    # Put `_icdr_` just before the product version.
+    # Ouptut fp iwll look like e.g., `sic_psn25_20240925_am2_icdr_v03r00.nc`
+    icdr_idx = nrt_fn.find(ECDR_NRT_PRODUCT_VERSION.version_str)
+    nrt_fn = nrt_fn[:icdr_idx] + "icdr_" + nrt_fn[icdr_idx:]
 
     return nrt_fn
 
@@ -231,12 +234,13 @@ STANDARD_FN_REGEX = re.compile(
     r"sic_(?P<grid_id>ps[sn]\d+(\.\d+)?)"
     # Date is 6 digits for monthly (YYYYMM) and 8 digits for daily (YYYYMMDD)
     r"_(?P<date_str>\d{6}|\d{8})"
-    # Platform ID is e.g., "F17"
-    r"_(?P<platform_id>.*)"
+    # Platform ID is e.g., "F17". Capture everything up to but excluding the
+    # next `_`.
+    r"_(?P<platform_id>[^_]+)"
+    # optional `_icdr` for nrt files.
+    r"(_icdr)?"
     # Version string is e.g., "v05r00"
-    r"_(?P<version_str>v\d{2}r\d{2})"
-    # optional `_P` for nrt files.
-    r"(_P)?.nc"
+    r"_(?P<version_str>v\d{2}r\d{2}).nc"
 )
 
 
