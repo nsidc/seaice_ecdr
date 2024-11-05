@@ -133,10 +133,9 @@ Each time finalized data is produced, the validation CLI should be run:
 
 
 ```
-validate-outputs --hemisphere {north|south} --start-date YYYY-MM-DD --end-date YYYY-MM-DD
+validate-outputs --hemisphere both --start-date YYYY-MM-DD --end-date YYYY-MM-DD
 ```
 
 This produces log files in
 `/share/apps/G02202_V5/v05r00_outputs/production/validation/` that should be
-published to the production location. TODO: confirm this is accurate. Does not
-look like v4 does this.
+reviewed by the NOAA@NSIDC project manager responsible for the sea ice CDR.
