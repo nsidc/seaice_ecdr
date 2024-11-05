@@ -98,6 +98,12 @@ def cli(
     overwrite: bool,
     nrt_platform_id: Literal["F17", "am2"],
 ):
+    if nrt_platform_id == "am2":
+        base_output_dir = base_output_dir / "prototype_amsr2"
+    else:
+        base_output_dir = base_output_dir / "CDR"
+
+    base_output_dir.mkdir(exist_ok=True)
 
     if last_n_days and (date or end_date):
         raise RuntimeError(

@@ -133,8 +133,11 @@ def cli(
     end_month: int | None,
     hemisphere: Hemisphere,
     base_output_dir: Path,
-    nrt_platform_id: Literal["F17", "am2"],
+    nrt_platform_id: Literal["F17"],
 ) -> None:
+    base_output_dir = base_output_dir / "CDR"
+    base_output_dir.mkdir(exist_ok=True)
+
     make_monthly_25km_ecdr(
         year=year,
         month=month,
