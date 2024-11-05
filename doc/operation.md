@@ -93,7 +93,7 @@ as an example.
 To create daily data:
 
 ```
-daily --start-date YYYY-MM-DD --end-date YYYY-MM-DD --hemisphere {north|south}
+daily --start-date YYYY-MM-DD --end-date YYYY-MM-DD --hemisphere both
 ```
 
 Once daily data for a year is available, this data should be aggregated with the
