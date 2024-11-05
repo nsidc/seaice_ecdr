@@ -364,11 +364,10 @@ def prepare_monthly_nc_for_publication(
     # get the platform Id from the filename default filename.
     platform_id = platform_id_from_filename(intermediate_monthly_fp.name)
 
-    assert platform_id in get_args(NRT_SUPPORTED_PLATFORM_ID)
-    platform_id = cast(NRT_SUPPORTED_PLATFORM_ID, platform_id)
-
     # Override attrs for nrt
     if is_nrt:
+        assert platform_id in get_args(NRT_SUPPORTED_PLATFORM_ID)
+        platform_id = cast(NRT_SUPPORTED_PLATFORM_ID, platform_id)
         complete_monthly_ds = override_attrs_for_nrt(
             publication_ready_ds=complete_monthly_ds,
             resolution=resolution,
