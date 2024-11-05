@@ -378,9 +378,11 @@ def hack_daily_cdr_vars_for_am2(
     root_as_xr = daily_ds.root.to_dataset()
 
     suppl_as_xr = daily_ds.cdr_supplementary.to_dataset()
-    suppl_as_xr = suppl_as_xr.drop_vars(
-        ["raw_bt_seaice_conc", "raw_nt_seaice_conc", "cdr_melt_onset_day"]
-    )
+    vars_to_drop = ["raw_bt_seaice_conc", "raw_nt_seaice_conc"]
+    if "cdr_melt_onset_day" in suppl_as_xr.variables:
+        vars_to_drop.append("cdr_melt_onset_day")
+
+    suppl_as_xr = suppl_as_xr.drop_vars(vars_to_drop)
 
     root_remapping = {}
     for var in root_as_xr.variables:
