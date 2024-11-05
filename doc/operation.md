@@ -19,12 +19,6 @@ $ ecdr --help
 
 ## G10016 NRT Processing
 
-NRT data will be written to
-`/share/apps/G10016_V3/v03r00/production/complete/`. The contents of this
-directory should be rsync-ed to `/disks/sidads_ftp/pub/DATASETS/NOAA/G10016_V3`
-after successful completion of each G10016 procesing job, **EXCEPT FOR AMSR2
-DAILY DATA FILES**.
-
 ###  Daily processing
 
 There are two daily NRT processing streams: one for F17 data and the other for
