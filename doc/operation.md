@@ -26,33 +26,44 @@ after successful completion of each G10016 procesing job.
 
 ###  Daily processing
 
-Daily NRT processing should occur by running this command:
+There are two daily NRT processing streams: one for F17 data and the other for
+AMSR2.
+
+#### F17 processing
+
+Daily NRT processing for F17 should occur by running this command:
 
 ```
-daily-nrt --last-n-days 5 --hemisphere both
+daily-nrt --last-n-days 5 --hemisphere both --nrt-platform-id F17
 ```
 
 Note that the `--overwrite` flag can be used to re-create NRT data if e.g., a
 data gap is filled a few days late.
 
+#### am2 processing
+
+Daily NRT processing for AMSR2 should be run at a 1-week lag. E.g, if today is
+Nov. 5, 2024, we should create a data file for one week ago: Oct. 30th, 2024:
+
+
+```
+daily-nrt --date 2024-10-30 --hemisphere both --nrt-platform-id am2
+```
+
 ### Monthly processing
 
-We produce both F17 and AM2 nrt files.
+We produce NRT monthly files for F17 (not AM2).
 
 To run for a single month:
 ```
 monthly-nrt --year YYYY --month MM --hemisphere {north,south} --nrt-platform-id F17
-monthly-nrt --year YYYY --month MM --hemisphere {north,south} --nrt-platform-id am2
 ```
 
 To process multiple years/months:
 
 ```
 monthly-nrt --year YYYY --month MM --end-year YYYY --end-month MM --hemisphere {north,south} --nrt-platform-id F17
-monthly-nrt --year YYYY --month MM --end-year YYYY --end-month MM --hemisphere {north,south} --nrt-platform-id am2
 ```
-
-NOTE: the F17 data MUST be created before AM2, or the code will not work.
 
 
 ## G02202 "final" Processing
