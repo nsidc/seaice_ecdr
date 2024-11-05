@@ -110,7 +110,7 @@ There will be one daily aggregate file per year per hemisphere.
 When a month's worth of daily data is available, monthly data files can be produced:
 
 ```
-monthly --year YYYY --month mm --hemisphere {north|south}
+monthly --year YYYY --month mm --hemisphere both
 ```
 
 A range of years/months can also be specified:
