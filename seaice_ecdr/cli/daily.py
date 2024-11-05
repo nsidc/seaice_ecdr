@@ -1,7 +1,7 @@
 import copy
 import datetime as dt
 from pathlib import Path
-from typing import get_args
+from typing import Literal, get_args
 
 import click
 from pm_tb_data._types import Hemisphere
@@ -112,7 +112,7 @@ def make_25km_ecdr(
     "-h",
     "--hemisphere",
     required=True,
-    type=click.Choice(get_args(Hemisphere)),
+    type=click.Choice([*get_args(Hemisphere), "both"]),
 )
 @click.option(
     "--base-output-dir",
@@ -161,7 +161,7 @@ def cli(
     *,
     date: dt.date,
     end_date: dt.date | None,
-    hemisphere: Hemisphere,
+    hemisphere: Hemisphere | Literal["both"],
     base_output_dir: Path,
     no_multiprocessing: bool,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
@@ -171,16 +171,22 @@ def cli(
     if end_date is None:
         end_date = copy.copy(date)
 
-    make_25km_ecdr(
-        start_date=date,
-        end_date=end_date,
-        hemisphere=hemisphere,
-        base_output_dir=base_output_dir,
-        no_multiprocessing=no_multiprocessing,
-        resolution=resolution,
-        land_spillover_alg=land_spillover_alg,
-        ancillary_source=ancillary_source,
-    )
+    if hemisphere == "both":
+        hemispheres: list[Hemisphere] = ["north", "south"]
+    else:
+        hemispheres = [hemisphere]
+
+    for hemisphere in hemispheres:
+        make_25km_ecdr(
+            start_date=date,
+            end_date=end_date,
+            hemisphere=hemisphere,
+            base_output_dir=base_output_dir,
+            no_multiprocessing=no_multiprocessing,
+            resolution=resolution,
+            land_spillover_alg=land_spillover_alg,
+            ancillary_source=ancillary_source,
+        )
 
 
 if __name__ == "__main__":

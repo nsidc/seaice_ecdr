@@ -93,7 +93,7 @@ as an example.
 To create daily data:
 
 ```
-daily --start-date YYYY-MM-DD --end-date YYYY-MM-DD --hemisphere {north|south}
+daily --start-date YYYY-MM-DD --end-date YYYY-MM-DD --hemisphere both
 ```
 
 Once daily data for a year is available, this data should be aggregated with the
@@ -110,7 +110,7 @@ There will be one daily aggregate file per year per hemisphere.
 When a month's worth of daily data is available, monthly data files can be produced:
 
 ```
-monthly --year YYYY --month mm --hemisphere {north|south}
+monthly --year YYYY --month mm --hemisphere both
 ```
 
 A range of years/months can also be specified:
@@ -133,10 +133,9 @@ Each time finalized data is produced, the validation CLI should be run:
 
 
 ```
-validate-outputs --hemisphere {north|south} --start-date YYYY-MM-DD --end-date YYYY-MM-DD
+validate-outputs --hemisphere both --start-date YYYY-MM-DD --end-date YYYY-MM-DD
 ```
 
 This produces log files in
 `/share/apps/G02202_V5/v05r00_outputs/production/validation/` that should be
-published to the production location. TODO: confirm this is accurate. Does not
-look like v4 does this.
+reviewed by the NOAA@NSIDC project manager responsible for the sea ice CDR.
