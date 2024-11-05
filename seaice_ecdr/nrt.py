@@ -360,6 +360,46 @@ def override_attrs_for_nrt(
     return override_for_nrt
 
 
+def hack_daily_cdr_vars_for_am2(
+    daily_ds: datatree.DataTree, platform_id: NRT_SUPPORTED_PLATFORM_ID
+):
+    """Hack prepare daily AMSR2 NRT files for publication.
+
+    * rename `cdr_` variables with `am2_`
+    * Remove from cdr_supplementary group:
+      * raw_bt_seaice_conc
+      * raw_nt_seaice_conc
+      * cdr_melt_onset_day
+    """
+    if platform_id != "am2":
+        # Make no changes. F17 will still be called "cdr_"
+        return daily_ds
+
+    root_as_xr = daily_ds.root.to_dataset()
+
+    suppl_as_xr = daily_ds.cdr_supplementary.to_dataset()
+    suppl_as_xr = suppl_as_xr.drop_vars(
+        ["raw_bt_seaice_conc", "raw_nt_seaice_conc", "cdr_melt_onset_day"]
+    )
+
+    root_remapping = {}
+    for var in root_as_xr.variables:
+        if var.startswith("cdr_"):
+            new_name = var.replace("cdr_", "am2_")
+            root_remapping[var] = new_name
+
+    root_as_xr = root_as_xr.rename(root_remapping)
+
+    renamed_vars_ds = datatree.DataTree.from_dict(
+        {
+            "/": root_as_xr,
+            "cdr_supplementary": suppl_as_xr,
+        }
+    )
+
+    return renamed_vars_ds
+
+
 def nrt_ecdr_for_day(
     *,
     date: dt.date,
@@ -425,6 +465,10 @@ def nrt_ecdr_for_day(
                 publication_ready_ds=daily_ds,
                 resolution=NRT_RESOLUTION,
                 platform_id=_get_nrt_platform_id(),
+            )
+
+            daily_ds = hack_daily_cdr_vars_for_am2(
+                daily_ds=daily_ds, platform_id=_get_nrt_platform_id()
             )
 
             daily_ds.to_netcdf(nrt_output_filepath)
