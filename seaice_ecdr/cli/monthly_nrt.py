@@ -118,7 +118,11 @@ def make_monthly_25km_ecdr(
 )
 @click.option(
     "--nrt-platform-id",
-    type=click.Choice(["F17", "am2"]),
+    # TODO: eventually we want to support AM2 as a separate monthly file. This
+    # does not currently work: the code instead places the AMSR2 monthly data
+    # into a `am2_prototype` group like the non-nrt files, and that's not what
+    # we want because the lag on data for F17 is different from AM2.
+    type=click.Choice(["F17"]),
     default="F17",
 )
 def cli(
