@@ -1,12 +1,16 @@
 from pathlib import Path
-from typing import Final, Literal, get_args
+from typing import Literal, get_args
 
 import click
 import pandas as pd
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.cli.util import CLI_EXE_PATH, run_cmd
-from seaice_ecdr.constants import DEFAULT_BASE_NRT_OUTPUT_DIR
+from seaice_ecdr.constants import (
+    DEFAULT_ANCILLARY_SOURCE,
+    DEFAULT_BASE_NRT_OUTPUT_DIR,
+    DEFAULT_CDR_RESOLUTION,
+)
 from seaice_ecdr.platforms.config import (
     NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH,
     NRT_F17_PLATFORM_START_DATES_CONFIG_FILEPATH,
@@ -27,9 +31,6 @@ def make_monthly_25km_ecdr(
     if end_month is None:
         end_month = month
 
-    # TODO: consider extracting these to CLI options that default to these values.
-    RESOLUTION: Final = "25"
-    ANCILLARY_SOURCE: Final = "CDRv5"
     if nrt_platform_id == "F17":
         nrt_platform_start_dates_filepath = NRT_F17_PLATFORM_START_DATES_CONFIG_FILEPATH
     elif nrt_platform_id == "am2":
@@ -43,8 +44,8 @@ def make_monthly_25km_ecdr(
         f" --end-year {end_year} --end-month {end_month}"
         f" --hemisphere {hemisphere}"
         f" --base-output-dir {base_output_dir}"
-        f" --resolution {RESOLUTION}"
-        f" --ancillary-source {ANCILLARY_SOURCE}"
+        f" --resolution {DEFAULT_CDR_RESOLUTION}"
+        f" --ancillary-source {DEFAULT_ANCILLARY_SOURCE}"
         " --is-nrt"
     )
 
