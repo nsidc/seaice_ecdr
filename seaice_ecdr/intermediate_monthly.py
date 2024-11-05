@@ -5,11 +5,11 @@ Follows the same procedure as CDR v4.
 Variables:
 
 * `cdr_seaice_conc_monthly`: Create combined monthly sea ice concentration
-* `stdev_of_cdr_seaice_conc_monthly`: Calculate standard deviation of sea ice
+* `cdr_seaice_conc_monthly_stdev`: Calculate standard deviation of sea ice
   concentration
-* `qa_of_cdr_seaice_conc_monthly`: QA Fields (Weather filters, land
+* `cdr_seaice_conc_monthly_qa_flag`: QA Fields (Weather filters, land
   spillover, valid ice mask, spatial and temporal interpolation, melt onset)
-* `melt_onset_day_cdr_seaice_conc_monthly`: Melt onset day (Value from the last
+* `cdr_melt_onset_day_monthly`: Melt onset day (Value from the last
   day of the month)
 
 Notes about CDR v4:
@@ -35,16 +35,22 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
-from seaice_ecdr.ancillary import flag_value_for_meaning
-from seaice_ecdr.checksum import write_checksum_file
-from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
+    flag_value_for_meaning,
+    remove_FillValue_from_coordinate_vars,
+)
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
+from seaice_ecdr.days_treated_differently import months_of_cdr_missing_data
+from seaice_ecdr.intermediate_daily import get_ecdr_filepath
 from seaice_ecdr.nc_attrs import get_global_attrs
+from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
+from seaice_ecdr.tb_data import get_hemisphere_from_crs_da
 from seaice_ecdr.util import (
-    get_complete_output_dir,
+    get_intermediate_output_dir,
     get_num_missing_pixels,
-    sat_from_filename,
+    platform_id_from_filename,
     standard_monthly_filename,
 )
 
@@ -52,10 +58,10 @@ from seaice_ecdr.util import (
 def check_min_days_for_valid_month(
     *,
     daily_ds_for_month: xr.Dataset,
-    sat: SUPPORTED_SAT,
+    platform_id: SUPPORTED_PLATFORM_ID,
 ) -> None:
     days_in_ds = len(daily_ds_for_month.time)
-    if sat == "n07":
+    if platform_id == "n07":
         min_days = 10
     else:
         min_days = 20
@@ -73,9 +79,10 @@ def _get_daily_complete_filepaths_for_month(
     *,
     year: int,
     month: int,
-    complete_output_dir: Path,
+    intermediate_output_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    is_nrt: bool,
 ) -> list[Path]:
     """Return a list of paths to ECDR daily complete filepaths for the given year and month."""
     data_list = []
@@ -85,12 +92,15 @@ def _get_daily_complete_filepaths_for_month(
         end=dt.date(year, month, last_day_of_month),
         freq="D",
     ):
+
+        platform = PLATFORM_CONFIG.get_platform_by_date(period.to_timestamp().date())
         expected_fp = get_ecdr_filepath(
             date=period.to_timestamp().date(),
             hemisphere=hemisphere,
             resolution=resolution,
-            complete_output_dir=complete_output_dir,
-            is_nrt=False,
+            intermediate_output_dir=intermediate_output_dir,
+            platform_id=platform.id,
+            is_nrt=is_nrt,
         )
         if expected_fp.is_file():
             data_list.append(expected_fp)
@@ -98,36 +108,41 @@ def _get_daily_complete_filepaths_for_month(
             logger.warning(f"Expected to find {expected_fp} but found none.")
 
     if len(data_list) == 0:
-        raise RuntimeError("No daily data files found.")
+        raise RuntimeError(
+            f"No daily data files found looking in {intermediate_output_dir=}"
+        )
 
     return data_list
 
 
-def _sat_for_month(*, sats: list[SUPPORTED_SAT]) -> SUPPORTED_SAT:
-    """Returns the satellite from this month given a list of input satellites.
+def _platform_id_for_month(
+    *, platform_ids: list[SUPPORTED_PLATFORM_ID]
+) -> SUPPORTED_PLATFORM_ID:
+    """Returns the platform ID from this month given a list of input platforms.
 
-    The sat for monthly files is based on which sat contributes most to the
-    month. If two sats contribute equally, use the latest sat in the series.
+    The platform for monthly files is based on which platform contributes most to the
+    month. If two platforms contribute equally, use the latest platform in the series.
 
-    Function assumes the list of satellites is already sorted (i.e., the latest
-    satellite is `sats[-1]`).
+    Function assumes the list of platform ids is already sorted (i.e., the latest
+    platform is `platform_ids[-1]`).
     """
-    # More than one sat, we need to choose the most common/latest in the series.
-    # `Counter` returns a dict keyed by `sat` with counts as values:
-    count = Counter(sats)
-    most_common_sats = count.most_common()
-    most_common_and_latest_sat = most_common_sats[-1][0]
+    # More than one platform, we need to choose the most common/latest in the series.
+    # `Counter` returns a dict keyed by `platform` with counts as values:
+    count = Counter(platform_ids)
+    most_common_platform_ids = count.most_common()
+    most_common_and_latest_platform_id = most_common_platform_ids[-1][0]
 
-    return most_common_and_latest_sat
+    return most_common_and_latest_platform_id
 
 
 def get_daily_ds_for_month(
     *,
     year: int,
     month: int,
-    complete_output_dir: Path,
+    intermediate_output_dir: Path,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    is_nrt: bool,
 ) -> xr.Dataset:
     """Create an xr.Dataset wtih ECDR complete daily data for a given year and month.
 
@@ -138,9 +153,10 @@ def get_daily_ds_for_month(
     data_list = _get_daily_complete_filepaths_for_month(
         year=year,
         month=month,
-        complete_output_dir=complete_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
         hemisphere=hemisphere,
         resolution=resolution,
+        is_nrt=is_nrt,
     )
     # Read all of the complete daily data for the given year and month.
     ds = xr.open_mfdataset(data_list)
@@ -156,26 +172,26 @@ def get_daily_ds_for_month(
         data=data_list, dims=("time",), coords=dict(time=ds.time)
     )
 
-    # Extract `sat` from the filenames contributing to this
+    # Extract `platform_id` from the filenames contributing to this
     # dataset. Ideally, we would use a custom `combine_attrs` when reading the
-    # data with `xr.open_mfdataset` in order to get the sat/sensor from global
+    # data with `xr.open_mfdataset` in order to get the platform/sensor from global
     # attrs in each of the contributing files. Unfortunately this interface is
     # poorly documented and seems to have limited support. E.g., see
     # https://github.com/pydata/xarray/issues/6679
-    sats = []
+    platform_ids = []
     for filepath in data_list:
-        sats.append(sat_from_filename(filepath.name))
+        platform_ids.append(platform_id_from_filename(filepath.name))
 
-    sat = _sat_for_month(sats=sats)
+    platform_id = _platform_id_for_month(platform_ids=platform_ids)
 
-    ds.attrs["sat"] = sat
+    ds.attrs["platform_id"] = platform_id
 
     return ds
 
 
 # TODO: utilize these in the daily complete processing. Or use constant from
 # that module!
-QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS = OrderedDict(
+CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS = OrderedDict(
     bt_weather_filter_applied=1,
     nt_weather_filter_applied=2,
     land_spillover_applied=4,
@@ -188,7 +204,7 @@ QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS = OrderedDict(
 )
 
 # TODO: rename. This is actually a bit mask (except the fill_value)
-QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS = OrderedDict(
+CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS = OrderedDict(
     {
         "average_concentration_exceeds_0.15": 1,
         "average_concentration_exceeds_0.30": 2,
@@ -212,32 +228,36 @@ def _qa_field_has_flag(*, qa_field: xr.DataArray, flag_value: int) -> xr.DataArr
     return qa_field_contains_flag
 
 
-def calc_qa_of_cdr_seaice_conc_monthly(
+def calc_cdr_seaice_conc_monthly_qa_flag(
     *,
     daily_ds_for_month: xr.Dataset,
     cdr_seaice_conc_monthly: xr.DataArray,
 ) -> xr.DataArray:
-    """Create `qa_of_cdr_seaice_conc_monthly`."""
+    """Create `cdr_seaice_conc_monthly_qa_flag`."""
     # initialize the variable
-    qa_of_cdr_seaice_conc_monthly = xr.full_like(
+    cdr_seaice_conc_monthly_qa_flag = xr.full_like(
         cdr_seaice_conc_monthly,
         fill_value=0,
         dtype=np.uint8,
     )
-    qa_of_cdr_seaice_conc_monthly.name = "qa_of_cdr_seaice_conc_monthly"
+    cdr_seaice_conc_monthly_qa_flag.name = "cdr_seaice_conc_monthly_qa_flag"
 
     average_exceeds_15 = cdr_seaice_conc_monthly > 0.15
-    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+    cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~average_exceeds_15,
-        qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["average_concentration_exceeds_0.15"],
+        cdr_seaice_conc_monthly_qa_flag
+        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
+            "average_concentration_exceeds_0.15"
+        ],
     )
 
     average_exceeds_30 = cdr_seaice_conc_monthly > 0.30
-    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+    cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~average_exceeds_30,
-        qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["average_concentration_exceeds_0.30"],
+        cdr_seaice_conc_monthly_qa_flag
+        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
+            "average_concentration_exceeds_0.30"
+        ],
     )
 
     days_in_ds = len(daily_ds_for_month.time)
@@ -246,10 +266,10 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     at_least_half_have_sic_gt_15 = (daily_ds_for_month.cdr_seaice_conc > 0.15).sum(
         dim="time"
     ) >= majority_of_days
-    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+    cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~at_least_half_have_sic_gt_15,
-        qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+        cdr_seaice_conc_monthly_qa_flag
+        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
             "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
         ],
     )
@@ -257,84 +277,96 @@ def calc_qa_of_cdr_seaice_conc_monthly(
     at_least_half_have_sic_gt_30 = (daily_ds_for_month.cdr_seaice_conc > 0.30).sum(
         dim="time"
     ) >= majority_of_days
-    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+    cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~at_least_half_have_sic_gt_30,
-        qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+        cdr_seaice_conc_monthly_qa_flag
+        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
             "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30"
         ],
     )
 
     # Use "invalid_ice_mask_applied", which is actually the invalid ice mask.
     invalid_ice_mask_applied = _qa_field_has_flag(
-        qa_field=daily_ds_for_month.qa_of_cdr_seaice_conc,
-        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["invalid_ice_mask_applied"],
+        qa_field=daily_ds_for_month.cdr_seaice_conc_qa_flag,
+        flag_value=CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS["invalid_ice_mask_applied"],
     ).any(dim="time")
-    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+    cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~invalid_ice_mask_applied,
-        qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS["invalid_ice_mask_applied"],
+        cdr_seaice_conc_monthly_qa_flag
+        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS["invalid_ice_mask_applied"],
     )
 
     at_least_one_day_during_month_has_spatial_interpolation = _qa_field_has_flag(
-        qa_field=daily_ds_for_month.qa_of_cdr_seaice_conc,
-        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS[
+        qa_field=daily_ds_for_month.cdr_seaice_conc_qa_flag,
+        flag_value=CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS[
             "spatial_interpolation_applied"
         ],
     ).any(dim="time")
-    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+    cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~at_least_one_day_during_month_has_spatial_interpolation,
-        qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+        cdr_seaice_conc_monthly_qa_flag
+        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
             "at_least_one_day_during_month_has_spatial_interpolation"
         ],
     )
 
     at_least_one_day_during_month_has_temporal_interpolation = _qa_field_has_flag(
-        qa_field=daily_ds_for_month.qa_of_cdr_seaice_conc,
-        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS[
+        qa_field=daily_ds_for_month.cdr_seaice_conc_qa_flag,
+        flag_value=CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS[
             "temporal_interpolation_applied"
         ],
     ).any(dim="time")
-    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+    cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~at_least_one_day_during_month_has_temporal_interpolation,
-        qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+        cdr_seaice_conc_monthly_qa_flag
+        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
             "at_least_one_day_during_month_has_temporal_interpolation"
         ],
     )
 
     at_least_one_day_during_month_has_melt_detected = _qa_field_has_flag(
-        qa_field=daily_ds_for_month.qa_of_cdr_seaice_conc,
-        flag_value=QA_OF_CDR_SEAICE_CONC_DAILY_BITMASKS["start_of_melt_detected"],
+        qa_field=daily_ds_for_month.cdr_seaice_conc_qa_flag,
+        flag_value=CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS["start_of_melt_detected"],
     ).any(dim="time")
-    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.where(
+    cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~at_least_one_day_during_month_has_melt_detected,
-        qa_of_cdr_seaice_conc_monthly
-        + QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS[
+        cdr_seaice_conc_monthly_qa_flag
+        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
             "at_least_one_day_during_month_has_melt_detected"
         ],
     )
 
-    qa_of_cdr_seaice_conc_monthly = qa_of_cdr_seaice_conc_monthly.assign_attrs(
-        long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QC flags",
+    cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.assign_attrs(
+        long_name="NOAA/NSIDC CDR of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QA flags",
         standard_name="status_flag",
         flag_meanings=" ".join(
-            k for k in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.keys()
+            k for k in CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS.keys()
         ),
         flag_masks=[
-            np.uint8(v) for v in QA_OF_CDR_SEAICE_CONC_MONTHLY_BITMASKS.values()
+            np.uint8(v) for v in CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS.values()
         ],
         grid_mapping="crs",
         valid_range=(np.uint8(0), np.uint8(255)),
     )
 
-    qa_of_cdr_seaice_conc_monthly.encoding = dict(
+    cdr_seaice_conc_monthly_qa_flag.encoding = dict(
         dtype=np.uint8,
         zlib=True,
     )
 
-    return qa_of_cdr_seaice_conc_monthly
+    return cdr_seaice_conc_monthly_qa_flag
+
+
+def is_empty_month(
+    platform_id: SUPPORTED_PLATFORM_ID,
+    hemisphere: Hemisphere,
+    day_in_month: dt.date,
+) -> bool:
+    """Determine if this is a month that should have
+    all of its values set to missing"""
+    year_month_str = f"{day_in_month.year:4d}-{day_in_month.month:02d}"
+    empty_year_months = months_of_cdr_missing_data(platform_id, hemisphere)
+    return year_month_str in empty_year_months
 
 
 def calc_cdr_seaice_conc_monthly(
@@ -342,20 +374,41 @@ def calc_cdr_seaice_conc_monthly(
     daily_ds_for_month: xr.Dataset,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     """Create the `cdr_seaice_conc_monthly` variable."""
     daily_conc_for_month = daily_ds_for_month.cdr_seaice_conc
-    conc_monthly = daily_conc_for_month.mean(dim="time")
+    conc_monthly = daily_conc_for_month.mean(dim="time", skipna=True)
+
+    # Fill with empty if this is an empty month
+    # NOTE: Need to do this here because num_missing_conc_pixels is in this function
+    platform_id = daily_ds_for_month.platform_id
+    hemisphere = get_hemisphere_from_crs_da(daily_ds_for_month.crs)
+    day_in_month = daily_ds_for_month.time[0].dt.date.data.tolist()
+
+    if is_empty_month(
+        platform_id=platform_id,
+        hemisphere=hemisphere,
+        day_in_month=day_in_month,
+    ):
+        conc_monthly.data[:] = np.nan
+
+    # NOTE: Clamp lower bound to 10% minic
+    conc_monthly = conc_monthly.where(
+        np.isnan(conc_monthly) | (conc_monthly >= 0.1),
+        other=0,
+    )
 
     num_missing_conc_pixels = get_num_missing_pixels(
         seaice_conc_var=conc_monthly,
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     conc_monthly.name = "cdr_seaice_conc_monthly"
     conc_monthly = conc_monthly.assign_attrs(
-        long_name="NOAA/NSIDC Climate Data Record of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration",
+        long_name="NOAA/NSIDC CDR of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration",
         standard_name="sea_ice_area_fraction",
         coverage_content_type="image",
         units="1",
@@ -376,64 +429,86 @@ def calc_cdr_seaice_conc_monthly(
     return conc_monthly
 
 
-def calc_stdv_of_cdr_seaice_conc_monthly(
+def calc_cdr_seaice_conc_monthly_stdev(
     *,
     daily_cdr_seaice_conc: xr.DataArray,
 ) -> xr.DataArray:
-    """Create the `stdv_of_cdr_seaice_conc_monthly` variable."""
-    stdv_of_cdr_seaice_conc_monthly = daily_cdr_seaice_conc.std(
-        dim="time",
+    """
+    Create the `cdr_seaice_conc_monthly_stdev` variable.
+
+    Note: Using np.std() instead of DataArray.std() eliminates
+          a div by zero warning from but means that the DataArray
+          must be set up explicitly instead of resulting from
+          the DataArray.std() operation.  Attributes and encoding
+          are explicitly specified here just as they need to be
+          when using functions on a DataArray.
+    Note: In numpy array terms, "axis=0" refers to the time axis
+          because the dimensions of the DataArray are ("time", "y", "x").
+    """
+    cdr_seaice_conc_monthly_stdev_np = np.nanstd(
+        np.array(daily_cdr_seaice_conc),
+        axis=daily_cdr_seaice_conc.get_axis_num("time"),
         ddof=1,
     )
-    stdv_of_cdr_seaice_conc_monthly.name = "stdv_of_cdr_seaice_conc_monthly"
 
-    stdv_of_cdr_seaice_conc_monthly = stdv_of_cdr_seaice_conc_monthly.assign_attrs(
-        long_name="Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
-        valid_range=(np.float32(0.0), np.float32(1.0)),
-        grid_mapping="crs",
-        units="1",
+    # Extract non-'time' dims and coords from DataArray
+    dims_without_time = [dim for dim in daily_cdr_seaice_conc.dims if dim != "time"]
+    coords_without_time = [
+        daily_cdr_seaice_conc[dim] for dim in dims_without_time if dim != "time"
+    ]
+
+    cdr_seaice_conc_monthly_stdev = xr.DataArray(
+        data=cdr_seaice_conc_monthly_stdev_np,
+        name="cdr_seaice_conc_monthly_stdev",
+        coords=coords_without_time,
+        dims=dims_without_time,
+        attrs=dict(
+            long_name="NOAA/NSIDC CDR of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration Source Estimated Standard Deviation",
+            valid_range=(np.float32(0.0), np.float32(1.0)),
+            grid_mapping="crs",
+            units="1",
+        ),
     )
 
-    stdv_of_cdr_seaice_conc_monthly.encoding = dict(
+    cdr_seaice_conc_monthly_stdev.encoding = dict(
         _FillValue=-1,
         zlib=True,
     )
 
-    return stdv_of_cdr_seaice_conc_monthly
+    return cdr_seaice_conc_monthly_stdev
 
 
-def calc_melt_onset_day_cdr_seaice_conc_monthly(
+def calc_cdr_melt_onset_day_monthly(
     *,
     daily_melt_onset_for_month: xr.DataArray,
 ) -> xr.DataArray:
-    """Create the `melt_onset_day_cdr_seaice_conc_monthly` variable."""
-    # Create `melt_onset_day_cdr_seaice_conc_monthly`. This is the value from
+    """Create the `cdr_melt_onset_day_monthly` variable."""
+    # Create `cdr_melt_onset_day_monthly`. This is the value from
     # the last day of the month.
-    melt_onset_day_cdr_seaice_conc_monthly = daily_melt_onset_for_month.sel(
+    cdr_melt_onset_day_monthly = daily_melt_onset_for_month.sel(
         time=daily_melt_onset_for_month.time.max()
     )
-    melt_onset_day_cdr_seaice_conc_monthly.name = (
-        "melt_onset_day_cdr_seaice_conc_monthly"
-    )
-    melt_onset_day_cdr_seaice_conc_monthly = (
-        melt_onset_day_cdr_seaice_conc_monthly.drop_vars("time")
-    )
+    cdr_melt_onset_day_monthly.name = "cdr_melt_onset_day_monthly"
+    cdr_melt_onset_day_monthly = cdr_melt_onset_day_monthly.drop_vars("time")
 
-    melt_onset_day_cdr_seaice_conc_monthly = (
-        melt_onset_day_cdr_seaice_conc_monthly.assign_attrs(
-            long_name="Monthly Day of Snow Melt Onset Over Sea Ice",
-            units="1",
-            valid_range=(np.ubyte(60), np.ubyte(255)),
-            grid_mapping="crs",
-        )
+    cdr_melt_onset_day_monthly = cdr_melt_onset_day_monthly.assign_attrs(
+        long_name="NOAA/NSIDC CDR Monthly Day of Snow Melt Onset Over Sea Ice",
+        units="1",
+        valid_range=(np.ubyte(0), np.ubyte(255)),
+        grid_mapping="crs",
+        comment="Value of 0 indicates sea ice concentration less than 50%"
+        " at start of melt season; values of 60-244 indicate day"
+        " of year of snow melt onset on sea ice detected during"
+        " melt season; value of 255 indicates no melt detected"
+        " during melt season, including non-ocean grid cells.",
     )
-    melt_onset_day_cdr_seaice_conc_monthly.encoding = dict(
+    cdr_melt_onset_day_monthly.encoding = dict(
         _FillValue=None,
         dtype=np.uint8,
         zlib=True,
     )
 
-    return melt_onset_day_cdr_seaice_conc_monthly
+    return cdr_melt_onset_day_monthly
 
 
 def _assign_time_to_monthly_ds(
@@ -499,12 +574,13 @@ def calc_surface_type_mask_monthly(
     return monthly_surface_mask
 
 
-def make_monthly_ds(
+def make_intermediate_monthly_ds(
     *,
     daily_ds_for_month: xr.Dataset,
-    sat: SUPPORTED_SAT,
+    platform_id: SUPPORTED_PLATFORM_ID,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Create a monthly dataset from daily data.
 
@@ -514,7 +590,7 @@ def make_monthly_ds(
     # Min-day check
     check_min_days_for_valid_month(
         daily_ds_for_month=daily_ds_for_month,
-        sat=sat,
+        platform_id=platform_id,
     )
 
     # create `cdr_seaice_conc_monthly`. This is the combined monthly SIC.
@@ -523,18 +599,32 @@ def make_monthly_ds(
         daily_ds_for_month=daily_ds_for_month,
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
-    # Create `stdev_of_cdr_seaice_conc_monthly`, the standard deviation of the
+    # Create `cdr_seaice_conc_monthly_stdev`, the standard deviation of the
     # sea ice concentration.
-    stdv_of_cdr_seaice_conc_monthly = calc_stdv_of_cdr_seaice_conc_monthly(
+
+    cdr_seaice_conc_monthly_stdev = calc_cdr_seaice_conc_monthly_stdev(
         daily_cdr_seaice_conc=daily_ds_for_month.cdr_seaice_conc,
     )
 
-    qa_of_cdr_seaice_conc_monthly = calc_qa_of_cdr_seaice_conc_monthly(
+    cdr_seaice_conc_monthly_qa_flag = calc_cdr_seaice_conc_monthly_qa_flag(
         daily_ds_for_month=daily_ds_for_month,
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
     )
+
+    # Set stdev to invalid and QA to all-missing if this is an empty month
+    platform_id = daily_ds_for_month.platform_id
+    hemisphere = get_hemisphere_from_crs_da(daily_ds_for_month.crs)
+    day_in_month = daily_ds_for_month.time[0].dt.date.data.tolist()
+    if is_empty_month(
+        platform_id=platform_id,
+        hemisphere=hemisphere,
+        day_in_month=day_in_month,
+    ):
+        cdr_seaice_conc_monthly_stdev.data[:] = -1.0
+        cdr_seaice_conc_monthly_qa_flag.data[:] = 0
 
     surface_type_mask_monthly = calc_surface_type_mask_monthly(
         daily_ds_for_month=daily_ds_for_month,
@@ -543,20 +633,17 @@ def make_monthly_ds(
 
     monthly_ds_data_vars = dict(
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
-        stdv_of_cdr_seaice_conc_monthly=stdv_of_cdr_seaice_conc_monthly,
-        qa_of_cdr_seaice_conc_monthly=qa_of_cdr_seaice_conc_monthly,
+        cdr_seaice_conc_monthly_stdev=cdr_seaice_conc_monthly_stdev,
+        cdr_seaice_conc_monthly_qa_flag=cdr_seaice_conc_monthly_qa_flag,
         surface_type_mask=surface_type_mask_monthly,
     )
-
     # Add monthly melt onset if the hemisphere is north. We don't detect melt in
     # the southern hemisphere.
     if hemisphere == NORTH:
-        melt_onset_day_cdr_seaice_conc_monthly = calc_melt_onset_day_cdr_seaice_conc_monthly(
-            daily_melt_onset_for_month=daily_ds_for_month.melt_onset_day_cdr_seaice_conc,
+        cdr_melt_onset_day_monthly = calc_cdr_melt_onset_day_monthly(
+            daily_melt_onset_for_month=daily_ds_for_month.cdr_melt_onset_day,
         )
-        monthly_ds_data_vars["melt_onset_day_cdr_seaice_conc_monthly"] = (
-            melt_onset_day_cdr_seaice_conc_monthly
-        )
+        monthly_ds_data_vars["cdr_melt_onset_day_monthly"] = cdr_melt_onset_day_monthly
 
     monthly_ds = xr.Dataset(
         data_vars=monthly_ds_data_vars,
@@ -576,41 +663,44 @@ def make_monthly_ds(
         temporality="monthly",
         aggregate=False,
         source=", ".join([fp.item().name for fp in daily_ds_for_month.filepaths]),
-        # TODO: consider providing all sats that went into month? This would be
+        # TODO: consider providing all platforms that went into month? This would be
         # consistent with how we handle the aggregate filenames. Is it
-        # misleading to indicate that a month is a single sat when it may not
+        # misleading to indicate that a month is a single platform when it may not
         # really be?
-        sats=[sat],
+        platform_ids=[platform_id],
+        resolution=resolution,
+        hemisphere=hemisphere,
+        ancillary_source=ancillary_source,
     )
     monthly_ds.attrs.update(monthly_ds_global_attrs)
 
     return monthly_ds.compute()
 
 
-def get_monthly_dir(*, complete_output_dir: Path) -> Path:
-    monthly_dir = complete_output_dir / "monthly"
+def get_intermediate_monthly_dir(*, intermediate_output_dir: Path) -> Path:
+    monthly_dir = intermediate_output_dir / "monthly"
     monthly_dir.mkdir(parents=True, exist_ok=True)
 
     return monthly_dir
 
 
-def get_monthly_filepath(
+def get_intermediate_monthly_filepath(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    sat: SUPPORTED_SAT,
+    platform_id: SUPPORTED_PLATFORM_ID,
     year: int,
     month: int,
-    complete_output_dir: Path,
+    intermediate_output_dir: Path,
 ) -> Path:
-    output_dir = get_monthly_dir(
-        complete_output_dir=complete_output_dir,
+    output_dir = get_intermediate_monthly_dir(
+        intermediate_output_dir=intermediate_output_dir,
     )
 
     output_fn = standard_monthly_filename(
         hemisphere=hemisphere,
         resolution=resolution,
-        sat=sat,
+        platform_id=platform_id,
         year=year,
         month=month,
     )
@@ -620,65 +710,59 @@ def get_monthly_filepath(
     return output_path
 
 
-def make_monthly_nc(
+def make_intermediate_monthly_nc(
     *,
     year: int,
     month: int,
     hemisphere: Hemisphere,
-    complete_output_dir: Path,
+    intermediate_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+    is_nrt: bool,
 ) -> Path:
     daily_ds_for_month = get_daily_ds_for_month(
         year=year,
         month=month,
-        complete_output_dir=complete_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
         hemisphere=hemisphere,
         resolution=resolution,
+        is_nrt=is_nrt,
     )
 
-    sat = daily_ds_for_month.sat
+    platform_id = daily_ds_for_month.platform_id
 
-    output_path = get_monthly_filepath(
+    output_path = get_intermediate_monthly_filepath(
         hemisphere=hemisphere,
         resolution=resolution,
-        sat=sat,
+        platform_id=platform_id,
         year=year,
         month=month,
-        complete_output_dir=complete_output_dir,
+        intermediate_output_dir=intermediate_output_dir,
     )
 
-    monthly_ds = make_monthly_ds(
+    monthly_ds = make_intermediate_monthly_ds(
         daily_ds_for_month=daily_ds_for_month,
-        sat=sat,
+        platform_id=platform_id,
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
-    # Set `x` and `y` `_FillValue` to `None`. Although unset initially, `xarray`
-    # seems to default to `np.nan` for variables without a FillValue.
-    monthly_ds.x.encoding["_FillValue"] = None
-    monthly_ds.y.encoding["_FillValue"] = None
-
+    monthly_ds = remove_FillValue_from_coordinate_vars(monthly_ds)
     monthly_ds.to_netcdf(
         output_path,
         unlimited_dims=[
             "time",
         ],
     )
-    logger.success(
-        f"Wrote monthly file for {year=} and {month=} using {len(daily_ds_for_month.time)} daily files to {output_path}"
-    )
-
-    # Write checksum file for the monthly output.
-    write_checksum_file(
-        input_filepath=output_path,
-        output_dir=complete_output_dir / "checksums" / "monthly",
+    logger.info(
+        f"Wrote intermediate monthly file for {year=} and {month=} using {len(daily_ds_for_month.time)} daily files to {output_path}"
     )
 
     return output_path
 
 
-@click.command(name="monthly")
+@click.command(name="intermediate-monthly")
 @click.option(
     "--year",
     required=True,
@@ -736,6 +820,17 @@ def make_monthly_nc(
     required=True,
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
+@click.option(
+    "--ancillary-source",
+    required=True,
+    type=click.Choice(get_args(ANCILLARY_SOURCES)),
+)
+@click.option(
+    "--is-nrt",
+    required=False,
+    is_flag=True,
+    help=("Create intermediate monthly file in NRT mode (uses NRT-stype filename)."),
+)
 def cli(
     *,
     year: int,
@@ -745,16 +840,17 @@ def cli(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
+    is_nrt: bool,
 ):
     if end_year is None:
         end_year = year
     if end_month is None:
         end_month = month
 
-    complete_output_dir = get_complete_output_dir(
+    intermediate_output_dir = get_intermediate_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
-        is_nrt=False,
     )
     error_periods = []
     for period in pd.period_range(
@@ -763,12 +859,14 @@ def cli(
         freq="M",
     ):
         try:
-            make_monthly_nc(
+            make_intermediate_monthly_nc(
                 year=period.year,
                 month=period.month,
-                complete_output_dir=complete_output_dir,
+                intermediate_output_dir=intermediate_output_dir,
                 hemisphere=hemisphere,
                 resolution=resolution,
+                ancillary_source=ancillary_source,
+                is_nrt=is_nrt,
             )
         except Exception:
             error_periods.append(period)

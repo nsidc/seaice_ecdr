@@ -1,3 +1,4 @@
+import datetime as dt
 import os
 import sys
 
@@ -5,13 +6,16 @@ from loguru import logger
 
 from seaice_ecdr.constants import LOGS_DIR
 
-__version__ = "v0.1.0"
+__version__ = "v1.0.0"
 
-DEFAULT_LOG_LEVEL = "INFO"
+# The standard loguru log levels, in increasing order of severity, are:
+# TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL
+DEFAULT_LOG_LEVEL = "SUCCESS"
+DEFAULT_DEV_LOG_LEVEL = "SUCCESS"
 
 # If we're in dev, DEBUG level logs are appropriate, otherwise use INFO.
 env = os.environ.get("ENVIRONMENT")
-_default_log_level = "DEBUG" if env == "dev" else DEFAULT_LOG_LEVEL
+_default_log_level = DEFAULT_DEV_LOG_LEVEL if env == "dev" else DEFAULT_LOG_LEVEL
 
 # Configure the default logger, which prints to stderr.
 logger.configure(
@@ -34,7 +38,8 @@ do_not_log = disable_file_logging is not None and disable_file_logging.upper() i
 if not do_not_log:
     # One file per day.
     LOGS_DIR.mkdir(exist_ok=True)
-    file_sink_fp = LOGS_DIR / "{time:%Y-%m-%d}.log"
+    # file_sink_fp = LOGS_DIR / f"{time:%Y-%m-%d}.log"
+    file_sink_fp = LOGS_DIR / f"{dt.datetime.now():%Y-%m-%d}.log"
     logger.debug(f"Logging to {file_sink_fp}")
     logger.add(
         file_sink_fp,

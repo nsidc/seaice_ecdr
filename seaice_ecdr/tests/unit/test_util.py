@@ -1,4 +1,5 @@
 import datetime as dt
+from pathlib import Path
 from typing import Final
 
 import numpy as np
@@ -7,14 +8,17 @@ import xarray as xr
 from pm_tb_data._types import NORTH, SOUTH
 
 from seaice_ecdr import util
-from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
-from seaice_ecdr.multiprocess_daily import get_dates_by_year
+from seaice_ecdr.constants import ECDR_NRT_PRODUCT_VERSION, ECDR_PRODUCT_VERSION
+from seaice_ecdr.multiprocess_intermediate_daily import get_dates_by_year
+from seaice_ecdr.platforms.models import SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import (
     date_range,
+    find_standard_monthly_netcdf_files,
     get_num_missing_pixels,
     nrt_daily_filename,
+    nrt_monthly_filename,
+    platform_id_from_filename,
     raise_error_for_dates,
-    sat_from_filename,
     standard_daily_aggregate_filename,
     standard_daily_filename,
     standard_monthly_aggregate_filename,
@@ -26,7 +30,7 @@ def test_daily_filename_north():
     expected = f"sic_psn12.5_20210101_am2_{ECDR_PRODUCT_VERSION}.nc"
 
     actual = standard_daily_filename(
-        hemisphere=NORTH, resolution="12.5", sat="am2", date=dt.date(2021, 1, 1)
+        hemisphere=NORTH, resolution="12.5", platform_id="am2", date=dt.date(2021, 1, 1)
     )
 
     assert actual == expected
@@ -36,17 +40,31 @@ def test_daily_filename_south():
     expected = f"sic_pss12.5_20210101_am2_{ECDR_PRODUCT_VERSION}.nc"
 
     actual = standard_daily_filename(
-        hemisphere=SOUTH, resolution="12.5", sat="am2", date=dt.date(2021, 1, 1)
+        hemisphere=SOUTH, resolution="12.5", platform_id="am2", date=dt.date(2021, 1, 1)
     )
 
     assert actual == expected
 
 
 def test_nrt_daily_filename():
-    expected = f"sic_psn12.5_20210101_am2_{ECDR_PRODUCT_VERSION}_P.nc"
+    expected = f"sic_psn12.5_20210101_am2_icdr_{ECDR_NRT_PRODUCT_VERSION}.nc"
 
     actual = nrt_daily_filename(
-        hemisphere=NORTH, resolution="12.5", sat="am2", date=dt.date(2021, 1, 1)
+        hemisphere=NORTH, resolution="12.5", platform_id="am2", date=dt.date(2021, 1, 1)
+    )
+
+    assert actual == expected
+
+
+def test_nrt_monthly_filename():
+    expected = f"sic_psn25_202409_F17_icdr_{ECDR_NRT_PRODUCT_VERSION}.nc"
+
+    actual = nrt_monthly_filename(
+        hemisphere=NORTH,
+        resolution="25",
+        platform_id="F17",
+        year=2024,
+        month=9,
     )
 
     assert actual == expected
@@ -71,7 +89,7 @@ def test_monthly_filename_north():
     actual = standard_monthly_filename(
         hemisphere=NORTH,
         resolution="12.5",
-        sat="am2",
+        platform_id="am2",
         year=2021,
         month=1,
     )
@@ -85,7 +103,7 @@ def test_monthly_filename_south():
     actual = standard_monthly_filename(
         hemisphere=SOUTH,
         resolution="12.5",
-        sat="am2",
+        platform_id="am2",
         year=2021,
         month=1,
     )
@@ -108,30 +126,115 @@ def test_monthly_aggregate_filename():
     assert actual == expected
 
 
-def test_daily_sat_from_filename():
-    expected_sat: Final = "am2"
+def test_daily_platform_id_from_filename():
+    expected_platform_id: Final = "am2"
     fn = standard_daily_filename(
-        hemisphere=NORTH, resolution="12.5", sat=expected_sat, date=dt.date(2021, 1, 1)
+        hemisphere=NORTH,
+        resolution="12.5",
+        platform_id=expected_platform_id,
+        date=dt.date(2021, 1, 1),
     )
 
-    actual_sat = sat_from_filename(fn)
+    actual_platform_id = platform_id_from_filename(fn)
 
-    assert expected_sat == actual_sat
+    assert expected_platform_id == actual_platform_id
 
 
-def test_monthly_sat_from_filename():
-    expected_sat: Final = "F17"
+def test_monthly_platform_id_from_filename():
+    expected_platform_id: Final = "F17"
     fn = standard_monthly_filename(
         hemisphere=SOUTH,
         resolution="12.5",
-        sat=expected_sat,
+        platform_id=expected_platform_id,
         year=2021,
         month=1,
     )
 
-    actual_sat = sat_from_filename(fn)
+    actual_platform_id = platform_id_from_filename(fn)
 
-    assert expected_sat == actual_sat
+    assert expected_platform_id == actual_platform_id
+
+
+def test_daily_platform_id_from_daily_nrt_filename():
+    expected_platform_id: Final = "F17"
+    fn = nrt_daily_filename(
+        hemisphere=SOUTH,
+        resolution="25",
+        platform_id=expected_platform_id,
+        date=dt.date(2021, 1, 1),
+    )
+
+    actual_platform_id = platform_id_from_filename(fn)
+
+    assert expected_platform_id == actual_platform_id
+
+
+def test_daily_platform_id_from_monthly_nrt_filename():
+    expected_platform_id: Final = "F17"
+    fn = nrt_monthly_filename(
+        hemisphere=SOUTH,
+        resolution="25",
+        platform_id=expected_platform_id,
+        year=2024,
+        month=9,
+    )
+
+    actual_platform_id = platform_id_from_filename(fn)
+
+    assert expected_platform_id == actual_platform_id
+
+
+def test_find_standard_monthly_netcdf_files_platform_wildcard(fs):
+    monthly_output_dir = Path("/path/to/data/dir/monthly")
+    fs.create_dir(monthly_output_dir)
+    platform_ids: list[SUPPORTED_PLATFORM_ID] = ["am2", "F17"]
+    for platform_id in platform_ids:
+        fake_monthly_filename = standard_monthly_filename(
+            hemisphere=NORTH,
+            resolution="25",
+            platform_id=platform_id,
+            year=2021,
+            month=1,
+        )
+        fake_monthly_filepath = monthly_output_dir / fake_monthly_filename
+        fs.create_file(fake_monthly_filepath)
+
+    found_files_wildcard_platform_id = find_standard_monthly_netcdf_files(
+        search_dir=monthly_output_dir,
+        hemisphere=NORTH,
+        resolution="25",
+        platform_id="*",
+        year=2021,
+        month=1,
+    )
+
+    assert len(found_files_wildcard_platform_id) == 2
+
+
+def test_find_standard_monthly_netcdf_files_yearmonth_wildcard(fs):
+    monthly_output_dir = Path("/path/to/data/dir/monthly")
+    fs.create_dir(monthly_output_dir)
+    for year, month in [(2022, 1), (2022, 2)]:
+        fake_monthly_filename = standard_monthly_filename(
+            hemisphere=NORTH,
+            resolution="25",
+            platform_id="F17",
+            year=year,
+            month=month,
+        )
+        fake_monthly_filepath = monthly_output_dir / fake_monthly_filename
+        fs.create_file(fake_monthly_filepath)
+
+    found_files_wildcard_platform_id = find_standard_monthly_netcdf_files(
+        search_dir=monthly_output_dir,
+        hemisphere=NORTH,
+        resolution="25",
+        platform_id="F17",
+        year="*",
+        month="*",
+    )
+
+    assert len(found_files_wildcard_platform_id) == 2
 
 
 def test_date_range():
@@ -208,6 +311,7 @@ def test_get_num_missing_pixels(monkeypatch):
         seaice_conc_var=_mock_sic,
         hemisphere="north",
         resolution="12.5",
+        ancillary_source="CDRv5",
     )
 
     assert detected_missing == 1

@@ -1,58 +1,99 @@
 import datetime as dt
 import re
 from pathlib import Path
-from typing import Iterator, Literal, cast, get_args
+from typing import Iterable, Iterator, Literal, cast, get_args
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 from pm_tb_data._types import Hemisphere
 
-from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS, SUPPORTED_SAT
-from seaice_ecdr.ancillary import get_ocean_mask
-from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
+from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
+from seaice_ecdr.ancillary import ANCILLARY_SOURCES, get_ocean_mask
+from seaice_ecdr.constants import ECDR_NRT_PRODUCT_VERSION, ECDR_PRODUCT_VERSION
 from seaice_ecdr.grid_id import get_grid_id
+from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
 
 
 def standard_daily_filename(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    sat: SUPPORTED_SAT,
+    platform_id: SUPPORTED_PLATFORM_ID,
     date: dt.date,
 ) -> str:
     """Return standard daily NetCDF filename.
 
-    North Daily files: sic_psn12.5_YYYYMMDD_sat_v05r01.nc
-    South Daily files: sic_pss12.5_YYYYMMDD_sat_v05r01.nc
+    North Daily files: sic_psn12.5_{YYYYMMDD}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc
+    South Daily files: sic_pss12.5_{YYYYMMDD}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc
     """
     grid_id = get_grid_id(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    fn = f"sic_{grid_id}_{date:%Y%m%d}_{sat}_{ECDR_PRODUCT_VERSION}.nc"
+    fn = f"sic_{grid_id}_{date:%Y%m%d}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc"
 
     return fn
+
+
+def _standard_fn_to_nrt(*, standard_fn: str) -> str:
+    standard_fn_path = Path(standard_fn)
+
+    standard_fn = standard_fn_path.name
+
+    # Replace the standard G02202 version number with the NRT version.
+    nrt_fn = standard_fn.replace(
+        ECDR_PRODUCT_VERSION.version_str, ECDR_NRT_PRODUCT_VERSION.version_str
+    )
+
+    # Put `_icdr_` just before the product version.
+    # Ouptut fp iwll look like e.g., `sic_psn25_20240925_am2_icdr_v03r00.nc`
+    icdr_idx = nrt_fn.find(ECDR_NRT_PRODUCT_VERSION.version_str)
+    nrt_fn = nrt_fn[:icdr_idx] + "icdr_" + nrt_fn[icdr_idx:]
+
+    return nrt_fn
 
 
 def nrt_daily_filename(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    sat: SUPPORTED_SAT,
+    platform_id: SUPPORTED_PLATFORM_ID,
     date: dt.date,
 ) -> str:
     standard_fn = standard_daily_filename(
         hemisphere=hemisphere,
         resolution=resolution,
-        sat=sat,
+        platform_id=platform_id,
         date=date,
     )
-    standard_fn_path = Path(standard_fn)
 
-    fn_base = standard_fn_path.stem
-    ext = standard_fn_path.suffix
-    nrt_fn = fn_base + "_P" + ext
+    nrt_fn = _standard_fn_to_nrt(
+        standard_fn=standard_fn,
+    )
+
+    return nrt_fn
+
+
+def nrt_monthly_filename(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    platform_id: SUPPORTED_PLATFORM_ID,
+    year: int,
+    month: int,
+) -> str:
+    standard_fn = standard_monthly_filename(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        platform_id=platform_id,
+        year=year,
+        month=month,
+    )
+
+    nrt_fn = _standard_fn_to_nrt(
+        standard_fn=standard_fn,
+    )
 
     return nrt_fn
 
@@ -66,8 +107,8 @@ def standard_daily_aggregate_filename(
 ) -> str:
     """Return standard daily aggregate NetCDF filename.
 
-    North Daily aggregate files: sic_psn12.5_YYYYMMDD-YYYYMMDD_v05r01.nc
-    South Daily aggregate files: sic_pss12.5_YYYYMMDD-YYYYMMDD_v05r01.nc
+    North Daily aggregate files: sic_psn12.5_YYYYMMDD-YYYYMMDD_{ECDR_PRODUCT_VERSION}.nc
+    South Daily aggregate files: sic_pss12.5_YYYYMMDD-YYYYMMDD_{ECDR_PRODUCT_VERSION}.nc
     """
     grid_id = get_grid_id(
         hemisphere=hemisphere,
@@ -80,26 +121,85 @@ def standard_daily_aggregate_filename(
     return fn
 
 
-def standard_monthly_filename(
+def _standard_monthly_filename(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    sat: SUPPORTED_SAT,
-    year: int,
-    month: int,
+    platform_id: SUPPORTED_PLATFORM_ID | Literal["*"],
+    year: int | Literal["*"],
+    month: int | Literal["*"],
 ) -> str:
-    """Return standard monthly NetCDF filename.
+    """Function that has looser typing for wild-cardable (in a glob) kwargs than
+    `standard_monthly_filename`.
 
-    North Monthly files: sic_psn12.5_YYYYMM_sat_v05r01.nc
-    South Monthly files: sic_pss12.5_YYYYMM_sat_v05r01.nc
+    `standard_monthly_filename` is typed more strictly to ensure that output
+    filenames conform to our expectations. This lets you pass in e.g., `"*"` for
+    `platform_id`.
     """
     grid_id = get_grid_id(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    fn = f"sic_{grid_id}_{year}{month:02}_{sat}_{ECDR_PRODUCT_VERSION}.nc"
+    if isinstance(month, int):
+        month_str = f"{month:02}"
+    else:
+        month_str = month
+
+    year_month = f"{year}{month_str}"
+    # de-duplicate "**" if year and month are both a wildcard.
+
+    year_month = year_month.replace("**", "*")
+    fn = f"sic_{grid_id}_{year_month}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc"
 
     return fn
+
+
+def standard_monthly_filename(
+    *,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    platform_id: SUPPORTED_PLATFORM_ID,
+    year: int,
+    month: int,
+) -> str:
+    """Return standard monthly NetCDF filename.
+
+    North Monthly files: sic_psn12.5_{YYYYMM}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc
+    South Monthly files: sic_pss12.5_{YYYYMM}_{platform_id}_{ECDR_PRODUCT_VERSION}.nc
+    """
+    return _standard_monthly_filename(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        platform_id=platform_id,
+        year=year,
+        month=month,
+    )
+
+
+def find_standard_monthly_netcdf_files(
+    *,
+    search_dir: Path,
+    hemisphere: Hemisphere,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    platform_id: SUPPORTED_PLATFORM_ID | Literal["*"],
+    year: int | Literal["*"],
+    month: int | Literal["*"],
+) -> list[Path]:
+    """Find standard monthly nc files matching the given params.
+
+    `platform_id`, `year`, and `month` are wild-cardable (e.g., one can pass in
+    a `*`) to search for files that match multiple platforms/years/months.
+    """
+    fn_glob = _standard_monthly_filename(
+        hemisphere=hemisphere,
+        resolution=resolution,
+        platform_id=platform_id,
+        year=year,
+        month=month,
+    )
+
+    results = search_dir.glob(fn_glob)
+    return list(sorted(results))
 
 
 def standard_monthly_aggregate_filename(
@@ -113,8 +213,8 @@ def standard_monthly_aggregate_filename(
 ) -> str:
     """Return standard monthly aggregate NetCDF filename.
 
-    North Monthly aggregate files: sic_psn12.5_YYYYMM-YYYYMM_v05r01.nc
-    South Monthly aggregate files: sic_pss12.5_YYYYMM-YYYYMM_v05r01.nc
+    North Monthly aggregate files: sic_psn12.5_YYYYMM-YYYYMM_{ECDR_PRODUCT_VERSION}.nc
+    South Monthly aggregate files: sic_pss12.5_YYYYMM-YYYYMM_{ECDR_PRODUCT_VERSION}.nc
     """
     date_str = f"{start_year}{start_month:02}-{end_year}{end_month:02}"
 
@@ -129,22 +229,34 @@ def standard_monthly_aggregate_filename(
 
 
 # This regex works for both daily and monthly filenames.
-STANDARD_FN_REGEX = re.compile(r"sic_ps.*_.*_(?P<sat>.*)_.*.nc")
+STANDARD_FN_REGEX = re.compile(
+    # Grid ID is e.g., "pss25" for polar stereo southern hemisphere 25km.
+    r"sic_(?P<grid_id>ps[sn]\d+(\.\d+)?)"
+    # Date is 6 digits for monthly (YYYYMM) and 8 digits for daily (YYYYMMDD)
+    r"_(?P<date_str>\d{6}|\d{8})"
+    # Platform ID is e.g., "F17". Capture everything up to but excluding the
+    # next `_`.
+    r"_(?P<platform_id>[^_]+)"
+    # optional `_icdr` for nrt files.
+    r"(_icdr)?"
+    # Version string is e.g., "v05r00"
+    r"_(?P<version_str>v\d{2}r\d{2}).nc"
+)
 
 
-def sat_from_filename(filename: str) -> SUPPORTED_SAT:
+def platform_id_from_filename(filename: str) -> SUPPORTED_PLATFORM_ID:
     match = STANDARD_FN_REGEX.match(filename)
 
     if not match:
-        raise RuntimeError(f"Failed to parse satellite from {filename}")
+        raise RuntimeError(f"Failed to parse platform from {filename}")
 
-    sat = match.group("sat")
+    platform_id = match.group("platform_id")
 
-    # Ensure the sat is expected.
-    assert sat in get_args(SUPPORTED_SAT)
-    sat = cast(SUPPORTED_SAT, sat)
+    # Ensure the platform is expected.
+    assert platform_id in get_args(SUPPORTED_PLATFORM_ID)
+    platform_id = cast(SUPPORTED_PLATFORM_ID, platform_id)
 
-    return sat
+    return platform_id
 
 
 def date_range(*, start_date: dt.date, end_date: dt.date) -> Iterator[dt.date]:
@@ -153,7 +265,7 @@ def date_range(*, start_date: dt.date, end_date: dt.date) -> Iterator[dt.date]:
         yield pd_timestamp.date()
 
 
-def get_dates_by_year(dates: list[dt.date]) -> list[list[dt.date]]:
+def get_dates_by_year(dates: Iterable[dt.date]) -> list[list[dt.date]]:
     """Given a list of dates, return the dates grouped by year."""
     years = sorted(np.unique([date.year for date in dates]))
     dates_by_year = {}
@@ -185,11 +297,13 @@ def get_num_missing_pixels(
     seaice_conc_var: xr.DataArray,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES,
 ) -> int:
     """The number of missing pixels is anywhere that there are nans over ocean."""
     ocean_mask = get_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
 
     num_missing_pixels = int((seaice_conc_var.isnull() & ocean_mask).astype(int).sum())
@@ -213,12 +327,9 @@ def _get_output_dir(
     *,
     base_output_dir: Path,
     hemisphere: Hemisphere,
-    is_nrt: bool,
     data_type: Literal["intermediate", "complete"],
 ) -> Path:
     out_dir = base_output_dir / data_type / hemisphere
-    if is_nrt:
-        out_dir = out_dir / "nrt"
 
     out_dir.mkdir(exist_ok=True, parents=True)
 
@@ -229,12 +340,10 @@ def get_intermediate_output_dir(
     *,
     base_output_dir: Path,
     hemisphere: Hemisphere,
-    is_nrt: bool,
 ) -> Path:
     intermediate_dir = _get_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
-        is_nrt=is_nrt,
         data_type="intermediate",
     )
 
@@ -245,12 +354,10 @@ def get_complete_output_dir(
     *,
     base_output_dir: Path,
     hemisphere: Hemisphere,
-    is_nrt: bool,
 ) -> Path:
     complete_dir = _get_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
-        is_nrt=is_nrt,
         data_type="complete",
     )
 

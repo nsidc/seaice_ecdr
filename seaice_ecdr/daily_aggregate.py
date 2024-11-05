@@ -1,4 +1,11 @@
 """Code to produce daily aggregate files from daily complete data.
+
+
+TODO: The daily-aggregate processing is very parallelizable because
+      each year is indendent of every other year.  It could be
+      implemented with multi-processing to speed up production
+      on a multi-core machine.  Perhaps as a cmdline arg to this
+      CLI API?
 """
 
 import datetime as dt
@@ -7,22 +14,26 @@ from tempfile import TemporaryDirectory
 from typing import get_args
 
 import click
+import datatree
 import pandas as pd
-import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import get_ancillary_ds
+from seaice_ecdr.ancillary import (
+    ANCILLARY_SOURCES,
+    get_ancillary_ds,
+    remove_FillValue_from_coordinate_vars,
+)
 from seaice_ecdr.checksum import write_checksum_file
-from seaice_ecdr.complete_daily_ecdr import get_ecdr_filepath
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
-from seaice_ecdr.nc_util import concatenate_nc_files
-from seaice_ecdr.platforms import get_first_platform_start_date
+from seaice_ecdr.nc_util import concatenate_nc_files, fix_daily_aggregate_ncattrs
+from seaice_ecdr.platforms import PLATFORM_CONFIG
+from seaice_ecdr.publish_daily import get_complete_daily_filepath
 from seaice_ecdr.util import (
     get_complete_output_dir,
-    sat_from_filename,
+    platform_id_from_filename,
     standard_daily_aggregate_filename,
 )
 
@@ -37,14 +48,18 @@ def _get_daily_complete_filepaths_for_year(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> list[Path]:
     data_list = []
-    start_date = max(dt.date(year, 1, 1), get_first_platform_start_date())
+    start_date = max(
+        dt.date(year, 1, 1), PLATFORM_CONFIG.get_first_platform_start_date()
+    )
     for period in pd.period_range(start=start_date, end=dt.date(year, 12, 31)):
-        expected_fp = get_ecdr_filepath(
+        platform = PLATFORM_CONFIG.get_platform_by_date(period.to_timestamp().date())
+        expected_fp = get_complete_daily_filepath(
             date=period.to_timestamp().date(),
             hemisphere=hemisphere,
             resolution=resolution,
             complete_output_dir=complete_output_dir,
             is_nrt=False,
+            platform_id=platform.id,
         )
         if expected_fp.is_file():
             data_list.append(expected_fp)
@@ -82,10 +97,11 @@ def get_daily_aggregate_filepath(
 
 def _update_ncrcat_daily_ds(
     *,
-    ds: xr.Dataset,
+    ds: datatree.DataTree,
     daily_filepaths: list[Path],
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ):
     """Update the aggregate dataset created by `ncrcat`.
 
@@ -94,28 +110,62 @@ def _update_ncrcat_daily_ds(
     surf_geo_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
+        ancillary_source=ancillary_source,
     )
-    ds["latitude"] = surf_geo_ds.latitude
-    ds["longitude"] = surf_geo_ds.longitude
+    # Lat and lon fields are placed under the "cdr_supplementary" group.
+    for sup_var in ("latitude", "longitude"):
+        ds["cdr_supplementary"][sup_var] = surf_geo_ds[sup_var]
+        # Add in the `coordinates` attr to lat and lon.
+        ds["cdr_supplementary"][sup_var].attrs["coordinates"] = "y x"
+        # Perhaps these geolocation variables shouldn't have a fill value?
+        ds["cdr_supplementary"][sup_var].encoding["_FillValue"] = None
+
+    # lat and lon fields have x and y coordinate variables associated with them
+    # and get added automatically when adding those fields above. This drops
+    # those unnecessary vars that will be inherited from the root group.
+    ds["cdr_supplementary"] = ds["cdr_supplementary"].drop_vars(["x", "y"])
 
     # Remove the "number of missing pixels" attr from the daily aggregate conc
-    # variable.
+    # variables.
     ds["cdr_seaice_conc"].attrs = {
         k: v
         for k, v in ds["cdr_seaice_conc"].attrs.items()
         if k != "number_of_missing_pixels"
     }
 
-    # setup global attrs
-    # Set global attributes
+    # Remove "number_of_missing_pixels" attr from seaice conc var in any
+    # prototype subgroups
+    prototype_groups = [
+        group_name for group_name in ds.groups if "/prototype_" in group_name
+    ]
+    if len(prototype_groups) > 0:
+        for prototype_group in prototype_groups:
+            # We expect prototype group name to have the form
+            # `prototype_{platform_id}`
+            platform_id = prototype_group.split("_")[1]
+            prototype_group_name = f"prototype_{platform_id}"
+            prototype_seaice_conc_name = f"{platform_id}_seaice_conc"
+            ds[prototype_group_name][prototype_seaice_conc_name].attrs = {
+                k: v
+                for k, v in ds[prototype_group_name][
+                    prototype_seaice_conc_name
+                ].attrs.items()
+                if k != "number_of_missing_pixels"
+            }
+
+    # Set global attributes. Only updates to the root group are necessary. The
+    # `prototype_{platform_id}` and `cdr_supplementary` groups will keep its attrs unchanged.
     daily_aggregate_ds_global_attrs = get_global_attrs(
         time=ds.time,
         temporality="daily",
         aggregate=True,
         source=", ".join([fp.name for fp in daily_filepaths]),
-        sats=[sat_from_filename(fp.name) for fp in daily_filepaths],
+        platform_ids=[platform_id_from_filename(fp.name) for fp in daily_filepaths],
+        resolution=resolution,
+        hemisphere=hemisphere,
+        ancillary_source=ancillary_source,
     )
-    ds.attrs = daily_aggregate_ds_global_attrs
+    ds.attrs = daily_aggregate_ds_global_attrs  # type: ignore[assignment]
 
     return ds
 
@@ -146,7 +196,7 @@ def make_daily_aggregate_netcdf_for_year(
                 input_filepaths=daily_filepaths,
                 output_filepath=tmp_output_fp,
             )
-            daily_ds = xr.open_dataset(tmp_output_fp, chunks=dict(time=1))
+            daily_ds = datatree.open_datatree(tmp_output_fp, chunks=dict(time=1))
             daily_ds = _update_ncrcat_daily_ds(
                 ds=daily_ds,
                 daily_filepaths=daily_filepaths,
@@ -162,11 +212,17 @@ def make_daily_aggregate_netcdf_for_year(
                 complete_output_dir=complete_output_dir,
             )
 
+            # The daily ds should already be set to handle `time` as an
+            # unlimited dim.
+            assert daily_ds.encoding["unlimited_dims"] == {"time"}
+
+            # After concatenation, need to fix source, platform, sensor ncattrs
+            fix_daily_aggregate_ncattrs(daily_ds)
+
+            # Write out the aggregate daily file.
+            daily_ds = remove_FillValue_from_coordinate_vars(daily_ds)
             daily_ds.to_netcdf(
                 output_path,
-                unlimited_dims=[
-                    "time",
-                ],
             )
 
         logger.success(f"Wrote daily aggregate file for year={year} to {output_path}")
@@ -218,6 +274,7 @@ def make_daily_aggregate_netcdf_for_year(
     "-r",
     "--resolution",
     required=True,
+    default="25",
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
 @click.option(
@@ -241,7 +298,6 @@ def cli(
     complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
-        is_nrt=False,
     )
     failed_years = []
     for year_to_process in range(year, end_year + 1):
