@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Final, get_args
+from typing import Final, Literal, get_args
 
 import click
 import pandas as pd
@@ -8,9 +8,9 @@ from pm_tb_data._types import Hemisphere
 from seaice_ecdr.cli.util import CLI_EXE_PATH, run_cmd
 from seaice_ecdr.constants import DEFAULT_BASE_NRT_OUTPUT_DIR
 from seaice_ecdr.platforms.config import (
-    NRT_PLATFORM_START_DATES_CONFIG_FILEPATH,
+    NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH,
+    NRT_F17_PLATFORM_START_DATES_CONFIG_FILEPATH,
 )
-from seaice_ecdr.publish_monthly import prepare_monthly_nc_for_publication
 
 
 def make_monthly_25km_ecdr(
@@ -20,6 +20,7 @@ def make_monthly_25km_ecdr(
     end_month: int | None,
     hemisphere: Hemisphere,
     base_output_dir: Path,
+    nrt_platform_id: Literal["F17", "am2"],
 ):
     if end_year is None:
         end_year = year
@@ -29,11 +30,14 @@ def make_monthly_25km_ecdr(
     # TODO: consider extracting these to CLI options that default to these values.
     RESOLUTION: Final = "25"
     ANCILLARY_SOURCE: Final = "CDRv5"
-    # TODO: the amsr2 start date should ideally be read from the platform start
-    # date config.
-    # Use the default platform dates, which excldues AMSR2
+    if nrt_platform_id == "F17":
+        nrt_platform_start_dates_filepath = NRT_F17_PLATFORM_START_DATES_CONFIG_FILEPATH
+    elif nrt_platform_id == "am2":
+        nrt_platform_start_dates_filepath = NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH
+    else:
+        raise RuntimeError(f"NRT processing is not defined for {nrt_platform_id}")
     run_cmd(
-        f"export PLATFORM_START_DATES_CONFIG_FILEPATH={NRT_PLATFORM_START_DATES_CONFIG_FILEPATH} &&"
+        f"export PLATFORM_START_DATES_CONFIG_FILEPATH={nrt_platform_start_dates_filepath} &&"
         f" {CLI_EXE_PATH} intermediate-monthly"
         f" --year {year} --month {month}"
         f" --end-year {end_year} --end-month {end_month}"
@@ -50,13 +54,13 @@ def make_monthly_25km_ecdr(
         end=pd.Period(year=end_year, month=end_month, freq="M"),
         freq="M",
     ):
-        prepare_monthly_nc_for_publication(
-            year=period.year,
-            month=period.month,
-            base_output_dir=base_output_dir,
-            hemisphere=hemisphere,
-            resolution=RESOLUTION,
-            is_nrt=True,
+        run_cmd(
+            f"export PLATFORM_START_DATES_CONFIG_FILEPATH={nrt_platform_start_dates_filepath} &&"
+            f" {CLI_EXE_PATH} prepare-monthly-for-publish"
+            f" --year {period.year} --month {period.month}"
+            f" --hemisphere {hemisphere}"
+            f" --base-output-dir {base_output_dir}"
+            " --is-nrt"
         )
 
 
@@ -112,6 +116,11 @@ def make_monthly_25km_ecdr(
     ),
     show_default=True,
 )
+@click.option(
+    "--nrt-platform-id",
+    type=click.Choice(["F17", "am2"]),
+    default="F17",
+)
 def cli(
     *,
     year: int,
@@ -120,6 +129,7 @@ def cli(
     end_month: int | None,
     hemisphere: Hemisphere,
     base_output_dir: Path,
+    nrt_platform_id: Literal["F17", "am2"],
 ) -> None:
     make_monthly_25km_ecdr(
         year=year,
@@ -128,6 +138,7 @@ def cli(
         end_month=end_month,
         hemisphere=hemisphere,
         base_output_dir=base_output_dir,
+        nrt_platform_id=nrt_platform_id,
     )
 
 

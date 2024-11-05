@@ -37,7 +37,22 @@ data gap is filled a few days late.
 
 ### Monthly processing
 
-**TODO**: the code does not yet support this.
+We produce both F17 and AM2 nrt files.
+
+To run for a single month:
+```
+monthly-nrt --year YYYY --month MM --hemisphere {north,south} --nrt-platform-id F17
+monthly-nrt --year YYYY --month MM --hemisphere {north,south} --nrt-platform-id am2
+```
+
+To process multiple years/months:
+
+```
+monthly-nrt --year YYYY --month MM --end-year YYYY --end-month MM --hemisphere {north,south} --nrt-platform-id F17
+monthly-nrt --year YYYY --month MM --end-year YYYY --end-month MM --hemisphere {north,south} --nrt-platform-id am2
+```
+
+NOTE: the F17 data MUST be created before AM2, or the code will not work.
 
 
 ## G02202 "final" Processing

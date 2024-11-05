@@ -1,7 +1,9 @@
 import datetime as dt
 from functools import cache
 from pathlib import Path
+from typing import Final, cast, get_args
 
+import click
 import datatree
 import xarray as xr
 from loguru import logger
@@ -12,6 +14,7 @@ from seaice_ecdr.ancillary import (
     remove_FillValue_from_coordinate_vars,
 )
 from seaice_ecdr.checksum import write_checksum_file
+from seaice_ecdr.constants import DEFAULT_BASE_NRT_OUTPUT_DIR
 from seaice_ecdr.intermediate_monthly import (
     get_intermediate_monthly_dir,
 )
@@ -20,7 +23,7 @@ from seaice_ecdr.nc_util import (
     add_coordinates_attr,
     fix_monthly_ncattrs,
 )
-from seaice_ecdr.nrt import override_attrs_for_nrt
+from seaice_ecdr.nrt import NRT_SUPPORTED_PLATFORM_ID, override_attrs_for_nrt
 from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import (
     find_standard_monthly_netcdf_files,
@@ -358,14 +361,20 @@ def prepare_monthly_nc_for_publication(
     # Fix monthly nc-attributes
     fix_monthly_ncattrs(complete_monthly_ds)
 
+    # get the platform Id from the filename default filename.
+    platform_id = platform_id_from_filename(intermediate_monthly_fp.name)
+
+    assert platform_id in get_args(NRT_SUPPORTED_PLATFORM_ID)
+    platform_id = cast(NRT_SUPPORTED_PLATFORM_ID, platform_id)
+
     # Override attrs for nrt
     if is_nrt:
         complete_monthly_ds = override_attrs_for_nrt(
-            publication_ready_ds=complete_monthly_ds, resolution=resolution
+            publication_ready_ds=complete_monthly_ds,
+            resolution=resolution,
+            platform_id=platform_id,
         )
 
-    # get the platform Id from the filename default filename.
-    platform_id = platform_id_from_filename(intermediate_monthly_fp.name)
     # Write the publication-ready monthly ds
     complete_monthly_filepath = _write_publication_ready_nc_and_checksum(
         publication_ready_monthly_ds=complete_monthly_ds,
@@ -379,3 +388,71 @@ def prepare_monthly_nc_for_publication(
     )
 
     return complete_monthly_filepath
+
+
+@click.command(name="prepare-monthly-for-publish")
+@click.option(
+    "--year",
+    required=True,
+    type=int,
+    help="Year for which to create the monthly file.",
+)
+@click.option(
+    "--month",
+    required=True,
+    type=int,
+    help="Month for which to create the monthly file.",
+)
+@click.option(
+    "-h",
+    "--hemisphere",
+    required=True,
+    type=click.Choice(get_args(Hemisphere)),
+)
+@click.option(
+    "--base-output-dir",
+    required=True,
+    type=click.Path(
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        writable=True,
+        resolve_path=True,
+        path_type=Path,
+    ),
+    default=DEFAULT_BASE_NRT_OUTPUT_DIR,
+    help=(
+        "Base output directory for NRT ECDR outputs."
+        " Subdirectories are created for outputs of"
+        " different stages of processing."
+    ),
+    show_default=True,
+)
+@click.option(
+    "--is-nrt",
+    required=False,
+    is_flag=True,
+    help=("Create intermediate monthly file in NRT mode (uses NRT-stype filename)."),
+)
+def cli(
+    year: int,
+    month: int,
+    hemisphere: Hemisphere,
+    base_output_dir: Path,
+    is_nrt: bool,
+):
+    """CLI for preparing publication-ready monthly files.
+
+    Note that `PLATFORM_START_DATES_CONFIG_FILEPATH` should be set when running
+    this.
+    """
+    RESOLUTION: Final = "25"
+
+    prepare_monthly_nc_for_publication(
+        year=year,
+        month=month,
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        resolution=RESOLUTION,
+        is_nrt=is_nrt,
+    )

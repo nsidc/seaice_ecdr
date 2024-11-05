@@ -107,7 +107,7 @@ def map_tbs_to_ecdr_channels(
     return ecdr_tbs
 
 
-def _get_am2_tbs(
+def get_am2_tbs_from_au_si(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
@@ -362,7 +362,7 @@ def get_25km_ecdr_tb_data(
     """Get 25km ECDR Tb data for the given date and hemisphere."""
     platform = PLATFORM_CONFIG.get_platform_by_date(date)
     if platform.id == "am2":
-        return _get_am2_tbs(date=date, hemisphere=hemisphere, resolution="25")
+        return get_am2_tbs_from_au_si(date=date, hemisphere=hemisphere, resolution="25")
     elif platform.id == "ame":
         raise NotImplementedError("AME is not yet supported at 25km resolution")
     elif platform.id in get_args(NSIDC_0001_SATS):
@@ -392,7 +392,9 @@ def get_ecdr_tb_data(
     """
     platform = PLATFORM_CONFIG.get_platform_by_date(date)
     if platform.id == "am2":
-        return _get_am2_tbs(date=date, hemisphere=hemisphere, resolution="12.5")
+        return get_am2_tbs_from_au_si(
+            date=date, hemisphere=hemisphere, resolution="12.5"
+        )
     elif platform.id == "ame":
         return _get_ame_tbs(date=date, hemisphere=hemisphere)
     elif platform.id in get_args(NSIDC_0001_SATS):

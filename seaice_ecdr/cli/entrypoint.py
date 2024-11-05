@@ -16,6 +16,7 @@ from seaice_ecdr.multiprocess_intermediate_daily import (
 )
 from seaice_ecdr.nrt import nrt_ecdr_for_dates
 from seaice_ecdr.publish_daily import cli as publish_daily_cli
+from seaice_ecdr.publish_monthly import cli as publish_monthly_cli
 from seaice_ecdr.temporal_composite_daily import cli as tiecdr_cli
 from seaice_ecdr.validation import cli as validation_cli
 
@@ -34,6 +35,7 @@ cli.add_command(validation_cli)
 cli.add_command(multiprocess_intermediate_daily_cli)
 cli.add_command(publish_daily_cli)
 cli.add_command(nrt_ecdr_for_dates)
+cli.add_command(publish_monthly_cli)
 
 # CLIs that ops will use below:
 # Generate standard daily files ready for publication:
