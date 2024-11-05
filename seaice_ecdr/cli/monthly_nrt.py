@@ -95,7 +95,7 @@ def make_monthly_25km_ecdr(
     "-h",
     "--hemisphere",
     required=True,
-    type=click.Choice(get_args(Hemisphere)),
+    type=click.Choice([*get_args(Hemisphere), "both"]),
 )
 @click.option(
     "--base-output-dir",
@@ -131,22 +131,28 @@ def cli(
     month: int,
     end_year: int | None,
     end_month: int | None,
-    hemisphere: Hemisphere,
+    hemisphere: Hemisphere | Literal["both"],
     base_output_dir: Path,
     nrt_platform_id: Literal["F17"],
 ) -> None:
     base_output_dir = base_output_dir / "CDR"
     base_output_dir.mkdir(exist_ok=True)
 
-    make_monthly_25km_ecdr(
-        year=year,
-        month=month,
-        end_year=end_year,
-        end_month=end_month,
-        hemisphere=hemisphere,
-        base_output_dir=base_output_dir,
-        nrt_platform_id=nrt_platform_id,
-    )
+    if hemisphere == "both":
+        hemispheres: list[Hemisphere] = ["north", "south"]
+    else:
+        hemispheres = [hemisphere]
+
+    for hemisphere in hemispheres:
+        make_monthly_25km_ecdr(
+            year=year,
+            month=month,
+            end_year=end_year,
+            end_month=end_month,
+            hemisphere=hemisphere,
+            base_output_dir=base_output_dir,
+            nrt_platform_id=nrt_platform_id,
+        )
 
 
 if __name__ == "__main__":

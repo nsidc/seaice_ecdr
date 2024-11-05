@@ -70,13 +70,13 @@ We produce NRT monthly files for F17 (not AM2).
 
 To run for a single month:
 ```
-monthly-nrt --year YYYY --month MM --hemisphere {north,south}
+monthly-nrt --year YYYY --month MM --hemisphere both
 ```
 
 To process multiple years/months:
 
 ```
-monthly-nrt --year YYYY --month MM --end-year YYYY --end-month MM --hemisphere {north,south}
+monthly-nrt --year YYYY --month MM --end-year YYYY --end-month MM --hemisphere both
 ```
 
 
