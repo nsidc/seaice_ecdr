@@ -47,7 +47,7 @@ def test_daily_filename_south():
 
 
 def test_nrt_daily_filename():
-    expected = f"sic_psn12.5_20210101_am2_{ECDR_NRT_PRODUCT_VERSION}_P.nc"
+    expected = f"sic_psn12.5_20210101_am2_icdr_{ECDR_NRT_PRODUCT_VERSION}.nc"
 
     actual = nrt_daily_filename(
         hemisphere=NORTH, resolution="12.5", platform_id="am2", date=dt.date(2021, 1, 1)
@@ -57,7 +57,7 @@ def test_nrt_daily_filename():
 
 
 def test_nrt_monthly_filename():
-    expected = f"sic_psn25_202409_F17_{ECDR_NRT_PRODUCT_VERSION}_P.nc"
+    expected = f"sic_psn25_202409_F17_icdr_{ECDR_NRT_PRODUCT_VERSION}.nc"
 
     actual = nrt_monthly_filename(
         hemisphere=NORTH,
