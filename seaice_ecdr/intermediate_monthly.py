@@ -204,7 +204,7 @@ CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS = OrderedDict(
 )
 
 # TODO: rename. This is actually a bit mask (except the fill_value)
-CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS = OrderedDict(
+CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_NORTH = OrderedDict(
     {
         "average_concentration_exceeds_0.15": 1,
         "average_concentration_exceeds_0.30": 2,
@@ -214,6 +214,18 @@ CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS = OrderedDict(
         "at_least_one_day_during_month_has_spatial_interpolation": 32,
         "at_least_one_day_during_month_has_temporal_interpolation": 64,
         "at_least_one_day_during_month_has_melt_detected": 128,
+    }
+)
+
+CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_SOUTH = OrderedDict(
+    {
+        "average_concentration_exceeds_0.15": 1,
+        "average_concentration_exceeds_0.30": 2,
+        "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15": 4,
+        "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30": 8,
+        "invalid_ice_mask_applied": 16,
+        "at_least_one_day_during_month_has_spatial_interpolation": 32,
+        "at_least_one_day_during_month_has_temporal_interpolation": 64,
     }
 )
 
@@ -232,8 +244,14 @@ def calc_cdr_seaice_conc_monthly_qa_flag(
     *,
     daily_ds_for_month: xr.Dataset,
     cdr_seaice_conc_monthly: xr.DataArray,
+    hemisphere: Hemisphere,
 ) -> xr.DataArray:
     """Create `cdr_seaice_conc_monthly_qa_flag`."""
+    if hemisphere == "north":
+        qa_flag_bitmasks = CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_NORTH
+    else:
+        qa_flag_bitmasks = CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_SOUTH
+
     # initialize the variable
     cdr_seaice_conc_monthly_qa_flag = xr.full_like(
         cdr_seaice_conc_monthly,
@@ -246,18 +264,14 @@ def calc_cdr_seaice_conc_monthly_qa_flag(
     cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~average_exceeds_15,
         cdr_seaice_conc_monthly_qa_flag
-        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
-            "average_concentration_exceeds_0.15"
-        ],
+        + qa_flag_bitmasks["average_concentration_exceeds_0.15"],
     )
 
     average_exceeds_30 = cdr_seaice_conc_monthly > 0.30
     cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~average_exceeds_30,
         cdr_seaice_conc_monthly_qa_flag
-        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
-            "average_concentration_exceeds_0.30"
-        ],
+        + qa_flag_bitmasks["average_concentration_exceeds_0.30"],
     )
 
     days_in_ds = len(daily_ds_for_month.time)
@@ -269,9 +283,7 @@ def calc_cdr_seaice_conc_monthly_qa_flag(
     cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~at_least_half_have_sic_gt_15,
         cdr_seaice_conc_monthly_qa_flag
-        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
-            "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"
-        ],
+        + qa_flag_bitmasks["at_least_half_the_days_have_sea_ice_conc_exceeds_0.15"],
     )
 
     at_least_half_have_sic_gt_30 = (daily_ds_for_month.cdr_seaice_conc > 0.30).sum(
@@ -280,9 +292,7 @@ def calc_cdr_seaice_conc_monthly_qa_flag(
     cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~at_least_half_have_sic_gt_30,
         cdr_seaice_conc_monthly_qa_flag
-        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
-            "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30"
-        ],
+        + qa_flag_bitmasks["at_least_half_the_days_have_sea_ice_conc_exceeds_0.30"],
     )
 
     # Use "invalid_ice_mask_applied", which is actually the invalid ice mask.
@@ -292,8 +302,7 @@ def calc_cdr_seaice_conc_monthly_qa_flag(
     ).any(dim="time")
     cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~invalid_ice_mask_applied,
-        cdr_seaice_conc_monthly_qa_flag
-        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS["invalid_ice_mask_applied"],
+        cdr_seaice_conc_monthly_qa_flag + qa_flag_bitmasks["invalid_ice_mask_applied"],
     )
 
     at_least_one_day_during_month_has_spatial_interpolation = _qa_field_has_flag(
@@ -305,9 +314,7 @@ def calc_cdr_seaice_conc_monthly_qa_flag(
     cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~at_least_one_day_during_month_has_spatial_interpolation,
         cdr_seaice_conc_monthly_qa_flag
-        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
-            "at_least_one_day_during_month_has_spatial_interpolation"
-        ],
+        + qa_flag_bitmasks["at_least_one_day_during_month_has_spatial_interpolation"],
     )
 
     at_least_one_day_during_month_has_temporal_interpolation = _qa_field_has_flag(
@@ -319,34 +326,30 @@ def calc_cdr_seaice_conc_monthly_qa_flag(
     cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
         ~at_least_one_day_during_month_has_temporal_interpolation,
         cdr_seaice_conc_monthly_qa_flag
-        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
-            "at_least_one_day_during_month_has_temporal_interpolation"
-        ],
+        + qa_flag_bitmasks["at_least_one_day_during_month_has_temporal_interpolation"],
     )
 
-    at_least_one_day_during_month_has_melt_detected = _qa_field_has_flag(
-        qa_field=daily_ds_for_month.cdr_seaice_conc_qa_flag,
-        flag_value=CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS["start_of_melt_detected"],
-    ).any(dim="time")
-    cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
-        ~at_least_one_day_during_month_has_melt_detected,
-        cdr_seaice_conc_monthly_qa_flag
-        + CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
-            "at_least_one_day_during_month_has_melt_detected"
-        ],
-    )
+    if hemisphere == "north":
+        at_least_one_day_during_month_has_melt_detected = _qa_field_has_flag(
+            qa_field=daily_ds_for_month.cdr_seaice_conc_qa_flag,
+            flag_value=CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS["start_of_melt_detected"],
+        ).any(dim="time")
+        cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.where(
+            ~at_least_one_day_during_month_has_melt_detected,
+            cdr_seaice_conc_monthly_qa_flag
+            + qa_flag_bitmasks["at_least_one_day_during_month_has_melt_detected"],
+        )
+        monthly_qa_valid_range = (np.uint8(0), np.uint8(255))
+    else:
+        monthly_qa_valid_range = (np.uint8(0), np.uint8(127))
 
     cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.assign_attrs(
         long_name="NOAA/NSIDC CDR of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QA flags",
         standard_name="status_flag",
-        flag_meanings=" ".join(
-            k for k in CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS.keys()
-        ),
-        flag_masks=[
-            np.uint8(v) for v in CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS.values()
-        ],
+        flag_meanings=" ".join(k for k in qa_flag_bitmasks.keys()),
+        flag_masks=[np.uint8(v) for v in qa_flag_bitmasks.values()],
         grid_mapping="crs",
-        valid_range=(np.uint8(0), np.uint8(255)),
+        valid_range=monthly_qa_valid_range,
     )
 
     cdr_seaice_conc_monthly_qa_flag.encoding = dict(
@@ -612,6 +615,7 @@ def make_intermediate_monthly_ds(
     cdr_seaice_conc_monthly_qa_flag = calc_cdr_seaice_conc_monthly_qa_flag(
         daily_ds_for_month=daily_ds_for_month,
         cdr_seaice_conc_monthly=cdr_seaice_conc_monthly,
+        hemisphere=hemisphere,
     )
 
     # Set stdev to invalid and QA to all-missing if this is an empty month
@@ -663,10 +667,10 @@ def make_intermediate_monthly_ds(
         temporality="monthly",
         aggregate=False,
         source=", ".join([fp.item().name for fp in daily_ds_for_month.filepaths]),
-        # TODO: consider providing all platforms that went into month? This would be
-        # consistent with how we handle the aggregate filenames. Is it
-        # misleading to indicate that a month is a single platform when it may not
-        # really be?
+        # TODO: consider providing all platforms that went into month?
+        # This would be consistent with how we handle the aggregate filenames.
+        # Is it misleading to indicate that a month is a single platform
+        # when it may not really be?
         platform_ids=[platform_id],
         resolution=resolution,
         hemisphere=hemisphere,
