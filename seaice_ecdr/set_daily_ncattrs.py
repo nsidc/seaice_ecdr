@@ -70,7 +70,6 @@ def finalize_cdecdr_ds(
                 "NOAA/NSIDC CDR of Passive Microwave" " Sea Ice Concentration"
             ),
             "grid_mapping": "crs",
-            "reference": "https://nsidc.org/data/g02202/versions/5",
             "ancillary_variables": "cdr_seaice_conc_stdev cdr_seaice_conc_qa_flag",
             "valid_range": np.array((0, 100), dtype=np.uint8),
             "number_of_missing_pixels": num_missing_conc_pixels,

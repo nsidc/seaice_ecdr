@@ -417,7 +417,6 @@ def calc_cdr_seaice_conc_monthly(
         units="1",
         valid_range=(np.uint8(0), np.uint8(100)),
         grid_mapping="crs",
-        reference="https://nsidc.org/data/g02202/versions/5",
         number_of_missing_pixels=num_missing_conc_pixels,
     )
 

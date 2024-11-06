@@ -341,22 +341,6 @@ def override_attrs_for_nrt(
     )
     override_for_nrt.attrs["product_version"] = ECDR_NRT_PRODUCT_VERSION.version_str
 
-    # Override the reference attr for the cdr variable
-    if "cdr_seaice_conc" in override_for_nrt:
-        override_for_nrt["cdr_seaice_conc"].attrs["reference"] = link_to_dataproduct
-    if "cdr_seaice_conc_monthly" in override_for_nrt:
-        override_for_nrt["cdr_seaice_conc_monthly"].attrs[
-            "reference"
-        ] = link_to_dataproduct
-
-    # AM2 data available and we need to override the "reference" for the monthly cdr variable.
-    # TODO: this assumes the prototype group will always contain AM2 data, which
-    # may not be the case in the future.
-    if "prototype_am2" in override_for_nrt:
-        override_for_nrt["prototype_am2"]["am2_seaice_conc_monthly"].attrs[
-            "reference"
-        ] = link_to_dataproduct
-
     return override_for_nrt
 
 
