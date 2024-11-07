@@ -217,17 +217,8 @@ CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_NORTH = OrderedDict(
     }
 )
 
-CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_SOUTH = OrderedDict(
-    {
-        "average_concentration_exceeds_0.15": 1,
-        "average_concentration_exceeds_0.30": 2,
-        "at_least_half_the_days_have_sea_ice_conc_exceeds_0.15": 4,
-        "at_least_half_the_days_have_sea_ice_conc_exceeds_0.30": 8,
-        "invalid_ice_mask_applied": 16,
-        "at_least_one_day_during_month_has_spatial_interpolation": 32,
-        "at_least_one_day_during_month_has_temporal_interpolation": 64,
-    }
-)
+CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_SOUTH = CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_NORTH.copy()
+CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_SOUTH.pop("at_least_one_day_during_month_has_melt_detected")
 
 
 def _qa_field_has_flag(*, qa_field: xr.DataArray, flag_value: int) -> xr.DataArray:
