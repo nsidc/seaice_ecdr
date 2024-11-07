@@ -217,8 +217,12 @@ CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_NORTH = OrderedDict(
     }
 )
 
-CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_SOUTH = CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_NORTH.copy()
-CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_SOUTH.pop("at_least_one_day_during_month_has_melt_detected")
+CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_SOUTH = (
+    CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_NORTH.copy()
+)
+CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_SOUTH.pop(
+    "at_least_one_day_during_month_has_melt_detected"
+)
 
 
 def _qa_field_has_flag(*, qa_field: xr.DataArray, flag_value: int) -> xr.DataArray:
@@ -330,17 +334,16 @@ def calc_cdr_seaice_conc_monthly_qa_flag(
             cdr_seaice_conc_monthly_qa_flag
             + qa_flag_bitmasks["at_least_one_day_during_month_has_melt_detected"],
         )
-        monthly_qa_valid_range = (np.uint8(0), np.uint8(255))
-    else:
-        monthly_qa_valid_range = (np.uint8(0), np.uint8(127))
+
+    monthly_qa_values = [np.uint8(value) for value in qa_flag_bitmasks.values()]
 
     cdr_seaice_conc_monthly_qa_flag = cdr_seaice_conc_monthly_qa_flag.assign_attrs(
         long_name="NOAA/NSIDC CDR of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration QA flags",
         standard_name="status_flag",
         flag_meanings=" ".join(k for k in qa_flag_bitmasks.keys()),
-        flag_masks=[np.uint8(v) for v in qa_flag_bitmasks.values()],
+        flag_masks=monthly_qa_values,
         grid_mapping="crs",
-        valid_range=monthly_qa_valid_range,
+        valid_range=(np.uint8(0), np.uint8(sum(monthly_qa_values))),
     )
 
     cdr_seaice_conc_monthly_qa_flag.encoding = dict(
