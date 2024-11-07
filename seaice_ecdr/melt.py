@@ -35,8 +35,8 @@ import numpy as np
 import numpy.typing as npt
 
 # Start and end DOYs for the melt season (inclusive)
-MELT_SEASON_FIRST_DOY = 60
-MELT_SEASON_LAST_DOY = 244
+MELT_SEASON_FIRST_DOY: int = 60
+MELT_SEASON_LAST_DOY: int = 244
 
 # Flag value for grid cells before melting is detected or if no melt is ever
 # detected.

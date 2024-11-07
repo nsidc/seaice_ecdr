@@ -44,6 +44,7 @@ from seaice_ecdr.ancillary import (
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.days_treated_differently import months_of_cdr_missing_data
 from seaice_ecdr.intermediate_daily import get_ecdr_filepath
+from seaice_ecdr.melt import MELT_SEASON_LAST_DOY
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.tb_data import get_hemisphere_from_crs_da
@@ -479,11 +480,12 @@ def calc_cdr_melt_onset_day_monthly(
     # Create `cdr_melt_onset_day_monthly`. This is the value from
     # the last day of the month unless the month is incomplete.
     # xarray uses np.datetime64[ns] for time
-    doy_str_list = [
-        date.strftime("%j") for date in daily_melt_onset_for_month.time.dt.date.values
+    doy_list: list[int] = [
+        int(date.strftime("%j"))
+        for date in daily_melt_onset_for_month.time.dt.date.values
     ]
-    if "244" in doy_str_list:
-        day_244_idx = doy_str_list.index("244")
+    if MELT_SEASON_LAST_DOY in doy_list:
+        day_244_idx = doy_list.index(MELT_SEASON_LAST_DOY)
         max_date = daily_melt_onset_for_month.time[day_244_idx].values
         logger.info(f"Found non-max date with melt: {max_date}")
     else:
