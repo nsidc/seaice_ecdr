@@ -12,7 +12,7 @@ from seaice_ecdr import util
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.intermediate_daily import get_ecdr_dir
 from seaice_ecdr.intermediate_monthly import (
-    CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS,
+    CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_NORTH,
     CDR_SEAICE_CONC_QA_FLAG_DAILY_BITMASKS,
     _get_daily_complete_filepaths_for_month,
     _platform_id_for_month,
@@ -301,6 +301,9 @@ def _mock_daily_ds_for_month():
 
 def test_calc_cdr_seaice_conc_monthly_qa_flag():
     _mock_daily_ds = _mock_daily_ds_for_month()
+    CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS = (
+        CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS_NORTH
+    )
     expected_flags = np.array(
         [
             CDR_SEAICE_CONC_MONTHLY_QA_FLAG_BITMASKS[
@@ -357,6 +360,7 @@ def test_calc_cdr_seaice_conc_monthly_qa_flag():
     actual = calc_cdr_seaice_conc_monthly_qa_flag(
         daily_ds_for_month=_mock_daily_ds,
         cdr_seaice_conc_monthly=_mean_daily_conc,
+        hemisphere="north",
     )
 
     nptesting.assert_array_equal(expected_flags, actual.values)
