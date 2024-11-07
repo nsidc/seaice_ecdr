@@ -3,6 +3,7 @@ import datetime as dt
 import subprocess
 from collections import OrderedDict
 from functools import cache
+from pathlib import Path
 from typing import Any, Literal, get_args
 
 import pandas as pd
@@ -32,14 +33,19 @@ def _get_software_version_id():
     Takes the form <git_repo>@<git_hash>. E.g.,:
     "git@github.com:nsidc/seaice_ecdr.git@10fdd316452d0d69fbcf4e7915b66c227298b0ec"
     """
+    _this_dir = Path(__file__).parent
     software_git_hash_result = subprocess.run(
-        ["git", "rev-parse", "HEAD"], capture_output=True
+        ["git", "rev-parse", "HEAD"],
+        capture_output=True,
+        cwd=_this_dir,
     )
     software_git_hash_result.check_returncode()
     software_git_hash = software_git_hash_result.stdout.decode("utf8").strip()
 
     software_git_url_result = subprocess.run(
-        ["git", "config", "--get", "remote.origin.url"], capture_output=True
+        ["git", "config", "--get", "remote.origin.url"],
+        capture_output=True,
+        cwd=_this_dir,
     )
     software_git_url_result.check_returncode()
     software_git_url = software_git_url_result.stdout.decode("utf8").strip()
