@@ -326,7 +326,7 @@ def override_attrs_for_nrt(
     elif platform_id == "am2":
         # TODO: confirm this summary is OK with Ann.
         override_for_nrt.attrs["summary"] = (
-            f"This data set provides a near-real-time (NRT) passive microwave sea ice concentration climate data record (CDR) based on gridded brightness temperatures (TBs) from the Global Change Observation Mission 1st-Water (GCOM-W1) passive microwave radiometer: Advanced Microwave Scanning Radiometer 2 (AMSR2) am2. The sea ice concentration CDR is an estimate of sea ice concentration that is produced by combining concentration estimates from two algorithms developed at the NASA Goddard Space Flight Center (GSFC): the NASA Team algorithm and the Bootstrap algorithm. The individual algorithms are used to process and combine brightness temperature data at NSIDC. This product is designed to provide an NRT time series of sea ice concentrations (the fraction, or percentage, of ocean area covered by sea ice). The data are gridded on the NSIDC polar stereographic grid with {resolution} x {resolution} km grid cells and are available in NetCDF file format. Each file contains a variable with the CDR concentration values as well as variables that hold the NASA Team and Bootstrap processed concentrations for reference. Variables containing standard deviation, quality flags, and projection information are also included."
+            f"This data set provides a near-real-time (NRT) passive microwave sea ice concentration climate data record (CDR) based on gridded brightness temperatures (TBs) from the Global Change Observation Mission 1st-Water (GCOM-W1) passive microwave radiometer: Advanced Microwave Scanning Radiometer 2 (AMSR2). The sea ice concentration CDR is an estimate of sea ice concentration that is produced by combining concentration estimates from two algorithms developed at the NASA Goddard Space Flight Center (GSFC): the NASA Team algorithm and the Bootstrap algorithm. The individual algorithms are used to process and combine brightness temperature data at NSIDC. This product is designed to provide an NRT time series of sea ice concentrations (the fraction, or percentage, of ocean area covered by sea ice). The data are gridded on the NSIDC polar stereographic grid with {resolution} x {resolution} km grid cells and are available in NetCDF file format. Each file contains a variable with the CDR concentration values as well as variables that hold the NASA Team and Bootstrap processed concentrations for reference. Variables containing standard deviation, quality flags, and projection information are also included."
         )
 
     # NOTE: this NRT summary is specific to either F17 or AMSR2
@@ -340,22 +340,6 @@ def override_attrs_for_nrt(
         f" Sea Ice Concentration Version {ECDR_NRT_PRODUCT_VERSION.major_version_number}"
     )
     override_for_nrt.attrs["product_version"] = ECDR_NRT_PRODUCT_VERSION.version_str
-
-    # Override the reference attr for the cdr variable
-    if "cdr_seaice_conc" in override_for_nrt:
-        override_for_nrt["cdr_seaice_conc"].attrs["reference"] = link_to_dataproduct
-    if "cdr_seaice_conc_monthly" in override_for_nrt:
-        override_for_nrt["cdr_seaice_conc_monthly"].attrs[
-            "reference"
-        ] = link_to_dataproduct
-
-    # AM2 data available and we need to override the "reference" for the monthly cdr variable.
-    # TODO: this assumes the prototype group will always contain AM2 data, which
-    # may not be the case in the future.
-    if "prototype_am2" in override_for_nrt:
-        override_for_nrt["prototype_am2"]["am2_seaice_conc_monthly"].attrs[
-            "reference"
-        ] = link_to_dataproduct
 
     return override_for_nrt
 

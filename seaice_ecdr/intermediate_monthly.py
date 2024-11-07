@@ -49,7 +49,6 @@ from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
 from seaice_ecdr.tb_data import get_hemisphere_from_crs_da
 from seaice_ecdr.util import (
     get_intermediate_output_dir,
-    get_num_missing_pixels,
     platform_id_from_filename,
     standard_monthly_filename,
 )
@@ -396,13 +395,6 @@ def calc_cdr_seaice_conc_monthly(
         other=0,
     )
 
-    num_missing_conc_pixels = get_num_missing_pixels(
-        seaice_conc_var=conc_monthly,
-        hemisphere=hemisphere,
-        resolution=resolution,
-        ancillary_source=ancillary_source,
-    )
-
     conc_monthly.name = "cdr_seaice_conc_monthly"
     conc_monthly = conc_monthly.assign_attrs(
         long_name="NOAA/NSIDC CDR of Passive Microwave Monthly Northern Hemisphere Sea Ice Concentration",
@@ -411,8 +403,6 @@ def calc_cdr_seaice_conc_monthly(
         units="1",
         valid_range=(np.uint8(0), np.uint8(100)),
         grid_mapping="crs",
-        reference="https://nsidc.org/data/g02202/versions/5",
-        number_of_missing_pixels=num_missing_conc_pixels,
     )
 
     conc_monthly.encoding.update(
