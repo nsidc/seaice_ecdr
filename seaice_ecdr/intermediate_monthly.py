@@ -477,10 +477,20 @@ def calc_cdr_melt_onset_day_monthly(
 ) -> xr.DataArray:
     """Create the `cdr_melt_onset_day_monthly` variable."""
     # Create `cdr_melt_onset_day_monthly`. This is the value from
-    # the last day of the month.
-    cdr_melt_onset_day_monthly = daily_melt_onset_for_month.sel(
-        time=daily_melt_onset_for_month.time.max()
-    )
+    # the last day of the month unless the month is incomplete.
+    # xarray uses np.datetime64[ns] for time
+    max_date = daily_melt_onset_for_month.time.max()
+    if daily_melt_onset_for_month.time.dtype == np.datetime64(1, "ns").dtype:
+        unix_epoch = np.datetime64(0, "s")
+        one_second = np.timedelta64(1, "s")
+        for dt64 in daily_melt_onset_for_month.time.data:
+            seconds_since_epoch = (dt64 - unix_epoch) / one_second
+            date = dt.datetime.utcfromtimestamp(seconds_since_epoch).date()
+            if date.strftime("%j") == "244":
+                max_date = dt64
+                logger.info(f"Found non-max date with melt: {max_date}")
+
+    cdr_melt_onset_day_monthly = daily_melt_onset_for_month.sel(time=max_date)
     cdr_melt_onset_day_monthly.name = "cdr_melt_onset_day_monthly"
     cdr_melt_onset_day_monthly = cdr_melt_onset_day_monthly.drop_vars("time")
 
