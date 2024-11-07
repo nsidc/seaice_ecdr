@@ -1,9 +1,9 @@
 [project]
 name = "seaice_ecdr"
-version = "1.0.0"
+version = "1.0.1"
 
 [tool.bumpversion]
-current_version = "1.0.0"
+current_version = "1.0.1"
 commit = false
 tag = false
 
