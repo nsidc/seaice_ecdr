@@ -1,3 +1,11 @@
+# v1.0.1
+
+* Monthly melt onset day uses DOY 244 as the last day in the melt season unless
+  it is not present. Then the lastest available date is used.
+* Remove unnecessary attributes from netcdf files
+* Southern hemisphere melt onset omits the
+  `at_least_one_day_during_month_has_melt_detected` bitmask.
+
 # v1.0.0
 
 * First production release of 25km CDR
