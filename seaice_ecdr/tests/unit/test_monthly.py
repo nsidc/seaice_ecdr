@@ -505,7 +505,14 @@ def test_calc_cdr_melt_onset_day_monthly():
         data=_mock_data,
         dims=["y", "time"],
         coords=dict(
-            time=[dt.date(2022, 3, 1), dt.date(2022, 3, 2), dt.date(2022, 3, 3)],
+            time=[
+                np.datetime64(date)
+                for date in [
+                    dt.date(2022, 3, 1),
+                    dt.date(2022, 3, 2),
+                    dt.date(2022, 3, 3),
+                ]
+            ],
             y=list(range(5)),
         ),
     )
