@@ -47,8 +47,8 @@ from pathlib import Path
 from typing import Final, Literal, cast, get_args
 
 import click
+import datatree
 import pandas as pd
-import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
@@ -59,13 +59,13 @@ from seaice_ecdr.ancillary import (
 )
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
-from seaice_ecdr.intermediate_daily import get_ecdr_filepath
-from seaice_ecdr.intermediate_monthly import get_intermediate_monthly_dir
 from seaice_ecdr.platforms import PLATFORM_CONFIG
+from seaice_ecdr.publish_daily import get_complete_daily_filepath
+from seaice_ecdr.publish_monthly import get_complete_monthly_dir
 from seaice_ecdr.util import (
     date_range,
     find_standard_monthly_netcdf_files,
-    get_intermediate_output_dir,
+    get_complete_output_dir,
     get_num_missing_pixels,
 )
 
@@ -220,7 +220,7 @@ def get_error_code(
 
 def get_pixel_counts(
     *,
-    ds: xr.Dataset,
+    ds: datatree.DataTree,
     product: Product,
     hemisphere: Hemisphere,
     ancillary_source: ANCILLARY_SOURCES = "CDRv5",
@@ -256,10 +256,12 @@ def get_pixel_counts(
             continue
 
         flag_value = flag_value_for_meaning(
-            var=ds.surface_type_mask,
+            var=ds.cdr_supplementary.surface_type_mask,
             meaning=flag,
         )
-        num_flag_pixels = int((ds.surface_type_mask == flag_value).sum())
+        num_flag_pixels = int(
+            (ds.cdr_supplementary.surface_type_mask == flag_value).sum()
+        )
         surf_value_counts[flag] = num_flag_pixels
 
     # Number of oceanmask (invalid ice mask) pixels
@@ -335,7 +337,7 @@ def make_validation_dict(
     date: dt.date,
     hemisphere: Hemisphere,
 ) -> dict:
-    ds = xr.open_dataset(data_fp)
+    ds = datatree.open_datatree(data_fp)
 
     pixel_counts = get_pixel_counts(
         ds=ds,
@@ -378,7 +380,7 @@ def validate_outputs(
     * error_seaice_{n|s}_daily_{start_year}_{end_year}.csv. Contains the
       following fields: [year, month, day, error_code]
     """
-    intermediate_output_dir = get_intermediate_output_dir(
+    complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
     )
@@ -404,12 +406,12 @@ def validate_outputs(
         if product == "daily":
             for date in date_range(start_date=start_date, end_date=end_date):
                 platform = PLATFORM_CONFIG.get_platform_by_date(date)
-                data_fp = get_ecdr_filepath(
+                data_fp = get_complete_daily_filepath(
                     date=date,
                     platform_id=platform.id,
                     hemisphere=hemisphere,
                     resolution=VALIDATION_RESOLUTION,
-                    intermediate_output_dir=intermediate_output_dir,
+                    complete_output_dir=complete_output_dir,
                     is_nrt=False,
                 )
 
@@ -447,8 +449,8 @@ def validate_outputs(
         else:
             periods = pd.period_range(start=start_date, end=end_date, freq="M")
             for period in periods:
-                monthly_dir = get_intermediate_monthly_dir(
-                    intermediate_output_dir=intermediate_output_dir,
+                monthly_dir = get_complete_monthly_dir(
+                    complete_output_dir=complete_output_dir,
                 )
 
                 results = find_standard_monthly_netcdf_files(
