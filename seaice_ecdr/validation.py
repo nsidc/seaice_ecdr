@@ -42,12 +42,12 @@ varying log file parameters:
 
 import csv
 import datetime as dt
-import itertools
 from collections import defaultdict
 from pathlib import Path
 from typing import Final, Literal, cast, get_args
 
 import click
+import pandas as pd
 import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
@@ -445,9 +445,8 @@ def validate_outputs(
                     ),
                 )
         else:
-            years = range(start_date.year, end_date.year + 1)
-            months = range(start_date.month, end_date.month + 1)
-            for year, month in itertools.product(years, months):
+            periods = pd.period_range(start=start_date, end=end_date, freq="M")
+            for period in periods:
                 monthly_dir = get_intermediate_monthly_dir(
                     intermediate_output_dir=intermediate_output_dir,
                 )
@@ -456,8 +455,8 @@ def validate_outputs(
                     search_dir=monthly_dir,
                     hemisphere=hemisphere,
                     resolution=VALIDATION_RESOLUTION,
-                    year=year,
-                    month=month,
+                    year=period.year,
+                    month=period.month,
                     platform_id="*",
                 )
                 if not results:
@@ -466,15 +465,15 @@ def validate_outputs(
                     validation_dict = make_validation_dict(
                         data_fp=results[0],
                         product=product,
-                        date=dt.date(year, month, 1),
+                        date=dt.date(period.year, period.month, 1),
                         hemisphere=hemisphere,
                     )
                 write_error_entry(
                     product=product,
                     csv_writer=error_writer,
                     entry=dict(
-                        year=year,
-                        month=month,
+                        year=period.year,
+                        month=period.month,
                         **validation_dict["error"],
                     ),
                 )
@@ -482,8 +481,8 @@ def validate_outputs(
                     product=product,
                     csv_writer=log_writer,
                     entry=dict(
-                        year=year,
-                        month=month,
+                        year=period.year,
+                        month=period.month,
                         **validation_dict["log"],
                     ),
                 )
