@@ -42,13 +42,13 @@ varying log file parameters:
 
 import csv
 import datetime as dt
-import itertools
 from collections import defaultdict
 from pathlib import Path
 from typing import Final, Literal, cast, get_args
 
 import click
-import xarray as xr
+import datatree
+import pandas as pd
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
@@ -59,13 +59,13 @@ from seaice_ecdr.ancillary import (
 )
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
-from seaice_ecdr.intermediate_daily import get_ecdr_filepath
-from seaice_ecdr.intermediate_monthly import get_intermediate_monthly_dir
 from seaice_ecdr.platforms import PLATFORM_CONFIG
+from seaice_ecdr.publish_daily import get_complete_daily_filepath
+from seaice_ecdr.publish_monthly import get_complete_monthly_dir
 from seaice_ecdr.util import (
     date_range,
     find_standard_monthly_netcdf_files,
-    get_intermediate_output_dir,
+    get_complete_output_dir,
     get_num_missing_pixels,
 )
 
@@ -220,7 +220,7 @@ def get_error_code(
 
 def get_pixel_counts(
     *,
-    ds: xr.Dataset,
+    ds: datatree.DataTree,
     product: Product,
     hemisphere: Hemisphere,
     ancillary_source: ANCILLARY_SOURCES = "CDRv5",
@@ -246,7 +246,7 @@ def get_pixel_counts(
     # total ice land coast lake pole oceanmask ice-free missing bad melt
     total_num_pixels = len(ds.x) * len(ds.y)
     # Areas where there is a concentration detected.
-    num_ice_pixels = int(((seaice_conc_var > 0) & (seaice_conc_var <= 1)).sum())
+    num_ice_pixels = int(((seaice_conc_var > 0) & (seaice_conc_var <= 1)).sum())  # type: ignore[union-attr, operator]
 
     # Surface value counts. These should be the same for every day.
     surf_value_counts = {}
@@ -256,26 +256,28 @@ def get_pixel_counts(
             continue
 
         flag_value = flag_value_for_meaning(
-            var=ds.surface_type_mask,
+            var=ds.cdr_supplementary.surface_type_mask,
             meaning=flag,
         )
-        num_flag_pixels = int((ds.surface_type_mask == flag_value).sum())
+        num_flag_pixels = int(
+            (ds.cdr_supplementary.surface_type_mask == flag_value).sum()
+        )
         surf_value_counts[flag] = num_flag_pixels
 
     # Number of oceanmask (invalid ice mask) pixels
     invalid_ice_bitmask_value = bitmask_value_for_meaning(
-        var=qa_var,
+        var=qa_var,  # type: ignore[arg-type]
         meaning="invalid_ice_mask_applied",
     )
     invalid_ice_mask = (qa_var & invalid_ice_bitmask_value) > 0
     num_oceanmask_pixels = int(invalid_ice_mask.sum())
 
     # Ice-free pixels (conc == 0)
-    num_ice_free_pixels = int((seaice_conc_var == 0).sum())
+    num_ice_free_pixels = int((seaice_conc_var == 0).sum())  # type: ignore[union-attr]
 
     # Get the number of missing pixels in the cdr conc field.
     num_missing_pixels = get_num_missing_pixels(
-        seaice_conc_var=seaice_conc_var,
+        seaice_conc_var=seaice_conc_var,  # type: ignore[arg-type]
         hemisphere=hemisphere,
         resolution=VALIDATION_RESOLUTION,
         ancillary_source=ancillary_source,
@@ -287,10 +289,10 @@ def get_pixel_counts(
     # as 0.099999 as a floating point data.
     # Note: xarray .sum() is similar to numpy.nansum() in that it will
     #       ignore NaNs in the summation operation
-    gt_100_sic = int((seaice_conc_var > 1).sum())
+    gt_100_sic = int((seaice_conc_var > 1).sum())  # type: ignore[union-attr, operator]
     if product == "daily":
         less_than_10_sic = int(
-            ((seaice_conc_var > 0) & (seaice_conc_var <= 0.0999)).sum()
+            ((seaice_conc_var > 0) & (seaice_conc_var <= 0.0999)).sum()  # type: ignore[union-attr, operator]
         )
         num_bad_pixels = less_than_10_sic + gt_100_sic
     else:
@@ -303,7 +305,7 @@ def get_pixel_counts(
         if product == "monthly":
             _melt_start_meaning = "at_least_one_day_during_month_has_melt_detected"
         melt_start_detected_bitmask_value = bitmask_value_for_meaning(
-            var=qa_var,
+            var=qa_var,  # type: ignore[arg-type]
             meaning=_melt_start_meaning,
         )
         melt_start_detected_mask = (qa_var & melt_start_detected_bitmask_value) > 0
@@ -335,7 +337,7 @@ def make_validation_dict(
     date: dt.date,
     hemisphere: Hemisphere,
 ) -> dict:
-    ds = xr.open_dataset(data_fp)
+    ds = datatree.open_datatree(data_fp)
 
     pixel_counts = get_pixel_counts(
         ds=ds,
@@ -378,7 +380,7 @@ def validate_outputs(
     * error_seaice_{n|s}_daily_{start_year}_{end_year}.csv. Contains the
       following fields: [year, month, day, error_code]
     """
-    intermediate_output_dir = get_intermediate_output_dir(
+    complete_output_dir = get_complete_output_dir(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
     )
@@ -404,12 +406,12 @@ def validate_outputs(
         if product == "daily":
             for date in date_range(start_date=start_date, end_date=end_date):
                 platform = PLATFORM_CONFIG.get_platform_by_date(date)
-                data_fp = get_ecdr_filepath(
+                data_fp = get_complete_daily_filepath(
                     date=date,
                     platform_id=platform.id,
                     hemisphere=hemisphere,
                     resolution=VALIDATION_RESOLUTION,
-                    intermediate_output_dir=intermediate_output_dir,
+                    complete_output_dir=complete_output_dir,
                     is_nrt=False,
                 )
 
@@ -445,19 +447,18 @@ def validate_outputs(
                     ),
                 )
         else:
-            years = range(start_date.year, end_date.year + 1)
-            months = range(start_date.month, end_date.month + 1)
-            for year, month in itertools.product(years, months):
-                monthly_dir = get_intermediate_monthly_dir(
-                    intermediate_output_dir=intermediate_output_dir,
+            periods = pd.period_range(start=start_date, end=end_date, freq="M")
+            for period in periods:
+                monthly_dir = get_complete_monthly_dir(
+                    complete_output_dir=complete_output_dir,
                 )
 
                 results = find_standard_monthly_netcdf_files(
                     search_dir=monthly_dir,
                     hemisphere=hemisphere,
                     resolution=VALIDATION_RESOLUTION,
-                    year=year,
-                    month=month,
+                    year=period.year,
+                    month=period.month,
                     platform_id="*",
                 )
                 if not results:
@@ -466,15 +467,15 @@ def validate_outputs(
                     validation_dict = make_validation_dict(
                         data_fp=results[0],
                         product=product,
-                        date=dt.date(year, month, 1),
+                        date=dt.date(period.year, period.month, 1),
                         hemisphere=hemisphere,
                     )
                 write_error_entry(
                     product=product,
                     csv_writer=error_writer,
                     entry=dict(
-                        year=year,
-                        month=month,
+                        year=period.year,
+                        month=period.month,
                         **validation_dict["error"],
                     ),
                 )
@@ -482,8 +483,8 @@ def validate_outputs(
                     product=product,
                     csv_writer=log_writer,
                     entry=dict(
-                        year=year,
-                        month=month,
+                        year=period.year,
+                        month=period.month,
                         **validation_dict["log"],
                     ),
                 )

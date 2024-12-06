@@ -1,3 +1,11 @@
+# v1.0.2
+
+* Fix for subprocess calls for `git` operations (e.g., to get the current
+  version) with potentially incorrect working dir.
+* Remove OBE assertion
+* Fix monthly validation code to process all months in date range.
+* Update validation code to process data in final, publication-ready state.
+
 # v1.0.1
 
 * Monthly melt onset day uses DOY 244 as the last day in the melt season unless
