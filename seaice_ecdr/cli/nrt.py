@@ -91,8 +91,6 @@ def cli(
     base_output_dir: Path,
     overwrite: bool,
 ):
-    base_output_dir = base_output_dir / "CDR"
-
     base_output_dir.mkdir(exist_ok=True)
 
     if last_n_days and (date or end_date):
