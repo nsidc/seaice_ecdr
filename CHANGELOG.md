@@ -1,3 +1,8 @@
+# v2.0.0
+
+* Replace use of `AU_SI25` for AMSR2 brightness temperatures with
+  `NSIDC-0802`. `AU_SI25` is expected to be discontinued in September 2025.
+
 # v1.0.2
 
 * Fix for subprocess calls for `git` operations (e.g., to get the current
