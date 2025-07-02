@@ -56,8 +56,8 @@ from seaice_ecdr.spillover import LAND_SPILL_ALGS, land_spillover
 from seaice_ecdr.tb_data import (
     EXPECTED_ECDR_TB_NAMES,
     EcdrTbData,
+    get_12km_ecdr_tb_data,
     get_25km_ecdr_tb_data,
-    get_ecdr_tb_data,
     get_null_tb_data,
 )
 from seaice_ecdr.util import (
@@ -1177,7 +1177,7 @@ def initial_daily_ecdr_dataset(
         if resolution == "12.5":
             # In the 12.5km case, we try to get 12.5km Tbs, but sometimes we get
             # 25km (older, non-AMSR platforms)
-            tb_data = get_ecdr_tb_data(
+            tb_data = get_12km_ecdr_tb_data(
                 date=date,
                 hemisphere=hemisphere,
             )

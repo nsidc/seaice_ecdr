@@ -9,7 +9,7 @@ import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.amsr.ae_si import get_ae_si_tbs_from_disk
-from pm_tb_data.fetch.amsr.au_si import get_au_si_tbs
+from pm_tb_data.fetch.amsr.nsidc_0802 import get_nsidc_0802_tbs_from_disk
 from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
 from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS, get_nsidc_0001_tbs_from_disk
 from pm_tb_data.fetch.nsidc_0007 import get_nsidc_0007_tbs_from_disk
@@ -107,30 +107,34 @@ def map_tbs_to_ecdr_channels(
     return ecdr_tbs
 
 
-def get_am2_tbs_from_au_si(
+def get_25km_am2_tbs_from_nsidc_0802(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> EcdrTbData:
-    data_source: Final = f"AU_SI{resolution}"
-    am2_resolution_str = {
-        "12.5": "12",
-        "25": "25",
-    }[resolution]
+    data_source: Final = "NSIDC-0802"
+    resolution: Final = "25"
     try:
-        xr_tbs = get_au_si_tbs(
+        xr_tbs = get_nsidc_0802_tbs_from_disk(
             date=date,
             hemisphere=hemisphere,
-            resolution=am2_resolution_str,  # type: ignore[arg-type]
+            # TODO: update once 0802 is officially published. This is the
+            # prototype data location.
+            data_dir=Path(
+                "/disks/sidads_staging/DATASETS/nsidc0739_AS2_nrt_polar_stereo_tbs_v1/"
+            ),
         )
         ecdr_tbs = map_tbs_to_ecdr_channels(
             mapping=dict(
-                v19="v18",
-                h19="h18",
-                v22="v23",
-                v37="v36",
-                h37="h36",
+                v19="v19",
+                h19="h19",
+                v22="v22",
+                v37="v37",
+                # TODO: update to use athe horizontally polarized channel for
+                # h37 insted of re-using v37 here. As of this writing, the
+                # prototype 0802 dataset does not include h37 - but the final
+                # product will.
+                h37="v37",
             ),
             xr_tbs=xr_tbs,
             hemisphere=hemisphere,
@@ -339,7 +343,7 @@ def get_data_source_by_platform_id(
 ) -> str:
     """Return the data_source for this platform"""
     if platform_id == "am2":
-        data_source1: Final = f"AU_SI{resolution}"
+        data_source1: Final = "NSIDC-0802"
         return data_source1
     elif platform_id in get_args(NSIDC_0001_SATS):
         data_source2: Final = "NSIDC-0001"
@@ -362,7 +366,7 @@ def get_25km_ecdr_tb_data(
     """Get 25km ECDR Tb data for the given date and hemisphere."""
     platform = PLATFORM_CONFIG.get_platform_by_date(date)
     if platform.id == "am2":
-        return get_am2_tbs_from_au_si(date=date, hemisphere=hemisphere, resolution="25")
+        return get_25km_am2_tbs_from_nsidc_0802(date=date, hemisphere=hemisphere)
     elif platform.id == "ame":
         raise NotImplementedError("AME is not yet supported at 25km resolution")
     elif platform.id in get_args(NSIDC_0001_SATS):
@@ -378,7 +382,7 @@ def get_25km_ecdr_tb_data(
         raise RuntimeError(f"Platform not supported: {platform}")
 
 
-def get_ecdr_tb_data(
+def get_12km_ecdr_tb_data(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
@@ -391,11 +395,7 @@ def get_ecdr_tb_data(
     differences between platforms.
     """
     platform = PLATFORM_CONFIG.get_platform_by_date(date)
-    if platform.id == "am2":
-        return get_am2_tbs_from_au_si(
-            date=date, hemisphere=hemisphere, resolution="12.5"
-        )
-    elif platform.id == "ame":
+    if platform.id == "ame":
         return _get_ame_tbs(date=date, hemisphere=hemisphere)
     elif platform.id in get_args(NSIDC_0001_SATS):
         return _get_nsidc_0001_tbs(
