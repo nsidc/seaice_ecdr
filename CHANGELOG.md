@@ -1,8 +1,15 @@
+# v2.0.0
+
+* Replace use of `AU_SI25` for AMSR2 brightness temperatures with
+  `NSIDC-0802`. `AU_SI25` is expected to be discontinued in September 2025.
+
+
 # v1.1.0
 
 * Update NRT daily processing code to fetch NSIDC-0080 (F17) via
   `earthaccess`. This will allow G10016 v3 to continue processing F17 data after
   the NSIDC on-prem ECS system is shut down.
+
 
 # v1.0.2
 
