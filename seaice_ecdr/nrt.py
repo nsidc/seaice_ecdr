@@ -45,7 +45,7 @@ from seaice_ecdr.publish_daily import (
 )
 from seaice_ecdr.tb_data import (
     EcdrTbData,
-    get_am2_tbs_from_au_si,
+    get_25km_am2_tbs_from_nsidc_0802,
     get_null_ecdr_tbs,
     map_tbs_to_ecdr_channels,
 )
@@ -156,8 +156,9 @@ def compute_nrt_initial_daily_ecdr_dataset(
             platform_id=platform_id,
         )
     elif platform_id == "am2":
-        tb_data = get_am2_tbs_from_au_si(
-            date=date, hemisphere=hemisphere, resolution=NRT_RESOLUTION
+        tb_data = get_25km_am2_tbs_from_nsidc_0802(
+            date=date,
+            hemisphere=hemisphere,
         )
     else:
         raise RuntimeError(f"Daily NRT processing is not defined for {platform_id}")

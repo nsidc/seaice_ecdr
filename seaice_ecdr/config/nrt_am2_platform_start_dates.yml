@@ -1,3 +1,6 @@
 cdr_platform_start_dates:
   - platform_id: "am2"
-    start_date: "2012-07-02"
+    # This is when the prototype 0802 data begin to be consistent. We expect the
+    # finalized product to have data going back to the beginning of the AMSR2
+    # record.
+    start_date: "2022-01-01"
