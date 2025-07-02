@@ -1,7 +1,7 @@
 import datetime as dt
 from functools import cache
 from pathlib import Path
-from typing import Final, cast, get_args
+from typing import Final, get_args
 
 import click
 import datatree
@@ -23,7 +23,7 @@ from seaice_ecdr.nc_util import (
     add_coordinates_attr,
     fix_monthly_ncattrs,
 )
-from seaice_ecdr.nrt import NRT_SUPPORTED_PLATFORM_ID, override_attrs_for_nrt
+from seaice_ecdr.nrt import override_attrs_for_nrt
 from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import (
     find_standard_monthly_netcdf_files,
@@ -366,12 +366,10 @@ def prepare_monthly_nc_for_publication(
 
     # Override attrs for nrt
     if is_nrt:
-        assert platform_id in get_args(NRT_SUPPORTED_PLATFORM_ID)
-        platform_id = cast(NRT_SUPPORTED_PLATFORM_ID, platform_id)
+        assert platform_id == "am2"
         complete_monthly_ds = override_attrs_for_nrt(
             publication_ready_ds=complete_monthly_ds,
             resolution=resolution,
-            platform_id=platform_id,
         )
 
     # Write the publication-ready monthly ds

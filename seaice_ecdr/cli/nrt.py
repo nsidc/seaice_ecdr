@@ -17,7 +17,6 @@ from seaice_ecdr.cli.util import CLI_EXE_PATH, run_cmd
 from seaice_ecdr.constants import DEFAULT_BASE_NRT_OUTPUT_DIR
 from seaice_ecdr.platforms.config import (
     NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH,
-    NRT_F17_PLATFORM_START_DATES_CONFIG_FILEPATH,
 )
 
 
@@ -83,11 +82,6 @@ from seaice_ecdr.platforms.config import (
     is_flag=True,
     help=("Overwrite intermediate and final outputs."),
 )
-@click.option(
-    "--nrt-platform-id",
-    type=click.Choice(["F17", "am2"]),
-    required=True,
-)
 def cli(
     *,
     date: dt.date | None,
@@ -96,12 +90,8 @@ def cli(
     hemisphere: Hemisphere | Literal["both"],
     base_output_dir: Path,
     overwrite: bool,
-    nrt_platform_id: Literal["F17", "am2"],
 ):
-    if nrt_platform_id == "am2":
-        base_output_dir = base_output_dir / "prototype_amsr2"
-    else:
-        base_output_dir = base_output_dir / "CDR"
+    base_output_dir = base_output_dir / "CDR"
 
     base_output_dir.mkdir(exist_ok=True)
 
@@ -128,12 +118,7 @@ def cli(
     else:
         hemispheres = [hemisphere]
 
-    if nrt_platform_id == "F17":
-        nrt_platform_start_dates_filepath = NRT_F17_PLATFORM_START_DATES_CONFIG_FILEPATH
-    elif nrt_platform_id == "am2":
-        nrt_platform_start_dates_filepath = NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH
-    else:
-        raise RuntimeError(f"NRT processing is not defined for {nrt_platform_id}")
+    nrt_platform_start_dates_filepath = NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH
 
     for hemi in hemispheres:
         run_cmd(
