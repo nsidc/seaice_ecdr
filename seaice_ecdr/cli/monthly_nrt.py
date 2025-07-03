@@ -136,6 +136,7 @@ def cli(
     base_output_dir: Path,
     nrt_platform_id: Literal["F17"],
 ) -> None:
+    base_output_dir = base_output_dir / "CDR"
     base_output_dir.mkdir(exist_ok=True)
 
     if hemisphere == "both":
