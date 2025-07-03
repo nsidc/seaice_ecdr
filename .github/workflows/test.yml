@@ -46,7 +46,8 @@ jobs:
         uses: "actions/checkout@v4"
         with:
           repository: "nsidc/pm_tb_data"
-          ref: "main"
+          # TODO: switch this back once the branch is merged.
+          ref: "30-support-0802-binary-data"
           path: "pm_tb_data"
 
       # Our code expects `/share/apps/G02202_V5` to exist already, and raises an
