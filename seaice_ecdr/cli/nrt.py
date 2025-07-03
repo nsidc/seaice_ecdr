@@ -19,6 +19,8 @@ from seaice_ecdr.platforms.config import (
     NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH,
 )
 
+PROTOTYPE_PLATFORM_ID: str | None = None
+
 
 @click.command(name="daily-nrt")
 @click.option(
@@ -82,6 +84,13 @@ from seaice_ecdr.platforms.config import (
     is_flag=True,
     help=("Overwrite intermediate and final outputs."),
 )
+# TODO: ideally, we support some kind of config that drives a prototype platform
+@click.option(
+    "--nrt-platform-id",
+    type=click.Choice(["am2"]),
+    default="am2",
+    required=False,
+)
 def cli(
     *,
     date: dt.date | None,
@@ -90,7 +99,13 @@ def cli(
     hemisphere: Hemisphere | Literal["both"],
     base_output_dir: Path,
     overwrite: bool,
+    nrt_platform_id: Literal["am2"],
 ):
+    if PROTOTYPE_PLATFORM_ID and nrt_platform_id == PROTOTYPE_PLATFORM_ID:
+        base_output_dir = base_output_dir / f"prototype_{nrt_platform_id}"
+    else:
+        base_output_dir = base_output_dir / "CDR"
+
     base_output_dir.mkdir(exist_ok=True)
 
     if last_n_days and (date or end_date):
@@ -116,7 +131,10 @@ def cli(
     else:
         hemispheres = [hemisphere]
 
-    nrt_platform_start_dates_filepath = NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH
+    if nrt_platform_id == "am2":
+        nrt_platform_start_dates_filepath = NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH
+    else:
+        raise RuntimeError(f"NRT processing is not defined for {nrt_platform_id}")
 
     for hemi in hemispheres:
         run_cmd(

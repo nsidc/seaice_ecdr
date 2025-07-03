@@ -10,8 +10,9 @@ at any point rather than needing an at-import-time setup as we currently do.
 
 import copy
 import datetime as dt
+from functools import cache
 from pathlib import Path
-from typing import Final, get_args
+from typing import Final, Literal, cast, get_args
 
 import click
 import datatree
@@ -34,6 +35,7 @@ from seaice_ecdr.intermediate_daily import (
     complete_daily_ecdr_ds,
     get_ecdr_filepath,
 )
+from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.publish_daily import (
     get_complete_daily_filepath,
     make_publication_ready_ds,
@@ -57,6 +59,30 @@ NRT_RESOLUTION: Final = "25"
 # gap-filling)
 NRT_DAYS_TO_LOOK_PREVIOUSLY: Final = 5
 NRT_LAND_SPILLOVER_ALG: Final = "NT2_BT"
+NRT_SUPPORTED_PLATFORM_ID = Literal["am2"]
+# TODO: this variable must be kept in sync with other simliar variables in other
+# modules! If this changes here, make sure it is updated elsewhere too! In the
+# future, this should be config-driven.
+PROTOTYPE_PLATFORM_ID: str | None = None
+
+
+@cache
+def _get_nrt_platform_id() -> NRT_SUPPORTED_PLATFORM_ID:
+    # NRT processing considers only a single platform at a time. Raise an error
+    # if more or less than 1 is given.
+    if (num_start_dates := len(PLATFORM_CONFIG.cdr_platform_start_dates)) != 1:
+        raise RuntimeError(
+            "NRT Processing expects a single platform start date."
+            f" Got {num_start_dates}."
+        )
+
+    nrt_platform_id = PLATFORM_CONFIG.cdr_platform_start_dates[0].platform_id
+    if nrt_platform_id not in get_args(NRT_SUPPORTED_PLATFORM_ID):
+        raise RuntimeError(f"NRT processing is not defined for {nrt_platform_id}")
+
+    nrt_platform_id = cast(NRT_SUPPORTED_PLATFORM_ID, nrt_platform_id)
+
+    return nrt_platform_id
 
 
 def compute_nrt_initial_daily_ecdr_dataset(
@@ -66,10 +92,17 @@ def compute_nrt_initial_daily_ecdr_dataset(
     ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ):
     """Create an initial daily ECDR NetCDF using NRT data"""
-    tb_data = get_25km_am2_tbs_from_nsidc_0802(
-        date=date,
-        hemisphere=hemisphere,
-    )
+    platform_id = _get_nrt_platform_id()
+
+    if platform_id == "am2":
+        tb_data = get_25km_am2_tbs_from_nsidc_0802(
+            date=date,
+            hemisphere=hemisphere,
+        )
+    else:
+        raise NotImplementedError(
+            f"Daily NRT processing is not defined for {platform_id}"
+        )
 
     nrt_initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,
@@ -92,7 +125,7 @@ def read_or_create_and_read_nrt_idecdr_ds(
     idecdr_filepath = get_idecdr_filepath(
         hemisphere=hemisphere,
         date=date,
-        platform_id="am2",
+        platform_id=_get_nrt_platform_id(),
         intermediate_output_dir=intermediate_output_dir,
         resolution=NRT_RESOLUTION,
     )
@@ -209,7 +242,7 @@ def get_nrt_complete_daily_filepath(
         hemisphere=hemisphere,
         resolution=NRT_RESOLUTION,
         complete_output_dir=complete_output_dir,
-        platform_id="am2",
+        platform_id=_get_nrt_platform_id(),
         is_nrt=True,
     )
 
@@ -221,6 +254,11 @@ def override_attrs_for_nrt(
     publication_ready_ds: datatree.DataTree,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> datatree.DataTree:
+    platform_id = _get_nrt_platform_id()
+
+    if platform_id != "am2":
+        raise NotImplementedError(f"NRT Processing is not defined for {platform_id}")
+
     override_for_nrt = publication_ready_ds.copy()
 
     override_for_nrt.attrs["summary"] = (
@@ -237,6 +275,49 @@ def override_attrs_for_nrt(
     override_for_nrt.attrs["product_version"] = ECDR_NRT_PRODUCT_VERSION.version_str
 
     return override_for_nrt
+
+
+def hack_daily_cdr_vars_for_prototype_platform(
+    daily_ds: datatree.DataTree,
+):
+    """Hack prepare daily prototype platform files for publication.
+    * rename `cdr_` variables with `{platform_id}_`
+    * Remove from cdr_supplementary group:
+      * raw_bt_seaice_conc
+      * raw_nt_seaice_conc
+      * cdr_melt_onset_day
+    """
+    platform_id = _get_nrt_platform_id()
+    if not PROTOTYPE_PLATFORM_ID or platform_id != PROTOTYPE_PLATFORM_ID:
+        # Make no changes. The given platform should not be considered a
+        # "prototype".
+        return daily_ds
+
+    root_as_xr = daily_ds.root.to_dataset()
+
+    suppl_as_xr = daily_ds.cdr_supplementary.to_dataset()
+    vars_to_drop = ["raw_bt_seaice_conc", "raw_nt_seaice_conc"]
+    if "cdr_melt_onset_day" in suppl_as_xr.variables:
+        vars_to_drop.append("cdr_melt_onset_day")
+
+    suppl_as_xr = suppl_as_xr.drop_vars(vars_to_drop)
+
+    root_remapping = {}
+    for var in root_as_xr.variables:
+        if var.startswith("cdr_"):
+            new_name = var.replace("cdr_", f"{platform_id}_")
+            root_remapping[var] = new_name
+
+    root_as_xr = root_as_xr.rename(root_remapping)
+
+    renamed_vars_ds = datatree.DataTree.from_dict(
+        {
+            "/": root_as_xr,
+            "cdr_supplementary": suppl_as_xr,
+        }
+    )
+
+    return renamed_vars_ds
 
 
 def nrt_ecdr_for_day(
@@ -286,7 +367,7 @@ def nrt_ecdr_for_day(
                 hemisphere=hemisphere,
                 resolution=NRT_RESOLUTION,
                 intermediate_output_dir=intermediate_output_dir,
-                platform_id="am2",
+                platform_id=_get_nrt_platform_id(),
                 is_nrt=True,
             )
             cde_ds.to_netcdf(
@@ -303,6 +384,12 @@ def nrt_ecdr_for_day(
             daily_ds = override_attrs_for_nrt(
                 publication_ready_ds=daily_ds,
                 resolution=NRT_RESOLUTION,
+            )
+
+            # If a prototype platform is defined, hack the variables so that
+            # they have the correct names.
+            daily_ds = hack_daily_cdr_vars_for_prototype_platform(
+                daily_ds=daily_ds,
             )
 
             daily_ds.to_netcdf(nrt_output_filepath)
