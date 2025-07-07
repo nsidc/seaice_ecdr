@@ -31,9 +31,6 @@ DEFAULT_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
 PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
     _this_dir / "../config/prototype_platform_start_dates.yml"
 ).resolve()
-NRT_F17_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
-    _this_dir / "../config/nrt_f17_platform_start_dates.yml"
-).resolve()
 NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
     _this_dir / "../config/nrt_am2_platform_start_dates.yml"
 ).resolve()

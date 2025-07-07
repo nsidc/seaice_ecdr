@@ -36,11 +36,15 @@ from seaice_ecdr.util import (
 
 # TODO: consider extracting to config or a kwarg of this function for more
 # flexible use with other platforms in the future.
-PROTOTYPE_PLATFORM_ID: SUPPORTED_PLATFORM_ID = "am2"
-PROTOTYPE_PLATFORM_DATA_GROUP_NAME = f"prototype_{PROTOTYPE_PLATFORM_ID}"
+# TODO: this config is duplicated in the `cli.monthly` and `cli.daily` modules! If
+# this is updated, it needs to be updated there too!
+PROTOTYPE_PLATFORM_ID: SUPPORTED_PLATFORM_ID | None = None
+PROTOTYPE_PLATFORM_DATA_GROUP_NAME: str | None = None
+if PROTOTYPE_PLATFORM_ID:
+    PROTOTYPE_PLATFORM_DATA_GROUP_NAME = f"prototype_{PROTOTYPE_PLATFORM_ID}"
 # TODO: this should be extracted from e.g., the platform start date
 # configuration instead of hard-coding it here.
-PROTOTYPE_PLATFORM_START_DATE = dt.date(2013, 1, 1)
+PROTOTYPE_PLATFORM_START_DATE: dt.date | None = None
 
 
 def get_complete_monthly_dir(complete_output_dir: Path) -> Path:
@@ -130,11 +134,14 @@ def _get_intermediate_monthly_fp(
         hemisphere=hemisphere,
         resolution=resolution,
     )
-    intermediate_monthly_fps = [
-        fp
-        for fp in all_intermediate_monthly_fps
-        if f"_{PROTOTYPE_PLATFORM_ID}_" not in fp.name
-    ]
+    if PROTOTYPE_PLATFORM_ID:
+        intermediate_monthly_fps = [
+            fp
+            for fp in all_intermediate_monthly_fps
+            if f"_{PROTOTYPE_PLATFORM_ID}_" not in fp.name
+        ]
+    else:
+        intermediate_monthly_fps = all_intermediate_monthly_fps
     if len(intermediate_monthly_fps) != 1:
         raise FileNotFoundError(
             f"Failed to find an intermediate monthly file for {year=}, {month=}, {hemisphere}"
@@ -153,6 +160,9 @@ def _get_prototype_monthly_fp(
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
 ) -> Path | None:
+    if not PROTOTYPE_PLATFORM_ID:
+        return None
+
     all_intermediate_monthly_fps = _get_all_intermediate_monthly_fps(
         base_output_dir=base_output_dir,
         year=year,
@@ -256,10 +266,16 @@ def prepare_monthly_ds_for_publication(
             if k in ["sensor", "platform"]
         }
 
+        # The group name should be a string and not `None` if a prototype
+        # monthly fp is given.
+        assert PROTOTYPE_PLATFORM_DATA_GROUP_NAME is not None
         complete_monthly_ds[PROTOTYPE_PLATFORM_DATA_GROUP_NAME] = datatree.DataTree(
             data=prototype_subgroup,
         )
-    elif dt.date(year, month, 1) >= PROTOTYPE_PLATFORM_START_DATE:
+    elif (
+        PROTOTYPE_PLATFORM_START_DATE
+        and dt.date(year, month, 1) >= PROTOTYPE_PLATFORM_START_DATE
+    ):
         logger.warning(
             f"Failed to find prototype monthly file for {year=} {month=} {PROTOTYPE_PLATFORM_ID=}"
         )
@@ -343,13 +359,16 @@ def prepare_monthly_nc_for_publication(
 
     # Now get the prototype filepath, if it exists, and add it to the new
     # monthly ds.
-    prototype_monthly_fp = _get_prototype_monthly_fp(
-        year=year,
-        month=month,
-        hemisphere=hemisphere,
-        base_output_dir=base_output_dir,
-        resolution=resolution,
-    )
+    if PROTOTYPE_PLATFORM_ID:
+        prototype_monthly_fp = _get_prototype_monthly_fp(
+            year=year,
+            month=month,
+            hemisphere=hemisphere,
+            base_output_dir=base_output_dir,
+            resolution=resolution,
+        )
+    else:
+        prototype_monthly_fp = None
     complete_monthly_ds = prepare_monthly_ds_for_publication(
         year=year,
         month=month,
