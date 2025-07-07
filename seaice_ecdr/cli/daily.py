@@ -21,6 +21,14 @@ from seaice_ecdr.spillover import LAND_SPILL_ALGS
 
 _THIS_DIR = Path(__file__).parent
 
+# TODO: the prototype platform start date should ideally be read from the
+# platform start
+# date config.
+# TODO: this needs to be kept consistent with similar variables in
+# `publish_monthly.py` and `cli.monthly`! If this gets updated, those need to be
+# too!
+PROTOTYPE_START_DATE: dt.date | None = None
+
 
 def make_25km_ecdr(
     start_date: dt.date,
@@ -32,9 +40,6 @@ def make_25km_ecdr(
     land_spillover_alg: LAND_SPILL_ALGS,
     ancillary_source: ANCILLARY_SOURCES,
 ):
-    # TODO: the amsr2 start date should ideally be read from the platform start
-    # date config.
-    AM2_START_DATE = dt.date(2013, 1, 1)
     # Use the default platform dates, which excludes AMSR2
     if no_multiprocessing:
         daily_intermediate_cmd = "intermediate-daily"
@@ -50,23 +55,23 @@ def make_25km_ecdr(
         f" --ancillary-source {ancillary_source}"
     )
 
-    # If the given start & end date intersect with the AMSR2 period, run that
+    # If the given start & end date intersect with the prototype period, run that
     # separately:
-    amsr2_start_date = start_date
-    if end_date >= AM2_START_DATE:
-        amsr2_start_date = max(start_date, AM2_START_DATE)
+    if PROTOTYPE_START_DATE and end_date >= PROTOTYPE_START_DATE:
+        proto_start_date = start_date
+        proto_start_date = max(start_date, PROTOTYPE_START_DATE)
 
-    if amsr2_start_date >= AM2_START_DATE:
-        run_cmd(
-            f"export PLATFORM_START_DATES_CONFIG_FILEPATH={PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH} &&"
-            f" {CLI_EXE_PATH} {daily_intermediate_cmd}"
-            f" --start-date {amsr2_start_date:%Y-%m-%d} --end-date {end_date:%Y-%m-%d}"
-            f" --hemisphere {hemisphere}"
-            f" --base-output-dir {base_output_dir}"
-            f" --land-spillover-alg {land_spillover_alg}"
-            f" --resolution {resolution}"
-            f" --ancillary-source {ancillary_source}"
-        )
+        if proto_start_date >= PROTOTYPE_START_DATE:
+            run_cmd(
+                f"export PLATFORM_START_DATES_CONFIG_FILEPATH={PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH} &&"
+                f" {CLI_EXE_PATH} {daily_intermediate_cmd}"
+                f" --start-date {proto_start_date:%Y-%m-%d} --end-date {end_date:%Y-%m-%d}"
+                f" --hemisphere {hemisphere}"
+                f" --base-output-dir {base_output_dir}"
+                f" --land-spillover-alg {land_spillover_alg}"
+                f" --resolution {resolution}"
+                f" --ancillary-source {ancillary_source}"
+            )
 
     # Prepare the daily data for publication
     publish_daily_nc_for_dates(

@@ -34,8 +34,12 @@ from seaice_ecdr.util import (
 
 # TODO: consider extracting to config or a kwarg of this function for more
 # flexible use with other platforms in the future.
-PROTOTYPE_PLATFORM_ID: SUPPORTED_PLATFORM_ID = "am2"
-PROTOTYPE_PLATFORM_DATA_GROUP_NAME = f"prototype_{PROTOTYPE_PLATFORM_ID}"
+# TODO: this is duplicated in `publish_monthly` and other locations. If this
+# gets updated, update them all!
+PROTOTYPE_PLATFORM_ID: SUPPORTED_PLATFORM_ID | None = None
+PROTOTYPE_PLATFORM_DATA_GROUP_NAME: str | None = None
+if PROTOTYPE_PLATFORM_ID:
+    PROTOTYPE_PLATFORM_DATA_GROUP_NAME = "prototype_{PROTOTYPE_PLATFORM_ID}"
 
 
 # TODO: this and `get_complete_daily_filepath` are identical (aside from var
@@ -190,7 +194,7 @@ def publish_daily_nc(
     )
 
     # Add the prototype group if there's data.
-    if PLATFORM_CONFIG.platform_available_for_date(
+    if PROTOTYPE_PLATFORM_ID and PLATFORM_CONFIG.platform_available_for_date(
         platform_id=PROTOTYPE_PLATFORM_ID,
         date=date,
     ):
@@ -245,6 +249,7 @@ def publish_daily_nc(
                 for k, v in prototype_subgroup.attrs.items()
                 if k in ["source", "sensor", "platform"]
             }
+            assert PROTOTYPE_PLATFORM_DATA_GROUP_NAME is not None
             complete_daily_ds[PROTOTYPE_PLATFORM_DATA_GROUP_NAME] = DataTree(
                 data=prototype_subgroup,
             )
