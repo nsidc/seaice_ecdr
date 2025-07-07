@@ -19,10 +19,6 @@ import datatree
 import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
-from pm_tb_data.fetch.nsidc_0080 import (
-    NSIDC_0080_PLATFORM_ID,
-    get_nsidc_0080_tbs_from_disk,
-)
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import ANCILLARY_SOURCES
@@ -44,10 +40,7 @@ from seaice_ecdr.publish_daily import (
     make_publication_ready_ds,
 )
 from seaice_ecdr.tb_data import (
-    EcdrTbData,
-    get_am2_tbs_from_au_si,
-    get_null_ecdr_tbs,
-    map_tbs_to_ecdr_channels,
+    get_25km_am2_tbs_from_nsidc_0802,
 )
 from seaice_ecdr.temporal_composite_daily import (
     get_tie_filepath,
@@ -65,7 +58,11 @@ NRT_RESOLUTION: Final = "25"
 # gap-filling)
 NRT_DAYS_TO_LOOK_PREVIOUSLY: Final = 5
 NRT_LAND_SPILLOVER_ALG: Final = "NT2_BT"
-NRT_SUPPORTED_PLATFORM_ID = Literal["F17", "am2"]
+NRT_SUPPORTED_PLATFORM_ID = Literal["am2"]
+# TODO: this variable must be kept in sync with other simliar variables in other
+# modules! If this changes here, make sure it is updated elsewhere too! In the
+# future, this should be config-driven.
+PROTOTYPE_PLATFORM_ID: str | None = None
 
 
 @cache
@@ -87,60 +84,6 @@ def _get_nrt_platform_id() -> NRT_SUPPORTED_PLATFORM_ID:
     return nrt_platform_id
 
 
-def _get_nsidc_0080_tbs(
-    *,
-    date: dt.date,
-    hemisphere: Hemisphere,
-    platform_id: NSIDC_0080_PLATFORM_ID,
-) -> EcdrTbData:
-    # TODO: consider extracting the fetch-related code here to `tb_data` module.
-    data_source: Final = "NSIDC-0080"
-    try:
-        xr_tbs = get_nsidc_0080_tbs_from_disk(
-            date=date,
-            hemisphere=hemisphere,
-            resolution=NRT_RESOLUTION,
-            platform_id=platform_id,
-        )
-    except Exception:
-        # This would be a `FileNotFoundError` if a data files is completely
-        # missing. Currently, an OSError may also be raised if the data file exists
-        # but is missing the data variable we expect. Other errors may also be
-        # possible. In any of these cases, we want to proceed by using null Tbs that
-        # can be temporally interpolated.
-        ecdr_tbs = get_null_ecdr_tbs(hemisphere=hemisphere, resolution=NRT_RESOLUTION)
-        logger.warning(
-            "Encountered a problem fetching NSIDC-0080 TBs from disk."
-            f" Using all-null TBS for date={date},"
-            f" hemisphere={hemisphere},"
-            f" resolution={NRT_RESOLUTION}"
-        )
-    else:
-        ecdr_tbs = map_tbs_to_ecdr_channels(
-            mapping=dict(
-                v19="v19",
-                h19="h19",
-                v22="v22",
-                v37="v37",
-                h37="h37",
-            ),
-            xr_tbs=xr_tbs,
-            hemisphere=hemisphere,
-            resolution=NRT_RESOLUTION,
-            date=date,
-            data_source=data_source,
-        )
-
-    tb_data = EcdrTbData(
-        tbs=ecdr_tbs,
-        resolution="25",
-        data_source=data_source,
-        platform_id=_get_nrt_platform_id(),
-    )
-
-    return tb_data
-
-
 def compute_nrt_initial_daily_ecdr_dataset(
     *,
     date: dt.date,
@@ -149,18 +92,16 @@ def compute_nrt_initial_daily_ecdr_dataset(
 ):
     """Create an initial daily ECDR NetCDF using NRT data"""
     platform_id = _get_nrt_platform_id()
-    if platform_id == "F17":
-        tb_data = _get_nsidc_0080_tbs(
+
+    if platform_id == "am2":
+        tb_data = get_25km_am2_tbs_from_nsidc_0802(
             date=date,
             hemisphere=hemisphere,
-            platform_id=platform_id,
-        )
-    elif platform_id == "am2":
-        tb_data = get_am2_tbs_from_au_si(
-            date=date, hemisphere=hemisphere, resolution=NRT_RESOLUTION
         )
     else:
-        raise RuntimeError(f"Daily NRT processing is not defined for {platform_id}")
+        raise NotImplementedError(
+            f"Daily NRT processing is not defined for {platform_id}"
+        )
 
     nrt_initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,
@@ -311,23 +252,17 @@ def override_attrs_for_nrt(
     *,
     publication_ready_ds: datatree.DataTree,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    platform_id: NRT_SUPPORTED_PLATFORM_ID,
 ) -> datatree.DataTree:
+    platform_id = _get_nrt_platform_id()
+
+    if platform_id != "am2":
+        raise NotImplementedError(f"NRT Processing is not defined for {platform_id}")
+
     override_for_nrt = publication_ready_ds.copy()
 
-    # TODO: ideally, we could construct the summary from the config without
-    # duplicating most of the string. E.g., we keep a sensor string in the
-    # platform config, but it is specifically for the sensor attr in the output
-    # nc file - not the summary.
-    if platform_id == "F17":
-        override_for_nrt.attrs["summary"] = (
-            f"This data set provides a near-real-time (NRT) passive microwave sea ice concentration climate data record (CDR) based on gridded brightness temperatures (TBs) from the Defense Meteorological Satellite Program (DMSP) passive microwave radiometer: the Special Sensor Microwave Imager/Sounder (SSMIS) F17. The sea ice concentration CDR is an estimate of sea ice concentration that is produced by combining concentration estimates from two algorithms developed at the NASA Goddard Space Flight Center (GSFC): the NASA Team algorithm and the Bootstrap algorithm. The individual algorithms are used to process and combine brightness temperature data at NSIDC. This product is designed to provide an NRT time series of sea ice concentrations (the fraction, or percentage, of ocean area covered by sea ice). The data are gridded on the NSIDC polar stereographic grid with {resolution} x {resolution} km grid cells and are available in NetCDF file format. Each file contains a variable with the CDR concentration values as well as variables that hold the NASA Team and Bootstrap processed concentrations for reference. Variables containing standard deviation, quality flags, and projection information are also included."
-        )
-    elif platform_id == "am2":
-        # TODO: confirm this summary is OK with Ann.
-        override_for_nrt.attrs["summary"] = (
-            f"This data set provides a near-real-time (NRT) passive microwave sea ice concentration climate data record (CDR) based on gridded brightness temperatures (TBs) from the Global Change Observation Mission 1st-Water (GCOM-W1) passive microwave radiometer: Advanced Microwave Scanning Radiometer 2 (AMSR2). The sea ice concentration CDR is an estimate of sea ice concentration that is produced by combining concentration estimates from two algorithms developed at the NASA Goddard Space Flight Center (GSFC): the NASA Team algorithm and the Bootstrap algorithm. The individual algorithms are used to process and combine brightness temperature data at NSIDC. This product is designed to provide an NRT time series of sea ice concentrations (the fraction, or percentage, of ocean area covered by sea ice). The data are gridded on the NSIDC polar stereographic grid with {resolution} x {resolution} km grid cells and are available in NetCDF file format. Each file contains a variable with the CDR concentration values as well as variables that hold the NASA Team and Bootstrap processed concentrations for reference. Variables containing standard deviation, quality flags, and projection information are also included."
-        )
+    override_for_nrt.attrs["summary"] = (
+        f"This data set provides a near-real-time (NRT) passive microwave sea ice concentration climate data record (CDR) based on gridded brightness temperatures (TBs) from the Global Change Observation Mission 1st-Water (GCOM-W1) passive microwave radiometer: Advanced Microwave Scanning Radiometer 2 (AMSR2). The sea ice concentration CDR is an estimate of sea ice concentration that is produced by combining concentration estimates from two algorithms developed at the NASA Goddard Space Flight Center (GSFC): the NASA Team algorithm and the Bootstrap algorithm. The individual algorithms are used to process and combine brightness temperature data at NSIDC. This product is designed to provide an NRT time series of sea ice concentrations (the fraction, or percentage, of ocean area covered by sea ice). The data are gridded on the NSIDC polar stereographic grid with {resolution} x {resolution} km grid cells and are available in NetCDF file format. Each file contains a variable with the CDR concentration values as well as variables that hold the NASA Team and Bootstrap processed concentrations for reference. Variables containing standard deviation, quality flags, and projection information are also included."
+    )
 
     override_for_nrt.attrs["id"] = "https://doi.org/10.7265/j0z0-4h87"
     link_to_dataproduct = f"https://nsidc.org/data/g10016/versions/{ECDR_NRT_PRODUCT_VERSION.major_version_number}"
@@ -341,19 +276,20 @@ def override_attrs_for_nrt(
     return override_for_nrt
 
 
-def hack_daily_cdr_vars_for_am2(
-    daily_ds: datatree.DataTree, platform_id: NRT_SUPPORTED_PLATFORM_ID
+def hack_daily_cdr_vars_for_prototype_platform(
+    daily_ds: datatree.DataTree,
 ):
-    """Hack prepare daily AMSR2 NRT files for publication.
-
-    * rename `cdr_` variables with `am2_`
+    """Hack prepare daily prototype platform files for publication.
+    * rename `cdr_` variables with `{platform_id}_`
     * Remove from cdr_supplementary group:
       * raw_bt_seaice_conc
       * raw_nt_seaice_conc
       * cdr_melt_onset_day
     """
-    if platform_id != "am2":
-        # Make no changes. F17 will still be called "cdr_"
+    platform_id = _get_nrt_platform_id()
+    if not PROTOTYPE_PLATFORM_ID or platform_id != PROTOTYPE_PLATFORM_ID:
+        # Make no changes. The given platform should not be considered a
+        # "prototype".
         return daily_ds
 
     root_as_xr = daily_ds.root.to_dataset()
@@ -368,7 +304,7 @@ def hack_daily_cdr_vars_for_am2(
     root_remapping = {}
     for var in root_as_xr.variables:
         if var.startswith("cdr_"):
-            new_name = var.replace("cdr_", "am2_")
+            new_name = var.replace("cdr_", f"{platform_id}_")
             root_remapping[var] = new_name
 
     root_as_xr = root_as_xr.rename(root_remapping)
@@ -391,7 +327,7 @@ def nrt_ecdr_for_day(
     overwrite: bool,
     ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ):
-    """Create an initial daily ECDR NetCDF using NRT NSIDC-0080 F17 data."""
+    """Create an initial daily ECDR NetCDF using NRT NSIDC-0802 AMSR2 data."""
     nrt_output_filepath = get_nrt_complete_daily_filepath(
         base_output_dir=base_output_dir,
         hemisphere=hemisphere,
@@ -447,11 +383,12 @@ def nrt_ecdr_for_day(
             daily_ds = override_attrs_for_nrt(
                 publication_ready_ds=daily_ds,
                 resolution=NRT_RESOLUTION,
-                platform_id=_get_nrt_platform_id(),
             )
 
-            daily_ds = hack_daily_cdr_vars_for_am2(
-                daily_ds=daily_ds, platform_id=_get_nrt_platform_id()
+            # If a prototype platform is defined, hack the variables so that
+            # they have the correct names.
+            daily_ds = hack_daily_cdr_vars_for_prototype_platform(
+                daily_ds=daily_ds,
             )
 
             daily_ds.to_netcdf(nrt_output_filepath)

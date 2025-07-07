@@ -1,7 +1,7 @@
 import datetime as dt
 from functools import cache
 from pathlib import Path
-from typing import Final, cast, get_args
+from typing import Final, get_args
 
 import click
 import datatree
@@ -367,11 +367,9 @@ def prepare_monthly_nc_for_publication(
     # Override attrs for nrt
     if is_nrt:
         assert platform_id in get_args(NRT_SUPPORTED_PLATFORM_ID)
-        platform_id = cast(NRT_SUPPORTED_PLATFORM_ID, platform_id)
         complete_monthly_ds = override_attrs_for_nrt(
             publication_ready_ds=complete_monthly_ds,
             resolution=resolution,
-            platform_id=platform_id,
         )
 
     # Write the publication-ready monthly ds
