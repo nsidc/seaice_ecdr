@@ -32,7 +32,7 @@ class ProductVersion(BaseModel):
 
 # This is the version string for the ECDR product.
 ECDR_PRODUCT_VERSION = ProductVersion(
-    major_version_number=5,
+    major_version_number=6,
     revision_number=0,
 )
 
