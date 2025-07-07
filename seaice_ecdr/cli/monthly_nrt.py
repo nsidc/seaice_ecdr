@@ -23,13 +23,20 @@ def make_monthly_25km_ecdr(
     end_month: int | None,
     hemisphere: Hemisphere,
     base_output_dir: Path,
+    # TODO: only am2 is currently supported, but in the future we may want to
+    # support am3 as a prototype platform.
+    nrt_platform_id: Literal["am2"] = "am2",
 ):
     if end_year is None:
         end_year = year
     if end_month is None:
         end_month = month
 
-    nrt_platform_start_dates_filepath = NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH
+    if nrt_platform_id == "am2":
+        nrt_platform_start_dates_filepath = NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH
+    else:
+        raise NotImplementedError(f"{nrt_platform_id=} is not supported.")
+
     run_cmd(
         f"export PLATFORM_START_DATES_CONFIG_FILEPATH={nrt_platform_start_dates_filepath} &&"
         f" {CLI_EXE_PATH} intermediate-monthly"
@@ -110,6 +117,15 @@ def make_monthly_25km_ecdr(
     ),
     show_default=True,
 )
+@click.option(
+    "--nrt-platform-id",
+    # TODO: eventually we want to support a prototype platform as a separate
+    # monthly file. This does not currently work: the code instead places the
+    # prototype monthly data into a `{prototype_platform_id}_prototype` group
+    # like the non-nrt files, and that's not what we want.
+    type=click.Choice(["am2"]),
+    default="am2",
+)
 def cli(
     *,
     year: int,
@@ -118,6 +134,7 @@ def cli(
     end_month: int | None,
     hemisphere: Hemisphere | Literal["both"],
     base_output_dir: Path,
+    nrt_platform_id: Literal["am2"],
 ) -> None:
     base_output_dir = base_output_dir / "CDR"
     base_output_dir.mkdir(exist_ok=True)
@@ -135,6 +152,7 @@ def cli(
             end_month=end_month,
             hemisphere=hemisphere,
             base_output_dir=base_output_dir,
+            nrt_platform_id=nrt_platform_id,
         )
 
 
