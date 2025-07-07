@@ -118,11 +118,7 @@ def get_25km_am2_tbs_from_nsidc_0802(
         xr_tbs = get_nsidc_0802_tbs_from_disk(
             date=date,
             hemisphere=hemisphere,
-            # TODO: update once 0802 is officially published. This is the
-            # prototype data location.
-            data_dir=Path(
-                "/disks/sidads_staging/DATASETS/nsidc0739_AS2_nrt_polar_stereo_tbs_v1/"
-            ),
+            data_dir=Path("/disks/sidads_ftp/DATASETS/nsidc0802_polar_stereo_tbs"),
         )
         ecdr_tbs = map_tbs_to_ecdr_channels(
             mapping=dict(
