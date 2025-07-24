@@ -30,7 +30,7 @@ class ProductVersion(BaseModel):
         return self.version_str
 
 
-# This is the version string for the ECDR product.
+# This is the version string for the ECDR product (G02202).
 ECDR_PRODUCT_VERSION = ProductVersion(
     major_version_number=6,
     revision_number=0,
@@ -96,7 +96,7 @@ DEFAULT_CDR_RESOLUTION: Final = "25"
 DEFAULT_ANCILLARY_SOURCE: Final = "CDRv5"
 DEFAULT_SPILLOVER_ALG: Final = "NT2_BT"
 
-# NRT outputs
+# NRT (G10016) outputs
 ECDR_NRT_PRODUCT_VERSION = ProductVersion(
     major_version_number=3,
     revision_number=1,
