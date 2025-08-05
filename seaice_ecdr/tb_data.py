@@ -119,6 +119,9 @@ def get_25km_am2_tbs_from_nsidc_0802(
             date=date,
             hemisphere=hemisphere,
             data_dir=Path("/disks/sidads_ftp/DATASETS/nsidc0802_polar_stereo_tbs"),
+            # TODO: this path should be updated to something like
+            # `/share/apps/G02202_V6` once created and prototype data are staged there.
+            prototype_37h_data_dir=Path("/home/vagrant/seaice_ecdr/nise_at_tbs"),
         )
         ecdr_tbs = map_tbs_to_ecdr_channels(
             mapping=dict(
@@ -126,11 +129,7 @@ def get_25km_am2_tbs_from_nsidc_0802(
                 h19="h19",
                 v22="v22",
                 v37="v37",
-                # TODO: update to use athe horizontally polarized channel for
-                # h37 insted of re-using v37 here. As of this writing, the
-                # prototype 0802 dataset does not include h37 - but the final
-                # product will.
-                h37="v37",
+                h37="h37",
             ),
             xr_tbs=xr_tbs,
             hemisphere=hemisphere,
