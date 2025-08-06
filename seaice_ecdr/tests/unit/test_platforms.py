@@ -3,7 +3,7 @@
 import datetime as dt
 from collections import OrderedDict
 from pathlib import Path
-from typing import get_args
+from typing import cast, get_args
 
 import pytest
 import yaml
@@ -238,6 +238,7 @@ def test_platform_available_for_date():
 
 def test_is_dmsp_platform():
     for platform_id in ("F18", "F17", "F13", "F11", "F08", "n07"):
+        platform_id = cast(SUPPORTED_PLATFORM_ID, platform_id)
         assert is_dmsp_platform(platform_id)
 
     assert not is_dmsp_platform("am2")

@@ -14,7 +14,7 @@ from seaice_ecdr.ancillary import (
     get_adj123_field,
     get_ancillary_daily_clim_filepath,
     get_ancillary_filepath,
-    get_dmsp_cdr_conc_threshold,
+    get_cdr_conc_threshold,
     get_non_ocean_mask,
     get_smmr_invalid_ice_mask,
 )
@@ -25,6 +25,7 @@ from seaice_ecdr.constants import (
     NSIDC_NFS_SHARE_DIR,
 )
 from seaice_ecdr.grid_id import get_grid_id
+from seaice_ecdr.platforms.config import AM2_PLATFORM, F11_PLATFORM
 
 
 def test_default_ancillary_source_is_valid():
@@ -132,13 +133,14 @@ def test_ancillary_filepaths():
         assert actual_daily_ancillary_filepath.is_file()
 
 
-def test_get_dmsp_cdr_conc_threshold_non_leapyear():
+def test_get_cdr_conc_threshold_dmsp_non_leapyear():
     with patch(
         "seaice_ecdr.ancillary.pd.read_csv", side_effect=pd.read_csv
     ) as mock_read_csv:
-        threshold = get_dmsp_cdr_conc_threshold(
+        threshold = get_cdr_conc_threshold(
             date=dt.date(1995, 1, 1),
             hemisphere="north",
+            platform=F11_PLATFORM,
         )
 
         mock_read_csv.assert_called_once()
@@ -150,13 +152,14 @@ def test_get_dmsp_cdr_conc_threshold_non_leapyear():
     assert isinstance(threshold, float)
 
 
-def test_get_dmsp_cdr_conc_threshold_leapyear():
+def test_get_cdr_conc_threshold_dmsp_leapyear():
     with patch(
         "seaice_ecdr.ancillary.pd.read_csv", side_effect=pd.read_csv
     ) as mock_read_csv:
-        threshold = get_dmsp_cdr_conc_threshold(
+        threshold = get_cdr_conc_threshold(
             date=dt.date(1992, 5, 12),
             hemisphere="south",
+            platform=F11_PLATFORM,
         )
 
         mock_read_csv.assert_called_once()
@@ -166,3 +169,19 @@ def test_get_dmsp_cdr_conc_threshold_leapyear():
 
     assert threshold is not None
     assert isinstance(threshold, float)
+
+
+def test_get_cdr_conc_threshold_am2():
+    with patch(
+        "seaice_ecdr.ancillary.pd.read_csv", side_effect=pd.read_csv
+    ) as mock_read_csv:
+        threshold = get_cdr_conc_threshold(
+            date=dt.date(2024, 3, 15),
+            hemisphere="south",
+            platform=AM2_PLATFORM,
+        )
+
+        mock_read_csv.assert_not_called()
+
+    # Non-DMSP has a static threshold of 10%
+    assert threshold == 10.0

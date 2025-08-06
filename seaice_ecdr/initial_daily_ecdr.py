@@ -34,6 +34,7 @@ from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
     ANCILLARY_SOURCES,
+    get_cdr_conc_threshold,
     get_empty_ds_with_time,
     get_invalid_ice_mask,
     get_non_ocean_mask,
@@ -50,7 +51,12 @@ from seaice_ecdr.days_treated_differently import (
 )
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.nc_util import remove_FillValue_from_coordinate_vars
-from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID, is_dmsp_platform
+from seaice_ecdr.platforms import (
+    PLATFORM_CONFIG,
+    SUPPORTED_PLATFORM_ID,
+    Platform,
+    is_dmsp_platform,
+)
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
 from seaice_ecdr.spillover import LAND_SPILL_ALGS, land_spillover
 from seaice_ecdr.tb_data import (
@@ -184,6 +190,9 @@ def calc_cdr_conc(
     *,
     bt_conc: npt.NDArray,
     nt_conc: npt.NDArray,
+    date: dt.date,
+    platform: Platform,
+    hemisphere: Hemisphere,
 ) -> npt.NDArray:
     """
     Run the CDR algorithm
@@ -194,7 +203,11 @@ def calc_cdr_conc(
     Note: bt_conc and nt_conc values are expected to be >= 0.0 or np.nan
     Note: range of output values will be 0 to 100.0 and np.nan (=missing)
     """
-    cdr_conc_min_percent = 10.0
+    cdr_conc_min_percent = get_cdr_conc_threshold(
+        date=date,
+        hemisphere=hemisphere,
+        platform=platform,
+    )
     cdr_conc_max_percent = 100.0
 
     is_bt_seaice = (bt_conc > cdr_conc_min_percent) & np.isfinite(bt_conc)
@@ -925,6 +938,9 @@ def compute_initial_daily_ecdr_dataset(
         cdr_conc_raw = calc_cdr_conc(
             bt_conc=bt_conc,
             nt_conc=nt_conc,
+            date=date,
+            platform=platform,
+            hemisphere=hemisphere,
         )
 
         nt_weather_mask = get_nasateam_weather_mask(

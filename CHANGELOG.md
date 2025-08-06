@@ -2,11 +2,15 @@
 
 * Replace use of `AU_SI25` for AMSR2 brightness temperatures with
   `NSIDC-0802`. `AU_SI25` is expected to be discontinued in September 2025.
-* Remove support for NRT F17 from `NSIDC-0080`, which is expected to be
-  discontinued at the end of July 2025. The primary NRT CDR will be produced
-  from `NSIDC-0802`. There will be no prototype CDR for now, although we
-  anticipate possibly wanting to designate AMSR3 data as "prototype" once it is
-  available.
+* Remove support for NRT F17 from `NSIDC-0080`, which was expected to be
+  discontinued at the end of July 2025 (now Sept. 2026). The primary NRT CDR
+  will be produced from `NSIDC-0802`. There will be no prototype CDR for now,
+  although we anticipate possibly wanting to designate AMSR3 data as "prototype"
+  once it is available.
+* Update CDR concentration calculation code to use a variable minimum threshold
+  for sea ice concentration based on day of year for data from DMSP
+  platforms. This implements the "Seki" method approach to aligning DMSP-derived
+  concentrations with AMSR2.
 
 
 # v1.1.0
