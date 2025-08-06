@@ -50,7 +50,7 @@ from seaice_ecdr.days_treated_differently import (
 )
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.nc_util import remove_FillValue_from_coordinate_vars
-from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID
+from seaice_ecdr.platforms import PLATFORM_CONFIG, SUPPORTED_PLATFORM_ID, is_dmsp_platform
 from seaice_ecdr.regrid_25to12 import reproject_ideds_25to12
 from seaice_ecdr.spillover import LAND_SPILL_ALGS, land_spillover
 from seaice_ecdr.tb_data import (
@@ -387,12 +387,6 @@ def get_flagmask(
         raise e
 
     return flagmask
-
-
-def is_pre_AMSR_platform(platform_id: SUPPORTED_PLATFORM_ID):
-    """Returns True for SMMR, SSMI, SSMIS platforms"""
-    pre_AMSR_platforms = ("n07", "F08", "F11", "F13", "F17")
-    return platform_id in pre_AMSR_platforms
 
 
 def compute_bt_asCDRv4_conc(bt_conc, bt_weather_mask, invalid_ice_mask, non_ocean_mask):
@@ -883,7 +877,7 @@ def compute_initial_daily_ecdr_dataset(
 
         # NOTE: cdralgos uses ret_linfit1() for NH sets 1,2 and SH set2
         #            and uses ret_linfit2() for NH set 2
-        if hemisphere == "south" and is_pre_AMSR_platform(platform.id):
+        if hemisphere == "south" and is_dmsp_platform(platform.id):
             bt_coefs["v1937_iceline"] = bt.get_linfit(
                 land_mask=ecdr_ide_ds["non_ocean_mask"].data,
                 tb_mask=ecdr_ide_ds["invalid_tb_mask"].data[0, :, :],
