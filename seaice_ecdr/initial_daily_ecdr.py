@@ -184,8 +184,6 @@ def calc_cdr_conc(
     *,
     bt_conc: npt.NDArray,
     nt_conc: npt.NDArray,
-    cdr_conc_min_fraction: float,
-    cdr_conc_max_fraction: float,
 ) -> npt.NDArray:
     """
     Run the CDR algorithm
@@ -196,8 +194,8 @@ def calc_cdr_conc(
     Note: bt_conc and nt_conc values are expected to be >= 0.0 or np.nan
     Note: range of output values will be 0 to 100.0 and np.nan (=missing)
     """
-    cdr_conc_min_percent = cdr_conc_min_fraction * 100.0
-    cdr_conc_max_percent = cdr_conc_max_fraction * 100.0
+    cdr_conc_min_percent = 10.0
+    cdr_conc_max_percent = 100.0
 
     is_bt_seaice = (bt_conc > cdr_conc_min_percent) & np.isfinite(bt_conc)
     is_cdr_seaice = is_bt_seaice
@@ -933,8 +931,6 @@ def compute_initial_daily_ecdr_dataset(
         cdr_conc_raw = calc_cdr_conc(
             bt_conc=bt_conc,
             nt_conc=nt_conc,
-            cdr_conc_min_fraction=0.1,
-            cdr_conc_max_fraction=1.0,
         )
 
         nt_weather_mask = get_nasateam_weather_mask(
