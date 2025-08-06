@@ -195,4 +195,11 @@ def _get_platform_config() -> PlatformConfig:
     return platform_cfg
 
 
+def is_dmsp_platform(platform_id: SUPPORTED_PLATFORM_ID):
+    """Returns True for SMMR, SSMI, SSMIS platforms"""
+    dmsp_platforms = ("n07", "F08", "F11", "F13", "F17", "F18")
+
+    return platform_id in dmsp_platforms
+
+
 PLATFORM_CONFIG = _get_platform_config()
