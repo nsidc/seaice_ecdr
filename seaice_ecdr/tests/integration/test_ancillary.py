@@ -2,8 +2,10 @@ import datetime as dt
 from pathlib import Path
 from string import Template
 from typing import Final, cast, get_args
+from unittest.mock import patch
 
 import numpy as np
+import pandas as pd
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
@@ -12,6 +14,7 @@ from seaice_ecdr.ancillary import (
     get_adj123_field,
     get_ancillary_daily_clim_filepath,
     get_ancillary_filepath,
+    get_dmsp_cdr_conc_threshold,
     get_non_ocean_mask,
     get_smmr_invalid_ice_mask,
 )
@@ -127,3 +130,39 @@ def test_ancillary_filepaths():
         expected_daily_ancillary_filepath = Path(expected_dir) / Path(expected_daily_fn)
         assert expected_daily_ancillary_filepath == actual_daily_ancillary_filepath
         assert actual_daily_ancillary_filepath.is_file()
+
+
+def test_get_dmsp_cdr_conc_threshold_non_leapyear():
+    with patch(
+        "seaice_ecdr.ancillary.pd.read_csv", side_effect=pd.read_csv
+    ) as mock_read_csv:
+        threshold = get_dmsp_cdr_conc_threshold(
+            date=dt.date(1995, 1, 1),
+            hemisphere="north",
+        )
+
+        mock_read_csv.assert_called_once()
+        args, _kwargs = mock_read_csv.call_args
+        read_csv_filepath = args[0]
+        assert read_csv_filepath.name == "nh_final_thresholds.csv"
+
+    assert threshold is not None
+    assert isinstance(threshold, float)
+
+
+def test_get_dmsp_cdr_conc_threshold_leapyear():
+    with patch(
+        "seaice_ecdr.ancillary.pd.read_csv", side_effect=pd.read_csv
+    ) as mock_read_csv:
+        threshold = get_dmsp_cdr_conc_threshold(
+            date=dt.date(1992, 5, 12),
+            hemisphere="south",
+        )
+
+        mock_read_csv.assert_called_once()
+        args, _kwargs = mock_read_csv.call_args
+        read_csv_filepath = args[0]
+        assert read_csv_filepath.name == "sh_final_thresholds-leap-year.csv"
+
+    assert threshold is not None
+    assert isinstance(threshold, float)

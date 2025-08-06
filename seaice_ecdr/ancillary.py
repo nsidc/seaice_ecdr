@@ -5,6 +5,7 @@ for ECDR processing are stored in an ancillary NetCDF file that is published
 alongside the ECDR.
 """
 
+import calendar
 import datetime as dt
 from functools import cache
 from pathlib import Path
@@ -28,6 +29,7 @@ from seaice_ecdr.nc_util import remove_FillValue_from_coordinate_vars
 from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform
 from seaice_ecdr.platforms.config import N07_PLATFORM
 
+# TODO: this needs updated for CDRv6...
 ANCILLARY_SOURCES = Literal["CDRv4", "CDRv5"]
 
 
@@ -35,6 +37,7 @@ def get_ancillary_filepath(
     *,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    # TODO: this is unused!
     ancillary_source: ANCILLARY_SOURCES,
     product_version: ProductVersion = ECDR_PRODUCT_VERSION,
 ) -> Path:
@@ -668,3 +671,42 @@ def get_empty_ds_with_time(
     )
 
     return return_ds
+
+
+def get_dmsp_cdr_conc_threshold(*, date: dt.date, hemisphere: Hemisphere) -> float:
+    """For the given date and hemisphere, return the concentration threshold as a percentage.
+
+    Reads threshold from csv file with the following naming structure, which is
+    expected to live in the CDR_ANCILLARY_DIR:
+
+    - nh_final_thresholds.csv
+    - nh_final_thresholds-leap-year.csv
+    - sh_final_thresholds.csv
+    - sh_final_thresholds-leap-year.csv
+
+    # TODO: consider storing the data for the conc thresholds in the ancillary
+    # nc file instead of csvs.
+    """
+    # TODO: check date for DMSP series?
+
+    leap_year_fn_str = ""
+    if calendar.isleap(date.year):
+        leap_year_fn_str = "-leap-year"
+
+    filename = f"{hemisphere[0].lower()}h_final_thresholds{leap_year_fn_str}.csv"
+    filepath = CDR_ANCILLARY_DIR / filename
+    if not filepath.is_file():
+        raise FileNotFoundError(
+            f"Expected concentration threshold file {filename} does not exist."
+        )
+
+    # Read the data
+    thresholds_df = pd.read_csv(filepath)
+
+    # Get the Day of Year for this date
+    doy = date.timetuple().tm_yday
+
+    # Extract the threshold for the day of year
+    threshold = float(thresholds_df.loc[doy].threshold)
+
+    return threshold
