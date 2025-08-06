@@ -26,7 +26,7 @@ from seaice_ecdr.constants import (
 )
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.nc_util import remove_FillValue_from_coordinate_vars
-from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform
+from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform, is_dmsp_platform
 from seaice_ecdr.platforms.config import N07_PLATFORM
 
 # TODO: this needs updated for CDRv6...
@@ -673,11 +673,16 @@ def get_empty_ds_with_time(
     return return_ds
 
 
-def get_dmsp_cdr_conc_threshold(*, date: dt.date, hemisphere: Hemisphere) -> float:
+def get_cdr_conc_threshold(
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    platform: Platform,
+) -> float:
     """For the given date and hemisphere, return the concentration threshold as a percentage.
 
-    Reads threshold from csv file with the following naming structure, which is
-    expected to live in the CDR_ANCILLARY_DIR:
+    For pre-AMSR2 DMSP data, reads threshold from csv file with the following
+    naming structure, which is expected to live in the CDR_ANCILLARY_DIR:
 
     - nh_final_thresholds.csv
     - nh_final_thresholds-leap-year.csv
@@ -687,8 +692,12 @@ def get_dmsp_cdr_conc_threshold(*, date: dt.date, hemisphere: Hemisphere) -> flo
     # TODO: consider storing the data for the conc thresholds in the ancillary
     # nc file instead of csvs.
     """
-    # TODO: check date for DMSP series?
 
+    if not is_dmsp_platform(platform.id):
+        # Non-DMSP (AMSR2) data will utilize a static 10% threshold.
+        return 10.0
+
+    # DMSP data have a concentration threshold based on the day of year
     leap_year_fn_str = ""
     if calendar.isleap(date.year):
         leap_year_fn_str = "-leap-year"
