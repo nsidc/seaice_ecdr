@@ -211,7 +211,6 @@ def calc_cdr_conc(
     cdr_conc_max_percent = 100.0
 
     is_bt_seaice = (bt_conc > cdr_conc_min_percent) & np.isfinite(bt_conc)
-    is_cdr_seaice = is_bt_seaice
     is_nt_seaice = (nt_conc > cdr_conc_min_percent) & np.isfinite(nt_conc)
 
     use_nt_values = is_nt_seaice & is_bt_seaice & (nt_conc > bt_conc)
@@ -221,6 +220,7 @@ def calc_cdr_conc(
     cdr_conc[use_nt_values] = nt_conc[use_nt_values]
 
     # Clamp cdr_conc to min/max
+    is_cdr_seaice = np.isfinite(cdr_conc)
     is_low_siconc = is_cdr_seaice & (cdr_conc < cdr_conc_min_percent)
     cdr_conc[is_low_siconc] = 0
 
