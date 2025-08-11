@@ -30,8 +30,8 @@ daily-nrt --date 2024-11-2 --hemisphere both
 ```
 
 Once processing is complete, rsync the contents of
-`/share/apps/G10016_V3/v03r00/production/CDR/complete/` to
-`/disks/sidads_ftp/pub/DATASETS/NOAA/G10016_V3/CDR/`
+`/share/apps/G10016_V4/v04r00/production/CDR/complete/` to
+`/disks/sidads_ftp/pub/DATASETS/NOAA/G10016_V4/CDR/`
 
 ### Monthly processing
 
@@ -51,8 +51,8 @@ monthly-nrt --year YYYY --month MM --end-year YYYY --end-month MM --hemisphere b
 ## G02202 "final" Processing
 
 Final data will be written to
-`/share/apps/G02202_V5/v05r00/production/complete/`. The contents of this
-directory should be rsync-ed to `/disks/sidads_ftp/pub/DATASETS/NOAA/G02202_V5`
+`/share/apps/G02202_V6/v06r00/production/complete/`. The contents of this
+directory should be rsync-ed to `/disks/sidads_ftp/pub/DATASETS/NOAA/G02202_V6`
 after successful completion of each G02202 procesing job.
 
 Typically, "final" procesing occurs all at once, as data becomes
@@ -111,5 +111,5 @@ validate-outputs --hemisphere both --start-date YYYY-MM-DD --end-date YYYY-MM-DD
 ```
 
 This produces log files in
-`/share/apps/G02202_V5/v05r00_outputs/production/validation/` that should be
+`/share/apps/G02202_V6/v06r00_outputs/production/validation/` that should be
 reviewed by the NOAA@NSIDC project manager responsible for the sea ice CDR.
