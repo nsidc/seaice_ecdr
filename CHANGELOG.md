@@ -19,6 +19,7 @@
 * Update NSIDC infrastructure NFS paths to reflect new product major versions.
 * Update `pm_tb_data` dependency to >=v0.6. This allows utilizing `earthaccess`
   to fetch NSDIC-0001 data.
+* Update G10016 NRT CDR product version to v4.0.
 
 
 # v1.1.0
