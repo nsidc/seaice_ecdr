@@ -7,10 +7,8 @@ import click
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.cli.util import CLI_EXE_PATH, datetime_to_date, run_cmd
 from seaice_ecdr.constants import (
-    DEFAULT_ANCILLARY_SOURCE,
     DEFAULT_BASE_OUTPUT_DIR,
     DEFAULT_CDR_RESOLUTION,
     DEFAULT_SPILLOVER_ALG,
@@ -38,7 +36,6 @@ def make_25km_ecdr(
     no_multiprocessing: bool,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
 ):
     # Use the default platform dates, which excludes AMSR2
     if no_multiprocessing:
@@ -52,7 +49,6 @@ def make_25km_ecdr(
         f" --base-output-dir {base_output_dir}"
         f" --land-spillover-alg {land_spillover_alg}"
         f" --resolution {resolution}"
-        f" --ancillary-source {ancillary_source}"
     )
 
     # If the given start & end date intersect with the prototype period, run that
@@ -70,7 +66,6 @@ def make_25km_ecdr(
                 f" --base-output-dir {base_output_dir}"
                 f" --land-spillover-alg {land_spillover_alg}"
                 f" --resolution {resolution}"
-                f" --ancillary-source {ancillary_source}"
             )
 
     # Prepare the daily data for publication
@@ -156,12 +151,6 @@ def make_25km_ecdr(
     type=click.Choice(get_args(LAND_SPILL_ALGS)),
     default=DEFAULT_SPILLOVER_ALG,
 )
-@click.option(
-    "--ancillary-source",
-    required=True,
-    type=click.Choice(get_args(ANCILLARY_SOURCES)),
-    default=DEFAULT_ANCILLARY_SOURCE,
-)
 def cli(
     *,
     date: dt.date,
@@ -171,7 +160,6 @@ def cli(
     no_multiprocessing: bool,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
 ):
     if end_date is None:
         end_date = copy.copy(date)
@@ -190,7 +178,6 @@ def cli(
             no_multiprocessing=no_multiprocessing,
             resolution=resolution,
             land_spillover_alg=land_spillover_alg,
-            ancillary_source=ancillary_source,
         )
 
 

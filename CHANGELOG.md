@@ -11,6 +11,10 @@
   for sea ice concentration based on day of year for data from DMSP
   platforms. This implements the "Seki" method approach to aligning DMSP-derived
   concentrations with AMSR2.
+* Remove concept of "ancillary sources", which was set with `--ancillary-source`
+  from CLI. This feature was not working as intended, and with the move to
+  v2.0.0 (which includes updates to ancillary data), it does not make sense to
+  backport those updates to ancillary files to previous versions.
 
 # v1.0.2
 

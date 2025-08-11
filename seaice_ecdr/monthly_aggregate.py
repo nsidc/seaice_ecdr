@@ -13,12 +13,11 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
-    ANCILLARY_SOURCES,
     get_ancillary_ds,
     remove_FillValue_from_coordinate_vars,
 )
 from seaice_ecdr.checksum import write_checksum_file
-from seaice_ecdr.constants import DEFAULT_ANCILLARY_SOURCE, DEFAULT_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import (
     add_ncgroup,
@@ -91,13 +90,11 @@ def _update_ncrcat_monthly_ds(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     monthly_filepaths: list[Path],
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> datatree.DataTree:
     # Add latitude and longitude fields
     surf_geo_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
 
     # Lat and lon fields are placed under the "cdr_supplementary" group.
@@ -127,7 +124,6 @@ def _update_ncrcat_monthly_ds(
         platform_ids=[platform_id_from_filename(fp.name) for fp in monthly_filepaths],
         resolution=resolution,
         hemisphere=hemisphere,
-        ancillary_source=ancillary_source,
     )
     agg_ds.attrs = monthly_aggregate_ds_global_attrs  # type: ignore[assignment]
 
@@ -167,18 +163,11 @@ def _update_ncrcat_monthly_ds(
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
     default="25",
 )
-@click.option(
-    "--ancillary-source",
-    required=True,
-    type=click.Choice(get_args(ANCILLARY_SOURCES)),
-    default=DEFAULT_ANCILLARY_SOURCE,
-)
 def cli(
     *,
     hemisphere: Hemisphere,
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
     try:
         complete_output_dir = get_complete_output_dir(
@@ -220,7 +209,6 @@ def cli(
                 hemisphere=hemisphere,
                 resolution=resolution,
                 monthly_filepaths=monthly_filepaths,
-                ancillary_source=ancillary_source,
             )
 
             start_date = pd.Timestamp(ds.time.min().values).date()

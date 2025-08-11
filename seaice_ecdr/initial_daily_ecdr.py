@@ -33,7 +33,6 @@ from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
-    ANCILLARY_SOURCES,
     get_cdr_conc_threshold,
     get_empty_ds_with_time,
     get_invalid_ice_mask,
@@ -235,7 +234,6 @@ def _setup_ecdr_ds(
     date: dt.date,
     tb_data: EcdrTbData,
     hemisphere: Hemisphere,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     # Initialize geo-referenced xarray Dataset
     grid_id = get_grid_id(
@@ -247,7 +245,6 @@ def _setup_ecdr_ds(
         hemisphere=hemisphere,
         resolution=tb_data.resolution,
         date=date,
-        ancillary_source=ancillary_source,
     )
 
     # Set initial global attributes
@@ -347,7 +344,6 @@ def get_nasateam_weather_mask(
 def get_flagmask(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> None | npt.NDArray:
     """
     Return a set of flags (uint8s of value 251-255)
@@ -381,10 +377,7 @@ def get_flagmask(
         xdim = 632
         ydim = 664
 
-    if ancillary_source == "CDRv4":
-        version_string = "v04r00"
-    elif ancillary_source == "CDRv5":
-        version_string = ECDR_PRODUCT_VERSION.version_str
+    version_string = ECDR_PRODUCT_VERSION.version_str
 
     flagmask_fn = CDR_ANCILLARY_DIR / f"flagmask_{gridid}_{version_string}.dat"
     try:
@@ -473,7 +466,6 @@ def compute_initial_daily_ecdr_dataset(
     hemisphere: Hemisphere,
     tb_data: EcdrTbData,
     land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Create intermediate daily ECDR xarray dataset.
 
@@ -488,7 +480,6 @@ def compute_initial_daily_ecdr_dataset(
         date=date,
         tb_data=tb_data,
         hemisphere=hemisphere,
-        ancillary_source=ancillary_source,
     )
 
     # Spatially interpolate the brightness temperatures
@@ -546,7 +537,6 @@ def compute_initial_daily_ecdr_dataset(
     non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=tb_data.resolution,
-        ancillary_source=ancillary_source,
     )
     is_ocean = ~non_ocean_mask.data
     is_valid_tb = ~(is_atleastone_zerotb | is_atleastone_nantb)
@@ -663,13 +653,11 @@ def compute_initial_daily_ecdr_dataset(
         date=date,
         resolution=tb_data.resolution,
         platform=platform,
-        ancillary_source=ancillary_source,
     )
 
     non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=tb_data.resolution,
-        ancillary_source=ancillary_source,
     )
 
     ecdr_ide_ds["invalid_ice_mask"] = invalid_ice_mask.expand_dims(dim="time")
@@ -685,7 +673,6 @@ def compute_initial_daily_ecdr_dataset(
         pole_mask = nh_polehole_mask(
             date=date,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
             platform=platform,
         )
         ecdr_ide_ds["pole_mask"] = pole_mask
@@ -985,7 +972,6 @@ def compute_initial_daily_ecdr_dataset(
             tb_data=tb_data,
             algorithm=land_spillover_alg,
             land_mask=non_ocean_mask.data,
-            ancillary_source=ancillary_source,
             fix_goddard_bt_error=True,
         )
 
@@ -1160,7 +1146,6 @@ def initial_daily_ecdr_dataset(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Create xr dataset containing the first pass of daily enhanced CDR."""
     platform_id = PLATFORM_CONFIG.get_platform_by_date(date).id
@@ -1199,7 +1184,6 @@ def initial_daily_ecdr_dataset(
         hemisphere=hemisphere,
         tb_data=tb_data,
         land_spillover_alg=land_spillover_alg,
-        ancillary_source=ancillary_source,
     )
 
     # If the computed ide_ds is not on the desired grid (ie resolution),
@@ -1315,7 +1299,6 @@ def make_idecdr_netcdf(
     intermediate_output_dir: Path,
     excluded_fields: Iterable[str],
     land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
     overwrite_ide: bool = False,
     platform_id: SUPPORTED_PLATFORM_ID,
 ) -> None:
@@ -1334,7 +1317,6 @@ def make_idecdr_netcdf(
             hemisphere=hemisphere,
             resolution=resolution,
             land_spillover_alg=land_spillover_alg,
-            ancillary_source=ancillary_source,
         )
 
         written_ide_ncfile = write_ide_netcdf(
@@ -1354,7 +1336,6 @@ def read_or_create_and_read_idecdr_ds(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
     land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
     overwrite_ide: bool = False,
 ) -> xr.Dataset:
     """Read an idecdr netCDF file, creating it if it doesn't exist."""
@@ -1376,7 +1357,6 @@ def read_or_create_and_read_idecdr_ds(
             resolution=resolution,
             intermediate_output_dir=intermediate_output_dir,
             land_spillover_alg=land_spillover_alg,
-            ancillary_source=ancillary_source,
         )
     logger.debug(f"Reading ideCDR file from: {ide_filepath}")
     ide_ds = xr.load_dataset(ide_filepath)
@@ -1393,7 +1373,6 @@ def create_idecdr_for_date(
     overwrite_ide: bool = False,
     verbose_intermed_ncfile: bool = False,
     land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
     """Create a standard IDECDR file for the given date.
 
@@ -1431,7 +1410,6 @@ def create_idecdr_for_date(
             excluded_fields=excluded_fields,
             overwrite_ide=overwrite_ide,
             land_spillover_alg=land_spillover_alg,
-            ancillary_source=ancillary_source,
             platform_id=platform.id,
         )
 
@@ -1503,11 +1481,6 @@ def create_idecdr_for_date(
     default=False,
     type=bool,
 )
-@click.option(
-    "--ancillary-source",
-    required=True,
-    type=click.Choice(get_args(ANCILLARY_SOURCES)),
-)
 def cli(
     *,
     date: dt.date,
@@ -1516,7 +1489,6 @@ def cli(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     land_spillover_alg: LAND_SPILL_ALGS,
     verbose_intermed_ncfile: bool,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
     """Run the initial daily ECDR algorithm with AMSR2 data.
 
@@ -1535,5 +1507,4 @@ def cli(
         intermediate_output_dir=intermediate_output_dir,
         verbose_intermed_ncfile=verbose_intermed_ncfile,
         land_spillover_alg=land_spillover_alg,
-        ancillary_source=ancillary_source,
     )
