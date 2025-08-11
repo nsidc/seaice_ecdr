@@ -37,7 +37,6 @@ from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
-    ANCILLARY_SOURCES,
     flag_value_for_meaning,
     get_monthly_cdr_conc_threshold,
     remove_FillValue_from_coordinate_vars,
@@ -372,7 +371,6 @@ def calc_cdr_seaice_conc_monthly(
     daily_ds_for_month: xr.Dataset,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.DataArray:
     """Create the `cdr_seaice_conc_monthly` variable."""
     daily_conc_for_month = daily_ds_for_month.cdr_seaice_conc
@@ -582,7 +580,6 @@ def make_intermediate_monthly_ds(
     platform_id: SUPPORTED_PLATFORM_ID,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> xr.Dataset:
     """Create a monthly dataset from daily data.
 
@@ -601,7 +598,6 @@ def make_intermediate_monthly_ds(
         daily_ds_for_month=daily_ds_for_month,
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
 
     # Create `cdr_seaice_conc_monthly_stdev`, the standard deviation of the
@@ -673,7 +669,6 @@ def make_intermediate_monthly_ds(
         platform_ids=[platform_id],
         resolution=resolution,
         hemisphere=hemisphere,
-        ancillary_source=ancillary_source,
     )
     monthly_ds.attrs.update(monthly_ds_global_attrs)
 
@@ -720,7 +715,6 @@ def make_intermediate_monthly_nc(
     hemisphere: Hemisphere,
     intermediate_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
     is_nrt: bool,
 ) -> Path:
     daily_ds_for_month = get_daily_ds_for_month(
@@ -748,7 +742,6 @@ def make_intermediate_monthly_nc(
         platform_id=platform_id,
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
 
     monthly_ds = remove_FillValue_from_coordinate_vars(monthly_ds)
@@ -824,11 +817,6 @@ def make_intermediate_monthly_nc(
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
 )
 @click.option(
-    "--ancillary-source",
-    required=True,
-    type=click.Choice(get_args(ANCILLARY_SOURCES)),
-)
-@click.option(
     "--is-nrt",
     required=False,
     is_flag=True,
@@ -843,7 +831,6 @@ def cli(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
     is_nrt: bool,
 ):
     if end_year is None:
@@ -868,7 +855,6 @@ def cli(
                 intermediate_output_dir=intermediate_output_dir,
                 hemisphere=hemisphere,
                 resolution=resolution,
-                ancillary_source=ancillary_source,
                 is_nrt=is_nrt,
             )
         except Exception:

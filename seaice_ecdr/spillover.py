@@ -9,7 +9,6 @@ from pm_tb_data._types import Hemisphere
 from scipy.ndimage import binary_dilation, generate_binary_structure, shift
 
 from seaice_ecdr.ancillary import (
-    ANCILLARY_SOURCES,
     get_adj123_field,
     get_land90_conc_field,
     get_non_ocean_mask,
@@ -234,7 +233,6 @@ def land_spillover(
     tb_data: EcdrTbData,
     algorithm: LAND_SPILL_ALGS,
     land_mask: npt.NDArray,
-    ancillary_source: ANCILLARY_SOURCES,
     fix_goddard_bt_error: bool = False,  # By default, don't fix Goddard bug
 ) -> npt.NDArray:
     """Apply the land spillover technique to the CDR concentration field."""
@@ -244,12 +242,10 @@ def land_spillover(
         l90c = get_land90_conc_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
         adj123 = get_adj123_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
         spillover_applied_nt2 = apply_nt2_land_spillover(
             conc=cdr_conc,
@@ -266,12 +262,10 @@ def land_spillover(
         l90c = get_land90_conc_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
         adj123 = get_adj123_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
         spillover_applied_nt2 = apply_nt2_land_spillover(
             conc=cdr_conc,
@@ -285,7 +279,6 @@ def land_spillover(
         non_ocean_mask = get_non_ocean_mask(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
 
         spillover_applied_nt2_bt = coastal_fix(
@@ -307,7 +300,6 @@ def land_spillover(
         adj123 = get_adj123_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
         ils_arr[adj123 == 0] = 1  # land -> land
         ils_arr[adj123 == 1] = 2  # dist1 -> removable
@@ -336,14 +328,12 @@ def land_spillover(
         shoremap = get_nt_shoremap(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
 
         # Need to use adj123 to get rid of shoremap's lakes
         adj123 = get_adj123_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
         shoremap[(shoremap == 2) & (adj123 == 0)] = 1  # lakeshore -> land
         shoremap[(shoremap == 3) & (adj123 == 0)] = 1  # lake -> land

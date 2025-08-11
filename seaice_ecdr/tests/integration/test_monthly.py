@@ -191,7 +191,6 @@ def test_monthly_ds(monkeypatch, tmpdir):
         platform_id="am2",
         hemisphere=NORTH,
         resolution="25",
-        ancillary_source="CDRv5",
     )
 
     # Test that the dataset only contains the variables we expect.

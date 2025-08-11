@@ -26,7 +26,6 @@ def test_daily_aggregate_matches_daily_data(tmpdir):
     year = 2022
     resolution: Final = "25"
     land_spillover_alg: Final = "NT2"
-    ancillary_source: Final = "CDRv5"
 
     # First, ensure some daily data is created.
     datasets = []
@@ -38,7 +37,6 @@ def test_daily_aggregate_matches_daily_data(tmpdir):
             resolution=resolution,
             base_output_dir=base_output_dir,
             land_spillover_alg=land_spillover_alg,
-            ancillary_source=ancillary_source,
         )
         daily_output_fp = publish_daily_nc(
             base_output_dir=base_output_dir,

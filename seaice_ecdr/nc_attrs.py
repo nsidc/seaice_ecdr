@@ -13,7 +13,6 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
-    ANCILLARY_SOURCES,
     get_ancillary_ds,
 )
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
@@ -153,7 +152,6 @@ def get_global_attrs(
     platform_ids: list[SUPPORTED_PLATFORM_ID],
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     hemisphere: Hemisphere,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> dict[str, Any]:
     """Return a dictionary containing the global attributes for a standard ECDR NetCDF file.
 
@@ -221,7 +219,6 @@ def get_global_attrs(
     ancillary_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
     attrs_from_ancillary = (
         "geospatial_bounds",

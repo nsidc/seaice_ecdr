@@ -7,7 +7,6 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.cli.util import CLI_EXE_PATH, run_cmd
 from seaice_ecdr.constants import (
-    DEFAULT_ANCILLARY_SOURCE,
     DEFAULT_BASE_NRT_OUTPUT_DIR,
     DEFAULT_CDR_RESOLUTION,
 )
@@ -45,7 +44,6 @@ def make_monthly_25km_ecdr(
         f" --hemisphere {hemisphere}"
         f" --base-output-dir {base_output_dir}"
         f" --resolution {DEFAULT_CDR_RESOLUTION}"
-        f" --ancillary-source {DEFAULT_ANCILLARY_SOURCE}"
         " --is-nrt"
     )
 
