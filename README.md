@@ -62,7 +62,7 @@ Commands:
 ### Logging
 
 By default, logs are written to disk at
-`/share/apps/G02202_V5/{ECDR_PRODUCT_VERSION}/{YYYY-MM-DD}.log`. Up to 31 of
+`/share/apps/G02202_V6/{ECDR_PRODUCT_VERSION}/{YYYY-MM-DD}.log`. Up to 31 of
 these logs can exist at once (older log files get removed).
 
 During large re-processing efforts, it may be desirable to temporarily disable
