@@ -97,10 +97,10 @@ DEFAULT_SPILLOVER_ALG: Final = "NT2_BT"
 
 # NRT (G10016) outputs
 ECDR_NRT_PRODUCT_VERSION = ProductVersion(
-    major_version_number=3,
-    revision_number=1,
+    major_version_number=4,
+    revision_number=0,
 )
-NSIDC_NFS_NRT_SHARE_DIR = Path("/share/apps/G10016_V3")
+NSIDC_NFS_NRT_SHARE_DIR = Path("/share/apps/G10016_V4")
 if not NSIDC_NFS_SHARE_DIR.is_dir():
     raise RuntimeError(f"Expected {NSIDC_NFS_NRT_SHARE_DIR} to exist, but it does not.")
 DEFAULT_BASE_NRT_OUTPUT_DIR = (
