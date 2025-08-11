@@ -37,7 +37,7 @@ ECDR_PRODUCT_VERSION = ProductVersion(
 )
 
 # NSIDC infrastructure-specific paths:
-NSIDC_NFS_SHARE_DIR = Path("/share/apps/G02202_V5")
+NSIDC_NFS_SHARE_DIR = Path("/share/apps/G02202_V6")
 if not NSIDC_NFS_SHARE_DIR.is_dir():
     raise RuntimeError(f"Expected {NSIDC_NFS_SHARE_DIR} to exist, but it does not.")
 
