@@ -56,8 +56,7 @@ import xarray as xr
 V6_POLEHOLE_BITMASK_FP = Path(__file__).parent / "polehole_bitmask_v6.dat"
 
 V5_ANC_DIR = Path("/share/apps/G02202_V5/v05_ancillary/")
-# TODO: this is temporary, we plan on a new share for v6.
-V6_ANC_DIR = Path("/share/apps/G02202_V5/v06r00_ancillary/")
+V6_ANC_DIR = Path("/share/apps/G02202_V6/v06r00_ancillary/")
 
 
 if __name__ == "__main__":

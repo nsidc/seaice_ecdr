@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -17,9 +16,7 @@ from seaice_ecdr.ancillary import (
 from seaice_ecdr.tb_data import (
     EcdrTbData,
 )
-from seaice_ecdr.util import get_ecdr_grid_shape
 
-NT_MAPS_DIR = Path("/share/apps/G02202_V5/cdr_testdata/nt_datafiles/data36/maps")
 LAND_SPILL_ALGS = Literal["NT2", "ILS", "ILSb", "NT2_BT"]
 
 
@@ -68,32 +65,6 @@ def convert_nonocean_to_shoremap(*, is_nonocean: npt.NDArray):
     is_dilated_nearcoast = binary_dilation(is_nearcoast, structure=conn4)
     is_farcoast = is_dilated_nearcoast & is_ocean & ~is_coast & ~is_nearcoast
     shoremap[is_farcoast] = 5
-
-
-def _get_25km_shoremap(*, hemisphere: Hemisphere):
-    shoremap_fn = NT_MAPS_DIR / f"shoremap_{hemisphere}_25"
-    shoremap = np.fromfile(shoremap_fn, dtype=">i2")[150:].reshape(
-        get_ecdr_grid_shape(hemisphere=hemisphere, resolution="25")
-    )
-
-    return shoremap
-
-
-def _get_25km_minic(*, hemisphere: Hemisphere):
-    if hemisphere == "north":
-        minic_fn = "SSMI8_monavg_min_con"
-    else:
-        minic_fn = "SSMI_monavg_min_con_s"
-
-    minic_path = NT_MAPS_DIR / minic_fn
-    minic = np.fromfile(minic_path, dtype=">i2")[150:].reshape(
-        get_ecdr_grid_shape(hemisphere=hemisphere, resolution="25")
-    )
-
-    # Scale down by 10. The original alg. dealt w/ concentrations scaled by 10.
-    minic = minic / 10
-
-    return minic
 
 
 def improved_land_spillover(
