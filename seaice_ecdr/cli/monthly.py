@@ -7,10 +7,8 @@ import pandas as pd
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.cli.util import CLI_EXE_PATH, run_cmd
 from seaice_ecdr.constants import (
-    DEFAULT_ANCILLARY_SOURCE,
     DEFAULT_BASE_OUTPUT_DIR,
     DEFAULT_CDR_RESOLUTION,
     DEFAULT_SPILLOVER_ALG,
@@ -47,7 +45,6 @@ def make_monthly_25km_ecdr(
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
 ):
 
     # Use the default platform dates, which excludes AMSR2
@@ -59,7 +56,6 @@ def make_monthly_25km_ecdr(
         f" --hemisphere {hemisphere}"
         f" --base-output-dir {base_output_dir}"
         f" --resolution {resolution}"
-        f" --ancillary-source {ancillary_source}"
     )
 
     # If the given start & end date intersect with the AMSR2 period,
@@ -84,7 +80,6 @@ def make_monthly_25km_ecdr(
             f" --hemisphere {hemisphere}"
             f" --base-output-dir {base_output_dir}"
             f" --resolution {resolution}"
-            f" --ancillary-source {ancillary_source}"
         )
 
     # Prepare the monthly data for publication
@@ -167,12 +162,6 @@ def make_monthly_25km_ecdr(
     type=click.Choice(get_args(LAND_SPILL_ALGS)),
     default=DEFAULT_SPILLOVER_ALG,
 )
-@click.option(
-    "--ancillary-source",
-    required=True,
-    type=click.Choice(get_args(ANCILLARY_SOURCES)),
-    default=DEFAULT_ANCILLARY_SOURCE,
-)
 def cli(
     *,
     year: int,
@@ -183,7 +172,6 @@ def cli(
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
     # Note: It appears that click cannot set one argument based on another.
     #       For clarity, we handle the "None" arg condition here for end_<vars>
@@ -207,7 +195,6 @@ def cli(
             base_output_dir=base_output_dir,
             resolution=resolution,
             land_spillover_alg=land_spillover_alg,
-            ancillary_source=ancillary_source,
         )
 
 

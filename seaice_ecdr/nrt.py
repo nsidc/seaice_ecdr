@@ -22,7 +22,6 @@ from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.checksum import write_checksum_file
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_NRT_OUTPUT_DIR, ECDR_NRT_PRODUCT_VERSION
@@ -89,7 +88,6 @@ def compute_nrt_initial_daily_ecdr_dataset(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ):
     """Create an initial daily ECDR NetCDF using NRT data"""
     platform_id = _get_nrt_platform_id()
@@ -109,7 +107,6 @@ def compute_nrt_initial_daily_ecdr_dataset(
         hemisphere=hemisphere,
         tb_data=tb_data,
         land_spillover_alg=NRT_LAND_SPILLOVER_ALG,
-        ancillary_source=ancillary_source,
     )
 
     return nrt_initial_ecdr_ds
@@ -170,7 +167,6 @@ def temporally_interpolated_nrt_ecdr_dataset(
     date: dt.date,
     intermediate_output_dir: Path,
     overwrite: bool,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ) -> xr.Dataset:
     init_datasets = []
     for date in date_range(
@@ -193,7 +189,6 @@ def temporally_interpolated_nrt_ecdr_dataset(
         data_stack=data_stack,
         interp_range=NRT_DAYS_TO_LOOK_PREVIOUSLY,
         one_sided_limit=NRT_DAYS_TO_LOOK_PREVIOUSLY,
-        ancillary_source=ancillary_source,
     )
 
     return temporally_interpolated_ds
@@ -326,7 +321,6 @@ def nrt_ecdr_for_day(
     hemisphere: Hemisphere,
     base_output_dir: Path,
     overwrite: bool,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ):
     """Create an initial daily ECDR NetCDF using NRT NSIDC-0802 AMSR2 data."""
     nrt_output_filepath = get_nrt_complete_daily_filepath(
@@ -358,7 +352,6 @@ def nrt_ecdr_for_day(
                 resolution=NRT_RESOLUTION,
                 intermediate_output_dir=intermediate_output_dir,
                 is_nrt=True,
-                ancillary_source=ancillary_source,
             )
             # Write the daily intermediate file. This is used by the monthly NRT
             # processing to produce the monthly fields.

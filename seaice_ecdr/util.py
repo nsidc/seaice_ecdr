@@ -9,7 +9,7 @@ import xarray as xr
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES, get_ocean_mask
+from seaice_ecdr.ancillary import get_ocean_mask
 from seaice_ecdr.constants import ECDR_NRT_PRODUCT_VERSION, ECDR_PRODUCT_VERSION
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
@@ -297,13 +297,11 @@ def get_num_missing_pixels(
     seaice_conc_var: xr.DataArray,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> int:
     """The number of missing pixels is anywhere that there are nans over ocean."""
     ocean_mask = get_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
 
     num_missing_pixels = int((seaice_conc_var.isnull() & ocean_mask).astype(int).sum())

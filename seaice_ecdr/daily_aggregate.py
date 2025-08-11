@@ -21,7 +21,6 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
-    ANCILLARY_SOURCES,
     get_ancillary_ds,
     remove_FillValue_from_coordinate_vars,
 )
@@ -101,7 +100,6 @@ def _update_ncrcat_daily_ds(
     daily_filepaths: list[Path],
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ):
     """Update the aggregate dataset created by `ncrcat`.
 
@@ -110,7 +108,6 @@ def _update_ncrcat_daily_ds(
     surf_geo_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
     # Lat and lon fields are placed under the "cdr_supplementary" group.
     for sup_var in ("latitude", "longitude"):
@@ -163,7 +160,6 @@ def _update_ncrcat_daily_ds(
         platform_ids=[platform_id_from_filename(fp.name) for fp in daily_filepaths],
         resolution=resolution,
         hemisphere=hemisphere,
-        ancillary_source=ancillary_source,
     )
     ds.attrs = daily_aggregate_ds_global_attrs  # type: ignore[assignment]
 

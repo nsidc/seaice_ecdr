@@ -93,7 +93,6 @@ CDRv4_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / "cdrv4_equiv_ancillary"
 
 # Defaults for CDR runs
 DEFAULT_CDR_RESOLUTION: Final = "25"
-DEFAULT_ANCILLARY_SOURCE: Final = "CDRv5"
 DEFAULT_SPILLOVER_ALG: Final = "NT2_BT"
 
 # NRT (G10016) outputs
