@@ -673,6 +673,9 @@ def get_empty_ds_with_time(
     return return_ds
 
 
+DEFAULT_CONC_THRESHOLD_PERCENT = 10.0
+
+
 def get_cdr_conc_threshold(
     *,
     date: dt.date,
@@ -695,7 +698,7 @@ def get_cdr_conc_threshold(
 
     if not is_dmsp_platform(platform.id):
         # Non-DMSP (AMSR2) data will utilize a static 10% threshold.
-        return 10.0
+        return DEFAULT_CONC_THRESHOLD_PERCENT
 
     # DMSP data have a concentration threshold based on the day of year
     leap_year_fn_str = ""
@@ -719,3 +722,15 @@ def get_cdr_conc_threshold(
     threshold = float(thresholds_df.loc[doy].threshold)
 
     return threshold
+
+
+def get_monthly_cdr_conc_threshold() -> float:
+    """Return the concentration threshold as a percentage.
+
+    Note: we may want a variable threshold for monthly data in the future, like
+    we do for `get_cdr_conc_threshold`. For now, we use the default threshold,
+    as we think the Seki method applied to dailies so that DMSP data align with
+    AMSR2 will come through in the monthly data while just using a constant
+    value.
+    """
+    return DEFAULT_CONC_THRESHOLD_PERCENT

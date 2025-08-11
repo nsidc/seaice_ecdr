@@ -15,6 +15,7 @@ from seaice_ecdr.ancillary import (
     get_ancillary_daily_clim_filepath,
     get_ancillary_filepath,
     get_cdr_conc_threshold,
+    get_monthly_cdr_conc_threshold,
     get_non_ocean_mask,
     get_smmr_invalid_ice_mask,
 )
@@ -185,3 +186,11 @@ def test_get_cdr_conc_threshold_am2():
 
     # Non-DMSP has a static threshold of 10%
     assert threshold == 10.0
+
+
+def test_get_monthly_cdr_conc_threshold():
+    threshold = get_monthly_cdr_conc_threshold()
+
+    threshold_frac = threshold / 100.0
+
+    assert threshold_frac == 0.1
