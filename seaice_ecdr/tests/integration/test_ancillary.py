@@ -2,8 +2,10 @@ import datetime as dt
 from pathlib import Path
 from string import Template
 from typing import Final, cast, get_args
+from unittest.mock import patch
 
 import numpy as np
+import pandas as pd
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
@@ -12,6 +14,8 @@ from seaice_ecdr.ancillary import (
     get_adj123_field,
     get_ancillary_daily_clim_filepath,
     get_ancillary_filepath,
+    get_cdr_conc_threshold,
+    get_monthly_cdr_conc_threshold,
     get_non_ocean_mask,
     get_smmr_invalid_ice_mask,
 )
@@ -22,6 +26,7 @@ from seaice_ecdr.constants import (
     NSIDC_NFS_SHARE_DIR,
 )
 from seaice_ecdr.grid_id import get_grid_id
+from seaice_ecdr.platforms.config import AM2_PLATFORM, F11_PLATFORM
 
 
 def test_default_ancillary_source_is_valid():
@@ -127,3 +132,65 @@ def test_ancillary_filepaths():
         expected_daily_ancillary_filepath = Path(expected_dir) / Path(expected_daily_fn)
         assert expected_daily_ancillary_filepath == actual_daily_ancillary_filepath
         assert actual_daily_ancillary_filepath.is_file()
+
+
+def test_get_cdr_conc_threshold_dmsp_non_leapyear():
+    with patch(
+        "seaice_ecdr.ancillary.pd.read_csv", side_effect=pd.read_csv
+    ) as mock_read_csv:
+        threshold = get_cdr_conc_threshold(
+            date=dt.date(1995, 1, 1),
+            hemisphere="north",
+            platform=F11_PLATFORM,
+        )
+
+        mock_read_csv.assert_called_once()
+        args, _kwargs = mock_read_csv.call_args
+        read_csv_filepath = args[0]
+        assert read_csv_filepath.name == "nh_final_thresholds.csv"
+
+    assert threshold is not None
+    assert isinstance(threshold, float)
+
+
+def test_get_cdr_conc_threshold_dmsp_leapyear():
+    with patch(
+        "seaice_ecdr.ancillary.pd.read_csv", side_effect=pd.read_csv
+    ) as mock_read_csv:
+        threshold = get_cdr_conc_threshold(
+            date=dt.date(1992, 5, 12),
+            hemisphere="south",
+            platform=F11_PLATFORM,
+        )
+
+        mock_read_csv.assert_called_once()
+        args, _kwargs = mock_read_csv.call_args
+        read_csv_filepath = args[0]
+        assert read_csv_filepath.name == "sh_final_thresholds-leap-year.csv"
+
+    assert threshold is not None
+    assert isinstance(threshold, float)
+
+
+def test_get_cdr_conc_threshold_am2():
+    with patch(
+        "seaice_ecdr.ancillary.pd.read_csv", side_effect=pd.read_csv
+    ) as mock_read_csv:
+        threshold = get_cdr_conc_threshold(
+            date=dt.date(2024, 3, 15),
+            hemisphere="south",
+            platform=AM2_PLATFORM,
+        )
+
+        mock_read_csv.assert_not_called()
+
+    # Non-DMSP has a static threshold of 10%
+    assert threshold == 10.0
+
+
+def test_get_monthly_cdr_conc_threshold():
+    threshold = get_monthly_cdr_conc_threshold()
+
+    threshold_frac = threshold / 100.0
+
+    assert threshold_frac == 0.1
