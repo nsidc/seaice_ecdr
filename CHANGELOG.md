@@ -15,6 +15,7 @@
   from CLI. This feature was not working as intended, and with the move to
   v2.0.0 (which includes updates to ancillary data), it does not make sense to
   backport those updates to ancillary files to previous versions.
+* Update G10016 NRT CDR product version to v4.0.
 
 # v1.0.2
 
