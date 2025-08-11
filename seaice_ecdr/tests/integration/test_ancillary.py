@@ -80,7 +80,6 @@ def test_ancillary_filepaths():
     hemispheres = get_args(Hemisphere)
     product_version = ECDR_PRODUCT_VERSION
 
-    # expected_dir = Path(f"/share/apps/G02202_V5/{product_version}_ancillary")
     expected_dir = Path(f"{NSIDC_NFS_SHARE_DIR}/{product_version}_ancillary")
     assert expected_dir.is_dir()
 
