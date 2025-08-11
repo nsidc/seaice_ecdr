@@ -16,6 +16,7 @@
   v2.0.0 (which includes updates to ancillary data), it does not make sense to
   backport those updates to ancillary files to previous versions.
 * Update G10016 NRT CDR product version to v4.0.
+* Update NSIDC infrastructure NFS paths to reflect new product major versions.
 
 # v1.0.2
 
