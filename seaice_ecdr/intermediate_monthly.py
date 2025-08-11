@@ -39,6 +39,7 @@ from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
     ANCILLARY_SOURCES,
     flag_value_for_meaning,
+    get_monthly_cdr_conc_threshold,
     remove_FillValue_from_coordinate_vars,
 )
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
@@ -390,9 +391,12 @@ def calc_cdr_seaice_conc_monthly(
     ):
         conc_monthly.data[:] = np.nan
 
-    # NOTE: Clamp lower bound to 10% minic
+    # Clamp lower bound to threshold. note that `conc_monthly` are fractions
+    # (e.g., 0.1 is 10% SIC.)
+    conc_threshold_percent = get_monthly_cdr_conc_threshold()
+    conc_threshold_frac = conc_threshold_percent / 100.0
     conc_monthly = conc_monthly.where(
-        np.isnan(conc_monthly) | (conc_monthly >= 0.1),
+        np.isnan(conc_monthly) | (conc_monthly >= conc_threshold_frac),
         other=0,
     )
 
