@@ -645,9 +645,6 @@ def get_cdr_conc_threshold(
     - nh_final_thresholds-leap-year.csv
     - sh_final_thresholds.csv
     - sh_final_thresholds-leap-year.csv
-
-    # TODO: consider storing the data for the conc thresholds in the ancillary
-    # nc file instead of csvs.
     """
 
     if not is_dmsp_platform(platform.id):
