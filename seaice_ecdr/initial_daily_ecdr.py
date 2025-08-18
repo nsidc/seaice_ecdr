@@ -14,7 +14,6 @@ import click
 import numpy as np
 import numpy.typing as npt
 import pm_icecon.bt.compute_bt_ic as bt
-import pm_icecon.bt.params.ausi_amsr2 as pmi_bt_params_amsr2
 import pm_icecon.bt.params.ausi_amsre as pmi_bt_params_amsre
 import pm_icecon.bt.params.nsidc0001 as pmi_bt_params_0001
 import pm_icecon.nt.compute_nt_ic as nt
@@ -617,13 +616,14 @@ def compute_initial_daily_ecdr_dataset(
     )
 
     platform = PLATFORM_CONFIG.platform_for_id(tb_data.platform_id)
-    if platform.id == "am2":
-        bt_coefs_init = pmi_bt_params_amsr2.get_ausi_amsr2_bootstrap_params(
-            date=date,
-            satellite="amsr2",
-            gridid=ecdr_ide_ds.grid_id,
-        )
-    elif platform.id == "ame":
+    # if platform.id == "am2":
+    #     bt_coefs_init = pmi_bt_params_amsr2.get_ausi_amsr2_bootstrap_params(
+    #         date=date,
+    #         satellite="amsr2",
+    #         gridid=ecdr_ide_ds.grid_id,
+    #     )
+    # elif platform.id == "ame":
+    if platform.id == "ame":
         bt_coefs_init = pmi_bt_params_amsre.get_ausi_amsre_bootstrap_params(
             date=date,
             satellite="amsre",
@@ -631,7 +631,8 @@ def compute_initial_daily_ecdr_dataset(
         )
     # NOTE/TODO: we get F17 data from NSIDC-0080 for NRT processing, but we are
     # using the NSIDC-0001 specific BT params for F17 regardless of the source.
-    elif platform.id in get_args(NSIDC_0001_SATS):
+    # TODO: remove temporary usage of 0001 BT params for AMSR2.
+    elif platform.id in get_args(NSIDC_0001_SATS) or platform.id == "am2":
         bt_coefs_init = pmi_bt_params_0001.get_nsidc0001_bootstrap_params(
             date=date,
             satellite=platform.id,
