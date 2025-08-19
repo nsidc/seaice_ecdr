@@ -1,9 +1,11 @@
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
 from pm_icecon.bt.compute_bt_ic import coastal_fix
 from pm_icecon.land_spillover import apply_nt2_land_spillover
+from pm_icecon.nt.compute_nt_ic import apply_nt_spillover
 from pm_tb_data._types import Hemisphere
 from scipy.ndimage import binary_dilation, generate_binary_structure, shift
 
@@ -16,8 +18,9 @@ from seaice_ecdr.ancillary import (
 from seaice_ecdr.tb_data import (
     EcdrTbData,
 )
+from seaice_ecdr.util import get_ecdr_grid_shape
 
-LAND_SPILL_ALGS = Literal["NT2", "ILS", "ILSb", "NT2_BT"]
+LAND_SPILL_ALGS = Literal["NT2", "ILS", "ILSb", "NT2_BT", "NT_BT"]
 
 
 def convert_nonocean_to_shoremap(*, is_nonocean: npt.NDArray):
@@ -65,6 +68,8 @@ def convert_nonocean_to_shoremap(*, is_nonocean: npt.NDArray):
     is_dilated_nearcoast = binary_dilation(is_nearcoast, structure=conn4)
     is_farcoast = is_dilated_nearcoast & is_ocean & ~is_coast & ~is_nearcoast
     shoremap[is_farcoast] = 5
+
+    return shoremap
 
 
 def improved_land_spillover(
@@ -197,6 +202,26 @@ def improved_land_spillover(
     return filtered_conc
 
 
+NT_MAPS_DIR = Path("/share/apps/G02202_V5/cdr_testdata/nt_datafiles/data36/maps")
+
+
+def _get_25km_minic(*, hemisphere: Hemisphere):
+    if hemisphere == "north":
+        minic_fn = "SSMI8_monavg_min_con"
+    else:
+        minic_fn = "SSMI_monavg_min_con_s"
+
+    minic_path = NT_MAPS_DIR / minic_fn
+    minic = np.fromfile(minic_path, dtype=">i2")[150:].reshape(
+        get_ecdr_grid_shape(hemisphere=hemisphere, resolution="25")
+    )
+
+    # Scale down by 10. The original alg. dealt w/ concentrations scaled by 10.
+    minic = minic / 10
+
+    return minic
+
+
 def land_spillover(
     *,
     cdr_conc: npt.NDArray,
@@ -207,6 +232,9 @@ def land_spillover(
     fix_goddard_bt_error: bool = False,  # By default, don't fix Goddard bug
 ) -> npt.NDArray:
     """Apply the land spillover technique to the CDR concentration field."""
+
+    # Temp assertion to ensure the expected alg is being used.
+    assert algorithm == "NT_BT"
 
     # SS: Writing out the spillover anc fields...
     if algorithm == "NT2":
@@ -226,6 +254,41 @@ def land_spillover(
             affect_dist3=False,
         )
         spillover_applied = spillover_applied_nt2
+    elif algorithm == "NT_BT":
+        # ########### NT ALG ########### #
+        non_ocean_mask = get_non_ocean_mask(
+            hemisphere=hemisphere,
+            resolution=tb_data.resolution,
+        )
+        shoremap = convert_nonocean_to_shoremap(
+            is_nonocean=non_ocean_mask,
+        )
+        spillover_applied_nt = apply_nt_spillover(
+            conc=cdr_conc,
+            shoremap=shoremap,
+            minic=_get_25km_minic(hemisphere=hemisphere),
+        )
+
+        # ########### BT ALG ########### #
+        # Apply the BT land spillover algorithm to the cdr_conc field
+        non_ocean_mask = get_non_ocean_mask(
+            hemisphere=hemisphere,
+            resolution=tb_data.resolution,
+        )
+
+        spillover_applied_nt_bt = coastal_fix(
+            conc=spillover_applied_nt.copy(),
+            missing_flag_value=np.nan,
+            land_mask=land_mask,
+            minic=10,
+            fix_goddard_bt_error=fix_goddard_bt_error,
+        )
+
+        # Return NaN for missing and for land
+        spillover_applied_nt_bt[non_ocean_mask] = np.nan
+
+        spillover_applied = spillover_applied_nt_bt
+
     elif algorithm == "NT2_BT":
         # Apply the NT2 land spillover_algorithm to the cdr_conc_field
         #   and then apply the BT land spillover algorithm
