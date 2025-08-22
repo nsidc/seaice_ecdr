@@ -118,7 +118,7 @@ def get_25km_am2_tbs_from_nsidc_0802(
         xr_tbs = get_nsidc_0802_tbs_from_disk(
             date=date,
             hemisphere=hemisphere,
-            data_dir=Path("/share/apps/nsidc0802/dev/scotts/output/"),
+            data_dir=Path("/disks/sidads_ftp/DATASETS/nsidc0802_daily_a2_tb_v2/"),
         )
         ecdr_tbs = map_tbs_to_ecdr_channels(
             mapping=dict(
