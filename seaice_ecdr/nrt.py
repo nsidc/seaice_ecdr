@@ -15,8 +15,6 @@ from pathlib import Path
 from typing import Final, Literal, cast, get_args
 
 import click
-import datatree
-import earthaccess
 import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
@@ -246,9 +244,9 @@ def get_nrt_complete_daily_filepath(
 
 def override_attrs_for_nrt(
     *,
-    publication_ready_ds: datatree.DataTree,
+    publication_ready_ds: xr.DataTree,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-) -> datatree.DataTree:
+) -> xr.DataTree:
     platform_id = _get_nrt_platform_id()
 
     if platform_id != "am2":
@@ -273,7 +271,7 @@ def override_attrs_for_nrt(
 
 
 def hack_daily_cdr_vars_for_prototype_platform(
-    daily_ds: datatree.DataTree,
+    daily_ds: xr.DataTree,
 ):
     """Hack prepare daily prototype platform files for publication.
     * rename `cdr_` variables with `{platform_id}_`
@@ -305,7 +303,7 @@ def hack_daily_cdr_vars_for_prototype_platform(
 
     root_as_xr = root_as_xr.rename(root_remapping)
 
-    renamed_vars_ds = datatree.DataTree.from_dict(
+    renamed_vars_ds = xr.DataTree.from_dict(
         {
             "/": root_as_xr,
             "cdr_supplementary": suppl_as_xr,
