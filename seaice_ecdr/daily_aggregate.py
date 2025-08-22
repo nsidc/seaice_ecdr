@@ -161,7 +161,7 @@ def _update_ncrcat_daily_ds(
         resolution=resolution,
         hemisphere=hemisphere,
     )
-    ds.attrs = daily_aggregate_ds_global_attrs  # type: ignore[assignment]
+    ds.attrs = daily_aggregate_ds_global_attrs
 
     return ds
 

@@ -125,7 +125,7 @@ def _update_ncrcat_monthly_ds(
         resolution=resolution,
         hemisphere=hemisphere,
     )
-    agg_ds.attrs = monthly_aggregate_ds_global_attrs  # type: ignore[assignment]
+    agg_ds.attrs = monthly_aggregate_ds_global_attrs
 
     return agg_ds
 
