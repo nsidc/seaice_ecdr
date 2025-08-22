@@ -118,18 +118,15 @@ def get_25km_am2_tbs_from_nsidc_0802(
         xr_tbs = get_nsidc_0802_tbs_from_disk(
             date=date,
             hemisphere=hemisphere,
-            data_dir=Path("/disks/sidads_ftp/DATASETS/nsidc0802_polar_stereo_tbs"),
-            # TODO: this path should be updated to something like
-            # `/share/apps/G02202_V6` once created and prototype data are staged there.
-            prototype_37h_data_dir=Path("/home/vagrant/seaice_ecdr/nise_at_tbs"),
+            data_dir=Path("/disks/sidads_ftp/DATASETS/nsidc0802_daily_a2_tb_v2/"),
         )
         ecdr_tbs = map_tbs_to_ecdr_channels(
             mapping=dict(
-                v19="v19",
-                h19="h19",
-                v22="v22",
-                v37="v37",
-                h37="h37",
+                v19="tb_19v_calibrated",
+                h19="tb_19h_calibrated",
+                v22="tb_22v_calibrated",
+                v37="tb_37v_calibrated",
+                h37="tb_37h_calibrated",
             ),
             xr_tbs=xr_tbs,
             hemisphere=hemisphere,
