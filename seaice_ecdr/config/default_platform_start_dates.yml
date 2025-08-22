@@ -10,4 +10,4 @@ cdr_platform_start_dates:
   - platform_id: "F17"
     start_date: "2008-01-01"
   - platform_id: "am2"
-    start_date: "2024-01-01"
+    start_date: "2023-01-01"

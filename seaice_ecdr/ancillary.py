@@ -5,7 +5,6 @@ for ECDR processing are stored in an ancillary NetCDF file that is published
 alongside the ECDR.
 """
 
-import calendar
 import datetime as dt
 from functools import cache
 from pathlib import Path
@@ -26,7 +25,7 @@ from seaice_ecdr.constants import (
 )
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.nc_util import remove_FillValue_from_coordinate_vars
-from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform, is_dmsp_platform
+from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform
 from seaice_ecdr.platforms.config import N07_PLATFORM
 
 
@@ -638,6 +637,7 @@ def get_cdr_conc_threshold(
 ) -> float:
     """For the given date and hemisphere, return the concentration threshold as a percentage."""
 
+    """
     if not is_dmsp_platform(platform.id):
         # Non-DMSP (AMSR2) data will utilize a static 10% threshold.
         return DEFAULT_CONC_THRESHOLD_PERCENT
@@ -666,6 +666,10 @@ def get_cdr_conc_threshold(
     threshold = threshold_frac * 100
 
     return threshold
+    """
+
+    # TEMPORARY DISABLE SEKI THRESHOLDING
+    return DEFAULT_CONC_THRESHOLD_PERCENT
 
 
 def get_monthly_cdr_conc_threshold() -> float:
