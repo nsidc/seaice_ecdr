@@ -47,8 +47,8 @@ from pathlib import Path
 from typing import Final, Literal, cast, get_args
 
 import click
-import datatree
 import pandas as pd
+import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
@@ -219,7 +219,7 @@ def get_error_code(
 
 def get_pixel_counts(
     *,
-    ds: datatree.DataTree,
+    ds: xr.DataTree,
     product: Product,
     hemisphere: Hemisphere,
 ) -> dict[str, int]:
@@ -275,7 +275,7 @@ def get_pixel_counts(
 
     # Get the number of missing pixels in the cdr conc field.
     num_missing_pixels = get_num_missing_pixels(
-        seaice_conc_var=seaice_conc_var,
+        seaice_conc_var=seaice_conc_var,  # type: ignore[arg-type]
         hemisphere=hemisphere,
         resolution=VALIDATION_RESOLUTION,
     )
@@ -334,7 +334,7 @@ def make_validation_dict(
     date: dt.date,
     hemisphere: Hemisphere,
 ) -> dict:
-    ds = datatree.open_datatree(data_fp)
+    ds = xr.open_datatree(data_fp)
 
     pixel_counts = get_pixel_counts(
         ds=ds,

@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Final, get_args
 
 import click
-import datatree
 import xarray as xr
 from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
@@ -194,7 +193,7 @@ def prepare_monthly_ds_for_publication(
     hemisphere: Hemisphere,
     intermediate_monthly_fp: Path,
     prototype_monthly_fp: Path | None,
-) -> datatree.DataTree:
+) -> xr.DataTree:
     # Get the intermediate monthly data
     default_intermediate_monthly_ds = xr.open_dataset(intermediate_monthly_fp)
 
@@ -219,7 +218,7 @@ def prepare_monthly_ds_for_publication(
     cdr_supplementary_group.attrs = {}
 
     # TODO
-    complete_monthly_ds: datatree.DataTree = datatree.DataTree.from_dict(
+    complete_monthly_ds: xr.DataTree = xr.DataTree.from_dict(
         {
             "/": default_intermediate_monthly_ds[
                 [
@@ -269,8 +268,8 @@ def prepare_monthly_ds_for_publication(
         # The group name should be a string and not `None` if a prototype
         # monthly fp is given.
         assert PROTOTYPE_PLATFORM_DATA_GROUP_NAME is not None
-        complete_monthly_ds[PROTOTYPE_PLATFORM_DATA_GROUP_NAME] = datatree.DataTree(
-            data=prototype_subgroup,
+        complete_monthly_ds[PROTOTYPE_PLATFORM_DATA_GROUP_NAME] = xr.DataTree(
+            dataset=prototype_subgroup,
         )
     elif (
         PROTOTYPE_PLATFORM_START_DATE
@@ -289,7 +288,7 @@ def prepare_monthly_ds_for_publication(
 
 
 def _write_publication_ready_nc_and_checksum(
-    publication_ready_monthly_ds: datatree.DataTree,
+    publication_ready_monthly_ds: xr.DataTree,
     base_output_dir: Path,
     year: int,
     month: int,

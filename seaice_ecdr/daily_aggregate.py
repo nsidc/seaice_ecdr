@@ -14,8 +14,8 @@ from tempfile import TemporaryDirectory
 from typing import get_args
 
 import click
-import datatree
 import pandas as pd
+import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
@@ -96,7 +96,7 @@ def get_daily_aggregate_filepath(
 
 def _update_ncrcat_daily_ds(
     *,
-    ds: datatree.DataTree,
+    ds: xr.DataTree,
     daily_filepaths: list[Path],
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
@@ -192,7 +192,7 @@ def make_daily_aggregate_netcdf_for_year(
                 input_filepaths=daily_filepaths,
                 output_filepath=tmp_output_fp,
             )
-            daily_ds = datatree.open_datatree(tmp_output_fp, chunks=dict(time=1))
+            daily_ds = xr.open_datatree(tmp_output_fp, chunks=dict(time=1))
             daily_ds = _update_ncrcat_daily_ds(
                 ds=daily_ds,
                 daily_filepaths=daily_filepaths,

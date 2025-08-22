@@ -2,7 +2,6 @@ import datetime as dt
 from pathlib import Path
 from typing import Final
 
-import datatree
 import xarray as xr
 from pm_tb_data._types import NORTH
 
@@ -45,7 +44,7 @@ def test_daily_aggregate_matches_daily_data(tmpdir):
             resolution=resolution,
         )
 
-        ds = datatree.open_datatree(daily_output_fp)
+        ds = xr.open_datatree(daily_output_fp)
         datasets.append(ds)
 
     # Now generate the daily aggregate file from the three created above.
@@ -105,9 +104,11 @@ def test_daily_aggregate_matches_daily_data(tmpdir):
 
         # Assert that both datasets are equal
         daily_ds_root = daily_ds.drop_nodes("cdr_supplementary").ds
-        for var_name in daily_ds_root.variables:
+        for var_name in daily_ds_root.variables:  # type: ignore[attr-defined]
             xr.testing.assert_allclose(
-                selected_from_agg_root[var_name], daily_ds_root[var_name], atol=0.009
+                selected_from_agg_root[var_name],
+                daily_ds_root[var_name],  # type: ignore[index]
+                atol=0.009,
             )
 
         # Now, check the supplementary group
@@ -119,7 +120,9 @@ def test_daily_aggregate_matches_daily_data(tmpdir):
 
         # Assert that both datasets are equal
         daily_ds_suppl = daily_ds["cdr_supplementary"].ds
-        for var_name in daily_ds_suppl.variables:
+        for var_name in daily_ds_suppl.variables:  # type: ignore[union-attr]
             xr.testing.assert_allclose(
-                selected_from_agg_suppl[var_name], daily_ds_suppl[var_name], atol=0.009
+                selected_from_agg_suppl[var_name],
+                daily_ds_suppl[var_name],  # type: ignore[index]
+                atol=0.009,
             )

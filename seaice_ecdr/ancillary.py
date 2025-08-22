@@ -160,7 +160,7 @@ def get_daily_climatology_mask(
     return mask
 
 
-def bitmask_value_for_meaning(*, var: xr.DataArray, meaning: str):
+def bitmask_value_for_meaning(*, var: xr.DataArray | xr.DataTree, meaning: str):
     if meaning not in var.flag_meanings:
         raise ValueError(f"Could not determine bitmask value for {meaning=}")
 

@@ -14,7 +14,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-import datatree
 import numpy as np
 import xarray as xr
 from dateutil.parser import parse
@@ -49,7 +48,7 @@ def concatenate_nc_files(
     result.check_returncode()
 
 
-def remove_valid_range_from_coordinate_vars(ds: xr.Dataset | datatree.DataTree):
+def remove_valid_range_from_coordinate_vars(ds: xr.Dataset | xr.DataTree):
     """removes `valid_range` attr from coordinate variables in-place.
 
     TODO: this function should be unnecessary. We use this to cleanup a ds
@@ -63,7 +62,7 @@ def remove_valid_range_from_coordinate_vars(ds: xr.Dataset | datatree.DataTree):
     ds.time.attrs = {k: v for k, v in ds.time.attrs.items() if k != "valid_range"}
 
 
-def remove_FillValue_from_coordinate_vars(ds: xr.Dataset | datatree.DataTree):
+def remove_FillValue_from_coordinate_vars(ds: xr.Dataset | xr.DataTree):
     """removes `valid_range` attr from coordinate variables in-place.
 
     TODO: this function should be unnecessary. We use this to cleanup a ds
@@ -81,7 +80,7 @@ def remove_FillValue_from_coordinate_vars(ds: xr.Dataset | datatree.DataTree):
     return ds
 
 
-def add_coordinate_coverage_content_type(ds: xr.Dataset | datatree.DataTree):
+def add_coordinate_coverage_content_type(ds: xr.Dataset | xr.DataTree):
     """Adds `coverage_content_type` to the provided dataset in-place.
 
     TODO: This function should be unnecessary. We use this to cleanup a ds
@@ -96,7 +95,7 @@ def add_coordinate_coverage_content_type(ds: xr.Dataset | datatree.DataTree):
     ds.time.attrs["coverage_content_type"] = "coordinate"
 
 
-def add_coordinates_attr(ds: datatree.DataTree):
+def add_coordinates_attr(ds: xr.DataTree):
     """Adds `coordinates` attr to data variables in-place.
 
     TODO: This function should be unnecessary. We use this to cleanup a ds
@@ -109,7 +108,7 @@ def add_coordinates_attr(ds: datatree.DataTree):
         for var_name in group.variables:
             if var_name in ("crs", "time", "y", "x"):
                 continue
-            var = group[var_name]
+            var = group[var_name]  # type: ignore[index]
             if var.dims == ("time", "y", "x"):
                 var.attrs["coordinates"] = "time y x"
 
@@ -156,7 +155,7 @@ def add_ncgroup(
     """
     add_groupname = False
     for nc_filename in reversed(filepath_list):
-        ds = datatree.open_datatree(nc_filename)
+        ds = xr.open_datatree(nc_filename)
         if ncgroup_name in ds.groups:
             add_groupname = True
             empty_nc_datatree = get_empty_group(
@@ -170,7 +169,7 @@ def add_ncgroup(
         return filepath_list
 
     # Want to copy the files to the tempdir, and add the prototype field
-    root_datatree = datatree.DataTree()
+    root_datatree = xr.DataTree()
     empty_nc_datatree.parent = root_datatree
     clean_ncgroup_name = ncgroup_name.replace("/", "")
     empty_datatree_fn = f"empty_datatree_{clean_ncgroup_name}.nc"
@@ -188,7 +187,7 @@ def add_ncgroup(
         new_fp = Path(tmpdir, fp.name)
         shutil.copyfile(fp, new_fp)
         new_file_list.append(new_fp)
-        ds_check = datatree.open_datatree(new_fp)
+        ds_check = xr.open_datatree(new_fp)
         if ncgroup_name not in ds_check.groups:
             logger.info(f"adding {clean_ncgroup_name} group to {new_fp}...")
             result = subprocess.run(
@@ -221,8 +220,8 @@ def adjust_monthly_aggregate_ncattrs(fp):
 
 
 def fix_monthly_ncattrs(
-    ds: xr.Dataset | datatree.datatree.DataTree,
-) -> xr.Dataset | datatree.datatree.DataTree:
+    ds: xr.Dataset | xr.DataTree,
+) -> xr.Dataset | xr.DataTree:
     """Hack to fix the attributes of the monthly CDR files
 
     Attrs get set in other parts of the code, but we made a decision to change
@@ -280,8 +279,8 @@ def get_unique_comma_separated_items(item_string):
 
 
 def fix_monthly_aggregate_ncattrs(
-    ds: xr.Dataset | datatree.datatree.DataTree,
-) -> xr.Dataset | datatree.datatree.DataTree:
+    ds: xr.Dataset | xr.DataTree,
+) -> xr.Dataset | xr.DataTree:
     """Hack to fix the attributes of the monthly-aggregated (all months) CDR files
 
     Attrs get set in other parts of the code, but we made a decision to change
@@ -305,8 +304,8 @@ def fix_monthly_aggregate_ncattrs(
 
 
 def fix_daily_aggregate_ncattrs(
-    ds: xr.Dataset | datatree.datatree.DataTree,
-) -> xr.Dataset | datatree.datatree.DataTree:
+    ds: xr.Dataset | xr.DataTree,
+) -> xr.Dataset | xr.DataTree:
     """Hack to fix the attributes of the daily-aggregated (annual) CDR files
 
     Attrs get set in other parts of the code, but we made a decision to change
