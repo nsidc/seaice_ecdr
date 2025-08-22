@@ -109,7 +109,7 @@ def add_coordinates_attr(ds: datatree.DataTree):
         for var_name in group.variables:
             if var_name in ("crs", "time", "y", "x"):
                 continue
-            var = group[var_name]  # type:ignore[index]
+            var = group[var_name]
             if var.dims == ("time", "y", "x"):
                 var.attrs["coordinates"] = "time y x"
 
@@ -170,7 +170,7 @@ def add_ncgroup(
         return filepath_list
 
     # Want to copy the files to the tempdir, and add the prototype field
-    root_datatree = datatree.DataTree()  # type:ignore[var-annotated]
+    root_datatree = datatree.DataTree()
     empty_nc_datatree.parent = root_datatree
     clean_ncgroup_name = ncgroup_name.replace("/", "")
     empty_datatree_fn = f"empty_datatree_{clean_ncgroup_name}.nc"
