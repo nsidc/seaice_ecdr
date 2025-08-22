@@ -67,9 +67,9 @@ def test_daily_aggregate_matches_daily_data(tmpdir):
     # Assert that there are data for each of the three expected dates, and that
     # they match the daily final datasets.
     agg_root_ds = xr.open_dataset(aggregate_filepath)
-    agg_cdr_supplementary_ds = xr.open_dataset(
-        aggregate_filepath, group="cdr_supplementary"
-    )
+    agg_cdr_supplementary_ds = xr.open_datatree(aggregate_filepath)[
+        "cdr_supplementary"
+    ].to_dataset()
     # TODO: prototype_am2 does not currently exist in this regression test
     # because only data for the default platforms are being generated
     # agg_prototype_am2_ds = xr.open_dataset(aggregate_filepath, group="prototype_am2")
@@ -115,7 +115,7 @@ def test_daily_aggregate_matches_daily_data(tmpdir):
 
         # Select the current day from the aggregate dataset. This drops `time`
         # as a dim, so we re-expand.
-        selected_from_agg_suppl = agg_cdr_supplementary_ds.sel(time=idx)
+        selected_from_agg_suppl = agg_cdr_supplementary_ds.isel(time=idx)
         selected_from_agg_suppl = selected_from_agg_suppl.expand_dims("time")
 
         # Assert that both datasets are equal

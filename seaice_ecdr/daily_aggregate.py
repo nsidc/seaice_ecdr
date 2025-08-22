@@ -120,7 +120,7 @@ def _update_ncrcat_daily_ds(
     # lat and lon fields have x and y coordinate variables associated with them
     # and get added automatically when adding those fields above. This drops
     # those unnecessary vars that will be inherited from the root group.
-    ds["cdr_supplementary"] = ds["cdr_supplementary"].drop_vars(["x", "y"])
+    ds["cdr_supplementary"] = ds["cdr_supplementary"].to_dataset().drop_vars(["x", "y"])
 
     # Remove the "number of missing pixels" attr from the daily aggregate conc
     # variables.
