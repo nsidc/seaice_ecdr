@@ -106,7 +106,9 @@ def _update_ncrcat_monthly_ds(
     # lat and lon fields have x and y coordinate variables associated with them
     # and get added automatically when adding those fields above. This drops
     # those unnecessary vars that will be inherited from the root group.
-    agg_ds["cdr_supplementary"] = agg_ds["cdr_supplementary"].drop_vars(["x", "y"])
+    agg_ds["cdr_supplementary"] = (
+        agg_ds["cdr_supplementary"].to_dataset().drop_vars(["x", "y"])
+    )
 
     agg_ds["cdr_seaice_conc_monthly"].attrs = {
         k: v
