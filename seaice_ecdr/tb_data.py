@@ -11,7 +11,7 @@ from pm_tb_data._types import Hemisphere
 from pm_tb_data.fetch.amsr.ae_si import get_ae_si_tbs_from_disk
 from pm_tb_data.fetch.amsr.nsidc_0802 import get_nsidc_0802_tbs_from_disk
 from pm_tb_data.fetch.amsr.util import AMSR_RESOLUTIONS
-from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS, get_nsidc_0001_tbs_from_disk
+from pm_tb_data.fetch.nsidc_0001 import NSIDC_0001_SATS, get_nsidc_0001_tbs
 from pm_tb_data.fetch.nsidc_0007 import get_nsidc_0007_tbs_from_disk
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
@@ -203,18 +203,19 @@ def _get_ame_tbs(*, date: dt.date, hemisphere: Hemisphere) -> EcdrTbData:
 
 
 def _get_nsidc_0001_tbs(
-    *, date: dt.date, hemisphere: Hemisphere, platform_id: NSIDC_0001_SATS
+    *,
+    date: dt.date,
+    hemisphere: Hemisphere,
+    platform_id: NSIDC_0001_SATS,
 ) -> EcdrTbData:
-    NSIDC0001_DATA_DIR = Path("/ecs/DP1/PM/NSIDC-0001.006/")
     # NSIDC-0001 TBs for siconc are all at 25km
     nsidc0001_resolution: Final = "25"
     tb_resolution: Final = nsidc0001_resolution
     data_source: Final = "NSIDC-0001"
     try:
-        xr_tbs_0001 = get_nsidc_0001_tbs_from_disk(
+        xr_tbs_0001 = get_nsidc_0001_tbs(
             date=date,
             hemisphere=hemisphere,
-            data_dir=NSIDC0001_DATA_DIR,
             resolution=nsidc0001_resolution,
             sat=platform_id,
         )
