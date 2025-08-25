@@ -47,8 +47,8 @@ from pathlib import Path
 from typing import Final, Literal, cast, get_args
 
 import click
-import datatree
 import pandas as pd
+import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
@@ -219,7 +219,7 @@ def get_error_code(
 
 def get_pixel_counts(
     *,
-    ds: datatree.DataTree,
+    ds: xr.DataTree,
     product: Product,
     hemisphere: Hemisphere,
 ) -> dict[str, int]:
@@ -244,7 +244,7 @@ def get_pixel_counts(
     # total ice land coast lake pole oceanmask ice-free missing bad melt
     total_num_pixels = len(ds.x) * len(ds.y)
     # Areas where there is a concentration detected.
-    num_ice_pixels = int(((seaice_conc_var > 0) & (seaice_conc_var <= 1)).sum())  # type: ignore[union-attr, operator]
+    num_ice_pixels = int(((seaice_conc_var > 0) & (seaice_conc_var <= 1)).sum())
 
     # Surface value counts. These should be the same for every day.
     surf_value_counts = {}
@@ -264,14 +264,14 @@ def get_pixel_counts(
 
     # Number of oceanmask (invalid ice mask) pixels
     invalid_ice_bitmask_value = bitmask_value_for_meaning(
-        var=qa_var,  # type: ignore[arg-type]
+        var=qa_var,
         meaning="invalid_ice_mask_applied",
     )
     invalid_ice_mask = (qa_var & invalid_ice_bitmask_value) > 0
     num_oceanmask_pixels = int(invalid_ice_mask.sum())
 
     # Ice-free pixels (conc == 0)
-    num_ice_free_pixels = int((seaice_conc_var == 0).sum())  # type: ignore[union-attr]
+    num_ice_free_pixels = int((seaice_conc_var == 0).sum())
 
     # Get the number of missing pixels in the cdr conc field.
     num_missing_pixels = get_num_missing_pixels(
@@ -286,10 +286,10 @@ def get_pixel_counts(
     # as 0.099999 as a floating point data.
     # Note: xarray .sum() is similar to numpy.nansum() in that it will
     #       ignore NaNs in the summation operation
-    gt_100_sic = int((seaice_conc_var > 1).sum())  # type: ignore[union-attr, operator]
+    gt_100_sic = int((seaice_conc_var > 1).sum())
     if product == "daily":
         less_than_10_sic = int(
-            ((seaice_conc_var > 0) & (seaice_conc_var <= 0.0999)).sum()  # type: ignore[union-attr, operator]
+            ((seaice_conc_var > 0) & (seaice_conc_var <= 0.0999)).sum()
         )
         num_bad_pixels = less_than_10_sic + gt_100_sic
     else:
@@ -302,7 +302,7 @@ def get_pixel_counts(
         if product == "monthly":
             _melt_start_meaning = "at_least_one_day_during_month_has_melt_detected"
         melt_start_detected_bitmask_value = bitmask_value_for_meaning(
-            var=qa_var,  # type: ignore[arg-type]
+            var=qa_var,
             meaning=_melt_start_meaning,
         )
         melt_start_detected_mask = (qa_var & melt_start_detected_bitmask_value) > 0
@@ -334,7 +334,7 @@ def make_validation_dict(
     date: dt.date,
     hemisphere: Hemisphere,
 ) -> dict:
-    ds = datatree.open_datatree(data_fp)
+    ds = xr.open_datatree(data_fp)
 
     pixel_counts = get_pixel_counts(
         ds=ds,

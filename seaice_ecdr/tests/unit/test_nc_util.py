@@ -1,5 +1,4 @@
 import xarray as xr
-from datatree import DataTree
 
 from seaice_ecdr.nc_util import (
     add_coordinate_coverage_content_type,
@@ -8,7 +7,7 @@ from seaice_ecdr.nc_util import (
 
 
 def test_remove_valid_range_from_coord_vars():
-    mock_ds = DataTree.from_dict(
+    mock_ds = xr.DataTree.from_dict(
         {
             "/": xr.Dataset(
                 {
@@ -28,7 +27,7 @@ def test_remove_valid_range_from_coord_vars():
 
 
 def test_add_coordinate_coverage_type():
-    mock_ds = DataTree.from_dict(
+    mock_ds = xr.DataTree.from_dict(
         {
             "/": xr.Dataset(
                 {

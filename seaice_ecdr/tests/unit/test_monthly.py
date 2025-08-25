@@ -291,7 +291,7 @@ def _mock_daily_ds_for_month():
     _mock_daily_ds.attrs["year"] = 2022
     _mock_daily_ds.attrs["month"] = 3
     _mock_daily_ds.surface_type_mask.attrs = dict(
-        flag_values=np.array([50, 75, 100, 200, 250], dtype=np.byte),
+        flag_values=np.array([50, 75, 100, 200, 250], dtype=np.uint8),
         flag_meanings="ocean lake polehole_mask coast land",
     )
     _mock_daily_ds.attrs["platform_id"] = "F17"
@@ -577,7 +577,7 @@ def test_calc_surface_mask_monthly():
     )
 
     mock_daily_ds_for_month.surface_type_mask.attrs = dict(
-        flag_values=np.array([50, 75, 100, 200, 250], dtype=np.byte),
+        flag_values=np.array([50, 75, 100, 200, 250], dtype=np.uint8),
         flag_meanings="ocean lake polehole_mask coast land",
     )
 

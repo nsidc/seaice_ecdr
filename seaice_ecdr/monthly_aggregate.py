@@ -6,8 +6,8 @@ from tempfile import TemporaryDirectory
 from typing import get_args
 
 import click
-import datatree
 import pandas as pd
+import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
@@ -86,11 +86,11 @@ def get_monthly_aggregate_filepath(
 # it be de-duplicated?
 def _update_ncrcat_monthly_ds(
     *,
-    agg_ds: datatree.DataTree,
+    agg_ds: xr.DataTree,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     monthly_filepaths: list[Path],
-) -> datatree.DataTree:
+) -> xr.DataTree:
     # Add latitude and longitude fields
     surf_geo_ds = get_ancillary_ds(
         hemisphere=hemisphere,
@@ -106,7 +106,9 @@ def _update_ncrcat_monthly_ds(
     # lat and lon fields have x and y coordinate variables associated with them
     # and get added automatically when adding those fields above. This drops
     # those unnecessary vars that will be inherited from the root group.
-    agg_ds["cdr_supplementary"] = agg_ds["cdr_supplementary"].drop_vars(["x", "y"])
+    agg_ds["cdr_supplementary"] = (
+        agg_ds["cdr_supplementary"].to_dataset().drop_vars(["x", "y"])
+    )
 
     agg_ds["cdr_seaice_conc_monthly"].attrs = {
         k: v
@@ -125,7 +127,7 @@ def _update_ncrcat_monthly_ds(
         resolution=resolution,
         hemisphere=hemisphere,
     )
-    agg_ds.attrs = monthly_aggregate_ds_global_attrs  # type: ignore[assignment]
+    agg_ds.attrs = monthly_aggregate_ds_global_attrs
 
     return agg_ds
 
@@ -203,7 +205,7 @@ def cli(
                 input_filepaths=monthly_filepaths,
                 output_filepath=tmp_output_fp,
             )
-            ds = datatree.open_datatree(tmp_output_fp, chunks=dict(time=1))
+            ds = xr.open_datatree(tmp_output_fp, chunks=dict(time=1))
             ds = _update_ncrcat_monthly_ds(
                 agg_ds=ds,
                 hemisphere=hemisphere,
