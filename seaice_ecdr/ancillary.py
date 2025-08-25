@@ -673,7 +673,7 @@ def get_cdr_conc_threshold(
     doy = date.timetuple().tm_yday
 
     # Extract the threshold for the day of year
-    threshold = float(thresholds_df.loc[doy].threshold)
+    threshold = float(thresholds_df.loc[thresholds_df.DOY == doy].threshold)
 
     return threshold
 
