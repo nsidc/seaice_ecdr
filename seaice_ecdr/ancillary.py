@@ -5,7 +5,6 @@ for ECDR processing are stored in an ancillary NetCDF file that is published
 alongside the ECDR.
 """
 
-import calendar
 import datetime as dt
 from functools import cache
 from pathlib import Path
@@ -26,7 +25,7 @@ from seaice_ecdr.constants import (
 )
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.nc_util import remove_FillValue_from_coordinate_vars
-from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform, is_dmsp_platform
+from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform
 from seaice_ecdr.platforms.config import N07_PLATFORM
 
 
@@ -636,46 +635,9 @@ def get_cdr_conc_threshold(
     hemisphere: Hemisphere,
     platform: Platform,
 ) -> float:
-    """For the given date and hemisphere, return the concentration threshold as a percentage.
+    """For the given date and hemisphere, return the concentration threshold as a percentage."""
 
-    For pre-AMSR2 DMSP data, reads threshold from csv file with the following
-    naming structure, which is expected to live in the CDR_ANCILLARY_DIR:
-
-    - nh_final_thresholds.csv
-    - nh_final_thresholds-leap-year.csv
-    - sh_final_thresholds.csv
-    - sh_final_thresholds-leap-year.csv
-
-    # TODO: consider storing the data for the conc thresholds in the ancillary
-    # nc file instead of csvs.
-    """
-
-    if not is_dmsp_platform(platform.id):
-        # Non-DMSP (AMSR2) data will utilize a static 10% threshold.
-        return DEFAULT_CONC_THRESHOLD_PERCENT
-
-    # DMSP data have a concentration threshold based on the day of year
-    leap_year_fn_str = ""
-    if calendar.isleap(date.year):
-        leap_year_fn_str = "-leap-year"
-
-    filename = f"{hemisphere[0].lower()}h_final_thresholds{leap_year_fn_str}.csv"
-    filepath = CDR_ANCILLARY_DIR / filename
-    if not filepath.is_file():
-        raise FileNotFoundError(
-            f"Expected concentration threshold file {filename} does not exist."
-        )
-
-    # Read the data
-    thresholds_df = pd.read_csv(filepath)
-
-    # Get the Day of Year for this date
-    doy = date.timetuple().tm_yday
-
-    # Extract the threshold for the day of year
-    threshold = float(thresholds_df.loc[thresholds_df.DOY == doy].threshold)
-
-    return threshold
+    return DEFAULT_CONC_THRESHOLD_PERCENT
 
 
 def get_monthly_cdr_conc_threshold() -> float:
