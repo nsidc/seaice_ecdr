@@ -89,5 +89,6 @@ module = [
   "cv2.*",
   "ruamel.*",
   "datatree.*",
+  "earthaccess.*",
 ]
 ignore_missing_imports = true
