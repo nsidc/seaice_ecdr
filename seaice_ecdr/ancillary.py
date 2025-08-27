@@ -636,10 +636,14 @@ def get_cdr_conc_threshold(
     hemisphere: Hemisphere,
     platform: Platform,
 ) -> float:
-    """For the given date and hemisphere, return the concentration threshold as a percentage."""
+    """For the given date and hemisphere, return the concentration threshold as a percentage.
 
-    if not is_dmsp_platform(platform.id):
-        # Non-DMSP (AMSR2) data will utilize a static 10% threshold.
+    DMSP platforms have a static 10% threshold. AMSR2 data has a threshold based
+    on day-of-year (DOY).
+    """
+
+    if is_dmsp_platform(platform.id):
+        # DMSP data will utilize a static 10% threshold.
         return DEFAULT_CONC_THRESHOLD_PERCENT
 
     ancillary_ds = get_ancillary_ds(hemisphere=hemisphere)
