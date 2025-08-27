@@ -26,6 +26,7 @@ dependencies:
   - rioxarray
   - hvplot
   - jupyter_bokeh
+  - h5netcdf
 
   #############################
   # Non-imported dependencies #
