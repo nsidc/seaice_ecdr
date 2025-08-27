@@ -104,7 +104,7 @@ def _get_nsidc_0080_tbs(
             cloud_hosted=True,
             granule_name=expected_fn,
         )
-        if len(results) == 1:
+        if len(results) != 1:
             raise FileNotFoundError(f"Could not find {expected_fn} via `earthaccess`.")
         granule_result = results[0]
         _earthaccess_granule = earthaccess.open([granule_result])
