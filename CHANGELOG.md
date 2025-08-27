@@ -1,3 +1,9 @@
+# v1.1.0
+
+* Update NRT daily processing code to fetch NSIDC-0080 (F17) via
+  `earthaccess`. This will allow G10016 v3 to continue processing F17 data after
+  the NSIDC on-prem ECS system is shut down.
+
 # v1.0.2
 
 * Fix for subprocess calls for `git` operations (e.g., to get the current

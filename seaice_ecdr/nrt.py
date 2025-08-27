@@ -16,13 +16,11 @@ from typing import Final, Literal, cast, get_args
 
 import click
 import datatree
+import earthaccess
 import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
-from pm_tb_data.fetch.nsidc_0080 import (
-    NSIDC_0080_PLATFORM_ID,
-    get_nsidc_0080_tbs_from_disk,
-)
+from pm_tb_data.fetch import nsidc_0080
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import ANCILLARY_SOURCES
@@ -91,18 +89,36 @@ def _get_nsidc_0080_tbs(
     *,
     date: dt.date,
     hemisphere: Hemisphere,
-    platform_id: NSIDC_0080_PLATFORM_ID,
+    platform_id: nsidc_0080.NSIDC_0080_PLATFORM_ID,
 ) -> EcdrTbData:
     # TODO: consider extracting the fetch-related code here to `tb_data` module.
     data_source: Final = "NSIDC-0080"
     try:
-        xr_tbs = get_nsidc_0080_tbs_from_disk(
-            date=date,
+        expected_fn = (
+            "NSIDC0080_TB_PS" f"_{hemisphere[0].upper()}25km" f"_{date:%Y%m%d}_v2.0.nc"
+        )
+
+        results = earthaccess.search_data(
+            short_name="NSIDC-0080",
+            version="2",
+            cloud_hosted=True,
+            granule_name=expected_fn,
+        )
+        if len(results) != 1:
+            raise FileNotFoundError(f"Could not find {expected_fn} via `earthaccess`.")
+        granule_result = results[0]
+        _earthaccess_granule = earthaccess.open([granule_result])
+
+        # TODO: ideally, we would use datatree here. xarray >2024.9 should have
+        # datatree integrated directly.
+        ds = xr.open_dataset(_earthaccess_granule[0], group=platform_id)
+
+        xr_tbs = nsidc_0080._normalize_nsidc_0080_tbs(
+            ds=ds,
             hemisphere=hemisphere,
-            resolution=NRT_RESOLUTION,
             platform_id=platform_id,
         )
-    except Exception:
+    except (FileNotFoundError, OSError):
         # This would be a `FileNotFoundError` if a data files is completely
         # missing. Currently, an OSError may also be raised if the data file exists
         # but is missing the data variable we expect. Other errors may also be
