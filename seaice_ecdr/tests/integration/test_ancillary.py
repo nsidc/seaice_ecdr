@@ -117,33 +117,33 @@ def test_ancillary_filepaths():
         assert actual_daily_ancillary_filepath.is_file()
 
 
-def test_get_cdr_conc_threshold_dmsp_non_leapyear():
+def test_get_cdr_conc_threshold_am2_non_leapyear():
     threshold = get_cdr_conc_threshold(
-        date=dt.date(1995, 1, 1),
+        date=dt.date(2025, 1, 1),
         hemisphere="north",
-        platform=F11_PLATFORM,
+        platform=AM2_PLATFORM,
     )
 
     assert threshold is not None
     assert isinstance(threshold, float)
 
 
-def test_get_cdr_conc_threshold_dmsp_leapyear():
-    threshold = get_cdr_conc_threshold(
-        date=dt.date(1992, 5, 12),
-        hemisphere="south",
-        platform=F11_PLATFORM,
-    )
-
-    assert threshold is not None
-    assert isinstance(threshold, float)
-
-
-def test_get_cdr_conc_threshold_am2():
+def test_get_cdr_conc_threshold_am2_leapyear():
     threshold = get_cdr_conc_threshold(
         date=dt.date(2024, 3, 15),
         hemisphere="south",
         platform=AM2_PLATFORM,
+    )
+
+    assert threshold is not None
+    assert isinstance(threshold, float)
+
+
+def test_get_cdr_conc_threshold_dmsp():
+    threshold = get_cdr_conc_threshold(
+        date=dt.date(2024, 3, 15),
+        hemisphere="south",
+        platform=F11_PLATFORM,
     )
 
     # Non-DMSP has a static threshold of 10%
