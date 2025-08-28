@@ -6,7 +6,7 @@ from loguru import logger
 
 from seaice_ecdr.constants import LOGS_DIR
 
-__version__ = "v1.0.2"
+__version__ = "v1.1.0"
 
 # The standard loguru log levels, in increasing order of severity, are:
 # TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR, CRITICAL
