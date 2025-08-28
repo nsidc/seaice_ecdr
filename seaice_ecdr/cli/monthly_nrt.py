@@ -7,13 +7,11 @@ from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr.cli.util import CLI_EXE_PATH, run_cmd
 from seaice_ecdr.constants import (
-    DEFAULT_ANCILLARY_SOURCE,
     DEFAULT_BASE_NRT_OUTPUT_DIR,
     DEFAULT_CDR_RESOLUTION,
 )
 from seaice_ecdr.platforms.config import (
     NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH,
-    NRT_F17_PLATFORM_START_DATES_CONFIG_FILEPATH,
 )
 
 
@@ -24,19 +22,20 @@ def make_monthly_25km_ecdr(
     end_month: int | None,
     hemisphere: Hemisphere,
     base_output_dir: Path,
-    nrt_platform_id: Literal["F17", "am2"],
+    # TODO: only am2 is currently supported, but in the future we may want to
+    # support am3 as a prototype platform.
+    nrt_platform_id: Literal["am2"] = "am2",
 ):
     if end_year is None:
         end_year = year
     if end_month is None:
         end_month = month
 
-    if nrt_platform_id == "F17":
-        nrt_platform_start_dates_filepath = NRT_F17_PLATFORM_START_DATES_CONFIG_FILEPATH
-    elif nrt_platform_id == "am2":
+    if nrt_platform_id == "am2":
         nrt_platform_start_dates_filepath = NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH
     else:
-        raise RuntimeError(f"NRT processing is not defined for {nrt_platform_id}")
+        raise NotImplementedError(f"{nrt_platform_id=} is not supported.")
+
     run_cmd(
         f"export PLATFORM_START_DATES_CONFIG_FILEPATH={nrt_platform_start_dates_filepath} &&"
         f" {CLI_EXE_PATH} intermediate-monthly"
@@ -45,7 +44,6 @@ def make_monthly_25km_ecdr(
         f" --hemisphere {hemisphere}"
         f" --base-output-dir {base_output_dir}"
         f" --resolution {DEFAULT_CDR_RESOLUTION}"
-        f" --ancillary-source {DEFAULT_ANCILLARY_SOURCE}"
         " --is-nrt"
     )
 
@@ -119,12 +117,12 @@ def make_monthly_25km_ecdr(
 )
 @click.option(
     "--nrt-platform-id",
-    # TODO: eventually we want to support AM2 as a separate monthly file. This
-    # does not currently work: the code instead places the AMSR2 monthly data
-    # into a `am2_prototype` group like the non-nrt files, and that's not what
-    # we want because the lag on data for F17 is different from AM2.
-    type=click.Choice(["F17"]),
-    default="F17",
+    # TODO: eventually we want to support a prototype platform as a separate
+    # monthly file. This does not currently work: the code instead places the
+    # prototype monthly data into a `{prototype_platform_id}_prototype` group
+    # like the non-nrt files, and that's not what we want.
+    type=click.Choice(["am2"]),
+    default="am2",
 )
 def cli(
     *,
@@ -134,7 +132,7 @@ def cli(
     end_month: int | None,
     hemisphere: Hemisphere | Literal["both"],
     base_output_dir: Path,
-    nrt_platform_id: Literal["F17"],
+    nrt_platform_id: Literal["am2"],
 ) -> None:
     base_output_dir = base_output_dir / "CDR"
     base_output_dir.mkdir(exist_ok=True)

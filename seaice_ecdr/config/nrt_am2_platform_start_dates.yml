@@ -1,3 +1,4 @@
 cdr_platform_start_dates:
   - platform_id: "am2"
-    start_date: "2012-07-02"
+    # NSIDC-0802 has data from 2024-01-01 to the present.
+    start_date: "2024-01-01"

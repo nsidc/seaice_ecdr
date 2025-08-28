@@ -1,5 +1,3 @@
-from typing import Final
-
 import pytest
 import xarray as xr
 from pm_tb_data._types import NORTH
@@ -7,8 +5,6 @@ from pm_tb_data._types import NORTH
 from seaice_ecdr import intermediate_monthly
 from seaice_ecdr.tests.integration import base_output_dir_test_path  # noqa
 from seaice_ecdr.util import get_intermediate_output_dir
-
-ancillary_source: Final = "CDRv5"
 
 
 @pytest.mark.order(after="test_intermediate_daily.py::test_make_cdecdr_netcdf")
@@ -33,7 +29,6 @@ def test_make_intermediate_monthly_nc(base_output_dir_test_path, monkeypatch):  
         hemisphere=NORTH,
         resolution="25",
         intermediate_output_dir=intermediate_output_dir,
-        ancillary_source=ancillary_source,
         is_nrt=False,
     )
 

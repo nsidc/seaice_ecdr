@@ -3,7 +3,7 @@
 import datetime as dt
 from collections import OrderedDict
 from pathlib import Path
-from typing import get_args
+from typing import cast, get_args
 
 import pytest
 import yaml
@@ -13,7 +13,11 @@ from seaice_ecdr.platforms import (
     PLATFORM_CONFIG,
     SUPPORTED_PLATFORM_ID,
 )
-from seaice_ecdr.platforms.config import SUPPORTED_PLATFORMS, _get_platform_config
+from seaice_ecdr.platforms.config import (
+    SUPPORTED_PLATFORMS,
+    _get_platform_config,
+    is_dmsp_platform,
+)
 from seaice_ecdr.platforms.models import (
     DateRange,
     Platform,
@@ -230,3 +234,12 @@ def test_platform_available_for_date():
     assert not config.platform_available_for_date(
         platform_id="ame", date=dt.date(2013, 6, 30)
     )
+
+
+def test_is_dmsp_platform():
+    for platform_id in ("F18", "F17", "F13", "F11", "F08", "n07"):
+        platform_id = cast(SUPPORTED_PLATFORM_ID, platform_id)
+        assert is_dmsp_platform(platform_id)
+
+    assert not is_dmsp_platform("am2")
+    assert not is_dmsp_platform("ame")

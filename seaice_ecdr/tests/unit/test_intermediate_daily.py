@@ -24,7 +24,6 @@ def test_no_melt_onset_for_southern_hemisphere(tmpdir):
                 date=date,
                 hemisphere=SOUTH,
                 resolution="12.5",
-                ancillary_source="CDRv5",
                 intermediate_output_dir=intermediate_output_dir,
                 is_nrt=False,
             )
@@ -43,7 +42,6 @@ def test_melt_onset_field_outside_melt_season(tmpdir):
             date=date,
             hemisphere=hemisphere,
             resolution="12.5",
-            ancillary_source="CDRv5",
             intermediate_output_dir=intermediate_output_dir,
             is_nrt=False,
         )
