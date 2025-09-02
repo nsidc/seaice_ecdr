@@ -66,22 +66,30 @@ def add_threshold_variable(ds: xr.Dataset, hemisphere: Hemisphere) -> xr.Dataset
     """
     leap_thresholds_df = _read_thresholds_csv(hemisphere)
 
-    ds["dmsp_cdr_seaice_conc_threshold"] = xr.DataArray(
+    try:
+        # Originally, we planned to apply the seki thresholding to DMSP
+        # data. This variable may be an artifact of that. Drop if it exists.
+        ds = ds.drop_vars(["dmsp_cdr_seaice_conc_threshold"])
+        print("Dropped dmsp_cdr_seaice_conc_threshold")
+    except Exception:
+        pass
+
+    ds["am2_cdr_seaice_conc_threshold"] = xr.DataArray(
         leap_thresholds_df.threshold.values / 100.0,
         dims=("doy"),
         attrs=dict(
             comment=(
-                "Sea ice concentration threshold values applied to CDR for DMSP source data. "
+                "Sea ice concentration threshold values applied to CDR for AMSR2 source data. "
                 "Thresholds are derived from methods adapted from Seki et. al. 2024."
             ),
             units="1",
-            long_name="CDR sea ice concentration threshold for DMSP data",
+            long_name="CDR sea ice concentration threshold for AMSR2 data",
             valid_range=(np.uint8(0), np.uint8(100)),
         ),
     )
 
     # Set encoding for netcdf
-    ds["dmsp_cdr_seaice_conc_threshold"].encoding = dict(
+    ds["am2_cdr_seaice_conc_threshold"].encoding = dict(
         zlib=True,
         dtype=np.uint8,
         scale_factor=0.01,
@@ -127,5 +135,5 @@ if __name__ == "__main__":
 
         assert (
             csv_df.threshold.values
-            == ancillary_data.dmsp_cdr_seaice_conc_threshold.values
+            == ancillary_data.am2_cdr_seaice_conc_threshold.values
         ).all()
