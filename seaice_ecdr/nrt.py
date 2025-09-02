@@ -100,6 +100,11 @@ def compute_nrt_initial_daily_ecdr_dataset(
             f"Daily NRT processing is not defined for {platform_id}"
         )
 
+    tb_data = get_25km_am2_tbs_from_nsidc_0802(
+        date=date,
+        hemisphere=hemisphere,
+    )
+
     nrt_initial_ecdr_ds = compute_initial_daily_ecdr_dataset(
         date=date,
         hemisphere=hemisphere,
@@ -120,7 +125,7 @@ def read_or_create_and_read_nrt_idecdr_ds(
     idecdr_filepath = get_idecdr_filepath(
         hemisphere=hemisphere,
         date=date,
-        platform_id=_get_nrt_platform_id(),
+        platform_id="am2",
         intermediate_output_dir=intermediate_output_dir,
         resolution=NRT_RESOLUTION,
     )
@@ -235,7 +240,7 @@ def get_nrt_complete_daily_filepath(
         hemisphere=hemisphere,
         resolution=NRT_RESOLUTION,
         complete_output_dir=complete_output_dir,
-        platform_id=_get_nrt_platform_id(),
+        platform_id="am2",
         is_nrt=True,
     )
 
@@ -358,7 +363,7 @@ def nrt_ecdr_for_day(
                 hemisphere=hemisphere,
                 resolution=NRT_RESOLUTION,
                 intermediate_output_dir=intermediate_output_dir,
-                platform_id=_get_nrt_platform_id(),
+                platform_id="am2",
                 is_nrt=True,
             )
             cde_ds.to_netcdf(

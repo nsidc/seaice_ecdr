@@ -50,7 +50,7 @@ def get_ancillary_filepath(
 def get_ancillary_ds(
     *,
     hemisphere: Hemisphere,
-    resolution: ECDR_SUPPORTED_RESOLUTIONS,
+    resolution: ECDR_SUPPORTED_RESOLUTIONS = "25",
 ) -> xr.Dataset:
     """Return xr Dataset of ancillary data for this hemisphere/resolution."""
     # TODO: This list could be determined from an examination of
@@ -638,42 +638,36 @@ def get_cdr_conc_threshold(
 ) -> float:
     """For the given date and hemisphere, return the concentration threshold as a percentage.
 
-    For pre-AMSR2 DMSP data, reads threshold from csv file with the following
-    naming structure, which is expected to live in the CDR_ANCILLARY_DIR:
-
-    - nh_final_thresholds.csv
-    - nh_final_thresholds-leap-year.csv
-    - sh_final_thresholds.csv
-    - sh_final_thresholds-leap-year.csv
-
-    # TODO: consider storing the data for the conc thresholds in the ancillary
-    # nc file instead of csvs.
+    DMSP platforms have a static 10% threshold. AMSR2 data has a threshold based
+    on day-of-year (DOY).
     """
 
-    if not is_dmsp_platform(platform.id):
-        # Non-DMSP (AMSR2) data will utilize a static 10% threshold.
+    if is_dmsp_platform(platform.id):
+        # DMSP data will utilize a static 10% threshold.
         return DEFAULT_CONC_THRESHOLD_PERCENT
 
-    # DMSP data have a concentration threshold based on the day of year
-    leap_year_fn_str = ""
-    if calendar.isleap(date.year):
-        leap_year_fn_str = "-leap-year"
+    ancillary_ds = get_ancillary_ds(hemisphere=hemisphere)
 
-    filename = f"{hemisphere[0].lower()}h_final_thresholds{leap_year_fn_str}.csv"
-    filepath = CDR_ANCILLARY_DIR / filename
-    if not filepath.is_file():
-        raise FileNotFoundError(
-            f"Expected concentration threshold file {filename} does not exist."
-        )
-
-    # Read the data
-    thresholds_df = pd.read_csv(filepath)
+    # AMSR2 data have a concentration threshold based on the day of year, and the
+    # ancillary `am2_cdr_seaice_conc_threshold` variable has 366 values to
+    # account for leap years (DOY 60 == Feb 29)
+    if not calendar.isleap(date.year):
+        # Drop DOY 60 which is Feb. 29 in leap years.
+        thresholds_array = ancillary_ds.am2_cdr_seaice_conc_threshold.drop_sel(
+            doy=60
+        ).values
+    else:
+        thresholds_array = ancillary_ds.am2_cdr_seaice_conc_threshold.values
 
     # Get the Day of Year for this date
     doy = date.timetuple().tm_yday
 
-    # Extract the threshold for the day of year
-    threshold = float(thresholds_df.loc[thresholds_df.DOY == doy].threshold)
+    # Extract the threshold for the day of year (the array is 0-indexed, so DOY
+    # 1 is index 0)
+    threshold_frac = thresholds_array[doy - 1]
+
+    # The data are returned as fractions, convert to percent:
+    threshold = threshold_frac * 100
 
     return threshold
 
@@ -683,8 +677,8 @@ def get_monthly_cdr_conc_threshold() -> float:
 
     Note: we may want a variable threshold for monthly data in the future, like
     we do for `get_cdr_conc_threshold`. For now, we use the default threshold,
-    as we think the Seki method applied to dailies so that DMSP data align with
-    AMSR2 will come through in the monthly data while just using a constant
+    as we think the Seki method applied to dailies so that AMSR2 data align with
+    DMSP will come through in the monthly data while just using a constant
     value.
     """
     return DEFAULT_CONC_THRESHOLD_PERCENT
