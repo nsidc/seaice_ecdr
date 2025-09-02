@@ -8,9 +8,9 @@
   although we anticipate possibly wanting to designate AMSR3 data as "prototype"
   once it is available.
 * Update CDR concentration calculation code to use a variable minimum threshold
-  for sea ice concentration based on day of year for data from DMSP
-  platforms. This implements the "Seki" method approach to aligning DMSP-derived
-  concentrations with AMSR2.
+  for sea ice concentration based on day of year for data from the AMSR2
+  platform (NSIDC-0802). This implements the "Seki" method approach to aligning
+  AMSR2-derived concentrations with DMSP.
 * Remove concept of "ancillary sources", which was set with `--ancillary-source`
   from CLI. This feature was not working as intended, and with the move to
   v2.0.0 (which includes updates to ancillary data), it does not make sense to
