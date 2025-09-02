@@ -648,16 +648,16 @@ def get_cdr_conc_threshold(
 
     ancillary_ds = get_ancillary_ds(hemisphere=hemisphere)
 
-    # DMSP data have a concentration threshold based on the day of year, and the
-    # ancillary `dmsp_cdr_seaice_conc_threshold` variable has 366 values to
+    # AMSR2 data have a concentration threshold based on the day of year, and the
+    # ancillary `am2_cdr_seaice_conc_threshold` variable has 366 values to
     # account for leap years (DOY 60 == Feb 29)
     if not calendar.isleap(date.year):
         # Drop DOY 60 which is Feb. 29 in leap years.
-        thresholds_array = ancillary_ds.dmsp_cdr_seaice_conc_threshold.drop_sel(
+        thresholds_array = ancillary_ds.am2_cdr_seaice_conc_threshold.drop_sel(
             doy=60
         ).values
     else:
-        thresholds_array = ancillary_ds.dmsp_cdr_seaice_conc_threshold.values
+        thresholds_array = ancillary_ds.am2_cdr_seaice_conc_threshold.values
 
     # Get the Day of Year for this date
     doy = date.timetuple().tm_yday
@@ -677,8 +677,8 @@ def get_monthly_cdr_conc_threshold() -> float:
 
     Note: we may want a variable threshold for monthly data in the future, like
     we do for `get_cdr_conc_threshold`. For now, we use the default threshold,
-    as we think the Seki method applied to dailies so that DMSP data align with
-    AMSR2 will come through in the monthly data while just using a constant
+    as we think the Seki method applied to dailies so that AMSR2 data align with
+    DMSP will come through in the monthly data while just using a constant
     value.
     """
     return DEFAULT_CONC_THRESHOLD_PERCENT
