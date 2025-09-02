@@ -148,7 +148,7 @@ def test_get_cdr_conc_threshold_dmsp():
         platform=F11_PLATFORM,
     )
 
-    # Non-DMSP has a static threshold of 10%
+    # DMSP has a static threshold of 10%
     assert threshold == 10.0
 
 
