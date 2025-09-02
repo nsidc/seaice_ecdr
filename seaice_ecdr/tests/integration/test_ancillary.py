@@ -126,6 +126,7 @@ def test_get_cdr_conc_threshold_am2_non_leapyear():
 
     assert threshold is not None
     assert isinstance(threshold, float)
+    assert threshold != 10.0
 
 
 def test_get_cdr_conc_threshold_am2_leapyear():
@@ -137,6 +138,7 @@ def test_get_cdr_conc_threshold_am2_leapyear():
 
     assert threshold is not None
     assert isinstance(threshold, float)
+    assert threshold != 10.0
 
 
 def test_get_cdr_conc_threshold_dmsp():
