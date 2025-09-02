@@ -22,7 +22,7 @@ from seaice_ecdr.nc_util import (
     add_coordinates_attr,
     fix_monthly_ncattrs,
 )
-from seaice_ecdr.nrt import override_attrs_for_nrt
+from seaice_ecdr.nrt import NRT_SUPPORTED_PLATFORM_ID, override_attrs_for_nrt
 from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import (
     find_standard_monthly_netcdf_files,

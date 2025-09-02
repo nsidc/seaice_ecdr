@@ -10,8 +10,9 @@ at any point rather than needing an at-import-time setup as we currently do.
 
 import copy
 import datetime as dt
+from functools import cache
 from pathlib import Path
-from typing import Final, get_args
+from typing import Final, Literal, cast, get_args
 
 import click
 import xarray as xr
@@ -31,6 +32,7 @@ from seaice_ecdr.intermediate_daily import (
     complete_daily_ecdr_ds,
     get_ecdr_filepath,
 )
+from seaice_ecdr.platforms import PLATFORM_CONFIG
 from seaice_ecdr.publish_daily import (
     get_complete_daily_filepath,
     make_publication_ready_ds,
