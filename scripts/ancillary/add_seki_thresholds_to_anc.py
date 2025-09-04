@@ -7,10 +7,8 @@ This script updates these files:
 
 To include the data from the following CSV files:
 
-/share/apps/G02202_V6/v06r00_ancillary/nh_final_thresholds.csv
-/share/apps/G02202_V6/v06r00_ancillary/nh_final_thresholds-leap-year.csv
-/share/apps/G02202_V6/v06r00_ancillary/sh_final_thresholds.csv
-/share/apps/G02202_V6/v06r00_ancillary/sh_final_thresholds-leap-year.csv
+/share/apps/G02202_V6/v06r00_ancillary/nh_am2_final_thresholds-leap-year-running-lbp.csv
+/share/apps/G02202_V6/v06r00_ancillary/sh_am2_final_thresholds-leap-year-running.csv
 
 As new variables:
 
@@ -48,9 +46,15 @@ def add_doy_variable(ds: xr.Dataset) -> xr.Dataset:
 
 
 def _read_thresholds_csv(hemisphere: Hemisphere):
-    leap_threshold_csv_fp = (
-        V6_ANC_DIR / f"{hemisphere[0].lower()}h_final_thresholds-leap-year.csv"
-    )
+    hemi_short = hemisphere[0].lower()
+    if hemi_short == "n":
+        leap_threshold_csv_fp = (
+            V6_ANC_DIR / "nh_am2_final_thresholds-leap-year-running-lbp.csv"
+        )
+    else:
+        leap_threshold_csv_fp = (
+            V6_ANC_DIR / "sh_am2_final_thresholds-leap-year-running.csv"
+        )
     leap_thresholds_df = pd.read_csv(leap_threshold_csv_fp)
 
     return leap_thresholds_df
