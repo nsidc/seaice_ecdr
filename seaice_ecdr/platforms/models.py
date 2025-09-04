@@ -138,11 +138,7 @@ class PlatformConfig(BaseModel):
                 last_start_date = cast(PlatformStartDate, last_start_date)
                 continue
 
-            # NOTE: the `type: ignore` on the next line is because mypy thinks
-            # this line is unreachable, but it is reachable. In fact, there is a
-            # unit test (`test_platform_config_validation_error`) that ensures
-            # this is true.
-            if last_start_date.start_date >= platform_start_date.start_date:  # type: ignore[unreachable]
+            if last_start_date.start_date >= platform_start_date.start_date:
                 raise ValueError(
                     f"Platform start dates are not sequentially increasing:"
                     f" {platform_start_date.platform_id} with start date {platform_start_date.start_date}"

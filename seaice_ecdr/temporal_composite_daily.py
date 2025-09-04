@@ -18,7 +18,6 @@ from scipy.ndimage import shift
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
-    ANCILLARY_SOURCES,
     get_daily_climatology_mask,
     get_non_ocean_mask,
     nh_polehole_mask,
@@ -561,7 +560,6 @@ def temporal_interpolation(
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     data_stack: xr.Dataset,
-    ancillary_source: ANCILLARY_SOURCES,
     fill_the_pole_hole: bool = True,
     interp_range: int = 5,
     one_sided_limit: int = 3,
@@ -581,7 +579,6 @@ def temporal_interpolation(
     non_ocean_mask = get_non_ocean_mask(
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
     # daily_climatology_mask is True where historically no sea ice.
     #   It can be None if no daily_climatology mask is to be used
@@ -589,7 +586,6 @@ def temporal_interpolation(
         date=date,
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
 
     # Actually compute the cdr_conc temporal composite
@@ -655,7 +651,6 @@ def temporal_interpolation(
         near_pole_hole_mask = nh_polehole_mask(
             date=date,
             resolution=resolution,
-            ancillary_source=ancillary_source,
         )
         cdr_conc_pole_filled = fill_pole_hole(
             conc=cdr_conc,
@@ -728,7 +723,6 @@ def temporal_interpolation(
         near_pole_hole_mask = nh_polehole_mask(
             date=date,
             resolution=resolution,
-            ancillary_source=ancillary_source,
         )
         bt_conc_pole_filled = fill_pole_hole(
             conc=bt_conc_2d,
@@ -851,7 +845,6 @@ def temporally_interpolated_ecdr_dataset(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
     land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
 ) -> xr.Dataset:
@@ -871,7 +864,6 @@ def temporally_interpolated_ecdr_dataset(
             resolution=resolution,
             intermediate_output_dir=intermediate_output_dir,
             land_spillover_alg=land_spillover_alg,
-            ancillary_source=ancillary_source,
         )
         init_datasets.append(init_dataset)
 
@@ -883,7 +875,6 @@ def temporally_interpolated_ecdr_dataset(
         date=date,
         data_stack=data_stack,
         fill_the_pole_hole=fill_the_pole_hole,
-        ancillary_source=ancillary_source,
     )
 
     return tie_ds
@@ -953,7 +944,6 @@ def make_tiecdr_netcdf(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
     land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
     interp_range: int = 5,
     fill_the_pole_hole: bool = True,
     overwrite_tie: bool = False,
@@ -976,7 +966,6 @@ def make_tiecdr_netcdf(
                 intermediate_output_dir=intermediate_output_dir,
                 fill_the_pole_hole=fill_the_pole_hole,
                 land_spillover_alg=land_spillover_alg,
-                ancillary_source=ancillary_source,
             )
 
             written_tie_ncfile = write_tie_netcdf(
@@ -1020,7 +1009,6 @@ def read_or_create_and_read_standard_tiecdr_ds(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
     land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
     overwrite_tie: bool = False,
 ) -> xr.Dataset:
     """Read an tiecdr netCDF file, creating it if it doesn't exist.
@@ -1034,7 +1022,6 @@ def read_or_create_and_read_standard_tiecdr_ds(
         intermediate_output_dir=intermediate_output_dir,
         overwrite_tie=overwrite_tie,
         land_spillover_alg=land_spillover_alg,
-        ancillary_source=ancillary_source,
     )
 
     tie_ds = read_tiecdr_ds(
@@ -1055,7 +1042,6 @@ def create_tiecdr_for_date_range(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     intermediate_output_dir: Path,
     land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
     overwrite_tie: bool,
 ) -> None:
     """Generate the temporally composited daily ecdr files for a range of dates."""
@@ -1067,7 +1053,6 @@ def create_tiecdr_for_date_range(
             intermediate_output_dir=intermediate_output_dir,
             overwrite_tie=overwrite_tie,
             land_spillover_alg=land_spillover_alg,
-            ancillary_source=ancillary_source,
         )
 
 
@@ -1144,7 +1129,6 @@ def cli(
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     overwrite: bool,
     land_spillover_alg: LAND_SPILL_ALGS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
     """Run the temporal composite daily ECDR algorithm with AMSR2 data.
 
@@ -1171,5 +1155,4 @@ def cli(
         intermediate_output_dir=intermediate_output_dir,
         overwrite_tie=overwrite,
         land_spillover_alg=land_spillover_alg,
-        ancillary_source=ancillary_source,
     )

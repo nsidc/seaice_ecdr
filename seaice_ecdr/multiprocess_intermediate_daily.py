@@ -10,7 +10,6 @@ import click
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
-from seaice_ecdr.ancillary import ANCILLARY_SOURCES
 from seaice_ecdr.cli.util import datetime_to_date
 from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.initial_daily_ecdr import create_idecdr_for_date
@@ -25,10 +24,6 @@ from seaice_ecdr.util import (
     raise_error_for_dates,
 )
 
-# TODO:
-#  ancillary sources are given in seaice_ecdr.ancillary.ANCILLARY_SOURCES
-#    but are manually spelled out in the click options here
-
 
 def multiprocess_intermediate_daily(
     start_date: dt.date,
@@ -38,7 +33,6 @@ def multiprocess_intermediate_daily(
     overwrite: bool,
     land_spillover_alg: LAND_SPILL_ALGS,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
 ):
     dates = list(date_range(start_date=start_date, end_date=end_date))
     dates_by_year = get_dates_by_year(dates)
@@ -72,7 +66,6 @@ def multiprocess_intermediate_daily(
         intermediate_output_dir=intermediate_output_dir,
         overwrite_ide=overwrite,
         land_spillover_alg=land_spillover_alg,
-        ancillary_source=ancillary_source,
     )
 
     _create_tiecdr_wrapper = partial(
@@ -82,7 +75,6 @@ def multiprocess_intermediate_daily(
         intermediate_output_dir=intermediate_output_dir,
         overwrite_tie=overwrite,
         land_spillover_alg=land_spillover_alg,
-        ancillary_source=ancillary_source,
     )
 
     _complete_daily_wrapper = partial(
@@ -92,7 +84,6 @@ def multiprocess_intermediate_daily(
         base_output_dir=base_output_dir,
         overwrite_cde=overwrite,
         land_spillover_alg=land_spillover_alg,
-        ancillary_source=ancillary_source,
     )
 
     # Use two less than the available number of cores by default. E.g., on an
@@ -182,13 +173,6 @@ def multiprocess_intermediate_daily(
     default="NT2_BT",
 )
 @click.option(
-    "--ancillary-source",
-    required=True,
-    # type=click.Choice(["CDRv4", "CDRv5"]),
-    type=click.Choice(get_args(ANCILLARY_SOURCES)),
-    default="CDRv5",
-)
-@click.option(
     "--resolution",
     required=True,
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
@@ -201,7 +185,6 @@ def cli(
     overwrite: bool,
     land_spillover_alg: LAND_SPILL_ALGS,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
 ):
     multiprocess_intermediate_daily(
         start_date=start_date,
@@ -211,5 +194,4 @@ def cli(
         overwrite=overwrite,
         land_spillover_alg=land_spillover_alg,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )

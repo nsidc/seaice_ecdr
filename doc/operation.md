@@ -21,46 +21,21 @@ $ ecdr --help
 
 ###  Daily processing
 
-There are two daily NRT processing streams: one for F17 data and the other for
-AMSR2.
-
-Note that the data produced for these processing steams will be output to
-different locations and should be rsynced to separate locations on
-`/disks/sidads_ftp/pub/DATASETS/NOAA/G10016_V3/`, which are noted below.
-
-#### F17 processing
-
-Daily NRT processing for F17 should occur by running this command:
-
-```
-daily-nrt --last-n-days 5 --hemisphere both --nrt-platform-id F17
-```
-
-Note that the `--overwrite` flag can be used to re-create NRT data if e.g., a
-data gap is filled a few days late.
-
-Once processing is complete, rsync the contents of
-`/share/apps/G10016_V3/v03r00/production/CDR/complete/` to
-`/disks/sidads_ftp/pub/DATASETS/NOAA/G10016_V3/CDR/`
-
-
-#### am2 processing
-
-Daily NRT processing for AMSR2 should be run at a 1-week lag. E.g, if today is
-Nov. 5, 2024, we should create a data file for one week ago: Oct. 30th, 2024:
+Daily NRT processing for AMSR2 should be run at a 3-day lag. E.g, if today is
+Nov. 5, 2024, we should create a data file for three days ago: Nov. 2, 2024:
 
 
 ```
-daily-nrt --date 2024-10-30 --hemisphere both --nrt-platform-id am2
+daily-nrt --date 2024-11-2 --hemisphere both
 ```
 
 Once processing is complete, rsync the contents of
-`/share/apps/G10016_V3/v03r00/production/prototype_amsr2/complete/` to
-`/disks/sidads_ftp/pub/DATASETS/NOAA/G10016_V3/prototype_amsr2/`
+`/share/apps/G10016_V4/v04r00/production/CDR/complete/` to
+`/disks/sidads_ftp/pub/DATASETS/NOAA/G10016_V4/CDR/`
 
 ### Monthly processing
 
-We produce NRT monthly files for F17 (not AM2).
+We produce NRT monthly files for AM2.
 
 To run for a single month:
 ```
@@ -73,12 +48,11 @@ To process multiple years/months:
 monthly-nrt --year YYYY --month MM --end-year YYYY --end-month MM --hemisphere both
 ```
 
-
 ## G02202 "final" Processing
 
 Final data will be written to
-`/share/apps/G02202_V5/v05r00/production/complete/`. The contents of this
-directory should be rsync-ed to `/disks/sidads_ftp/pub/DATASETS/NOAA/G02202_V5`
+`/share/apps/G02202_V6/v06r00/production/complete/`. The contents of this
+directory should be rsync-ed to `/disks/sidads_ftp/pub/DATASETS/NOAA/G02202_V6`
 after successful completion of each G02202 procesing job.
 
 Typically, "final" procesing occurs all at once, as data becomes
@@ -137,5 +111,5 @@ validate-outputs --hemisphere both --start-date YYYY-MM-DD --end-date YYYY-MM-DD
 ```
 
 This produces log files in
-`/share/apps/G02202_V5/v05r00_outputs/production/validation/` that should be
+`/share/apps/G02202_V6/v06r00_outputs/production/validation/` that should be
 reviewed by the NOAA@NSIDC project manager responsible for the sea ice CDR.

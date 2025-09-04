@@ -49,12 +49,12 @@ jobs:
           ref: "main"
           path: "pm_tb_data"
 
-      # Our code expects `/share/apps/G02202_V5` to exist already, and raises an
+      # Our code expects `/share/apps/G02202_V6` to exist already, and raises an
       # error if it does not. This would be a sign, on NSIDC infrastructure,
       # that NFS mounts are not setup correctly. For CI, we can just create
       # those dirs:
       - name: "Make share dir"
-        run: "sudo mkdir -p /share/apps/G02202_V5 && sudo chown -R runner:runner /share/"
+        run: "sudo mkdir -p /share/apps/G02202_V6 && sudo chown -R runner:runner /share/"
 
       # Unit tests
       - name: "Run typecheck and tests"

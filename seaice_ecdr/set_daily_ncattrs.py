@@ -6,7 +6,6 @@ from pm_tb_data._types import NORTH, Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
-    ANCILLARY_SOURCES,
     remove_FillValue_from_coordinate_vars,
 )
 from seaice_ecdr.nc_attrs import get_global_attrs
@@ -34,7 +33,6 @@ def finalize_cdecdr_ds(
     ds_in: xr.Dataset,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
     fields_to_drop: list = CDECDR_FIELDS_TO_DROP,
     fields_to_rename: dict = CDECDR_FIELDS_TO_RENAME,
 ) -> xr.Dataset:
@@ -357,7 +355,6 @@ def finalize_cdecdr_ds(
         platform_ids=[ds_in.platform],
         resolution=resolution,
         hemisphere=hemisphere,
-        ancillary_source=ancillary_source,
     )
     ds.attrs = new_global_attrs
 
