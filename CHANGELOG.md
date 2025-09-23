@@ -19,6 +19,13 @@
 * Update NSIDC infrastructure NFS paths to reflect new product major versions.
 * Update `pm_tb_data` dependency to >=v0.6. This allows utilizing `earthaccess`
   to fetch NSDIC-0001 data.
+* BUGFIX: `time` variable in published G10016 daily files now has `units`
+  attribute of "days since 1970-01-01" and sets the `calendar` attribute to
+  "standard". This resolves an issue where the `units` attr was dependent on the
+  file creation date and the `calendar` attribute showed
+  "proleptic_gregorian". This ensures consistency between G10016 and G02202
+  daily output files.
+
 
 
 # v1.1.0
