@@ -150,6 +150,12 @@ def make_publication_ready_ds(
     add_coordinate_coverage_content_type(complete_daily_ds)
     add_coordinates_attr(complete_daily_ds)
 
+    # Ensure consistency of time units
+    complete_daily_ds.time.encoding["units"] = "days since 1970-01-01"
+    complete_daily_ds.time.encoding["calendar"] = "standard"
+
+    complete_daily_ds = remove_FillValue_from_coordinate_vars(complete_daily_ds)
+
     return complete_daily_ds
 
 
@@ -272,11 +278,6 @@ def publish_daily_nc(
         platform_id=platform.id,
     )
 
-    # Ensure consistency of time units
-    complete_daily_ds.time.encoding["units"] = "days since 1970-01-01"
-    complete_daily_ds.time.encoding["calendar"] = "standard"
-
-    complete_daily_ds = remove_FillValue_from_coordinate_vars(complete_daily_ds)
     complete_daily_ds.to_netcdf(complete_daily_filepath)
     logger.success(f"Staged NC file for publication: {complete_daily_filepath}")
 
