@@ -37,7 +37,9 @@ ECDR_PRODUCT_VERSION = ProductVersion(
 )
 
 # NSIDC infrastructure-specific paths:
-NSIDC_NFS_SHARE_DIR = Path("/share/apps/G02202_V6")
+NSIDC_NFS_SHARE_DIR = Path(
+    f"/share/apps/G02202_V{ECDR_PRODUCT_VERSION.major_version_number}"
+)
 if not NSIDC_NFS_SHARE_DIR.is_dir():
     raise RuntimeError(f"Expected {NSIDC_NFS_SHARE_DIR} to exist, but it does not.")
 
@@ -100,7 +102,9 @@ ECDR_NRT_PRODUCT_VERSION = ProductVersion(
     major_version_number=4,
     revision_number=0,
 )
-NSIDC_NFS_NRT_SHARE_DIR = Path("/share/apps/G10016_V4")
+NSIDC_NFS_NRT_SHARE_DIR = Path(
+    f"/share/apps/G10016_V{ECDR_NRT_PRODUCT_VERSION.major_version_number}"
+)
 if not NSIDC_NFS_SHARE_DIR.is_dir():
     raise RuntimeError(f"Expected {NSIDC_NFS_NRT_SHARE_DIR} to exist, but it does not.")
 DEFAULT_BASE_NRT_OUTPUT_DIR = (
