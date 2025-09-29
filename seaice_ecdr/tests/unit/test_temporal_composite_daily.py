@@ -13,6 +13,7 @@ from pm_tb_data._types import NORTH
 from seaice_ecdr.constants import ECDR_PRODUCT_VERSION
 from seaice_ecdr.initial_daily_ecdr import get_idecdr_dir, get_idecdr_filepath
 from seaice_ecdr.platforms import SUPPORTED_PLATFORM_ID
+from seaice_ecdr.platforms.config import F17_PLATFORM
 from seaice_ecdr.temporal_composite_daily import (
     iter_dates_near_date,
     temporally_composite_dataarray,
@@ -109,6 +110,8 @@ def test_temporal_composite_max_interp_range_9():
     with pytest.raises(RuntimeError, match=r"interp_range"):
         temporally_composite_dataarray(
             target_date=dt.date(2020, 1, 1),
+            hemisphere=NORTH,
+            platform=F17_PLATFORM,
             da=xr.DataArray(coords=(range(2), range(3), range(4))),
             interp_range=10,
             non_ocean_mask=xr.DataArray([False, False, False]),
@@ -150,6 +153,8 @@ def test_temporal_composite_da_oneday():
     #       then the output will equal the input
     temporal_composite, _ = temporally_composite_dataarray(
         target_date=mock_date,
+        hemisphere=NORTH,
+        platform=F17_PLATFORM,
         da=initial_data_array,
         interp_range=0,
         non_ocean_mask=xr.full_like(initial_data_array.isel(time=0), False, dtype=bool),
@@ -266,6 +271,8 @@ def test_temporal_composite_da_multiday():
 
     temporal_composite, temporal_flags = temporally_composite_dataarray(
         target_date=mock_date,
+        hemisphere=NORTH,
+        platform=F17_PLATFORM,
         da=input_data_array,
         interp_range=time_spread,
         non_ocean_mask=xr.full_like(input_data_array.isel(time=0), False, dtype=bool),
@@ -351,6 +358,8 @@ def test_temporal_composite_da_multiday_nrt():
 
     temporal_composite, temporal_flags = temporally_composite_dataarray(
         target_date=mock_date,
+        hemisphere=NORTH,
+        platform=F17_PLATFORM,
         da=input_data_array,
         interp_range=5,
         one_sided_limit=5,

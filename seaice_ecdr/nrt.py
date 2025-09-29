@@ -185,8 +185,10 @@ def temporally_interpolated_nrt_ecdr_dataset(
 
     data_stack = xr.concat(init_datasets, dim="time").sortby("time")
 
+    target_platform = PLATFORM_CONFIG.get_platform_by_date(date)
     temporally_interpolated_ds = temporal_interpolation(
         date=date,
+        platform=target_platform,
         hemisphere=hemisphere,
         resolution=NRT_RESOLUTION,
         data_stack=data_stack,
