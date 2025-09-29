@@ -21,13 +21,14 @@ $ ecdr --help
 
 ###  Daily processing
 
-Daily NRT processing for AMSR2 should be run at a 3-day lag. E.g, if today is
-Nov. 5, 2024, we should create a data file for three days ago: Nov. 2, 2024:
-
+Daily NRT processing for AMSR2 should occur by running this command: 
 
 ```
-daily-nrt --date 2024-11-2 --hemisphere both
+daily-nrt --last-n-days 5  --hemisphere both
 ```
+
+Running the last 5 days ensures that data get produced when data get delayed by
+a few days.
 
 Once processing is complete, rsync the contents of
 `/share/apps/G10016_V4/v04r00/production/CDR/complete/` to
@@ -48,6 +49,12 @@ To process multiple years/months:
 monthly-nrt --year YYYY --month MM --end-year YYYY --end-month MM --hemisphere both
 ```
 
+### Monthly cleanup
+
+G10016 NRT data files that are older than 1 month should be cleaned up from the
+public archive. This is because the fully temporally-interpolated G02202 files
+should replace the NRT ones over time, and become the permanent CDR record.
+
 ## G02202 "final" Processing
 
 Final data will be written to
@@ -55,12 +62,14 @@ Final data will be written to
 directory should be rsync-ed to `/disks/sidads_ftp/pub/DATASETS/NOAA/G02202_V6`
 after successful completion of each G02202 procesing job.
 
-Typically, "final" procesing occurs all at once, as data becomes
-finalized/available for NSIDC-0001. In other words, the following do not need to
-be run on a daily/monthly basis, but instead can be bundled into one job. See
-[the ops job for
-v4](https://ci.jenkins-ops-2022.apps.int.nsidc.org/job/G02202_Generate_Dataset_Production)
-as an example.
+"Final" processing of AMSR2 data for G02202 occurs at a lag of 5 days to allow
+for complete, two-sided temporal interpolation.
+
+**NOTE**: prior to ECDR v2 (for G02202 v5), Final processing occured in chunks
+that happened 1-2 times per year as data becomes finalized/available for
+NSIDC-0001. G02202 v6 uses the same data stream as G10016 (NRT) v4, so we only
+need to delay long enough for data to be available for complete temporal
+interpolation.
 
 ### Daily processing
 
@@ -103,7 +112,8 @@ monthly-aggregate --hemisphere {north | south}
 
 ### Validation
 
-Each time finalized data is produced, the validation CLI should be run:
+After monthly data products have been produced, the validation CLI for that
+month should be run:
 
 
 ```
