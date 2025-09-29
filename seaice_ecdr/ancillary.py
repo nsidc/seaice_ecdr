@@ -26,7 +26,7 @@ from seaice_ecdr.constants import (
 )
 from seaice_ecdr.grid_id import get_grid_id
 from seaice_ecdr.nc_util import remove_FillValue_from_coordinate_vars
-from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform, is_dmsp_platform
+from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform
 from seaice_ecdr.platforms.config import N07_PLATFORM
 
 
@@ -638,12 +638,12 @@ def get_cdr_conc_threshold(
 ) -> float:
     """For the given date and hemisphere, return the concentration threshold as a percentage.
 
-    DMSP platforms have a static 10% threshold. AMSR2 data has a threshold based
-    on day-of-year (DOY).
+    AMSR2 data has a threshold based on day-of-year (DOY). All other platforms
+    use a static threshold of 10%.
     """
 
-    if is_dmsp_platform(platform.id):
-        # DMSP data will utilize a static 10% threshold.
+    # Most platforms (DMSP) utilize a static 10% threshold.
+    if platform.id != "am2":
         return DEFAULT_CONC_THRESHOLD_PERCENT
 
     ancillary_ds = get_ancillary_ds(hemisphere=hemisphere)
