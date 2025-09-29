@@ -21,46 +21,22 @@ $ ecdr --help
 
 ###  Daily processing
 
-There are two daily NRT processing streams: one for F17 data and the other for
-AMSR2.
-
-Note that the data produced for these processing steams will be output to
-different locations and should be rsynced to separate locations on
-`/disks/sidads_ftp/pub/DATASETS/NOAA/G10016_V3/`, which are noted below.
-
-#### F17 processing
-
-Daily NRT processing for F17 should occur by running this command:
+Daily NRT processing for AMSR2 should occur by running this command: 
 
 ```
-daily-nrt --last-n-days 5 --hemisphere both --nrt-platform-id F17
+daily-nrt --last-n-days 5  --hemisphere both
 ```
 
-Note that the `--overwrite` flag can be used to re-create NRT data if e.g., a
-data gap is filled a few days late.
+Running the last 5 days ensures that data get produced when data get delayed by
+a few days.
 
 Once processing is complete, rsync the contents of
-`/share/apps/G10016_V3/v03r00/production/CDR/complete/` to
-`/disks/sidads_ftp/pub/DATASETS/NOAA/G10016_V3/CDR/`
-
-
-#### am2 processing
-
-Daily NRT processing for AMSR2 should be run at a 1-week lag. E.g, if today is
-Nov. 5, 2024, we should create a data file for one week ago: Oct. 30th, 2024:
-
-
-```
-daily-nrt --date 2024-10-30 --hemisphere both --nrt-platform-id am2
-```
-
-Once processing is complete, rsync the contents of
-`/share/apps/G10016_V3/v03r00/production/prototype_amsr2/complete/` to
-`/disks/sidads_ftp/pub/DATASETS/NOAA/G10016_V3/prototype_amsr2/`
+`/share/apps/G10016_V4/v04r00/production/CDR/complete/` to
+`/disks/sidads_ftp/pub/DATASETS/NOAA/G10016_V4/CDR/`
 
 ### Monthly processing
 
-We produce NRT monthly files for F17 (not AM2).
+We produce NRT monthly files for AM2.
 
 To run for a single month:
 ```
@@ -73,20 +49,27 @@ To process multiple years/months:
 monthly-nrt --year YYYY --month MM --end-year YYYY --end-month MM --hemisphere both
 ```
 
+### Monthly cleanup
+
+G10016 NRT data files that are older than 1 month should be cleaned up from the
+public archive. This is because the fully temporally-interpolated G02202 files
+should replace the NRT ones over time, and become the permanent CDR record.
 
 ## G02202 "final" Processing
 
 Final data will be written to
-`/share/apps/G02202_V5/v05r00/production/complete/`. The contents of this
-directory should be rsync-ed to `/disks/sidads_ftp/pub/DATASETS/NOAA/G02202_V5`
+`/share/apps/G02202_V6/v06r00/production/complete/`. The contents of this
+directory should be rsync-ed to `/disks/sidads_ftp/pub/DATASETS/NOAA/G02202_V6`
 after successful completion of each G02202 procesing job.
 
-Typically, "final" procesing occurs all at once, as data becomes
-finalized/available for NSIDC-0001. In other words, the following do not need to
-be run on a daily/monthly basis, but instead can be bundled into one job. See
-[the ops job for
-v4](https://ci.jenkins-ops-2022.apps.int.nsidc.org/job/G02202_Generate_Dataset_Production)
-as an example.
+"Final" processing of AMSR2 data for G02202 occurs at a lag of 5 days to allow
+for complete, two-sided temporal interpolation.
+
+**NOTE**: prior to ECDR v2 (for G02202 v5), Final processing occured in chunks
+that happened 1-2 times per year as data becomes finalized/available for
+NSIDC-0001. G02202 v6 uses the same data stream as G10016 (NRT) v4, so we only
+need to delay long enough for data to be available for complete temporal
+interpolation.
 
 ### Daily processing
 
@@ -129,7 +112,8 @@ monthly-aggregate --hemisphere {north | south}
 
 ### Validation
 
-Each time finalized data is produced, the validation CLI should be run:
+After monthly data products have been produced, the validation CLI for that
+month should be run:
 
 
 ```
@@ -137,5 +121,5 @@ validate-outputs --hemisphere both --start-date YYYY-MM-DD --end-date YYYY-MM-DD
 ```
 
 This produces log files in
-`/share/apps/G02202_V5/v05r00_outputs/production/validation/` that should be
+`/share/apps/G02202_V6/v06r00_outputs/production/validation/` that should be
 reviewed by the NOAA@NSIDC project manager responsible for the sea ice CDR.

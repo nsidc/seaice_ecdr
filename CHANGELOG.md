@@ -1,8 +1,39 @@
+# v2.0.0
+
+* Replace use of `AU_SI25` for AMSR2 brightness temperatures with
+  `NSIDC-0802`. `AU_SI25` is expected to be discontinued in September 2025.
+* Remove support for NRT F17 from `NSIDC-0080`, which was expected to be
+  discontinued at the end of July 2025 (now Sept. 2026). The primary NRT CDR
+  will be produced from `NSIDC-0802`. There will be no prototype CDR for now,
+  although we anticipate possibly wanting to designate AMSR3 data as "prototype"
+  once it is available.
+* Update CDR concentration calculation code to use a variable minimum threshold
+  for sea ice concentration based on day of year for data from the AMSR2
+  platform (NSIDC-0802). This implements the "Seki" method approach to aligning
+  AMSR2-derived concentrations with DMSP.
+* Remove concept of "ancillary sources", which was set with `--ancillary-source`
+  from CLI. This feature was not working as intended, and with the move to
+  v2.0.0 (which includes updates to ancillary data), it does not make sense to
+  backport those updates to ancillary files to previous versions.
+* Update G10016 NRT CDR product version to v4.0.
+* Update NSIDC infrastructure NFS paths to reflect new product major versions.
+* Update `pm_tb_data` dependency to >=v0.6. This allows utilizing `earthaccess`
+  to fetch NSDIC-0001 data.
+* BUGFIX: `time` variable in published G10016 daily files now has `units`
+  attribute of "days since 1970-01-01" and sets the `calendar` attribute to
+  "standard". This resolves an issue where the `units` attr was dependent on the
+  file creation date and the `calendar` attribute showed
+  "proleptic_gregorian". This ensures consistency between G10016 and G02202
+  daily output files.
+
+
+
 # v1.1.0
 
 * Update NRT daily processing code to fetch NSIDC-0080 (F17) via
   `earthaccess`. This will allow G10016 v3 to continue processing F17 data after
   the NSIDC on-prem ECS system is shut down.
+
 
 # v1.0.2
 

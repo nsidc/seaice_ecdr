@@ -6,19 +6,18 @@ from tempfile import TemporaryDirectory
 from typing import get_args
 
 import click
-import datatree
 import pandas as pd
+import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
-    ANCILLARY_SOURCES,
     get_ancillary_ds,
     remove_FillValue_from_coordinate_vars,
 )
 from seaice_ecdr.checksum import write_checksum_file
-from seaice_ecdr.constants import DEFAULT_ANCILLARY_SOURCE, DEFAULT_BASE_OUTPUT_DIR
+from seaice_ecdr.constants import DEFAULT_BASE_OUTPUT_DIR
 from seaice_ecdr.nc_attrs import get_global_attrs
 from seaice_ecdr.nc_util import (
     add_ncgroup,
@@ -87,17 +86,15 @@ def get_monthly_aggregate_filepath(
 # it be de-duplicated?
 def _update_ncrcat_monthly_ds(
     *,
-    agg_ds: datatree.DataTree,
+    agg_ds: xr.DataTree,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     monthly_filepaths: list[Path],
-    ancillary_source: ANCILLARY_SOURCES,
-) -> datatree.DataTree:
+) -> xr.DataTree:
     # Add latitude and longitude fields
     surf_geo_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
 
     # Lat and lon fields are placed under the "cdr_supplementary" group.
@@ -109,7 +106,9 @@ def _update_ncrcat_monthly_ds(
     # lat and lon fields have x and y coordinate variables associated with them
     # and get added automatically when adding those fields above. This drops
     # those unnecessary vars that will be inherited from the root group.
-    agg_ds["cdr_supplementary"] = agg_ds["cdr_supplementary"].drop_vars(["x", "y"])
+    agg_ds["cdr_supplementary"] = (
+        agg_ds["cdr_supplementary"].to_dataset().drop_vars(["x", "y"])
+    )
 
     agg_ds["cdr_seaice_conc_monthly"].attrs = {
         k: v
@@ -127,9 +126,8 @@ def _update_ncrcat_monthly_ds(
         platform_ids=[platform_id_from_filename(fp.name) for fp in monthly_filepaths],
         resolution=resolution,
         hemisphere=hemisphere,
-        ancillary_source=ancillary_source,
     )
-    agg_ds.attrs = monthly_aggregate_ds_global_attrs  # type: ignore[assignment]
+    agg_ds.attrs = monthly_aggregate_ds_global_attrs
 
     return agg_ds
 
@@ -167,18 +165,11 @@ def _update_ncrcat_monthly_ds(
     type=click.Choice(get_args(ECDR_SUPPORTED_RESOLUTIONS)),
     default="25",
 )
-@click.option(
-    "--ancillary-source",
-    required=True,
-    type=click.Choice(get_args(ANCILLARY_SOURCES)),
-    default=DEFAULT_ANCILLARY_SOURCE,
-)
 def cli(
     *,
     hemisphere: Hemisphere,
     base_output_dir: Path,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES,
 ) -> None:
     try:
         complete_output_dir = get_complete_output_dir(
@@ -214,13 +205,12 @@ def cli(
                 input_filepaths=monthly_filepaths,
                 output_filepath=tmp_output_fp,
             )
-            ds = datatree.open_datatree(tmp_output_fp, chunks=dict(time=1))
+            ds = xr.open_datatree(tmp_output_fp, chunks=dict(time=1))
             ds = _update_ncrcat_monthly_ds(
                 agg_ds=ds,
                 hemisphere=hemisphere,
                 resolution=resolution,
                 monthly_filepaths=monthly_filepaths,
-                ancillary_source=ancillary_source,
             )
 
             start_date = pd.Timestamp(ds.time.min().values).date()

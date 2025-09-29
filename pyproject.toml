@@ -1,9 +1,9 @@
 [project]
 name = "seaice_ecdr"
-version = "1.1.0"
+version = "2.0.0"
 
 [tool.bumpversion]
-current_version = "1.1.0"
+current_version = "2.0.0"
 commit = false
 tag = false
 
@@ -88,7 +88,6 @@ module = [
   "yaml.*",
   "cv2.*",
   "ruamel.*",
-  "datatree.*",
   "earthaccess.*",
 ]
 ignore_missing_imports = true

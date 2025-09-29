@@ -1,7 +1,7 @@
 import datetime as dt
 
-import datatree
 import pytest
+import xarray as xr
 from pm_tb_data._types import NORTH
 
 from seaice_ecdr.publish_daily import publish_daily_nc
@@ -20,7 +20,7 @@ def test_publish_daily_nc(base_output_dir_test_path):  # noqa
 
         assert output_path.is_file()
 
-        ds = datatree.open_datatree(output_path)
+        ds = xr.open_datatree(output_path)
 
         # TODO: we would expect this date to contain the amsr2 prototype group,
         # but the integration tests do not currently run with the AMSR2 platform

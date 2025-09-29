@@ -311,7 +311,6 @@ def test_get_num_missing_pixels(monkeypatch):
         seaice_conc_var=_mock_sic,
         hemisphere="north",
         resolution="12.5",
-        ancillary_source="CDRv5",
     )
 
     assert detected_missing == 1

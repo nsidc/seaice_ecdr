@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -9,7 +8,6 @@ from pm_tb_data._types import Hemisphere
 from scipy.ndimage import binary_dilation, generate_binary_structure, shift
 
 from seaice_ecdr.ancillary import (
-    ANCILLARY_SOURCES,
     get_adj123_field,
     get_land90_conc_field,
     get_non_ocean_mask,
@@ -18,9 +16,7 @@ from seaice_ecdr.ancillary import (
 from seaice_ecdr.tb_data import (
     EcdrTbData,
 )
-from seaice_ecdr.util import get_ecdr_grid_shape
 
-NT_MAPS_DIR = Path("/share/apps/G02202_V5/cdr_testdata/nt_datafiles/data36/maps")
 LAND_SPILL_ALGS = Literal["NT2", "ILS", "ILSb", "NT2_BT"]
 
 
@@ -69,32 +65,6 @@ def convert_nonocean_to_shoremap(*, is_nonocean: npt.NDArray):
     is_dilated_nearcoast = binary_dilation(is_nearcoast, structure=conn4)
     is_farcoast = is_dilated_nearcoast & is_ocean & ~is_coast & ~is_nearcoast
     shoremap[is_farcoast] = 5
-
-
-def _get_25km_shoremap(*, hemisphere: Hemisphere):
-    shoremap_fn = NT_MAPS_DIR / f"shoremap_{hemisphere}_25"
-    shoremap = np.fromfile(shoremap_fn, dtype=">i2")[150:].reshape(
-        get_ecdr_grid_shape(hemisphere=hemisphere, resolution="25")
-    )
-
-    return shoremap
-
-
-def _get_25km_minic(*, hemisphere: Hemisphere):
-    if hemisphere == "north":
-        minic_fn = "SSMI8_monavg_min_con"
-    else:
-        minic_fn = "SSMI_monavg_min_con_s"
-
-    minic_path = NT_MAPS_DIR / minic_fn
-    minic = np.fromfile(minic_path, dtype=">i2")[150:].reshape(
-        get_ecdr_grid_shape(hemisphere=hemisphere, resolution="25")
-    )
-
-    # Scale down by 10. The original alg. dealt w/ concentrations scaled by 10.
-    minic = minic / 10
-
-    return minic
 
 
 def improved_land_spillover(
@@ -234,7 +204,6 @@ def land_spillover(
     tb_data: EcdrTbData,
     algorithm: LAND_SPILL_ALGS,
     land_mask: npt.NDArray,
-    ancillary_source: ANCILLARY_SOURCES,
     fix_goddard_bt_error: bool = False,  # By default, don't fix Goddard bug
 ) -> npt.NDArray:
     """Apply the land spillover technique to the CDR concentration field."""
@@ -244,12 +213,10 @@ def land_spillover(
         l90c = get_land90_conc_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
         adj123 = get_adj123_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
         spillover_applied_nt2 = apply_nt2_land_spillover(
             conc=cdr_conc,
@@ -266,12 +233,10 @@ def land_spillover(
         l90c = get_land90_conc_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
         adj123 = get_adj123_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
         spillover_applied_nt2 = apply_nt2_land_spillover(
             conc=cdr_conc,
@@ -285,7 +250,6 @@ def land_spillover(
         non_ocean_mask = get_non_ocean_mask(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
 
         spillover_applied_nt2_bt = coastal_fix(
@@ -307,7 +271,6 @@ def land_spillover(
         adj123 = get_adj123_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
         ils_arr[adj123 == 0] = 1  # land -> land
         ils_arr[adj123 == 1] = 2  # dist1 -> removable
@@ -336,14 +299,12 @@ def land_spillover(
         shoremap = get_nt_shoremap(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
 
         # Need to use adj123 to get rid of shoremap's lakes
         adj123 = get_adj123_field(
             hemisphere=hemisphere,
             resolution=tb_data.resolution,
-            ancillary_source=ancillary_source,
         )
         shoremap[(shoremap == 2) & (adj123 == 0)] = 1  # lakeshore -> land
         shoremap[(shoremap == 3) & (adj123 == 0)] = 1  # lake -> land

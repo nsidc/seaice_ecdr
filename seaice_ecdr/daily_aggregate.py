@@ -14,14 +14,13 @@ from tempfile import TemporaryDirectory
 from typing import get_args
 
 import click
-import datatree
 import pandas as pd
+import xarray as xr
 from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
-    ANCILLARY_SOURCES,
     get_ancillary_ds,
     remove_FillValue_from_coordinate_vars,
 )
@@ -97,11 +96,10 @@ def get_daily_aggregate_filepath(
 
 def _update_ncrcat_daily_ds(
     *,
-    ds: datatree.DataTree,
+    ds: xr.DataTree,
     daily_filepaths: list[Path],
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
-    ancillary_source: ANCILLARY_SOURCES = "CDRv5",
 ):
     """Update the aggregate dataset created by `ncrcat`.
 
@@ -110,7 +108,6 @@ def _update_ncrcat_daily_ds(
     surf_geo_ds = get_ancillary_ds(
         hemisphere=hemisphere,
         resolution=resolution,
-        ancillary_source=ancillary_source,
     )
     # Lat and lon fields are placed under the "cdr_supplementary" group.
     for sup_var in ("latitude", "longitude"):
@@ -123,7 +120,7 @@ def _update_ncrcat_daily_ds(
     # lat and lon fields have x and y coordinate variables associated with them
     # and get added automatically when adding those fields above. This drops
     # those unnecessary vars that will be inherited from the root group.
-    ds["cdr_supplementary"] = ds["cdr_supplementary"].drop_vars(["x", "y"])
+    ds["cdr_supplementary"] = ds["cdr_supplementary"].to_dataset().drop_vars(["x", "y"])
 
     # Remove the "number of missing pixels" attr from the daily aggregate conc
     # variables.
@@ -163,9 +160,8 @@ def _update_ncrcat_daily_ds(
         platform_ids=[platform_id_from_filename(fp.name) for fp in daily_filepaths],
         resolution=resolution,
         hemisphere=hemisphere,
-        ancillary_source=ancillary_source,
     )
-    ds.attrs = daily_aggregate_ds_global_attrs  # type: ignore[assignment]
+    ds.attrs = daily_aggregate_ds_global_attrs
 
     return ds
 
@@ -196,7 +192,7 @@ def make_daily_aggregate_netcdf_for_year(
                 input_filepaths=daily_filepaths,
                 output_filepath=tmp_output_fp,
             )
-            daily_ds = datatree.open_datatree(tmp_output_fp, chunks=dict(time=1))
+            daily_ds = xr.open_datatree(tmp_output_fp, chunks=dict(time=1))
             daily_ds = _update_ncrcat_daily_ds(
                 ds=daily_ds,
                 daily_filepaths=daily_filepaths,

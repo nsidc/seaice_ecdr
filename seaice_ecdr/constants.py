@@ -30,14 +30,16 @@ class ProductVersion(BaseModel):
         return self.version_str
 
 
-# This is the version string for the ECDR product.
+# This is the version string for the ECDR product (G02202).
 ECDR_PRODUCT_VERSION = ProductVersion(
-    major_version_number=5,
+    major_version_number=6,
     revision_number=0,
 )
 
 # NSIDC infrastructure-specific paths:
-NSIDC_NFS_SHARE_DIR = Path("/share/apps/G02202_V5")
+NSIDC_NFS_SHARE_DIR = Path(
+    f"/share/apps/G02202_V{ECDR_PRODUCT_VERSION.major_version_number}"
+)
 if not NSIDC_NFS_SHARE_DIR.is_dir():
     raise RuntimeError(f"Expected {NSIDC_NFS_SHARE_DIR} to exist, but it does not.")
 
@@ -93,15 +95,16 @@ CDRv4_ANCILLARY_DIR = NSIDC_NFS_SHARE_DIR / "cdrv4_equiv_ancillary"
 
 # Defaults for CDR runs
 DEFAULT_CDR_RESOLUTION: Final = "25"
-DEFAULT_ANCILLARY_SOURCE: Final = "CDRv5"
 DEFAULT_SPILLOVER_ALG: Final = "NT2_BT"
 
-# NRT outputs
+# NRT (G10016) outputs
 ECDR_NRT_PRODUCT_VERSION = ProductVersion(
-    major_version_number=3,
+    major_version_number=4,
     revision_number=0,
 )
-NSIDC_NFS_NRT_SHARE_DIR = Path("/share/apps/G10016_V3")
+NSIDC_NFS_NRT_SHARE_DIR = Path(
+    f"/share/apps/G10016_V{ECDR_NRT_PRODUCT_VERSION.major_version_number}"
+)
 if not NSIDC_NFS_SHARE_DIR.is_dir():
     raise RuntimeError(f"Expected {NSIDC_NFS_NRT_SHARE_DIR} to exist, but it does not.")
 DEFAULT_BASE_NRT_OUTPUT_DIR = (

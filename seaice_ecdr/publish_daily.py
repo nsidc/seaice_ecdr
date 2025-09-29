@@ -7,7 +7,6 @@ import click
 import dateutil
 import numpy as np
 import xarray as xr
-from datatree import DataTree
 from loguru import logger
 from pm_tb_data._types import NORTH, Hemisphere
 
@@ -34,8 +33,12 @@ from seaice_ecdr.util import (
 
 # TODO: consider extracting to config or a kwarg of this function for more
 # flexible use with other platforms in the future.
-PROTOTYPE_PLATFORM_ID: SUPPORTED_PLATFORM_ID = "am2"
-PROTOTYPE_PLATFORM_DATA_GROUP_NAME = f"prototype_{PROTOTYPE_PLATFORM_ID}"
+# TODO: this is duplicated in `publish_monthly` and other locations. If this
+# gets updated, update them all!
+PROTOTYPE_PLATFORM_ID: SUPPORTED_PLATFORM_ID | None = None
+PROTOTYPE_PLATFORM_DATA_GROUP_NAME: str | None = None
+if PROTOTYPE_PLATFORM_ID:
+    PROTOTYPE_PLATFORM_DATA_GROUP_NAME = "prototype_{PROTOTYPE_PLATFORM_ID}"
 
 
 # TODO: this and `get_complete_daily_filepath` are identical (aside from var
@@ -87,7 +90,7 @@ def get_complete_daily_filepath(
 def make_publication_ready_ds(
     intermediate_daily_ds: xr.Dataset,
     hemisphere: Hemisphere,
-) -> DataTree:
+) -> xr.DataTree:
     """Take an intermediate daily dataset and prepare for publication.
 
     * Moves supplementary fields into "cdr_supplementary" group
@@ -132,7 +135,7 @@ def make_publication_ready_ds(
     # root group.
     cdr_supplementary_group.attrs = {}
 
-    complete_daily_ds: DataTree = DataTree.from_dict(
+    complete_daily_ds: xr.DataTree = xr.DataTree.from_dict(
         {
             "/": intermediate_daily_ds[
                 [k for k in intermediate_daily_ds if k not in cdr_supplementary_fields]
@@ -146,6 +149,12 @@ def make_publication_ready_ds(
     remove_FillValue_from_coordinate_vars(complete_daily_ds)
     add_coordinate_coverage_content_type(complete_daily_ds)
     add_coordinates_attr(complete_daily_ds)
+
+    # Ensure consistency of time units
+    complete_daily_ds.time.encoding["units"] = "days since 1970-01-01"
+    complete_daily_ds.time.encoding["calendar"] = "standard"
+
+    complete_daily_ds = remove_FillValue_from_coordinate_vars(complete_daily_ds)
 
     return complete_daily_ds
 
@@ -190,7 +199,7 @@ def publish_daily_nc(
     )
 
     # Add the prototype group if there's data.
-    if PLATFORM_CONFIG.platform_available_for_date(
+    if PROTOTYPE_PLATFORM_ID and PLATFORM_CONFIG.platform_available_for_date(
         platform_id=PROTOTYPE_PLATFORM_ID,
         date=date,
     ):
@@ -245,8 +254,9 @@ def publish_daily_nc(
                 for k, v in prototype_subgroup.attrs.items()
                 if k in ["source", "sensor", "platform"]
             }
-            complete_daily_ds[PROTOTYPE_PLATFORM_DATA_GROUP_NAME] = DataTree(
-                data=prototype_subgroup,
+            assert PROTOTYPE_PLATFORM_DATA_GROUP_NAME is not None
+            complete_daily_ds[PROTOTYPE_PLATFORM_DATA_GROUP_NAME] = xr.DataTree(
+                dataset=prototype_subgroup,
             )
         except FileNotFoundError:
             logger.warning(
@@ -268,11 +278,6 @@ def publish_daily_nc(
         platform_id=platform.id,
     )
 
-    # Ensure consistency of time units
-    complete_daily_ds.time.encoding["units"] = "days since 1970-01-01"
-    complete_daily_ds.time.encoding["calendar"] = "standard"
-
-    complete_daily_ds = remove_FillValue_from_coordinate_vars(complete_daily_ds)
     complete_daily_ds.to_netcdf(complete_daily_filepath)
     logger.success(f"Staged NC file for publication: {complete_daily_filepath}")
 

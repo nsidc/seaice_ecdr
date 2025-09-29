@@ -152,7 +152,7 @@ def _mock_daily_ds_for_month():
     _mock_daily_ds.attrs["year"] = 2022
     _mock_daily_ds.attrs["month"] = 3
     _mock_daily_ds.surface_type_mask.attrs = dict(
-        flag_values=np.array([50, 75, 100, 200, 250], dtype=np.byte),
+        flag_values=np.array([50, 75, 100, 200, 250], dtype=np.uint8),
         flag_meanings="ocean lake polehole_mask coast land",
     )
     _mock_daily_ds.attrs["platform_id"] = "F17"
@@ -191,7 +191,6 @@ def test_monthly_ds(monkeypatch, tmpdir):
         platform_id="am2",
         hemisphere=NORTH,
         resolution="25",
-        ancillary_source="CDRv5",
     )
 
     # Test that the dataset only contains the variables we expect.

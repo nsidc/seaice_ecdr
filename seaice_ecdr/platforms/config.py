@@ -31,9 +31,6 @@ DEFAULT_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
 PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
     _this_dir / "../config/prototype_platform_start_dates.yml"
 ).resolve()
-NRT_F17_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
-    _this_dir / "../config/nrt_f17_platform_start_dates.yml"
-).resolve()
 NRT_AM2_PLATFORM_START_DATES_CONFIG_FILEPATH = Path(
     _this_dir / "../config/nrt_am2_platform_start_dates.yml"
 ).resolve()
@@ -196,6 +193,13 @@ def _get_platform_config() -> PlatformConfig:
         platform_cfg = PlatformConfig(platforms=SUPPORTED_PLATFORMS, **start_dates_cfg)
 
     return platform_cfg
+
+
+def is_dmsp_platform(platform_id: SUPPORTED_PLATFORM_ID):
+    """Returns True for SMMR, SSMI, SSMIS platforms"""
+    dmsp_platforms = ("n07", "F08", "F11", "F13", "F17", "F18")
+
+    return platform_id in dmsp_platforms
 
 
 PLATFORM_CONFIG = _get_platform_config()
