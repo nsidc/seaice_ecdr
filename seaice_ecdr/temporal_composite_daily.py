@@ -18,6 +18,7 @@ from scipy.ndimage import shift
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
 from seaice_ecdr.ancillary import (
+    get_cdr_conc_threshold,
     get_daily_climatology_mask,
     get_non_ocean_mask,
     nh_polehole_mask,
@@ -29,7 +30,7 @@ from seaice_ecdr.fill_polehole import fill_pole_hole
 from seaice_ecdr.initial_daily_ecdr import (
     read_or_create_and_read_idecdr_ds,
 )
-from seaice_ecdr.platforms import PLATFORM_CONFIG
+from seaice_ecdr.platforms import PLATFORM_CONFIG, Platform
 from seaice_ecdr.spillover import LAND_SPILL_ALGS
 from seaice_ecdr.util import (
     date_range,
@@ -203,6 +204,8 @@ def is_seaice_conc(
 def temporally_composite_dataarray(
     *,
     target_date: dt.date,
+    platform: Platform,
+    hemisphere: Hemisphere,
     da: xr.DataArray,
     interp_range: int = 5,
     one_sided_limit: int = 3,
@@ -362,8 +365,14 @@ def temporally_composite_dataarray(
     # temporal_flags[have_only_next] = pdist[have_only_next]  # CDRv04r00 error
     temporal_flags[have_only_next] = ndist[have_only_next]  # Correct
 
-    # Ensure that no conc values are between 0 and 10% after temporal interp
-    is_conc_too_low = (temp_comp_2d > 0) & (temp_comp_2d < 0.1)
+    # Ensure that no conc values are between 0 and the threshold
+    conc_threshold_perc = get_cdr_conc_threshold(
+        date=target_date,
+        hemisphere=hemisphere,
+        platform=platform,
+    )
+    conc_threshold_frac = conc_threshold_perc / 100.0
+    is_conc_too_low = (temp_comp_2d > 0) & (temp_comp_2d < conc_threshold_frac)
     temp_comp_2d[is_conc_too_low] = 0
 
     # Ensure flag values do not occur over land
@@ -557,6 +566,7 @@ def filter_field_via_bitmask(
 def temporal_interpolation(
     *,
     date: dt.date,
+    platform: Platform,
     hemisphere: Hemisphere,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     data_stack: xr.Dataset,
@@ -591,6 +601,8 @@ def temporal_interpolation(
     # Actually compute the cdr_conc temporal composite
     ti_var, ti_flags = temporally_composite_dataarray(
         target_date=date,
+        hemisphere=hemisphere,
+        platform=platform,
         da=data_stack.conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
@@ -697,6 +709,8 @@ def temporal_interpolation(
     # NOTE: the bt_conc array does not have daily_climatology applied
     bt_conc, _ = temporally_composite_dataarray(
         target_date=date,
+        hemisphere=hemisphere,
+        platform=platform,
         da=data_stack.raw_bt_seaice_conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
@@ -706,6 +720,8 @@ def temporal_interpolation(
     # NOTE: the nt_conc array does not have daily_climatology applied
     nt_conc, _ = temporally_composite_dataarray(
         target_date=date,
+        hemisphere=hemisphere,
+        platform=platform,
         da=data_stack.raw_nt_seaice_conc,
         interp_range=interp_range,
         non_ocean_mask=non_ocean_mask,
@@ -869,7 +885,10 @@ def temporally_interpolated_ecdr_dataset(
 
     data_stack = xr.concat(init_datasets, dim="time").sortby("time")
 
+    target_platform = PLATFORM_CONFIG.get_platform_by_date(date)
+
     tie_ds = temporal_interpolation(
+        platform=target_platform,
         hemisphere=hemisphere,
         resolution=resolution,
         date=date,
