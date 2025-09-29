@@ -1,3 +1,7 @@
+# v2.1.0
+
+* Add `--overwrite` flag for `ecdr daily` command.
+
 # v2.0.0
 
 * Replace use of `AU_SI25` for AMSR2 brightness temperatures with

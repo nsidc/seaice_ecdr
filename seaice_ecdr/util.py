@@ -6,6 +6,7 @@ from typing import Iterable, Iterator, Literal, cast, get_args
 import numpy as np
 import pandas as pd
 import xarray as xr
+from loguru import logger
 from pm_tb_data._types import Hemisphere
 
 from seaice_ecdr._types import ECDR_SUPPORTED_RESOLUTIONS
@@ -360,3 +361,89 @@ def get_complete_output_dir(
     )
 
     return complete_dir
+
+
+def _clean_complete_files_for_date_range(
+    *,
+    base_output_dir: Path,
+    hemisphere: Hemisphere,
+    start_date: dt.date,
+    end_date: dt.date,
+):
+    complete_dir = get_complete_output_dir(
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+    )
+
+    for date in date_range(start_date=start_date, end_date=end_date):
+        complete_files = list(complete_dir.rglob(f"sic_*_{date:%Y%m%d}_*.nc"))
+        if complete_files:
+            if len(complete_files) != 1:
+                raise RuntimeError(
+                    "Found multiple matching 'complete' files. Expected only 1."
+                    f" ({complete_files})"
+                )
+            logger.info(f"Cleaning up {complete_files[0]}")
+            complete_files[0].unlink()
+
+
+def _clean_intermediate_files_for_date_range(
+    *,
+    base_output_dir: Path,
+    hemisphere: Hemisphere,
+    start_date: dt.date,
+    end_date: dt.date,
+    interp_range: int = 5,
+):
+    intermediate_dir = get_intermediate_output_dir(
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+    )
+
+    # Account for temporal interpolation at the edges.
+    start_date = start_date - dt.timedelta(days=interp_range)
+    end_date = end_date + dt.timedelta(days=interp_range)
+    for date in date_range(start_date=start_date, end_date=end_date):
+        intermediate_files = list(intermediate_dir.rglob(f"*_{date:%Y%m%d}_*.nc"))
+        for intermediate_file in intermediate_files:
+            logger.info(f"Cleaning up {intermediate_file}")
+            intermediate_file.unlink()
+
+
+def clean_outputs_for_date_range(
+    *,
+    base_output_dir: Path,
+    hemisphere: Hemisphere,
+    start_date: dt.date,
+    end_date: dt.date,
+    interp_range: int = 5,
+):
+    """Removes all outputs related to a given date of data.
+
+    * Removes the complete, published data file for this date.
+    * Removes all intermediate files for this date, and all intermediate files
+      for adjacent dates to account for temporal interpolation (interp_range).
+
+    This function DOES NOT account for melt onset, which could draw data from a
+    much longer timeseries of intermediate files. This funciton is primarily
+    aimed at supporting daily data procesing of G02202 and G10016. Because these
+    both get produced on a daily basis, any data delays/gaps that later get
+    filled need to be easily filled with the new data. This ensures that
+    intermediate files (which may show all NaN for dates that had been missing)
+    get cleaned up and that the final published output file is using the latest
+    available data.
+    """
+    _clean_complete_files_for_date_range(
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    _clean_intermediate_files_for_date_range(
+        base_output_dir=base_output_dir,
+        hemisphere=hemisphere,
+        start_date=start_date,
+        end_date=end_date,
+        interp_range=interp_range,
+    )
