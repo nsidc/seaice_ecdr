@@ -24,7 +24,7 @@ $ ecdr --help
 Daily NRT processing for AMSR2 should occur by running this command: 
 
 ```
-daily-nrt --last-n-days 5  --hemisphere both
+daily-nrt --last-n-days 5  --hemisphere both --overwrite
 ```
 
 Running the last 5 days ensures that data get produced when data get delayed by
