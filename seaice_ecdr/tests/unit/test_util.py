@@ -12,8 +12,11 @@ from seaice_ecdr.constants import ECDR_NRT_PRODUCT_VERSION, ECDR_PRODUCT_VERSION
 from seaice_ecdr.multiprocess_intermediate_daily import get_dates_by_year
 from seaice_ecdr.platforms.models import SUPPORTED_PLATFORM_ID
 from seaice_ecdr.util import (
+    clean_outputs_for_date_range,
     date_range,
     find_standard_monthly_netcdf_files,
+    get_complete_output_dir,
+    get_intermediate_output_dir,
     get_num_missing_pixels,
     nrt_daily_filename,
     nrt_monthly_filename,
@@ -323,3 +326,91 @@ def test_raise_error_for_dates():
     # If one or more dates are passed, an error should be raised.
     with pytest.raises(RuntimeError):
         raise_error_for_dates(error_dates=[dt.date(2011, 1, 1)])
+
+
+def test_clean_outputs_for_date_range(fs):
+    hemisphere = NORTH
+    start_date = dt.date(2025, 1, 1)
+    end_date = dt.date(2025, 1, 2)
+
+    base_output_dir = Path("/output/")
+    complete_output_dir = get_complete_output_dir(
+        hemisphere=hemisphere,
+        base_output_dir=base_output_dir,
+    )
+
+    # for date in start_date, end_date
+    complete_files = [
+        complete_output_dir / "sic_psn12.5_20241226_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20241227_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20241228_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20241229_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20241230_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20241231_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20250101_am2_v06r00.nc",  # target
+        complete_output_dir / "sic_psn12.5_20250102_am2_v06r00.nc",  # target
+        complete_output_dir / "sic_psn12.5_20250103_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20250104_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20250105_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20250106_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20250107_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20250108_am2_v06r00.nc",
+    ]
+    for complete_file in complete_files:
+        fs.create_file(complete_file)
+
+    intermediate_output_dir = get_intermediate_output_dir(
+        hemisphere=hemisphere,
+        base_output_dir=base_output_dir,
+    )
+    intermediate_files = [
+        intermediate_output_dir / "sic_psn12.5_20241226_am2_v06r00.nc",
+        intermediate_output_dir / "sic_psn12.5_20241227_am2_v06r00.nc",
+        intermediate_output_dir / "sic_psn12.5_20241228_am2_v06r00.nc",
+        intermediate_output_dir / "sic_psn12.5_20241229_am2_v06r00.nc",
+        intermediate_output_dir / "sic_psn12.5_20241230_am2_v06r00.nc",
+        intermediate_output_dir / "sic_psn12.5_20241231_am2_v06r00.nc",
+        intermediate_output_dir / "sic_psn12.5_20250101_am2_v06r00.nc",  # target
+        intermediate_output_dir / "sic_psn12.5_20250102_am2_v06r00.nc",  # target
+        intermediate_output_dir / "sic_psn12.5_20250103_am2_v06r00.nc",
+        intermediate_output_dir / "sic_psn12.5_20250104_am2_v06r00.nc",
+        intermediate_output_dir / "sic_psn12.5_20250105_am2_v06r00.nc",
+        intermediate_output_dir / "sic_psn12.5_20250106_am2_v06r00.nc",
+        intermediate_output_dir / "sic_psn12.5_20250107_am2_v06r00.nc",
+        intermediate_output_dir / "sic_psn12.5_20250108_am2_v06r00.nc",
+    ]
+    for intermediate_file in intermediate_files:
+        fs.create_file(intermediate_file)
+
+    clean_outputs_for_date_range(
+        hemisphere=hemisphere,
+        base_output_dir=base_output_dir,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    expected_complete_files = [
+        complete_output_dir / "sic_psn12.5_20241226_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20241227_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20241228_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20241229_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20241230_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20241231_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20250103_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20250104_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20250105_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20250106_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20250107_am2_v06r00.nc",
+        complete_output_dir / "sic_psn12.5_20250108_am2_v06r00.nc",
+    ]
+
+    expected_intermediate_files = [
+        intermediate_output_dir / "sic_psn12.5_20241226_am2_v06r00.nc",
+        intermediate_output_dir / "sic_psn12.5_20250108_am2_v06r00.nc",
+    ]
+
+    actual_complete_files = list(complete_output_dir.rglob("*.nc"))
+    actual_intermediate_files = list(intermediate_output_dir.rglob("*.nc"))
+
+    assert set(actual_complete_files) == set(expected_complete_files)
+    assert set(actual_intermediate_files) == set(expected_intermediate_files)

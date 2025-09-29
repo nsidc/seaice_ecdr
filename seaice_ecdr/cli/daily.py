@@ -16,6 +16,7 @@ from seaice_ecdr.constants import (
 from seaice_ecdr.platforms.config import PROTOTYPE_PLATFORM_START_DATES_CONFIG_FILEPATH
 from seaice_ecdr.publish_daily import publish_daily_nc_for_dates
 from seaice_ecdr.spillover import LAND_SPILL_ALGS
+from seaice_ecdr.util import clean_outputs_for_date_range
 
 _THIS_DIR = Path(__file__).parent
 
@@ -36,12 +37,22 @@ def make_25km_ecdr(
     no_multiprocessing: bool,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     land_spillover_alg: LAND_SPILL_ALGS,
+    overwrite: bool,
 ):
+    if overwrite:
+        clean_outputs_for_date_range(
+            start_date=start_date,
+            end_date=end_date,
+            hemisphere=hemisphere,
+            base_output_dir=base_output_dir,
+        )
+
     # Use the default platform dates, which excludes AMSR2
     if no_multiprocessing:
         daily_intermediate_cmd = "intermediate-daily"
     else:
         daily_intermediate_cmd = "multiprocess-intermediate-daily"
+
     run_cmd(
         f"{CLI_EXE_PATH} {daily_intermediate_cmd}"
         f" --start-date {start_date:%Y-%m-%d} --end-date {end_date:%Y-%m-%d}"
@@ -151,6 +162,10 @@ def make_25km_ecdr(
     type=click.Choice(get_args(LAND_SPILL_ALGS)),
     default=DEFAULT_SPILLOVER_ALG,
 )
+@click.option(
+    "--overwrite",
+    is_flag=True,
+)
 def cli(
     *,
     date: dt.date,
@@ -160,6 +175,7 @@ def cli(
     no_multiprocessing: bool,
     resolution: ECDR_SUPPORTED_RESOLUTIONS,
     land_spillover_alg: LAND_SPILL_ALGS,
+    overwrite: bool,
 ):
     if end_date is None:
         end_date = copy.copy(date)
@@ -178,6 +194,7 @@ def cli(
             no_multiprocessing=no_multiprocessing,
             resolution=resolution,
             land_spillover_alg=land_spillover_alg,
+            overwrite=overwrite,
         )
 
 
