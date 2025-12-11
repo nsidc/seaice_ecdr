@@ -1,3 +1,7 @@
+# v2.1.1
+
+* Update CDR product DOIs in NetCDF metadata.
+
 # v2.1.0
 
 * Add `--overwrite` flag for `ecdr daily` command.
