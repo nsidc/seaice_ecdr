@@ -3,6 +3,11 @@
 On Dec. 11, 2025, we realized that the DOI for these products was wrong (used
 the previous version). This script updates existing nc files to have the correct
 DOI in order to avoid data reprocessing.
+
+NOTE/WARNING: if this is ever re-used in the future, remember to update the
+output file checksums (`.mnf` files) after. This script does NOT update the
+associated checksum file - it just updates the DOI metadata. See the
+`regenerate_checksums.py` script.
 """
 
 from pathlib import Path
